@@ -1,8 +1,8 @@
 /* Файл создаётся автоматически из Telegram-канала. Вручную не редактируйте. */
 window.ONION_CATALOG = {
  "channel": "ONION_SHOP_OFFICIAL",
- "source": "export",
- "updatedAt": "2026-10-28T12:30:07Z",
+ "source": "t.me",
+ "updatedAt": "2026-10-28T15:06:38Z",
  "products": [
   {
    "title": "Зип худи Hollister с мехом",
@@ -239,6 +239,12 @@ window.ONION_CATALOG = {
      "w": 840,
      "ht": 840,
      "hash": "e01fd7ceb165"
+    },
+    {
+     "id": 573,
+     "w": 800,
+     "ht": 800,
+     "hash": "4932f81615fe"
     },
     {
      "id": 574,
@@ -629,96 +635,6 @@ window.ONION_CATALOG = {
    "date": "2026-05-08T12:27:43Z"
   },
   {
-   "title": "Галстук мужской clingendale",
-   "subtitle": "",
-   "brand": "clingendale",
-   "category": "accessories",
-   "categoryLabel": "Аксессуары",
-   "status": "stock",
-   "price": 1790,
-   "oldPrice": null,
-   "sizes": [
-    "стандартный (классическая длина)"
-   ],
-   "colors": [
-    "красный"
-   ],
-   "details": [
-    [
-     "Состояние",
-     "новое с биркой"
-    ],
-    [
-     "Производство",
-     "Made in Italy"
-    ],
-    [
-     "Материал",
-     "Шёлк"
-    ]
-   ],
-   "notes": [],
-   "id": "482",
-   "link": "https://t.me/ONION_SHOP_OFFICIAL/482",
-   "photos": [
-    {
-     "id": 482,
-     "w": 1000,
-     "ht": 1000,
-     "hash": "5f8880b7a602"
-    }
-   ],
-   "date": "2026-01-16T10:32:23Z"
-  },
-  {
-   "title": "Носки OSKO",
-   "subtitle": "ручная работа",
-   "brand": "OSKO",
-   "category": "accessories",
-   "categoryLabel": "Аксессуары",
-   "status": "stock",
-   "price": 1500,
-   "oldPrice": 2000,
-   "sizes": [
-    "41–47"
-   ],
-   "colors": [],
-   "details": [
-    [
-     "Состояние",
-     "новые"
-    ],
-    [
-     "Количество",
-     "12 пар"
-    ],
-    [
-     "Материал",
-     "чесанный хлопок"
-    ],
-    [
-     "Состав",
-     "80% хлопок, 15% полиамид, 5% эластан"
-    ],
-    [
-     "Особенности",
-     "ручная работа, антибактериальные, дезодорирующие, против пота"
-    ]
-   ],
-   "notes": [],
-   "id": "473",
-   "link": "https://t.me/ONION_SHOP_OFFICIAL/473",
-   "photos": [
-    {
-     "id": 473,
-     "w": 1000,
-     "ht": 1000,
-     "hash": "8b80549ff003"
-    }
-   ],
-   "date": "2026-01-03T15:48:50Z"
-  },
-  {
    "title": "Мокасины кожаные Louis Vuitton",
    "subtitle": "",
    "brand": "Louis Vuitton",
@@ -911,36 +827,6 @@ window.ONION_CATALOG = {
     }
    ],
    "date": "2025-09-07T16:37:44Z"
-  },
-  {
-   "title": "Комплект галстук, запонки и платок",
-   "subtitle": "",
-   "brand": "",
-   "category": "accessories",
-   "categoryLabel": "Аксессуары",
-   "status": "stock",
-   "price": 600,
-   "oldPrice": 650,
-   "sizes": [],
-   "colors": [],
-   "details": [
-    [
-     "Состояние",
-     "новое с биркой"
-    ]
-   ],
-   "notes": [],
-   "id": "420",
-   "link": "https://t.me/ONION_SHOP_OFFICIAL/420",
-   "photos": [
-    {
-     "id": 420,
-     "w": 750,
-     "ht": 1000,
-     "hash": "63f608c27829"
-    }
-   ],
-   "date": "2025-08-11T17:37:35Z"
   },
   {
    "title": "Кошелек MOSCHINO",
