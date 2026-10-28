@@ -1,0 +1,86 @@
+name: Каталог из Telegram
+
+# Раз в час сайт сам читает канал @ONION_SHOP_OFFICIAL,
+# обновляет товары и фото и публикует сайт. Ничего нажимать не нужно.
+# Обновить прямо сейчас: Actions → «Каталог из Telegram» → Run workflow.
+# Если загрузить в репозиторий ZIP-архивы с сайтом, они распакуются сами.
+on:
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: catalog
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Распаковать загруженные архивы
+        run: |
+          git config user.name "onion-shop-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          shopt -s nullglob
+          zips=( *.zip )
+          if [ ${#zips[@]} -gt 0 ]; then
+            for z in "${zips[@]}"; do unzip -o -q "$z"; done
+            rm -f -- *.zip "index[1].html" "manifest[1].webmanifest" sync_catalog.cpython-313.pyc
+            # файлы, случайно загруженные в корень вместо своих папок
+            for f in api.js app.js core.js config.js config.demo.js style.css catalog.js sync.yml sync_catalog.py \
+                     apple-touch-icon.png favicon.png icon-192.png icon-512.png icon-maskable-512.png logo.png sprite.svg; do
+              if [ -f "$f" ] && [ ! -L "$f" ]; then rm -f -- "$f"; fi
+            done
+            git add -A
+            git commit -m "Сайт распакован из архивов"
+            git push
+          fi
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Установить библиотеки
+        run: pip install beautifulsoup4 pillow
+
+      - name: Прочитать канал и собрать каталог
+        run: python scripts/sync_catalog.py --channel ONION_SHOP_OFFICIAL
+
+      - name: Сохранить изменения в репозитории
+        run: |
+          git add -A data img
+          if git diff --cached --quiet; then
+            # GitHub выключает расписание, если в репозитории 60 дней нет изменений.
+            # Раз в 50 дней делаем служебную отметку, чтобы обновления не останавливались.
+            last=$(git log -1 --format=%ct); now=$(date +%s)
+            if [ $((now - last)) -gt 4320000 ]; then
+              date -u +%FT%TZ > data/keepalive.txt
+              git add data/keepalive.txt
+              git commit -m "Каталог: проверка связи"
+              git push
+            fi
+          else
+            git commit -m "Каталог обновлён из Telegram"
+            git push
+          fi
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: "."
+
+      - id: deployment
+        uses: actions/deploy-pages@v4
