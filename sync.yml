@@ -1,0 +1,68 @@
+name: Каталог из Telegram
+
+# Раз в час сайт сам читает канал @ONION_SHOP_OFFICIAL,
+# обновляет товары и фото и публикует сайт. Ничего нажимать не нужно.
+# Обновить прямо сейчас: Actions → «Каталог из Telegram» → Run workflow.
+on:
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: catalog
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Установить библиотеки
+        run: pip install beautifulsoup4 pillow
+
+      - name: Прочитать канал и собрать каталог
+        run: python scripts/sync_catalog.py --channel ONION_SHOP_OFFICIAL
+
+      - name: Сохранить изменения в репозитории
+        run: |
+          git config user.name "onion-shop-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A data img
+          if git diff --cached --quiet; then
+            # GitHub выключает расписание, если в репозитории 60 дней нет изменений.
+            # Раз в 50 дней делаем служебную отметку, чтобы обновления не останавливались.
+            last=$(git log -1 --format=%ct); now=$(date +%s)
+            if [ $((now - last)) -gt 4320000 ]; then
+              date -u +%FT%TZ > data/keepalive.txt
+              git add data/keepalive.txt
+              git commit -m "Каталог: проверка связи"
+              git push
+            fi
+          else
+            git commit -m "Каталог обновлён из Telegram"
+            git push
+          fi
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: "."
+
+      - id: deployment
+        uses: actions/deploy-pages@v4
