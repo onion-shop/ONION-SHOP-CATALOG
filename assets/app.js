@@ -24,7 +24,20 @@
   var CATALOG = window.ONION_CATALOG || { products: [] };
   var PRODUCTS = (CATALOG.products || []).slice();
   var BY_ID = {};
-  PRODUCTS.forEach(function (p) { BY_ID[p.id] = p; });
+  // цвет → фото: точная привязка из data/colors.js (номер фото в посте). Цвета идут в порядке фото.
+  var COLOR_PHOTOS = window.ONION_COLOR_PHOTOS || {};
+  PRODUCTS.forEach(function (p) {
+    BY_ID[p.id] = p;
+    var raw = COLOR_PHOTOS[p.id], map = {};
+    if (raw && p.colors.length > 1) {
+      Object.keys(raw).forEach(function (c) { var ph = p.photos[raw[c] - 1]; if (ph && p.colors.indexOf(c) >= 0) map[c] = ph.id; });
+      if (Object.keys(map).length) {
+        var pos = function (c) { return map[c] ? p.photos.findIndex(function (x) { return x.id === map[c]; }) : 999; };
+        p.colors = p.colors.slice().sort(function (x, y) { return pos(x) - pos(y); });
+        p.colorPhoto = map;
+      }
+    }
+  });
   var REDUCED = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
   var WHEEL_SUM = RULES.wheel.reduce(function (a, w) { return a + w.w; }, 0);
 
@@ -228,7 +241,7 @@
     c.width = innerWidth * dpr; c.height = innerHeight * dpr;
     document.body.appendChild(c);
     var ctx = c.getContext('2d'); ctx.scale(dpr, dpr);
-    var colors = ['#43c9e3', '#1a86c0', '#8fe6f5', '#5a5fe0', '#0f2747', '#ffffff', '#7fe3b0'];
+    var colors = ['#43c9e3', '#1a86c0', '#8fe6f5', '#2f6fe0', '#0f2747', '#ffffff', '#bfe9ff'];
     var P = [], n = power || 120;
     for (var i = 0; i < n; i++) P.push({ x: innerWidth / 2 + (Math.random() - .5) * 120, y: innerHeight * 0.38, vx: (Math.random() - .5) * 14, vy: -Math.random() * 15 - 4, s: 4 + Math.random() * 6, r: Math.random() * 6.28, vr: (Math.random() - .5) * .3, c: colors[i % colors.length], round: Math.random() < .3 });
     var t0 = performance.now();
@@ -310,11 +323,10 @@
   function badge(p) { return p.status === 'preorder' ? '<span class="badge badge-pre">Предзаказ</span>' : '<span class="badge badge-stock">В наличии</span>'; }
   function discount(p) { return p.oldPrice ? Math.round((1 - p.price / p.oldPrice) * 100) : 0; }
   function card(p, i) {
-    var a = p.photos[0], b = p.photos[1], d = discount(p), id = esc(p.id);
+    var a = p.photos[0], d = discount(p), id = esc(p.id);
     var sw = p.colors.length > 1 ? '<div class="sw-row">' + p.colors.slice(0, 5).map(function (c) { return '<i class="sw" style="' + swatch(c) + '" title="' + esc(c) + '"></i>'; }).join('') + (p.colors.length > 5 ? '<small>+' + (p.colors.length - 5) + '</small>' : '') + '</div>' : '';
     return '<article class="pcard" style="--i:' + (i || 0) + '">' +
       '<a class="ph" href="#p-' + id + '" tabindex="-1" aria-hidden="true"><img class="a" src="' + thumb(a.id) + '" alt="" loading="lazy" decoding="async">' +
-      (b ? '<img class="b" src="' + thumb(b.id) + '" alt="" loading="lazy" decoding="async">' : '') +
       '<div class="tags">' + badge(p) + '</div></a>' +
       '<button class="fav" type="button" data-fav="' + id + '" aria-pressed="' + isFav(p.id) + '" aria-label="Избранное: ' + esc(p.title) + '">' + icon('heart') + '</button>' +
       '<a class="body" href="#p-' + id + '"><span class="brand-l">' + esc(p.brand || p.categoryLabel) + '</span><span class="t">' + esc(p.title) + '</span>' + sw +
@@ -513,7 +525,7 @@
     copyText(url, 'Ссылка на товар скопирована'); done();
   }
   // цвет → фото: если фото не меньше, чем цветов, i-й цвет показан на i-м фото
-  function colorPhotoMap(p) { return p.colors.length > 1 && p.photos.length >= p.colors.length; }
+  function colorPhotoMap(p) { return !!p.colorPhoto; }
   function renderProduct(id) {
     var p = BY_ID[id], v = $('#v-product');
     if (!p) { v.innerHTML = '<div class="empty"><span class="ico">' + icon('box') + '</span><h3>Товар больше не продаётся</h3><p>Возможно, его уже купили. Посмотрите похожие вещи в каталоге или спросите менеджера.</p><a class="btn" href="#catalog">Открыть каталог</a></div>'; return; }
@@ -601,7 +613,7 @@
         sel.color = b.getAttribute('data-color');
         $$('[data-color]', v).forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
         $('#color-val').textContent = cap(sel.color); clearErr('opt-color');
-        if (mapOk && (!sel.photo || sel.photoAuto)) setPhoto(p.photos[p.colors.indexOf(sel.color)].id, true);
+        if (mapOk && p.colorPhoto[sel.color] && (!sel.photo || sel.photoAuto)) setPhoto(p.colorPhoto[sel.color], true);
       });
     });
     $$('[data-photo]', v).forEach(function (b) {
@@ -609,7 +621,8 @@
         var pid = +b.getAttribute('data-photo'), i = +b.getAttribute('data-i');
         if (sel.photo === pid) { setPhoto(null); return; }
         setPhoto(pid, false);
-        if (mapOk && p.colors[i]) { var cb = $$('[data-color]', v)[i]; if (cb && sel.color !== p.colors[i]) { sel.color = p.colors[i]; $$('[data-color]', v).forEach(function (x) { x.setAttribute('aria-pressed', String(x === cb)); }); $('#color-val').textContent = cap(sel.color); clearErr('opt-color'); } }
+        var pc = mapOk ? Object.keys(p.colorPhoto).filter(function (c) { return p.colorPhoto[c] === pid; })[0] : null;
+        if (pc) { var cb = $$('[data-color]', v)[p.colors.indexOf(pc)]; if (cb && sel.color !== pc) { sel.color = pc; $$('[data-color]', v).forEach(function (x) { x.setAttribute('aria-pressed', String(x === cb)); }); $('#color-val').textContent = cap(sel.color); clearErr('opt-color'); } }
       });
     });
     var qv = $('#q-val', v), qm = $('#q-minus', v), qp = $('#q-plus', v), lbl = $('#add-lbl', v);
@@ -1420,6 +1433,7 @@
     var a = document.documentElement.getAttribute('data-theme');
     var dark = a === 'dark' || (!a && window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
     var b = $('#theme-btn'); b.innerHTML = icon(dark ? 'sun' : 'moon'); b.setAttribute('aria-label', dark ? 'Светлая тема' : 'Тёмная тема');
+    var mt = document.querySelector('meta[name="theme-color"]'); if (mt) mt.setAttribute('content', dark ? '#08111f' : '#dfe6ef');
     return dark;
   }
 
