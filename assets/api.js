@@ -13,7 +13,7 @@ var OnionAPI = (function () {
   function setSession(s) { try { if (s) localStorage.setItem(SKEY, s); else localStorage.removeItem(SKEY); } catch (e) { /* нет хранилища */ } }
 
   // ------------------------------------------------ демо-база в браузере
-  var DKEY = 'onion.shop.demo.v1';
+  var DKEY = 'onion.shop.demo.v2';
   function load() { try { return JSON.parse(localStorage.getItem(DKEY)) || null; } catch (e) { return null; } }
   var mem = load() || { users: [], sessions: [], orders: [], log: [], seq: { user: 1000, order: 0 } };
   function save() { try { localStorage.setItem(DKEY, JSON.stringify(mem)); } catch (e) { /* только в памяти */ } }
@@ -33,7 +33,7 @@ var OnionAPI = (function () {
     token: function () { var s = ''; for (var i = 0; i < 40; i++) s += Math.floor(Math.random() * 16).toString(16); return s; },
     getUser: function (id) { return mem.users.filter(function (u) { return u.id === String(id); })[0] || null; },
     findUser: function (field, value) {
-      var map = { login: 'login', tg: 'tgKey', phone: 'phoneKey', refCode: 'refCode' }, k = map[field] || field;
+      var map = { login: 'login', tg: 'tgKey', phone: 'phoneKey', refCode: 'refCode', email: 'emailKey' }, k = map[field] || field;
       return mem.users.filter(function (u) { return String(u[k]) === String(value); })[0] || null;
     },
     createUser: function (u) { mem.seq.user += 1; u.id = String(mem.seq.user); mem.users.push(u); return u; },
@@ -47,7 +47,22 @@ var OnionAPI = (function () {
     log: function (e) { mem.log.push(e); if (mem.log.length > 500) mem.log.shift(); },
     catalogReady: function () { return true; },
     product: function (id) { return catalog[id] || null; },
-    notify: function () { return false; }
+    notify: function () { return false; },
+    // демо: коды не уходят на почту, а показываются на экране
+    demoCodes: true,
+    codes: {},
+    putCode: function (k, o) { DemoDB.codes[k] = o; },
+    getCode: function (k) { return DemoDB.codes[k] || null; },
+    delCode: function (k) { delete DemoDB.codes[k]; },
+    mail: function () { return true; },
+    deleteUser: function (u) { mem.users = mem.users.filter(function (x) { return x.id !== u.id; }); save(); },
+    deleteSessionsOf: function (id) { mem.sessions = mem.sessions.filter(function (s) { return s.userId !== id; }); save(); },
+    shopPromo: function (code) { return code === 'HALLOWEEN' ? { code: code, pct: 10, active: true, withTokens: true, once: true, limit: 0, until: Date.parse('2026-10-31T23:59:59+03:00') } : null; },
+    promoUses: function (code) {
+      var r = { total: 0, users: [], phones: [] };
+      mem.orders.forEach(function (o) { if (o.promo === code) { r.total++; if (o.userId) r.users.push(o.userId); var d = String(o.phone || '').replace(/\D/g, ''); if (d.length === 11) d = d.slice(1); if (d) r.phones.push(d); } });
+      return r;
+    }
   };
 
   // ------------------------------------------------ вызов
