@@ -1,0 +1,16 @@
+{
+  "name": "ONION SHOP",
+  "short_name": "ONION SHOP",
+  "description": "Одежда, обувь и аксессуары в наличии и по предзаказу из Китая",
+  "lang": "ru",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#071131",
+  "theme_color": "#071131",
+  "icons": [
+    { "src": "assets/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "assets/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "assets/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
