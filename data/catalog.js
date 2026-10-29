@@ -2,7 +2,7 @@
 window.ONION_CATALOG = {
  "channel": "ONION_SHOP_OFFICIAL",
  "source": "t.me",
- "updatedAt": "2026-10-29T11:25:43Z",
+ "updatedAt": "2026-10-29T11:27:22Z",
  "products": [
   {
    "title": "Утепленная кофта GAP на молнии",
@@ -28,6 +28,12 @@ window.ONION_CATALOG = {
     ]
    ],
    "notes": [],
+   "facts": [
+    [
+     "Сезон",
+     "Зима / тёплое"
+    ]
+   ],
    "id": "592",
    "link": "https://t.me/ONION_SHOP_OFFICIAL/592",
    "photos": [
@@ -82,6 +88,7 @@ window.ONION_CATALOG = {
     ]
    ],
    "notes": [],
+   "facts": [],
    "id": "588",
    "link": "https://t.me/ONION_SHOP_OFFICIAL/588",
    "photos": [
@@ -135,6 +142,7 @@ window.ONION_CATALOG = {
     ]
    ],
    "notes": [],
+   "facts": [],
    "id": "576",
    "link": "https://t.me/ONION_SHOP_OFFICIAL/576",
    "photos": [
@@ -231,6 +239,7 @@ window.ONION_CATALOG = {
     ]
    ],
    "notes": [],
+   "facts": [],
    "id": "563",
    "link": "https://t.me/ONION_SHOP_OFFICIAL/563",
    "photos": [
@@ -350,6 +359,7 @@ window.ONION_CATALOG = {
     ]
    ],
    "notes": [],
+   "facts": [],
    "id": "551",
    "link": "https://t.me/ONION_SHOP_OFFICIAL/551",
    "photos": [
@@ -444,6 +454,7 @@ window.ONION_CATALOG = {
     ]
    ],
    "notes": [],
+   "facts": [],
    "id": "532",
    "link": "https://t.me/ONION_SHOP_OFFICIAL/532",
    "photos": [
@@ -499,6 +510,7 @@ window.ONION_CATALOG = {
     ]
    ],
    "notes": [],
+   "facts": [],
    "id": "521",
    "link": "https://t.me/ONION_SHOP_OFFICIAL/521",
    "photos": [
@@ -552,6 +564,7 @@ window.ONION_CATALOG = {
     ]
    ],
    "notes": [],
+   "facts": [],
    "id": "514",
    "link": "https://t.me/ONION_SHOP_OFFICIAL/514",
    "photos": [
@@ -610,6 +623,7 @@ window.ONION_CATALOG = {
     ]
    ],
    "notes": [],
+   "facts": [],
    "id": "503",
    "link": "https://t.me/ONION_SHOP_OFFICIAL/503",
    "photos": [
@@ -682,6 +696,7 @@ window.ONION_CATALOG = {
     ]
    ],
    "notes": [],
+   "facts": [],
    "id": "460",
    "link": "https://t.me/ONION_SHOP_OFFICIAL/460",
    "photos": [
@@ -723,6 +738,12 @@ window.ONION_CATALOG = {
    ],
    "notes": [
     "Товар оригинал"
+   ],
+   "facts": [
+    [
+     "Подлинность",
+     "Оригинал"
+    ]
    ],
    "id": "446",
    "link": "https://t.me/ONION_SHOP_OFFICIAL/446",
@@ -769,6 +790,16 @@ window.ONION_CATALOG = {
     "Made in Italy.",
     "Сертификат подлинности в комплекте.",
     "Проверено экспертами Авито."
+   ],
+   "facts": [
+    [
+     "Подлинность",
+     "Оригинал"
+    ],
+    [
+     "Сделано",
+     "Italy"
+    ]
    ],
    "id": "440",
    "link": "https://t.me/ONION_SHOP_OFFICIAL/440",
@@ -834,6 +865,12 @@ window.ONION_CATALOG = {
    "notes": [
     "Товар оригинал"
    ],
+   "facts": [
+    [
+     "Подлинность",
+     "Оригинал"
+    ]
+   ],
    "id": "436",
    "link": "https://t.me/ONION_SHOP_OFFICIAL/436",
    "photos": [
@@ -874,6 +911,7 @@ window.ONION_CATALOG = {
     ]
    ],
    "notes": [],
+   "facts": [],
    "id": "414",
    "link": "https://t.me/ONION_SHOP_OFFICIAL/414",
    "photos": [
@@ -921,6 +959,12 @@ window.ONION_CATALOG = {
    ],
    "notes": [
     "Товар оригинал"
+   ],
+   "facts": [
+    [
+     "Подлинность",
+     "Оригинал"
+    ]
    ],
    "id": "409",
    "link": "https://t.me/ONION_SHOP_OFFICIAL/409",
@@ -982,6 +1026,12 @@ window.ONION_CATALOG = {
    "notes": [
     "Товар оригинал"
    ],
+   "facts": [
+    [
+     "Подлинность",
+     "Оригинал"
+    ]
+   ],
    "id": "404",
    "link": "https://t.me/ONION_SHOP_OFFICIAL/404",
    "photos": [
@@ -1029,6 +1079,12 @@ window.ONION_CATALOG = {
    ],
    "notes": [
     "Товар оригинал"
+   ],
+   "facts": [
+    [
+     "Подлинность",
+     "Оригинал"
+    ]
    ],
    "id": "398",
    "link": "https://t.me/ONION_SHOP_OFFICIAL/398",
@@ -1080,6 +1136,7 @@ window.ONION_CATALOG = {
     ]
    ],
    "notes": [],
+   "facts": [],
    "id": "381",
    "link": "https://t.me/ONION_SHOP_OFFICIAL/381",
    "photos": [
@@ -1118,6 +1175,7 @@ window.ONION_CATALOG = {
     ]
    ],
    "notes": [],
+   "facts": [],
    "id": "371",
    "link": "https://t.me/ONION_SHOP_OFFICIAL/371",
    "photos": [
@@ -1160,6 +1218,7 @@ window.ONION_CATALOG = {
     ]
    ],
    "notes": [],
+   "facts": [],
    "id": "325",
    "link": "https://t.me/ONION_SHOP_OFFICIAL/325",
    "photos": [
@@ -1211,6 +1270,7 @@ window.ONION_CATALOG = {
     ]
    ],
    "notes": [],
+   "facts": [],
    "id": "321",
    "link": "https://t.me/ONION_SHOP_OFFICIAL/321",
    "photos": [
