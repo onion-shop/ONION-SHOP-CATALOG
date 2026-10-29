@@ -9,8 +9,21 @@ var OnionAPI = (function () {
   var mode = cfg.mode || (cfg.apiUrl ? 'live' : 'off');
   var SKEY = 'onion.shop.session';
 
-  function getSession() { try { return localStorage.getItem(SKEY) || ''; } catch (e) { return ''; } }
-  function setSession(s) { try { if (s) localStorage.setItem(SKEY, s); else localStorage.removeItem(SKEY); } catch (e) { /* нет хранилища */ } }
+  // вход хранится в двух местах (память сайта и cookie на год): если браузер почистил одно, восстановим из другого
+  function readCookie() { try { var m = document.cookie.match(/(?:^|; )onion_s=([^;]+)/); return m ? decodeURIComponent(m[1]) : ''; } catch (e) { return ''; } }
+  function writeCookie(v) { try { document.cookie = 'onion_s=' + (v ? encodeURIComponent(v) : '') + '; path=/; max-age=' + (v ? 31536000 : 0) + '; SameSite=Lax' + (location.protocol === 'https:' ? '; Secure' : ''); } catch (e) { /* нет cookie */ } }
+  function getSession() {
+    var v = ''; try { v = localStorage.getItem(SKEY) || ''; } catch (e) { }
+    if (!v) { v = readCookie(); if (v) { try { localStorage.setItem(SKEY, v); } catch (e) { } } }
+    return v;
+  }
+  function setSession(s) {
+    try { if (s) localStorage.setItem(SKEY, s); else localStorage.removeItem(SKEY); } catch (e) { /* нет хранилища */ }
+    writeCookie(s || '');
+    if (s) { try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) { } }
+  }
+  // уже вошедшие клиенты: дублируем токен в cookie при загрузке
+  try { var cur = localStorage.getItem(SKEY); if (cur && !readCookie()) writeCookie(cur); } catch (e) { }
 
   // ------------------------------------------------ демо-база в браузере
   var DKEY = 'onion.shop.demo.v2';
@@ -40,6 +53,7 @@ var OnionAPI = (function () {
     saveUser: function () { save(); },
     getSession: function (t) { return mem.sessions.filter(function (s) { return s.token === t; })[0] || null; },
     saveSession: function (s) { mem.sessions.push(s); save(); },
+    renewSession: function (t, exp) { mem.sessions.forEach(function (s) { if (s.token === t) s.exp = exp; }); save(); },
     deleteSession: function (t) { mem.sessions = mem.sessions.filter(function (s) { return s.token !== t; }); save(); },
     nextOrderSeq: function () { mem.seq.order += 1; save(); return mem.seq.order; },
     saveOrder: function (o) { mem.orders.push(o); save(); },
@@ -75,6 +89,7 @@ var OnionAPI = (function () {
   };
 
   // ------------------------------------------------ вызов
+  var pending = 0;
   function call(action, payload) {
     payload = Object.assign({ action: action, session: getSession() }, payload || {});
     if (mode === 'demo') {
@@ -87,8 +102,10 @@ var OnionAPI = (function () {
       });
     }
     if (mode !== 'live') return Promise.resolve({ ok: false, error: 'off' });
+    if (action !== 'me') pending++;
     return fetch(cfg.apiUrl, { method: 'POST', body: JSON.stringify(payload), redirect: 'follow' })
       .then(function (r) { return r.json(); })
+      .then(function (r) { if (action !== 'me') pending = Math.max(0, pending - 1); return r; }, function (e) { if (action !== 'me') pending = Math.max(0, pending - 1); throw e; })
       .then(function (r) { try { window.dispatchEvent(new Event('onion:netok')); } catch (e) { /* */ } return r; })
       .catch(function () { try { window.dispatchEvent(new Event('onion:neterr')); } catch (e) { /* */ } return { ok: false, error: 'Нет связи с сервером. Проверьте интернет и попробуйте ещё раз', network: true }; });
   }
@@ -99,6 +116,7 @@ var OnionAPI = (function () {
     getSession: getSession,
     setSession: setSession,
     call: call,
+    busy: function () { return pending > 0; },
     resetDemo: function () { try { localStorage.removeItem(DKEY); } catch (e) { /* */ } setSession(''); }
   };
 })();

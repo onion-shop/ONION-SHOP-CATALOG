@@ -277,6 +277,7 @@
   // ------------------------------------------------------------ аккаунт
   function setUser(u) {
     acct.user = u || null;
+    try { if (u && API.getSession()) store.set('meCache', { s: API.getSession(), u: u }); else store.set('meCache', null); } catch (e) { /* */ }
     if (u && localOrders.length) { localOrders = []; store.set('orders', []); } // старые заказы без входа не должны попадать в новый кабинет
     updateAcctUI();
     showNews(u);
@@ -302,7 +303,7 @@
      не изменилось или клиент сейчас что-то вводит. */
   var silentBusy = false, lastMe = '';
   function silentRefresh() {
-    if (silentBusy || !API.enabled || API.mode !== 'live' || !API.getSession() || document.hidden) return;
+    if (silentBusy || !API.enabled || API.mode !== 'live' || !API.getSession() || document.hidden || API.busy()) return;
     silentBusy = true;
     API.call('me').then(function (r) {
       silentBusy = false;
@@ -1908,8 +1909,9 @@
     if (navigator.onLine === false) netBar(true);
     route();
     window.__onionBoot = true;
+    try { var mc = store.get('meCache', null); if (mc && mc.u && mc.s && mc.s === API.getSession() && API.mode === 'live') { acct.user = mc.u; acct.ready = true; updateAcctUI(); } } catch (e) { /* */ }
     refreshMe().then(function () { lastMe = acct.user ? JSON.stringify(acct.user) : ''; refreshView(); });
-    setInterval(silentRefresh, 45000);
+    setInterval(silentRefresh, 90000);
     document.addEventListener('visibilitychange', function () { if (document.hidden) flushTrack(); else silentRefresh(); });
     window.addEventListener('focus', silentRefresh);
   }

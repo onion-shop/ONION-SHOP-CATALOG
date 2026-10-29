@@ -13,7 +13,7 @@ var OnionCore = (function () {
     reward: { register: 100, refFriend: 50, referrer: 100, checkin: 1, streak7: 10, task: 1, birthday: 550, review: 5, reviewText: 15 },
     refMinOrder: 1000,      // друг засчитывается после первого заказа от 1000 ₽
     refMaxPerMonth: 10,
-    sessionDays: 60,
+    sessionDays: 120,
     /* Программа лояльности. Уровень месяца растёт от XP (опыта), обнуляется 1-го числа.
        XP: полученные заказы (1 XP за каждые 10 ₽), ежедневный вход, задания, рулетка. */
     xpPerRub: 0.1,
@@ -574,6 +574,8 @@ var OnionCore = (function () {
 
   A.me = function (db, p) {
     var u = sessionUser(db, p); if (!u) return err('auth');
+    // «скользящий» вход: пока клиент заходит на сайт, сессия продлевается (не чаще раза в неделю) — заново вводить пароль не придётся
+    try { var ss = db.getSession(p.session), full = RULES.sessionDays * 86400000; if (ss && db.renewSession && ss.exp - db.now() < full - 7 * 86400000) db.renewSession(p.session, db.now() + full); } catch (e) { /* не критично */ }
     db.saveUser(u);
     return ok({ user: publicUser(db, u), settings: settings() });
   };
