@@ -450,8 +450,8 @@
   }
 
   // ------------------------------------------------------------ карточка товара
-  function badge(p) { return p.status === 'preorder' ? '<span class="badge badge-pre">Предзаказ</span>' : p.status === 'out' ? '<span class="badge badge-out">Временно нет в наличии</span>' : '<span class="badge badge-stock">В наличии</span>'; }
-  function inStockTab(p) { return p.status === 'stock' || p.status === 'out'; }
+  function badge(p) { return p.status === 'preorder' ? '<span class="badge badge-pre">Предзаказ</span>' : p.status === 'sold' ? '<span class="badge badge-sold">Продано</span>' : p.status === 'out' ? '<span class="badge badge-out">Временно нет в наличии</span>' : '<span class="badge badge-stock">В наличии</span>'; }
+  function inStockTab(p) { return p.status === 'stock' || p.status === 'out' || p.status === 'sold'; }
   function discount(p) { return p.oldPrice ? Math.round((1 - p.price / p.oldPrice) * 100) : 0; }
   function card(p, i) {
     var a = p.photos[0], d = discount(p), id = esc(p.id);
@@ -462,7 +462,7 @@
       '<button class="fav" type="button" data-fav="' + id + '" aria-pressed="' + isFav(p.id) + '" aria-label="Избранное: ' + esc(p.title) + '">' + icon('heart') + '</button>' +
       '<a class="body" href="#p-' + id + '"><span class="brand-l">' + esc(p.brand || p.categoryLabel) + '</span><span class="t">' + esc(p.title) + '</span>' + sw +
       '<div class="prices"><span class="price">' + rub(p.price) + '</span>' + (p.oldPrice ? '<span class="old">' + rub(p.oldPrice) + '</span>' + (d >= 3 ? '<span class="off">−' + d + '%</span>' : '') : '') + '</div></a>' +
-      '<button class="qadd" type="button" data-quick="' + id + '">В корзину</button></article>';
+      (p.status === 'sold' ? '' : '<button class="qadd" type="button" data-quick="' + id + '">В корзину</button>') + '</article>';
   }
   function grid(list, cls) { return '<div class="grid' + (cls ? ' ' + cls : '') + '">' + list.map(card).join('') + '</div>'; }
   function countBy(list, fn) { var m = {}; list.forEach(function (p) { var k = fn(p); m[k] = (m[k] || 0) + 1; }); return m; }
@@ -586,6 +586,7 @@
   // быстрое добавление из карточки: размер/цвет — в окне выбора
   function quickAdd(id) {
     var p = BY_ID[id]; if (!p) return;
+    if (p.status === 'sold') { toast('Этот товар уже продан', null, 'warn'); return; }
     var sel = { size: p.sizes.length === 1 ? p.sizes[0] : null, color: p.colors.length === 1 ? p.colors[0] : null };
     function put() {
       addToCart({ id: p.id, size: sel.size, color: sel.color, photo: (sel.color && p.colorPhoto && p.colorPhoto[sel.color]) || null, qty: 1, note: '' });
@@ -661,15 +662,14 @@
     v.innerHTML =
       '<div class="view-head"><div><span class="eyebrow">Каталог</span><h1 id="cat-title">Все товары</h1><p class="muted" id="cat-sub"></p></div></div>' +
       '<div class="tabs" role="tablist" aria-label="Наличие" id="cat-tabs"></div>' +
-      '<div class="filters"><div class="field-search">' + icon('search') + '<label class="sr" for="cat-q">Поиск</label><input id="cat-q" type="search" placeholder="Поиск: бренд, вещь, цвет…" autocomplete="off" value="' + esc(filter.q) + '"><button class="clear" type="button" id="cat-clear" aria-label="Очистить поиск"' + (filter.q ? '' : ' hidden') + '>' + icon('x') + '</button></div>' +
+      '<div id="cat-qchip"></div>' +
+      '<div class="cats" id="cat-cats" aria-label="Категории"></div>' +
+      '<div class="filters">' +
       '<label class="sr" for="cat-brand">Бренд</label><select class="select" id="cat-brand"><option value="all">Все бренды</option>' + bkeys.map(function (k) { return '<option value="' + esc(k) + '"' + (filter.brand === k ? ' selected' : '') + '>' + esc(brands[k]) + '</option>'; }).join('') + '</select>' +
       '<label class="sr" for="cat-sort">Сортировка</label><select class="select" id="cat-sort"><option value="new">Сначала новые</option><option value="cheap">Сначала дешевле</option><option value="exp">Сначала дороже</option><option value="sale">Самые большие скидки</option></select></div>' +
-      '<div class="cats" id="cat-cats" aria-label="Категории"></div><div class="cats" id="cat-price" aria-label="Цена"></div>' +
+      '<div class="cats cats-price" id="cat-price" aria-label="Цена"></div>' +
       '<div class="result-line"><span id="cat-count"></span><button class="link-btn" type="button" id="cat-reset" hidden>Сбросить фильтры</button></div><div id="cat-grid"></div>';
     $('#cat-sort', v).value = filter.sort;
-    var q = $('#cat-q', v), qt;
-    q.addEventListener('input', function () { filter.q = q.value.trim(); if (filter.q.length >= 2) { clearTimeout(q._t); q._t = setTimeout(function () { track('search'); }, 1500); } $('#cat-clear').hidden = !q.value; clearTimeout(qt); qt = setTimeout(updateCatalog, 120); });
-    $('#cat-clear', v).addEventListener('click', function () { q.value = ''; filter.q = ''; this.hidden = true; q.focus(); updateCatalog(); });
     $('#cat-brand', v).addEventListener('change', function () { filter.brand = this.value; if (this.value !== 'all') track('brand'); updateCatalog(); });
     $('#cat-sort', v).addEventListener('change', function () { filter.sort = this.value; updateCatalog(); });
     $('#cat-reset', v).addEventListener('click', function () { var t = filter.tab; filter = newFilter(); filter.tab = t; renderCatalog(); });
@@ -689,8 +689,16 @@
     $$('button', tEl).forEach(function (b) { b.addEventListener('click', function () { filter.tab = b.getAttribute('data-tab'); silentHash(filter.tab === 'all' ? 'catalog' : filter.tab); updateCatalog(); setNav(location.hash.slice(1)); if (filter.tab === 'preorder') track('pre'); else if (filter.tab === 'stock') track('stock'); }); });
     var forCats = PRODUCTS.filter(function (p) { return matches(p, f, 'cat'); }), cats = categories(forCats);
     var cEl = $('#cat-cats');
-    cEl.innerHTML = '<button type="button" aria-pressed="' + (f.cat === 'all') + '" data-cat="all">Все категории <span class="n">' + forCats.length + '</span></button>' + cats.map(function (c) { return '<button type="button" aria-pressed="' + (f.cat === c.key) + '" data-cat="' + c.key + '">' + esc(c.label) + ' <span class="n">' + c.n + '</span></button>'; }).join('');
-    $$('button', cEl).forEach(function (b) { b.addEventListener('click', function () { filter.cat = b.getAttribute('data-cat'); updateCatalog(); }); });
+    var CA = { shoes: 'shoes', tees: 'tees', hoodies: 'hoodies', outerwear: 'outerwear', pants: 'pants', accessories: 'accessories' };
+    var tile = function (key, label, n, art) { return '<button type="button" class="ctile" aria-pressed="' + (f.cat === key) + '" data-cat="' + key + '"><span class="ctile-i">' + (art ? '<img src="assets/cat/' + art + '.svg" alt="" loading="lazy">' : '<span class="ctile-all">' + icon('grid') + '</span>') + '</span><span class="ctile-l">' + esc(label) + '</span><span class="ctile-n">' + n + '</span></button>'; };
+    cEl.className = 'cat-rail';
+    var nSale = forCats.filter(function (p) { return discount(p) >= 3; }).length;
+    cEl.innerHTML = tile('all', 'Все', forCats.length, '') + (nSale ? '<button type="button" class="ctile ctile-sale" aria-pressed="' + f.sale + '" data-saletile="1"><span class="ctile-i"><span class="ctile-all">' + icon('percent') + '</span></span><span class="ctile-l">Скидки</span><span class="ctile-n">' + nSale + '</span></button>' : '') + cats.map(function (c) { return tile(c.key, c.label, c.n, CA[c.key] || 'stock'); }).join('');
+    var qEl = $('#cat-qchip');
+    qEl.innerHTML = f.q ? '<div class="qchip">' + icon('search') + '<span>Ищем: <b>' + esc(f.q) + '</b></span><button type="button" id="qchip-x" aria-label="Сбросить поиск">' + icon('x') + '</button></div>' : '';
+    var qx = $('#qchip-x'); if (qx) qx.addEventListener('click', function () { filter.q = ''; var hq = $('#hdr-q'); if (hq) hq.value = ''; updateCatalog(); });
+    $$('button[data-cat]', cEl).forEach(function (b) { b.addEventListener('click', function () { filter.cat = b.getAttribute('data-cat'); updateCatalog(); }); });
+    var st = $('[data-saletile]', cEl); if (st) st.addEventListener('click', function () { filter.sale = !filter.sale; updateCatalog(); });
     var pEl = $('#cat-price');
     pEl.innerHTML = Object.keys(PRICE).map(function (k) { return '<button type="button" aria-pressed="' + (f.price === k) + '" data-price="' + k + '">' + PRICE[k][2] + '</button>'; }).join('') + '<span class="sep"></span><button type="button" aria-pressed="' + f.sale + '" data-sale="1">' + icon('percent') + 'Со скидкой</button>';
     $$('[data-price]', pEl).forEach(function (b) { b.addEventListener('click', function () { var k = b.getAttribute('data-price'); filter.price = filter.price === k ? 'all' : k; if (filter.price !== 'all') track('price'); updateCatalog(); }); });
@@ -699,7 +707,8 @@
     if (f.sort === 'cheap') list.sort(function (a, b) { return a.price - b.price; });
     else if (f.sort === 'exp') list.sort(function (a, b) { return b.price - a.price; });
     else if (f.sort === 'sale') list.sort(function (a, b) { return discount(b) - discount(a) || (+b.id - +a.id); });
-    list.sort(function (a, b) { return (a.status === 'out') - (b.status === 'out'); });
+    var rk = function (p) { return p.status === 'sold' ? 2 : p.status === 'out' ? 1 : 0; };
+    list.sort(function (a, b) { return rk(a) - rk(b); });
     $('#cat-title').textContent = f.tab === 'stock' ? 'В наличии' : f.tab === 'preorder' ? 'Предзаказ из Китая' : 'Все товары';
     $('#cat-sub').textContent = f.tab === 'preorder' ? 'Выкупаем у поставщика после заказа. Доставка из Китая уже в цене.' : f.tab === 'stock' ? 'Вещи уже в Москве — отправим сразу.' : 'Одежда, обувь и аксессуары из Telegram-канала магазина.';
     $('#cat-count').textContent = 'Найдено: ' + list.length + ' ' + plural(list.length, 'товар', 'товара', 'товаров');
@@ -709,7 +718,7 @@
     $('#cat-grid').innerHTML = list.length ? fzNote + grid(list) :
       '<div class="empty"><span class="ico">' + icon('search') + '</span><h3>Ничего не нашлось</h3>' + (dym ? '<p>Возможно, вы искали <button class="link-btn" type="button" id="dym-btn">' + esc(dym) + '</button></p>' : '') + '<p>Попробуйте другое слово или сбросьте фильтры. Нужной вещи нет — напишите менеджеру, подберём под заказ.</p><div class="acts" style="justify-content:center"><button class="btn btn-ghost btn-sm" type="button" id="empty-reset">Сбросить фильтры</button><a class="btn btn-sm" href="' + SHOP.managerUrl + '" target="_blank" rel="noopener">' + icon('send') + 'Написать менеджеру</a></div></div>';
     reveal($('#cat-grid'));
-    var dy = $('#dym-btn'); if (dy) dy.addEventListener('click', function () { filter.q = dym; var qi = $('#cat-q'); if (qi) { qi.value = dym; $('#cat-clear').hidden = false; } updateCatalog(); });
+    var dy = $('#dym-btn'); if (dy) dy.addEventListener('click', function () { filter.q = dym; var hq = $('#hdr-q'); if (hq) hq.value = dym; updateCatalog(); });
     var er = $('#empty-reset'); if (er) er.addEventListener('click', function () { filter = newFilter(); silentHash('catalog'); renderCatalog(); setNav('catalog'); });
   }
 
@@ -792,12 +801,12 @@
       '<div class="info"><div class="card info-card">' +
       '<div class="top">' + badge(p) + (d >= 3 ? '<span class="badge badge-sale">−' + d + '%</span>' : '') + '<span class="sp"></span>' +
       '<button class="icon-btn" type="button" id="share-btn" aria-label="Поделиться">' + icon('share') + '</button>' +
-      '<button class="icon-btn fav-big" type="button" data-fav="' + esc(p.id) + '" aria-pressed="' + isFav(p.id) + '" aria-label="В избранное">' + icon('heart') + '</button></div>' +
+      '<button class="icon-btn" type="button" id="share-btn" aria-label="Поделиться">' + icon('send') + '</button><button class="icon-btn fav-big" type="button" data-fav="' + esc(p.id) + '" aria-pressed="' + isFav(p.id) + '" aria-label="В избранное">' + icon('heart') + '</button></div>' +
       '<div>' + (p.brand ? '<div class="brand-top">' + esc(p.brand) + '</div>' : '') + '<h1>' + esc(p.title) + '</h1>' + (p.subtitle ? '<p class="sub">' + esc(cap(p.subtitle)) + '</p>' : '') + '</div>' +
       '<div class="price-box"><div class="price-row"><span class="price">' + rub(p.price) + '</span>' + (p.oldPrice ? '<span class="old">' + rub(p.oldPrice) + '</span><span class="badge badge-ok">выгода ' + rub(p.oldPrice - p.price) + '</span>' : '') + '</div>' +
       (API.enabled ? '<span class="tok-hint">' + tk() + 'Токенами можно оплатить до <b>' + rub(maxTokRub) + '</b></span>' : '') + '</div>' +
       ((p.facts && p.facts.length) ? '<ul class="facts" aria-label="Главное о товаре">' + p.facts.slice(0, 6).map(function (f) { return '<li><small>' + esc(f[0]) + '</small><b>' + esc(f[1]) + '</b></li>'; }).join('') + '</ul>' : '') +
-      (p.status === 'preorder'
+      (p.status === 'sold' ? '<div class="notice notice-sold">' + icon('alert') + '<div><b>Продано.</b> Этот товар уже купили. Похожие — ниже, а новинки в канале.</div></div>' : p.status === 'preorder'
         ? '<div class="notice notice-pre">' + icon('plane') + '<div><b>Предзаказ из Китая.</b> Доставка из Китая уже в цене. <a href="#info">Условия</a></div></div>'
         : p.status === 'out' ? '<div class="notice notice-out">' + icon('clock') + '<div><b>Временно нет в наличии.</b> Менеджер уточнит срок поступления.</div></div>' + (API.enabled ? '<button class="btn btn-ghost btn-sm wait-btn" type="button" id="wait-btn"></button>' : '')
         : '') +
@@ -912,7 +921,14 @@
       $$('.mtbl [data-mz]', v).forEach(function (c) { c.classList.toggle('on', c.getAttribute('data-mz') === sel.size); });
     }
     showSizeMeas();
+    var shb = $('#share-btn', v);
+    if (shb) shb.addEventListener('click', function () {
+      var url = location.href.split('#')[0] + '#p-' + p.id;
+      if (navigator.share) { navigator.share({ title: p.title, url: url }).catch(function () {}); return; }
+      try { navigator.clipboard.writeText(url).then(function () { toast('Ссылка скопирована'); }, function () { toast(url); }); } catch (e) { toast(url); }
+    });
     var addBtn = $('#add-btn', v), addTimer;
+    if (p.status === 'sold') { addBtn.disabled = true; $('#add-lbl', v).textContent = 'Продано'; }
     addBtn.addEventListener('click', function () {
       if (!add()) return;
       addBtn.classList.add('done'); lbl.textContent = 'Добавлено';
@@ -923,7 +939,7 @@
     // липкая кнопка на телефоне
     var bb = $('#buybar');
     function updBuybar() { var pr = $('.price', bb); if (pr) pr.textContent = rub(p.price * sel.qty); }
-    bb.innerHTML = '<div class="bb-info"><b class="price">' + rub(p.price) + '</b><span>' + esc(p.title) + '</span></div><button class="btn" type="button" id="bb-add">' + icon('bag') + 'В корзину</button>';
+    bb.innerHTML = '<div class="bb-info"><b class="price">' + rub(p.price) + '</b><span>' + esc(p.title) + '</span></div><button class="btn" type="button" id="bb-add"' + (p.status === 'sold' ? ' disabled' : '') + '>' + icon('bag') + (p.status === 'sold' ? 'Продано' : 'В корзину') + '</button>';
     bb.hidden = false;
     $('#bb-add', bb).addEventListener('click', function () { addBtn.click(); });
     if ('IntersectionObserver' in window) {

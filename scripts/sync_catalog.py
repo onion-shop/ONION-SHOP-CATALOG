@@ -42,6 +42,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_DIR = os.path.join(ROOT, "data")
 IMG_FULL = os.path.join(ROOT, "img", "full")
 IMG_THUMB = os.path.join(ROOT, "img", "thumb")
+UPLOADS_DIR = os.path.join(ROOT, "data", "uploads")
 CATALOG_JS = os.path.join(DATA_DIR, "catalog.js")
 OVERRIDES_JSON = os.path.join(DATA_DIR, "overrides.json")
 
@@ -679,13 +680,21 @@ def apply_overrides(products):
             if k in o:
                 v = o[k]
                 p[k] = int(v) if isinstance(v, (int, float)) and v > 0 else (None if k == "oldPrice" else p[k])
-        if o.get("status") in ("stock", "preorder", "out"):
+        if o.get("status") in ("stock", "preorder", "out", "sold"):
             p["status"] = o["status"]
         if o.get("category") in labels:
             p["category"], p["categoryLabel"] = o["category"], labels[o["category"]]
         for k in ("colors", "sizes"):
             if isinstance(o.get(k), list):
                 p[k] = [str(x).strip() for x in o[k] if str(x).strip()]
+        if isinstance(o.get("extra"), list):
+            for uid in o["extra"]:
+                uid = str(uid)
+                path = os.path.join(UPLOADS_DIR, uid + ".jpg")
+                if re.fullmatch(r"u\d+", uid) and os.path.exists(path):
+                    p["_photos"].append((uid, path))
+        p["_order"] = [str(x) for x in o.get("photoOrder", [])] if isinstance(o.get("photoOrder"), list) else []
+        p["_hide"] = {str(x) for x in o.get("photoHide", [])} if isinstance(o.get("photoHide"), list) else set()
         if isinstance(o.get("details"), list):
             p["details"] = [[str(a).strip(), str(b).strip()] for a, b in o["details"] if str(a).strip() and str(b).strip()]
         out.append(p)
@@ -731,7 +740,7 @@ def main():
 
     def load(src):
         try:
-            return open(src, "rb").read() if source == "export" else fetch(src, tries=2)
+            return open(src, "rb").read() if (source == "export" or os.path.exists(src)) else fetch(src, tries=2)
         except Exception as e:  # noqa: BLE001
             print(f"  фото {src}: {e}", file=sys.stderr)
             return None
@@ -776,6 +785,12 @@ def main():
                 continue
             files.append({"id": photo_id, "w": w, "ht": hh, "hash": h})
             used.add(photo_id)
+        order, hide = p.pop("_order", []), p.pop("_hide", set())
+        if order or hide:
+            pos = {k: i for i, k in enumerate(order)}
+            files.sort(key=lambda f: pos.get(str(f["id"]), len(order)))  # стабильная: остальные остаются по порядку
+            kept = [f for f in files if str(f["id"]) not in hide]
+            files = kept or files[:1]
         p["photos"] = files
         p.pop("sold", None)
         p.pop("ts_extra", None)
@@ -788,8 +803,8 @@ def main():
     for d in (IMG_FULL, IMG_THUMB):
         if os.path.isdir(d):
             for fn in os.listdir(d):
-                m = re.fullmatch(r"(\d+)\.jpg", fn)
-                if m and int(m.group(1)) not in used:
+                m = re.fullmatch(r"(\d+|u\d+)\.jpg", fn)
+                if m and m.group(1) not in {str(u) for u in used}:
                     os.remove(os.path.join(d, fn))
 
     catalog = {

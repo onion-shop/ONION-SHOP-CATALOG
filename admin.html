@@ -35,6 +35,26 @@ button:disabled{opacity:.5}
 .hint{font-size:12.5px;color:var(--ink2);margin-top:4px}
 .bar{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
 .hid{display:none}
+.phg{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:10px;margin-top:6px}
+.ph{position:relative;border-radius:14px;overflow:hidden;background:#eef2f7;border:2px solid transparent}
+.ph.cover{border-color:var(--acc)}
+.ph img{display:block;width:100%;aspect-ratio:3/4;object-fit:cover}
+.ph.off img{opacity:.3;filter:grayscale(1)}
+.ph .no{position:absolute;left:6px;top:6px;background:var(--navy);color:#fff;font-size:11px;font-weight:800;border-radius:999px;padding:1px 8px}
+.ph .no.new{background:#16a34a}
+.ph .tools{display:flex;gap:2px;padding:4px;background:#fff}
+.ph .tools button{flex:1;padding:7px 0;font-size:15px;border-radius:9px;background:var(--soft);color:#0b4f9a}
+.ph .tools button.x{background:#fbe9eb;color:#b42318}
+.up{display:inline-block;font-weight:800;border-radius:12px;padding:12px 16px;background:var(--soft);color:#0b4f9a;cursor:pointer}
+#ped.hid{display:none}
+#ped{position:fixed;inset:0;background:rgba(8,17,31,.78);z-index:20;display:grid;place-items:center;padding:10px}
+#ped .box{background:#fff;border-radius:18px;padding:14px;width:min(440px,100%);max-height:96vh;overflow:auto}
+#ped canvas{width:100%;border-radius:12px;background:#fff;touch-action:none;box-shadow:inset 0 0 0 1px var(--line);cursor:grab;display:block}
+#ped .seg{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0 0}
+#ped .seg button{padding:8px 12px;font-size:14px;background:var(--soft);color:#0b4f9a}
+#ped .seg button.on{background:var(--navy);color:#fff}
+#ped input[type=range]{padding:0;border:0}
+#ped .rg{display:grid;grid-template-columns:92px 1fr;align-items:center;gap:8px;margin-top:6px;font-size:13.5px;font-weight:700}
 </style>
 </head>
 <body>
@@ -58,19 +78,33 @@ button:disabled{opacity:.5}
     <div class="row"><div><label>Бренд</label><input id="f-brand"></div><div><label>Категория</label><select id="f-cat">
       <option value="shoes">Обувь</option><option value="tees">Футболки и поло</option><option value="hoodies">Худи и свитеры</option><option value="outerwear">Куртки</option><option value="pants">Штаны</option><option value="accessories">Аксессуары</option><option value="other">Другое</option></select></div></div>
     <div class="row"><div><label>Цена, ₽</label><input id="f-price" inputmode="numeric"></div><div><label>Старая цена, ₽ (пусто — без скидки)</label><input id="f-old" inputmode="numeric"></div></div>
-    <label>Статус</label><select id="f-status"><option value="stock">В наличии</option><option value="preorder">Предзаказ</option><option value="out">Временно нет в наличии</option></select>
+    <label>Статус</label><select id="f-status"><option value="stock">В наличии</option><option value="preorder">Предзаказ</option><option value="out">Временно нет в наличии (жёлтый)</option><option value="sold">Продано (красный)</option></select>
     <label>Размеры (через запятую)</label><input id="f-sizes">
     <label>Цвета (через запятую)</label><input id="f-colors">
     <label>Характеристики (по строке: «Название: значение»)</label><textarea id="f-details"></textarea>
+    <label>Фотографии</label>
+    <div class="hint">Первое фото — обложка. Стрелками меняйте порядок, ✎ — править (поворот, обрезка, яркость), ✕ — убрать с сайта. Свои фото можно добавить кнопкой ниже. Фото в Telegram-канале при этом не меняются.</div>
+    <div class="phg" id="ph-grid"></div>
+    <div class="bar" style="margin-top:8px"><label class="up">+ Добавить фото<input type="file" id="ph-add" accept="image/*" multiple hidden></label></div>
     <label style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="f-hidden" style="width:auto"> Скрыть товар с сайта</label>
     <div class="bar"><button id="save">Сохранить на сайт</button><button class="ghost" id="reset">Вернуть как в канале</button><button class="ghost" id="back">К списку</button></div>
     <div id="emsg"></div>
   </section>
 </main>
+<div id="ped" class="hid"><div class="box">
+  <canvas id="pc" width="600" height="800"></canvas>
+  <div class="seg" id="pr"><button data-r="0.75" class="on">3:4</button><button data-r="1">Квадрат</button><button data-r="0">Как есть</button><button id="pfit">Вписать на белом</button></div>
+  <div class="seg"><button id="prl">⟲ Повернуть</button><button id="prr">⟳ Повернуть</button><button id="prs">Сбросить</button></div>
+  <div class="rg">Масштаб<input type="range" id="pz" min="100" max="300" value="100"></div>
+  <div class="rg">Яркость<input type="range" id="pb" min="60" max="150" value="100"></div>
+  <div class="rg">Контраст<input type="range" id="pk" min="60" max="150" value="100"></div>
+  <div class="hint">Двигайте фото пальцем или мышью, чтобы выбрать кадр.</div>
+  <div class="bar"><button id="pok">Готово</button><button class="ghost" id="pno">Отмена</button></div>
+</div></div>
 <script>
 (function(){
   var REPO='onion-shop/ONION-SHOP-CATALOG', API='https://api.github.com/repos/'+REPO;
-  var $=function(s){return document.querySelector(s)}, token='', ov={}, sha=null, items=[], cur=null;
+  var $=function(s){return document.querySelector(s)}, token='', ov={}, sha=null, items=[], cur=null, ph=[], phDirty=false;
   try{token=localStorage.getItem('onion.admin.tok')||''}catch(e){}
   function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
   function msg(id,t,ok){$(id).innerHTML=t?'<div class="msg '+(ok?'ok':'er')+'">'+esc(t)+'</div>':''}
@@ -100,7 +134,7 @@ button:disabled{opacity:.5}
     var q=$('#q').value.trim().toLowerCase();
     $('#items').innerHTML=items.filter(function(p){return !q||(p.title+' '+p.brand).toLowerCase().indexOf(q)>=0}).map(function(p){
       var o=ov[p.id];
-      return '<div class="item" data-id="'+esc(p.id)+'"><img src="img/thumb/'+esc(p.photos[0].id)+'.jpg" alt=""><div><b>'+esc(p.title)+(o?(o.hidden?'<span class="tag h">скрыт</span>':'<span class="tag e">правка</span>'):'')+'</b><small>'+p.price+' ₽ · '+(p.status==='preorder'?'предзаказ':p.status==='out'?'нет в наличии':'в наличии')+'</small></div></div>';
+      return '<div class="item" data-id="'+esc(p.id)+'"><img src="img/thumb/'+esc(p.photos[0].id)+'.jpg" alt=""><div><b>'+esc(p.title)+(o?(o.hidden?'<span class="tag h">скрыт</span>':'<span class="tag e">правка</span>'):'')+'</b><small>'+p.price+' ₽ · '+(p.status==='preorder'?'предзаказ':p.status==='sold'?'продано':p.status==='out'?'нет в наличии':'в наличии')+'</small></div></div>';
     }).join('')||'<p class="hint">Ничего не найдено</p>';
   }
   function open_(id){
@@ -111,8 +145,88 @@ button:disabled{opacity:.5}
     $('#f-price').value=v('price',cur.price); $('#f-old').value=v('oldPrice',cur.oldPrice||'')||''; $('#f-status').value=v('status',cur.status);
     $('#f-sizes').value=(v('sizes',cur.sizes)||[]).join(', '); $('#f-colors').value=(v('colors',cur.colors)||[]).join(', ');
     $('#f-details').value=(v('details',cur.details)||[]).map(function(d){return d[0]+': '+d[1]}).join('\n');
-    $('#f-hidden').checked=!!o.hidden; msg('#emsg','');
+    $('#f-hidden').checked=!!o.hidden; msg('#emsg',''); buildPh();
     $('#list').classList.add('hid'); $('#edit').classList.remove('hid'); window.scrollTo(0,0);
+  }
+
+  /* ---------- фотографии ---------- */
+  function thumbSrc(id){return 'img/thumb/'+id+'.jpg'}
+  function buildPh(){
+    var o=ov[cur.id]||{}, hide=(o.photoHide||[]).map(String), seen={};
+    ph=cur.photos.map(function(f){seen[String(f.id)]=1;return{id:String(f.id),src:thumbSrc(f.id),hidden:false}});
+    hide.forEach(function(id){if(!seen[id])ph.push({id:id,src:thumbSrc(id),hidden:true})});
+    phDirty=false; drawPh();
+  }
+  function drawPh(){
+    var n=0;
+    $('#ph-grid').innerHTML=ph.map(function(x,i){
+      if(!x.hidden)n++;
+      var cover=!x.hidden&&n===1;
+      return '<div class="ph'+(x.hidden?' off':'')+(cover?' cover':'')+'" data-i="'+i+'"><img src="'+esc(x.src)+'" alt=""><span class="no'+(x.pending?' new':'')+'">'+(x.hidden?'убрано':(cover?'обложка':n))+(x.pending?' · новое':'')+'</span><div class="tools">'+
+        (x.hidden?'<button data-a="show">Вернуть</button>':'<button data-a="l" title="Левее">◀</button><button data-a="r" title="Правее">▶</button><button data-a="c" title="Сделать обложкой">★</button><button data-a="e" title="Править">✎</button><button class="x" data-a="x" title="Убрать">✕</button>')+'</div></div>';
+    }).join('')||'<p class="hint">Нет фото</p>';
+  }
+  $('#ph-grid').onclick=function(e){
+    var b=e.target.closest('button'); if(!b)return; var t=b.closest('.ph'), i=+t.getAttribute('data-i'), a=b.getAttribute('data-a'), x=ph[i];
+    function vis(){return ph.map(function(y,k){return y.hidden?-1:k}).filter(function(k){return k>=0})}
+    if(a==='l'||a==='r'){var v=vis(),p=v.indexOf(i),q=v[p+(a==='l'?-1:1)]; if(q!=null){var tmp=ph[i];ph[i]=ph[q];ph[q]=tmp}}
+    else if(a==='c'){ph.splice(i,1);ph.unshift(x)}
+    else if(a==='x'){ if(x.pending||/^u\d+$/.test(x.id)){ph.splice(i,1)} else x.hidden=true }
+    else if(a==='show'){x.hidden=false}
+    else if(a==='e'){ openEd(x.pending?x.src:'img/full/'+x.id+'.jpg',function(data){var nid='u'+Date.now(),nx={id:nid,src:data.url,pending:data.b64,hidden:false};
+        if(x.pending||/^u\d+$/.test(x.id))ph.splice(i,1,nx); else {ph.splice(i,0,nx);x.hidden=true} phDirty=true;drawPh()}); return }
+    phDirty=true; drawPh();
+  };
+  $('#ph-add').onchange=function(){
+    var files=[].slice.call(this.files); this.value='';
+    (function next(){ var f=files.shift(); if(!f)return; var r=new FileReader();
+      r.onload=function(){ openEd(r.result,function(data){ph.push({id:'u'+Date.now()+ph.length,src:data.url,pending:data.b64,hidden:false});phDirty=true;drawPh();next()},next) }; r.readAsDataURL(f) })();
+  };
+  /* редактор кадра */
+  var ed={img:null,rot:0,zoom:1,ox:0,oy:0,ratio:.75,fit:false,br:100,co:100,ok:null,no:null}, cv=$('#pc'), cx=cv.getContext('2d');
+  function openEd(src,ok,no){
+    var im=new Image(); im.crossOrigin='anonymous';
+    im.onload=function(){ed={img:im,rot:0,zoom:1,ox:0,oy:0,ratio:.75,fit:false,br:100,co:100,ok:ok,no:no};syncEd();$('#ped').classList.remove('hid');paint(cv,600)};
+    im.onerror=function(){alert('Не удалось открыть фото');no&&no()}; im.src=src;
+  }
+  function syncEd(){
+    [].forEach.call($('#pr').querySelectorAll('button[data-r]'),function(b){b.classList.toggle('on',+b.getAttribute('data-r')===ed.ratio)});
+    $('#pfit').classList.toggle('on',ed.fit); $('#pz').value=ed.zoom*100;$('#pb').value=ed.br;$('#pk').value=ed.co;
+  }
+  function paint(c,long){
+    var im=ed.img, odd=ed.rot%2, rw=odd?im.naturalHeight:im.naturalWidth, rh=odd?im.naturalWidth:im.naturalHeight;
+    var ratio=ed.ratio||rw/rh, W,H; if(ratio>=1){W=long;H=Math.round(long/ratio)}else{H=long;W=Math.round(long*ratio)}
+    c.width=W;c.height=H; var g=c.getContext('2d'); g.fillStyle='#fff';g.fillRect(0,0,W,H);
+    var sc=(ed.fit?Math.min(W/rw,H/rh):Math.max(W/rw,H/rh))*ed.zoom;
+    g.save();g.translate(W/2+ed.ox*W,H/2+ed.oy*H);g.rotate(ed.rot*Math.PI/2);g.scale(sc,sc);g.drawImage(im,-im.naturalWidth/2,-im.naturalHeight/2);g.restore();
+    if(ed.br!==100||ed.co!==100){var d=g.getImageData(0,0,W,H),a=d.data,b=ed.br/100,k=ed.co/100;
+      for(var i=0;i<a.length;i+=4){for(var j=0;j<3;j++){var v=((a[i+j]-128)*k+128)*b;a[i+j]=v<0?0:v>255?255:v}} g.putImageData(d,0,0)}
+  }
+  function upd(){paint(cv,600)}
+  $('#pr').onclick=function(e){var b=e.target.closest('button');if(!b)return; if(b.id==='pfit')ed.fit=!ed.fit; else{ed.ratio=+b.getAttribute('data-r');ed.ox=ed.oy=0} syncEd();upd()};
+  $('#prl').onclick=function(){ed.rot=(ed.rot+3)%4;ed.ox=ed.oy=0;upd()};
+  $('#prr').onclick=function(){ed.rot=(ed.rot+1)%4;ed.ox=ed.oy=0;upd()};
+  $('#prs').onclick=function(){var i=ed.img,ok=ed.ok,no=ed.no;ed={img:i,rot:0,zoom:1,ox:0,oy:0,ratio:.75,fit:false,br:100,co:100,ok:ok,no:no};syncEd();upd()};
+  $('#pz').oninput=function(){ed.zoom=this.value/100;upd()};
+  $('#pb').oninput=function(){ed.br=+this.value;upd()};
+  $('#pk').oninput=function(){ed.co=+this.value;upd()};
+  var drag=null;
+  cv.onpointerdown=function(e){cv.setPointerCapture(e.pointerId);drag={x:e.clientX,y:e.clientY,ox:ed.ox,oy:ed.oy}};
+  cv.onpointermove=function(e){if(!drag)return;var r=cv.getBoundingClientRect();ed.ox=drag.ox+(e.clientX-drag.x)/r.width;ed.oy=drag.oy+(e.clientY-drag.y)/r.height;upd()};
+  cv.onpointerup=cv.onpointercancel=function(){drag=null};
+  $('#pno').onclick=function(){$('#ped').classList.add('hid');var n=ed.no;ed.no=null;n&&n()};
+  $('#pok').onclick=function(){
+    var c=document.createElement('canvas'); paint(c,1600); var url=c.toDataURL('image/jpeg',.9), ok=ed.ok;
+    $('#ped').classList.add('hid'); ok&&ok({url:url,b64:url.split(',')[1]});
+  };
+  function uploadPending(){
+    var q=ph.filter(function(x){return x.pending}), n=0;
+    return q.reduce(function(pr,x){return pr.then(function(){
+      msg('#emsg','Загружаем фото '+(++n)+' из '+q.length+'…',true);
+      return gh('/contents/data/uploads/'+x.id+'.jpg',{method:'PUT',body:JSON.stringify({message:'Фото из редактора',content:x.pending,branch:'main'})}).then(function(r){
+        if(!r.ok)return r.json().then(function(j){throw new Error(j.message||('Фото не загрузилось ('+r.status+')'))}); x.pending=null;
+      });
+    })},Promise.resolve());
   }
   function list(s){return s.split(',').map(function(x){return x.trim()}).filter(Boolean)}
   function num(s){var n=parseInt(String(s).replace(/\D/g,''),10);return n>0?n:0}
@@ -120,6 +234,10 @@ button:disabled{opacity:.5}
     var o={title:$('#f-title').value.trim(),brand:$('#f-brand').value.trim(),category:$('#f-cat').value,price:num($('#f-price').value),oldPrice:num($('#f-old').value),status:$('#f-status').value,
       sizes:list($('#f-sizes').value),colors:list($('#f-colors').value),
       details:$('#f-details').value.split('\n').map(function(l){var i=l.indexOf(':');return i>0?[l.slice(0,i).trim(),l.slice(i+1).trim()]:null}).filter(Boolean)};
+    var old=ov[cur.id]||{};
+    if(phDirty){ var ord=ph.map(function(x){return x.id}), hd=ph.filter(function(x){return x.hidden}).map(function(x){return x.id}), ex=ph.filter(function(x){return /^u\d+$/.test(x.id)&&!x.hidden}).map(function(x){return x.id});
+      o.photoOrder=ord; if(hd.length)o.photoHide=hd; if(ex.length)o.extra=ex; }
+    else ['photoOrder','photoHide','extra'].forEach(function(k){if(old[k])o[k]=old[k]});
     if($('#f-hidden').checked)o.hidden=true; return o;
   }
   function put(done){
@@ -138,7 +256,7 @@ button:disabled{opacity:.5}
   $('#save').onclick=function(){
     if(!cur)return; var o=collect(); if(!o.price&&!o.hidden){msg('#emsg','Укажите цену');return}
     ov[cur.id]=o; $('#save').disabled=true; msg('#emsg','Сохраняем…',true);
-    put().then(function(started){msg('#emsg',started?'Сохранено. Сайт обновится примерно через минуту.':'Сохранено. Сайт обновится при ближайшей сверке (до 15 минут).',true)}).catch(function(e){msg('#emsg',e.message)}).then(function(){$('#save').disabled=false});
+    uploadPending().then(put).then(function(started){msg('#emsg',started?'Сохранено. Сайт обновится примерно через минуту.':'Сохранено. Сайт обновится при ближайшей сверке (до 15 минут).',true)}).catch(function(e){msg('#emsg',e.message)}).then(function(){$('#save').disabled=false});
   };
   $('#reset').onclick=function(){
     if(!cur)return; delete ov[cur.id]; msg('#emsg','Возвращаем…',true);

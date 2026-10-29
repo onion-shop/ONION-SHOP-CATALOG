@@ -762,6 +762,7 @@ var OnionCore = (function () {
     (items || []).forEach(function (it) {
       var qty = Math.max(1, Math.min(10, parseInt(it.qty, 10) || 1));
       var prod = db.product ? db.product(String(it.id)) : null;
+      if (prod && prod.status === 'sold') { gone.push(prod.title || it.id); return; }
       if (!prod) {
         if (db.catalogReady && db.catalogReady()) { gone.push(it.title || it.id); return; }
         unverified = true;
