@@ -879,7 +879,7 @@ var OnionCore = (function () {
       kind: hasPre && hasStock ? 'смешанный' : hasPre ? 'предзаказ' : (hasOut && !built.lines.some(function (l) { return l.status === 'stock'; })) ? 'временно нет' : 'в наличии', comment: String(f.comment || '').trim(), text: text
     };
     db.saveOrder(order);
-    if (u && u.tgChat && db.userNotify) { try { db.userNotify(u, '🧾 Заказ ' + no + ' принят. Сумма к оплате: ' + toPay + ' ₽.\nМенеджер скоро свяжется с вами. Статусы заказа будут приходить сюда.'); } catch (e) { /* не критично */ } }
+    if (u && u.tgChat && db.userNotify) { try { db.userNotify(u, '🧾 Заказ ' + no + ' принят. Сумма к оплате: ' + toPay + ' ₽.\nМенеджер скоро свяжется с вами. Статусы заказа будут приходить сюда.', [[{ text: '📦 Подробнее о заказе', callback_data: 'm|' + no }]]); } catch (e) { /* не критично */ } }
     var notified = false;
     try { notified = db.notify ? !!db.notify(text, { no: no, kind: order.kind }) : false; } catch (e) { notified = false; }
     return ok({ order: order, notified: notified, user: u ? publicUser(db, u) : null });
