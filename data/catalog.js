@@ -2,7 +2,7 @@
 window.ONION_CATALOG = {
  "channel": "ONION_SHOP_OFFICIAL",
  "source": "t.me",
- "updatedAt": "2026-10-29T07:03:26Z",
+ "updatedAt": "2026-10-29T08:09:55Z",
  "products": [
   {
    "title": "Утепленная кофта GAP на молнии",
@@ -987,21 +987,21 @@ window.ONION_CATALOG = {
    "photos": [
     {
      "id": 404,
-     "w": 600,
+     "w": 599,
      "ht": 800,
-     "hash": "ae05a8cad868"
+     "hash": "262c44fffe71"
     },
     {
      "id": 405,
-     "w": 600,
+     "w": 599,
      "ht": 800,
-     "hash": "ca75671ded24"
+     "hash": "7bb491c5cb47"
     },
     {
      "id": 406,
-     "w": 413,
+     "w": 800,
      "ht": 800,
-     "hash": "ba5232f7cef2"
+     "hash": "0c94c7f5eab6"
     }
    ],
    "date": "2025-08-11T16:40:54Z"
