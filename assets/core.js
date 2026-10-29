@@ -819,6 +819,7 @@ var OnionCore = (function () {
     var hasPre = built.lines.some(function (l) { return l.status === 'preorder'; });
     var hasStock = built.lines.some(function (l) { return l.status !== 'preorder'; });
     var hasOut = built.lines.some(function (l) { return l.status === 'out'; });
+    if (hasPre) f.ship = 'truck'; // самолёт временно только через менеджера
     var bad = checkFields(f, hasStock, hasPre); if (bad) return err(bad);
     var total = 0, cnt = 0;
     built.lines.forEach(function (l) { total += l.price * l.qty; cnt += l.qty; });

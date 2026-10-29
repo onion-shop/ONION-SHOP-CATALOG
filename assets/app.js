@@ -404,7 +404,7 @@
       '<li><span><b>Доставка по Москве или в другой город</b> <small>· через Авито Доставку, быстрее всего</small></span></li>' +
       '<li><span><b>Курьер по Москве</b> <small>· не всегда доступен, согласуется с менеджером</small></span></li>' +
       '<li><span><b>Самовывоз</b> <small>· ' + esc(SHOP.address) + '</small></span></li></ul>' +
-      '<p class="small">Предзаказ из Китая: самолёт или фура до склада, дальше Авито, СДЭК или личная встреча в Москве.</p></div>';
+      '<p class="small">Предзаказ из Китая: фурой до склада, дальше Авито, СДЭК или личная встреча в Москве.</p></div>';
   }
   function paymentCard() {
     return '<div class="card icard"><h3><span class="ic">' + icon('card') + '</span>Оплата</h3><ul><li>Перевод: Сбербанк, Т-Банк, Альфа-Банк, СБП</li><li>Наличными <small>· при встрече в Москве</small></li>' +
@@ -428,7 +428,7 @@
       '<a class="contact" href="' + SHOP.tiktokUrl + '" target="_blank" rel="noopener"><span class="l">' + icon('play') + '<span><small>TikTok</small><b>@onion_shop</b></span></span>' + icon('arrow-up-right') + '</a></div></div>';
   }
   function preorderBanner() {
-    return '<div class="banner"><span class="ic">' + icon('plane') + '</span><div><h3>Что такое предзаказ</h3><p>Выкупаем товар у поставщика в Китае после вашего заказа, проверяем на складе и отправляем самолётом или фурой. Доставка из Китая оплачивается отдельно по весу.</p></div>' +
+    return '<div class="banner"><span class="ic">' + icon('plane') + '</span><div><h3>Что такое предзаказ</h3><p>Выкупаем товар у поставщика в Китае после вашего заказа, проверяем на складе и отправляем фурой (самолётом — по согласованию с менеджером). Доставка из Китая оплачивается отдельно по весу.</p></div>' +
       '<a class="btn btn-ghost" href="' + SHOP.preorderUrl + '" target="_blank" rel="noopener">Условия и сроки' + icon('arrow-up-right') + '</a></div>';
   }
   function stepsBlock() {
@@ -673,7 +673,7 @@
       '<div class="acc">' +
       ((specs.length || p.notes.length) ? '<details open><summary>Характеристики' + icon('chevron-down') + '</summary><div class="acc-body">' + (specs.length ? '<dl class="specs">' + specs.map(function (r) { return '<div><dt>' + esc(r[0]) + '</dt><dd>' + esc(r[1]) + '</dd></div>'; }).join('') + '</dl>' : '') + (p.notes.length ? '<div class="notes">' + p.notes.map(function (n) { return '<span>' + icon('check') + esc(n) + '</span>'; }).join('') + '</div>' : '') + '</div></details>' : '') +
       (measures.length ? '<details' + (specs.length ? '' : ' open') + '><summary>Замеры изделия' + icon('chevron-down') + '</summary><div class="acc-body"><dl class="specs">' + measures.map(function (r) { return '<div><dt>' + esc(r[0]) + '</dt><dd>' + esc(r[1]) + '</dd></div>'; }).join('') + '</dl></div></details>' : '') +
-      '<details><summary>Доставка и оплата' + icon('chevron-down') + '</summary><div class="acc-body"><p>' + (p.status === 'preorder' ? 'Из Китая: самолёт — 5–9 дней до Москвы от склада, фура — 18–32 дня. По России — Авито, СДЭК или личная встреча в Москве.' : 'Доставка по Москве или в другой город через Авито — быстрее всего. Курьер по Москве — не всегда, согласуется с менеджером. Самовывоз: ' + esc(SHOP.address) + '.') + '</p><p>Оплата переводом или наличными при встрече — после подтверждения менеджером.' + (API.enabled ? ' До 15% суммы можно оплатить токенами, промокод вводится при оформлении.' : '') + '</p></div></details>' +
+      '<details><summary>Доставка и оплата' + icon('chevron-down') + '</summary><div class="acc-body"><p>' + (p.status === 'preorder' ? 'Из Китая фурой — 18–32 дня от склада (самолётом — по согласованию с менеджером). По России — Авито, СДЭК или личная встреча в Москве.' : 'Доставка по Москве или в другой город через Авито — быстрее всего. Курьер по Москве — не всегда, согласуется с менеджером. Самовывоз: ' + esc(SHOP.address) + '.') + '</p><p>Оплата переводом или наличными при встрече — после подтверждения менеджером.' + (API.enabled ? ' До 15% суммы можно оплатить токенами, промокод вводится при оформлении.' : '') + '</p></div></details>' +
       (API.enabled ? '<details id="rev-det"><summary>Отзывы <span class="rev-n" id="rev-n"></span>' + icon('chevron-down') + '</summary><div class="acc-body" id="rev-body"><p class="small">Загружаем…</p></div></details>' : '') +
       '</div>' +
       '<a class="tg-link" href="' + esc(p.link) + '" target="_blank" rel="noopener">' + icon('send') + 'Пост с этим товаром в канале</a>' +
@@ -795,7 +795,7 @@
   }
 
   // ------------------------------------------------------------ корзина, анкета, токены, промокод
-  var form = Object.assign({ name: '', phone: '', tg: '', recv: '', recvCity: '', recvAddr: '', ship: '', city: '', preRecv: '', comment: '' }, store.get('form', {}));
+  var form = Object.assign({ name: '', phone: '', tg: '', recv: '', recvCity: '', recvAddr: '', ship: 'truck', city: '', preRecv: '', comment: '' }, store.get('form', {}));
   var draft0 = store.get('draft', {}) || {};
   var ack = draft0.ack === 'yes' || draft0.ack === 'no' ? draft0.ack : null, tokUse = Math.max(0, +draft0.tokUse || 0), cartPromo = draft0.promo && draft0.promo.code ? draft0.promo : null; // cartPromo: {code, pct, withTokens, personal}
   draftReady = true;
@@ -884,7 +884,7 @@
         '<div class="f" data-f="recvAddr"' + (form.recv === 'courier' ? '' : ' hidden') + '><label for="f-recv-addr">Адрес или район <span class="opt-l">· по желанию</span></label><input class="input" id="f-recv-addr" autocomplete="street-address" placeholder="Уточним с менеджером" value="' + esc(form.recvAddr) + '"></div></div>' : '') +
 
       (t.pre ? '<div class="card panel"><div class="panel-head"><h2><span class="n">' + (++n) + '</span>Предзаказ из Китая</h2><a class="link-btn" href="' + SHOP.preorderUrl + '" target="_blank" rel="noopener">Условия</a></div>' +
-        '<div class="f" data-f="ship"><span class="lbl">Отправка со склада в Китае</span><div class="radios cols">' + radio('ship', 'air', form.ship, 'Самолёт', 'Быстрее: 5–9 дней до Москвы. Доставка по авиатарифу — за ваш счёт') + radio('ship', 'truck', form.ship, 'Фура', 'Дешевле: 18–32 дня от склада') + '</div><span class="err-msg" hidden></span></div>' +
+        '<div class="f" data-f="ship"><span class="lbl">Отправка со склада в Китае</span><div class="notice">' + icon('truck') + '<div><b>Фура</b> — 18–32 дня от склада. Стоимость доставки из Китая считается отдельно по весу.<br><small>Нужна быстрее, самолётом? Напишите менеджеру — рассчитает и согласует.</small></div></div></div>' +
         '<div class="f" data-f="city"><label for="f-city">Город, куда привезти</label><input class="input" id="f-city" autocomplete="address-level2" placeholder="Например, Москва" value="' + esc(form.city) + '"><span class="err-msg" hidden></span></div>' +
         '<div class="f" data-f="preRecv"><span class="lbl">Способ получения</span><div class="radios cols">' + radio('preRecv', 'avito', form.preRecv, 'Авито Доставка', '') + radio('preRecv', 'cdek', form.preRecv, 'СДЭК', 'До пункта выдачи') + radio('preRecv', 'meet', form.preRecv, 'Личная встреча', 'В Москве') + '</div><span class="err-msg" hidden></span></div>' +
         '<div class="f" data-f="ack"><div class="ack" id="ack"><div class="q"><span class="checkbox" id="ack-box" role="img" aria-label="Не подтверждено">' + icon('check') + '</span><div><b>Я прочитал(а) условия доставки и оформления заказа по предзаказу</b><p class="small" style="margin-top:4px">Сроки, оплата доставки по весу и что не зависит от магазина — на <a href="' + SHOP.preorderUrl + '" target="_blank" rel="noopener">странице о предзаказе</a>.</p></div></div>' +
@@ -1019,7 +1019,7 @@
     var t = CORE.cleanTg(form.tg); if (t && !/^[A-Za-z0-9_]{4,32}$/.test(t)) e.push(['tg', 'Username — латиница, цифры и «_», от 4 символов. Нет username — оставьте пустым']);
     if (hasStock) { if (!form.recv) e.push(['recv', 'Выберите способ получения']); else if (form.recv === 'city' && form.recvCity.trim().length < 2) e.push(['recvCity', 'Укажите город (можно Москва)']); }
     if (hasPre) {
-      if (!form.ship) e.push(['ship', 'Выберите способ отправки из Китая']);
+      form.ship = 'truck';
       if (form.city.trim().length < 2) e.push(['city', 'Укажите город']);
       if (!form.preRecv) e.push(['preRecv', 'Выберите способ получения']);
       if (ack !== 'yes') e.push(['ack', ack === 'no' ? 'Прочитайте условия предзаказа и подтвердите' : 'Подтвердите, что прочитали условия предзаказа']);
