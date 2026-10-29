@@ -11,9 +11,12 @@
 Правила, по которым пост считается товаром
   • в посте есть строка «цена: …» с числом;
   • зачёркнутая цена — это старая цена (показывается перечёркнутой);
-  • слова «товар продан» — товар скрывается с сайта;
+  • слова «товар продан» (или «продано», «sold out») — товар скрывается с сайта;
   • слова «по предзаказу» — товар попадает во вкладку «Предзаказ»,
     иначе — «В наличии»;
+  • слова «временно нет в наличии» (или «временно отсутствует», «закончился»,
+    «ожидается поступление») — товар остаётся на сайте с пометкой
+    «Временно нет в наличии»; заказ можно оформить, менеджер уточнит срок;
   • альбом с фото без текста, опубликованный следом (до 30 минут),
     добавляется к фотографиям предыдущего товара.
 
@@ -206,6 +209,8 @@ def find_category(title: str):
     return "other", "Другое"
 
 
+SPEC_KEYS = re.compile(r"^(материал|состояние|состав|производство|страна|бренд|качество|комплект|комплектация|особенности|сезон|застежка|застёжка|подкладка|цвет|размер|страна производства|артикул|модель|коллекция|фасон|крой|посадка|длина рукава|тип)\b", re.I)
+
 KEY_ALIASES = {
     "цена": "price",
     "размер": "sizes", "размеры": "sizes", "доступны размеры": "sizes", "доступные размеры": "sizes", "размерный ряд": "sizes",
@@ -215,13 +220,74 @@ KEY_ALIASES = {
 STOP_MARKERS = ("whatsapp", "telegram:", "@onionshop_support", "sending & reviews", "sending &amp; reviews")
 
 
+# --- «Главное о товаре»: то, что написано в посте (ничего не выдумываем) ---
+FACT_RULES = [
+    ("Состояние", [
+        (r"нов(?:ое|ый|ая|ые)\s+(?:с|c)\s+бирк", "Новое, с биркой"),
+        (r"(?:с|c)\s+бирк(?:ой|ами)", "С биркой"),
+        (r"нов(?:ое|ый|ая|ые)\s+без\s+бирк", "Новое, без бирки"),
+        (r"(?:идеальн|отличн)\w*\s+состояни", "Отличное состояние"),
+        (r"как\s+нов", "Как новое"),
+        (r"\bб\s*/\s*у\b|\bбу\b|был\w*\s+в\s+употреблени", "Б/у"),
+        (r"нов(?:ое|ый|ая|ые)\b", "Новое"),
+    ]),
+    ("Материал", [
+        (r"натуральн\w+\s+кож", "Натуральная кожа"), (r"натуральн\w+\s+замш", "Натуральная замша"),
+        (r"натуральн\w+\s+шел[кг]|натуральн\w+\s+шёл", "Натуральный шёлк"), (r"\bшел[кг]|\bшёлк", "Шёлк"),
+        (r"натуральн\w+\s+мех", "Натуральный мех"), (r"эко\s*-?\s*кож", "Экокожа"), (r"\bкожа\b|\bкожан", "Кожа"),
+        (r"замш", "Замша"), (r"кашемир", "Кашемир"), (r"мериносов", "Шерсть мериноса"), (r"\bшерст", "Шерсть"),
+        (r"100\s*%\s*хлоп|\bхлопок|\bхлопков", "Хлопок"), (r"\bлен\b|\bлён|\bлнян", "Лён"),
+        (r"\bпух\b|пухов", "Пуховое наполнение"), (r"нейлон", "Нейлон"), (r"\bденим|\bджинс", "Деним"),
+        (r"\bфлис", "Флис"), (r"велюр|вельвет", "Велюр / вельвет"), (r"\bгортекс|gore-?tex", "Gore-Tex"),
+        (r"полиэстер", "Полиэстер"),
+    ]),
+    ("Сезон", [
+        (r"демисезон", "Демисезон"), (r"зимн|утеплен|на\s+зиму|тепл(?:ый|ая|ое|ые)\b", "Зима / тёплое"),
+        (r"летн|на\s+лето", "Лето"),
+    ]),
+    ("Подлинность", [(r"оригинал(?!ьн\w+\s+качеств)|подлинн|100\s*%\s*оригинал", "Оригинал"), (r"люкс\s*качеств|lux", "Люкс-качество")]),
+    ("Комплект", [(r"в\s+комплекте[^.\n]{0,40}(?:коробк|упаковк)|(?:коробк|упаковк)\w*\s+в\s+комплекте", "С коробкой / упаковкой"), (r"в\s+комплекте[^.\n]{0,40}пыльник|пыльник\w*\s+в\s+комплекте", "С пыльником")]),
+    ("Сделано", [(r"made\s+in\s+([a-z]+)", None)]),
+    ("Подкладка", [(r"на\s+подкладк|подкладк", "Есть подкладка")]),
+]
+FACT_MAX = 6
+
+
+def extract_facts(lines, have_labels):
+    """Возвращает [[подпись, значение]] только по тому, что есть в тексте поста. Не дублирует уже найденные поля."""
+    text = " \n".join(lines).lower().replace("ё", "е")
+    have = {h.lower() for h in have_labels}
+    out = []
+    for label, rules in FACT_RULES:
+        if label.lower() in have:
+            continue
+        found = []
+        for rx, val in rules:
+            m = re.search(rx, text)
+            if not m:
+                continue
+            v = val if val is not None else m.group(1).capitalize()
+            # «новое» не пишем, если уже нашли «новое, с биркой» и т.п.
+            if label == "Состояние" and found:
+                continue
+            if v not in found and not any(v.lower() in f.lower() or f.lower() in v.lower() for f in found):
+                found.append(v)
+            if label in ("Состояние", "Подлинность", "Сезон", "Сделано", "Подкладка", "Комплект"):
+                break
+        if found:
+            out.append([label, ", ".join(found[:3])])
+    return out[:FACT_MAX]
+
+
 def parse_post(text: str):
     """Текст поста (зачёркнутое в ⟦ ⟧) -> словарь товара или None."""
     if not text or not re.search(r"цена\s*:?\s*" + re.escape(STRIKE_L) + r"?\s*\d", text, re.I):
         return None
     low_all = text.lower()
-    sold = bool(re.search(r"товар\s+продан|продано\b|sold out", low_all))
+    sold = bool(re.search(r"товар\s+продан|продано\b|продан[аоы]?\b|sold\s*out", low_all))
     preorder = "предзаказ" in low_all
+    out_of_stock = (not preorder) and bool(re.search(
+        r"временно\s+(?:нет|отсутству|законч|нет\s+в)|нет\s+в\s+наличии|закончил(?:ся|ась|ись)|ожидается\s+(?:поступление|завоз)|ожидаем\s+поступлени", low_all))
 
     raw_lines = [norm_space(l) for l in text.replace("\r", "").split("\n")]
     lines = []
@@ -252,7 +318,7 @@ def parse_post(text: str):
             pending = None if not l else pending
             continue
         low = l.lower()
-        if re.search(r"товар\s+продан|подобрать аналогичную|оформляется по предзаказу|по предзаказу", low):
+        if re.search(r"товар\s+продан|подобрать аналогичную|оформляется по предзаказу|по предзаказу|временно\s+нет|нет\s+в\s+наличии|временно\s+отсутству|ожидается\s+(?:поступление|завоз)|^продан[аоы]?\b", low):
             continue
         body = re.sub(r"^[•·●▪︎\-–—*\s]+", "", l)
         m = re.match(r"^([A-Za-zА-Яа-яЁё][A-Za-zА-Яа-яЁё ]{1,30}?)\s*:\s*(.*)$", body)
@@ -309,7 +375,7 @@ def parse_post(text: str):
             continue
         # «ширина плеч — 40 см»
         m2 = re.match(r"^([А-Яа-яЁёA-Za-z ]{3,30}?)\s+[—–-]\s+(.+)$", body)
-        if m2 and re.search(r"\d", m2.group(2)):
+        if m2 and (re.search(r"\d", m2.group(2)) or SPEC_KEYS.search(m2.group(1))):
             details.append([cap(m2.group(1).strip()), m2.group(2).strip()])
             continue
         note = strip_decor(body)
@@ -328,13 +394,14 @@ def parse_post(text: str):
         "brand": find_brand(title),
         "category": cat_key,
         "categoryLabel": cat_label,
-        "status": "preorder" if preorder else "stock",
+        "status": "preorder" if preorder else ("out" if out_of_stock else "stock"),
         "price": price,
         "oldPrice": old,
         "sizes": sizes,
         "colors": colors,
         "details": [d for d in details if d[1]],
-        "notes": notes[:6],
+        "notes": notes[:14],
+        "facts": extract_facts(lines, [d[0] for d in details if d[1]]),
         "sold": sold,
     }
     if color_photos:
@@ -605,7 +672,8 @@ def main():
         f.write("/* Файл создаётся автоматически из Telegram-канала. Вручную не редактируйте. */\n")
         f.write("window.ONION_CATALOG = " + body + ";\n")
     st = sum(1 for p in active if p["status"] == "stock")
-    print(f"Готово: {len(active)} товаров ({st} в наличии, {len(active) - st} по предзаказу), фото: {len(used)}, заменённых фото: {changed_photos}")
+    out = sum(1 for p in active if p["status"] == "out")
+    print(f"Готово: {len(active)} товаров ({st} в наличии, {out} временно нет, {len(active) - st - out} по предзаказу), фото: {len(used)}, заменённых фото: {changed_photos}")
 
 
 if __name__ == "__main__":
