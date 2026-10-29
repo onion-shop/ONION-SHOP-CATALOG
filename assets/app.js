@@ -24,13 +24,22 @@
   var CATALOG = window.ONION_CATALOG || { products: [] };
   var PRODUCTS = (CATALOG.products || []).slice();
   var BY_ID = {};
-  // цвет → фото: точная привязка из data/colors.js (номер фото в посте). Цвета идут в порядке фото.
+  /* цвет → фото (номер фото в посте, 1 — первое). Источники по старшинству:
+     1) data/colors.js — ручная привязка; 2) номера в самом посте: «Цвета: красный (7), голубой (8)».
+     Цвета идут в порядке фото. */
   var COLOR_PHOTOS = window.ONION_COLOR_PHOTOS || {};
+  var PHOTO_V = {};
+  function normColor(c) { return String(c || '').trim().toLowerCase().replace(/ё/g, 'е'); }
   PRODUCTS.forEach(function (p) {
     BY_ID[p.id] = p;
-    var raw = COLOR_PHOTOS[p.id], map = {};
-    if (raw && p.colors.length > 1) {
-      Object.keys(raw).forEach(function (c) { var ph = p.photos[raw[c] - 1]; if (ph && p.colors.indexOf(c) >= 0) map[c] = ph.id; });
+    (p.photos || []).forEach(function (ph) { if (ph.hash) PHOTO_V[ph.id] = ph.hash; });
+    var raw = Object.assign({}, p.colorPhotos || {}, COLOR_PHOTOS[p.id] || {}), map = {};
+    if (p.colors.length > 1) {
+      Object.keys(raw).forEach(function (c) {
+        var ph = p.photos[raw[c] - 1]; if (!ph) return;
+        var own = p.colors.filter(function (x) { return normColor(x) === normColor(c); })[0];
+        if (own) map[own] = ph.id;
+      });
       if (Object.keys(map).length) {
         var pos = function (c) { return map[c] ? p.photos.findIndex(function (x) { return x.id === map[c]; }) : 999; };
         p.colors = p.colors.slice().sort(function (x, y) { return pos(x) - pos(y); });
@@ -54,8 +63,9 @@
   function cap(s) { s = String(s || ''); return s.charAt(0).toUpperCase() + s.slice(1); }
   function plural(n, a, b, c) { n = Math.abs(n); var m10 = n % 10, m100 = n % 100; return (m10 === 1 && m100 !== 11) ? a : (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) ? b : c; }
   function tokWord(n) { return plural(n, 'токен', 'токена', 'токенов'); }
-  function thumb(id) { return 'img/thumb/' + id + '.jpg'; }
-  function full(id) { return 'img/full/' + id + '.jpg'; }
+  // ?v= — отпечаток фото: если фото в посте заменили, браузер не покажет старое из кеша
+  function thumb(id) { return 'img/thumb/' + id + '.jpg' + (PHOTO_V[id] ? '?v=' + PHOTO_V[id] : ''); }
+  function full(id) { return 'img/full/' + id + '.jpg' + (PHOTO_V[id] ? '?v=' + PHOTO_V[id] : ''); }
   function norm(s) { return String(s || '').toLowerCase().replace(/ё/g, 'е'); }
   function initials(name) { var p = String(name || '?').trim().split(/\s+/); return (p[0].charAt(0) + (p[1] ? p[1].charAt(0) : '')).toUpperCase(); }
   function pct(w) { return String(Math.round(w / WHEEL_SUM * 1000) / 10).replace('.', ',') + '%'; }
@@ -264,16 +274,37 @@
     if (current === 'account') renderAccount();
     else if (current === 'roulette') updateRoulBalance();
   }
+  var checkinHinted = false;
   function refreshMe() {
     if (!API.enabled || !API.getSession()) { acct.ready = true; updateAcctUI(); return Promise.resolve(); }
     return API.call('me').then(function (r) {
       acct.ready = true;
       if (r.ok) setUser(r.user);
       else { if (r.error === 'auth') API.setSession(''); setUser(null); }
-      if (acct.user && !acct.user.checkedToday) {
+      if (acct.user && !acct.user.checkedToday && !checkinHinted) {
+        checkinHinted = true;
         setTimeout(function () { toast('Заберите ' + RULES.reward.checkin + ' ' + tokWord(RULES.reward.checkin) + ' за сегодняшний вход', { label: 'Забрать', run: doCheckin }); }, 1200);
       }
     });
+  }
+  /* Тихое обновление профиля: что поменяли в таблице (статус, токены, уровень), клиент видит
+     в течение минуты и сразу при возвращении на вкладку. Экран не перерисовывается, если ничего
+     не изменилось или клиент сейчас что-то вводит. */
+  var silentBusy = false, lastMe = '';
+  function silentRefresh() {
+    if (silentBusy || !API.enabled || API.mode !== 'live' || !API.getSession() || document.hidden) return;
+    silentBusy = true;
+    API.call('me').then(function (r) {
+      silentBusy = false;
+      if (!r.ok) { if (r.error === 'auth') { API.setSession(''); setUser(null); refreshView(); } return; }
+      var key = JSON.stringify(r.user);
+      if (key === lastMe) return;
+      lastMe = key;
+      var typing = document.activeElement && /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName);
+      if (typing || $('#modal-root .modal')) { acct.user = r.user; updateAcctUI(); return; }
+      acct.user = r.user; updateAcctUI();
+      if (current === 'roulette') updateRoulBalance(); else refreshView(); // рулетку не перерисовываем — вдруг крутится
+    }, function () { silentBusy = false; });
   }
   function updateAcctUI() {
     $$('[data-needs-api]').forEach(function (el) { el.hidden = !API.enabled; });
@@ -385,7 +416,7 @@
     if (!u) return '<div class="strip" id="tok-strip"><span class="ic">' + tk() + '</span><div><h3>Токены ONION SHOP</h3><p class="small">+' + RULES.reward.register + ' за регистрацию, задания каждый день, рулетка и бонус за друга. До 15% заказа можно оплатить токенами.</p></div><div class="acts"><a class="btn btn-sm" href="#account">' + icon('gift') + 'Забрать ' + RULES.reward.register + '</a></div></div>';
     var L = u.level, p = L.next ? Math.min(100, Math.round((u.xp - L.min) / (L.next.min - L.min) * 100)) : 100;
     return '<div class="strip" id="tok-strip"><span class="ic">' + tk() + '</span><div><h3>' + num(u.balance) + ' ' + tokWord(u.balance) + ' · уровень «' + esc(L.name) + '»</h3>' +
-      '<div class="bar"><i data-w="' + p + '%"></i></div><p class="small" style="margin-top:6px">' + (L.next ? 'Ещё ' + rub(L.next.left) + ' покупок до «' + esc(L.next.name) + '»' : 'Максимальный уровень месяца') + '</p></div>' +
+      '<div class="bar"><i data-w="' + p + '%"></i></div><p class="small" style="margin-top:6px">' + (L.next ? 'Ещё ' + rub(L.next.left) + ' покупок до «' + esc(L.next.name) + '»' : (L.fixed ? 'Уровень закреплён менеджером' : 'Максимальный уровень месяца')) + '</p></div>' +
       '<div class="acts"><a class="btn btn-sm" href="#roulette">' + icon('sparkles') + 'Рулетка</a><a class="btn btn-ghost btn-sm" href="#account">Кабинет</a></div></div>';
   }
   function growBars(root) { requestAnimationFrame(function () { $$('[data-w]', root).forEach(function (b) { b.style.width = b.getAttribute('data-w'); }); }); }
@@ -579,7 +610,14 @@
 
     // галерея
     var slides = $('#slides', v), thumbs = $('#thumbs', v), count = $('#gal-count', v), cur = 0;
-    function goTo(i, smooth) { i = Math.max(0, Math.min(p.photos.length - 1, i)); slides.scrollTo({ left: i * slides.clientWidth, behavior: smooth === false || REDUCED ? 'auto' : 'smooth' }); }
+    function goTo(i, smooth) {
+      i = Math.max(0, Math.min(p.photos.length - 1, i));
+      if (smooth === false || REDUCED) {
+        // мгновенно и надёжно: прерывает плавную прокрутку, которая могла ещё идти
+        slides.style.scrollBehavior = 'auto'; slides.scrollLeft = i * slides.clientWidth; slides.style.scrollBehavior = '';
+        setCur(i);
+      } else slides.scrollTo({ left: i * slides.clientWidth, behavior: 'smooth' });
+    }
     function setCur(i) {
       if (i === cur) return; cur = i;
       if (count) count.textContent = (i + 1) + ' / ' + p.photos.length;
@@ -605,7 +643,7 @@
       $$('[data-photo]', v).forEach(function (x) { x.setAttribute('aria-pressed', String(+x.getAttribute('data-photo') === sel.photo)); });
       var i = p.photos.findIndex(function (x) { return x.id === pid; });
       var pv = $('#photo-val'); if (pv) pv.textContent = pid ? 'фото №' + (i + 1) + (auto ? ' · по цвету' : '') : 'не отмечен';
-      if (pid && i >= 0) goTo(i);
+      if (pid && i >= 0) { goTo(i, false); setTimeout(function () { if (sel.photo === pid) goTo(i, false); }, 80); }
     }
     $$('[data-size]', v).forEach(function (b) { b.addEventListener('click', function () { sel.size = b.getAttribute('data-size'); $$('[data-size]', v).forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); }); $('#size-val').textContent = sel.size; clearErr('opt-size'); }); });
     $$('[data-color]', v).forEach(function (b) {
@@ -613,7 +651,12 @@
         sel.color = b.getAttribute('data-color');
         $$('[data-color]', v).forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
         $('#color-val').textContent = cap(sel.color); clearErr('opt-color');
-        if (mapOk && p.colorPhoto[sel.color] && (!sel.photo || sel.photoAuto)) setPhoto(p.colorPhoto[sel.color], true);
+        // выбранный цвет всегда показывает своё фото (даже если до этого вручную отметили другое)
+        if (mapOk && p.colorPhoto[sel.color]) setPhoto(p.colorPhoto[sel.color], true);
+        else if (mapOk && sel.photo) {
+          var owner = Object.keys(p.colorPhoto).filter(function (c) { return p.colorPhoto[c] === sel.photo; })[0];
+          if (sel.photoAuto || (owner && owner !== sel.color)) setPhoto(null); // отмеченное фото относится к другому цвету
+        }
       });
     });
     $$('[data-photo]', v).forEach(function (b) {
@@ -1232,10 +1275,10 @@
       '<div class="ptiles"><div class="ptile"><small>Токены</small><b>' + tk() + num(u.balance) + '</b></div><div class="ptile"><small>Это скидка до</small><b>' + rub(u.balanceRub) + '</b></div><div class="ptile"><small>Серия входов</small><b>' + u.streak + ' ' + plural(u.streak, 'день', 'дня', 'дней') + '</b></div><div class="ptile"><small>Активные заказы</small><b>' + active.length + '</b></div></div>' +
       '<div class="acts"><a class="btn btn-light" href="#roulette">' + icon('sparkles') + 'Рулетка' + (u.freeSpins ? ' · ' + u.freeSpins + ' бесплатн.' : '') + '</a><a class="btn btn-glass" href="#cart">' + icon('bag') + 'Потратить токены</a></div></div>' +
 
-      '<div class="card tile c6"><div class="tile-h"><h3>Уровень месяца</h3><span class="side">' + (L.next ? rub(u.xp) + ' из ' + rub(L.next.min) : 'максимум') + '</span></div>' +
+      '<div class="card tile c6"><div class="tile-h"><h3>Уровень месяца</h3><span class="side">' + (L.next ? rub(u.xp) + ' из ' + rub(L.next.min) : L.fixed ? 'закреплён' : 'максимум') + '</span></div>' +
       '<div class="bar"><i data-w="' + pctL + '%"></i></div>' +
       '<div class="lvl-steps">' + RULES.levels.map(function (l, j) { return '<span class="' + (j <= L.index ? 'on' : '') + (j === L.index ? ' cur' : '') + '"><i></i>' + esc(l.name.split(' ')[0]) + '</span>'; }).join('') + '</div>' +
-      '<p class="info-line">' + (L.next ? 'Ещё ' + rub(L.next.left) + ' покупок до «' + esc(L.next.name) + '»: ' + esc(RULES.levels[L.index + 1].perks.join(', ').toLowerCase()) + '.' : 'Максимальный уровень этого месяца.') + ' Уровень обнуляется 1-го числа.</p>' +
+      '<p class="info-line">' + (L.next ? 'Ещё ' + rub(L.next.left) + ' покупок до «' + esc(L.next.name) + '»: ' + esc(RULES.levels[L.index + 1].perks.join(', ').toLowerCase()) + '.' : (L.fixed ? 'Уровень закреплён менеджером.' : 'Максимальный уровень этого месяца.')) + ' В уровень идут полученные заказы, он обнуляется 1-го числа.</p>' +
       '<ul class="perks">' + L.perks.map(function (p) { return '<li>' + icon('check') + esc(p) + '</li>'; }).join('') + '</ul></div>' +
 
       '<div class="card tile c6"><div class="tile-h"><h3>Задания дня</h3><span class="side">' + doneN + ' из ' + mine.length + '</span></div>' +
@@ -1367,7 +1410,7 @@
       '<div class="sec">' + preorderBanner() + '</div>' +
       '<div class="sec info-grid">' + deliveryCard() + paymentCard() + '</div>' +
       (API.enabled ? '<div class="sec info-grid"><div class="card icard"><h3><span class="ic">' + tk() + '</span>Токены</h3><ul><li>1 токен = 0,4 ₽ скидки, до 15% суммы заказа</li><li>+' + RULES.reward.register + ' за регистрацию, +' + RULES.reward.checkin + ' за вход каждый день, +' + RULES.reward.streak7 + ' за 7 дней подряд</li><li>Задания дня по 1 токену: у Новичка 4, каждый уровень +1</li><li>Рулетка, +' + RULES.reward.referrer + ' за друга, +' + RULES.reward.birthday + ' в день рождения</li><li>Токены не сгорают и не переводятся другим людям</li></ul><a class="btn btn-ghost btn-sm" href="#account" style="justify-self:start">Мой кабинет</a></div>' +
-        '<div class="card icard"><h3><span class="ic">' + icon('trophy') + '</span>Уровни месяца</h3><div style="overflow-x:auto"><table class="lvl-table"><tr><th>Уровень</th><th>Покупки</th><th>Бонус</th></tr>' + RULES.levels.map(function (l) { return '<tr><td><b>' + esc(l.name) + '</b></td><td>от ' + rub(l.min) + '</td><td>' + esc(l.perks.join('; ')) + '</td></tr>'; }).join('') + '</table></div><p class="small">Уровень считается по покупкам за месяц и обнуляется 1-го числа.</p></div></div>' : '') +
+        '<div class="card icard"><h3><span class="ic">' + icon('trophy') + '</span>Уровни месяца</h3><div style="overflow-x:auto"><table class="lvl-table"><tr><th>Уровень</th><th>Покупки</th><th>Бонус</th></tr>' + RULES.levels.map(function (l) { return '<tr><td><b>' + esc(l.name) + '</b></td><td>от ' + rub(l.min) + '</td><td>' + esc(l.perks.join('; ')) + '</td></tr>'; }).join('') + '</table></div><p class="small">Уровень считается по полученным заказам за месяц и обнуляется 1-го числа.</p></div></div>' : '') +
       '<div class="sec info-grid">' + contactsCard() +
       '<div class="card icard"><h3><span class="ic">' + icon('shield') + '</span>Перед заказом</h3><ul><li>Наличие и размеры менеджер подтвердит перед оплатой.</li><li>Предзаказ: выкуп у поставщика, проверка на брак и фотоотчёт на складе в Китае.</li><li>Статус заказа виден в «Моих заказах»: оформлен → выкуплен → в пути → на складе → едет к нам → едет к вам → получен.</li><li>Нужной вещи нет в каталоге — напишите менеджеру, подберём под заказ.</li></ul><a class="btn btn-ghost btn-sm" href="' + SHOP.infoUrl + '" target="_blank" rel="noopener" style="justify-self:start">Подробно о предзаказе' + icon('arrow-up-right') + '</a></div></div>';
   }
@@ -1461,7 +1504,10 @@
     window.addEventListener('hashchange', route);
     window.addEventListener('storage', function (e) { if (e.key === 'onion.shop.cart') { cart = store.get('cart', []); updateCounts(); if (current === 'cart') renderCart(); } });
     route();
-    refreshMe().then(refreshView);
+    refreshMe().then(function () { lastMe = acct.user ? JSON.stringify(acct.user) : ''; refreshView(); });
+    setInterval(silentRefresh, 45000);
+    document.addEventListener('visibilitychange', function () { if (!document.hidden) silentRefresh(); });
+    window.addEventListener('focus', silentRefresh);
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 })();

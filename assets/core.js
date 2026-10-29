@@ -85,17 +85,33 @@ var OnionCore = (function () {
   function cleanEmail(s) { return String(s || '').trim().toLowerCase(); }
   function validEmail(e) { return /^[^\s@]{1,64}@[^\s@]+\.[a-z]{2,}$/i.test(e) && e.length <= 120; }
   function validTg(t) { return /^[A-Za-z0-9_]{4,32}$/.test(t); }
-  function tasksFor(xp) { var li = levelIndex(xp); return RULES.tasks.filter(function (t) { return (t.lvl || 0) <= li; }); }
+  // tasksFor(u) — по клиенту (учитывает уровень, закреплённый вручную); tasksFor(число) — по сумме покупок
+  function tasksFor(x) { var li = (x && typeof x === 'object') ? levelOf(x).index : levelIndex(x); return RULES.tasks.filter(function (t) { return (t.lvl || 0) <= li; }); }
   function stagesFor(kind) { return kind === 'в наличии' ? RULES.stagesStock : RULES.stagesPre; }
   function phoneKey(s) { var d = digits(s); if (d.length === 11 && (d[0] === '7' || d[0] === '8')) d = d.slice(1); return d; }
   function rub(n) { return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + ' ₽'; }
   function tokensToRub(t) { return Math.round(t * RULES.tokenRub); }
   function levelIndex(xp) { var i = 0; for (var j = 0; j < RULES.levels.length; j++) if ((xp || 0) >= RULES.levels[j].min) i = j; return i; }
-  function levelInfo(xp) {
-    var i = levelIndex(xp), L = RULES.levels[i], N = RULES.levels[i + 1];
+  function levelAt(i, xp, fixed) {
+    var L = RULES.levels[i], N = RULES.levels[i + 1];
     var perks = [];
     for (var k = 0; k <= i; k++) perks = perks.concat(RULES.levels[k].perks);
-    return { index: i, key: L.key, name: L.name, min: L.min, next: N ? { name: N.name, min: N.min, left: N.min - (xp || 0) } : null, perks: perks, own: L.perks };
+    return { index: i, key: L.key, name: L.name, min: L.min, next: N && !fixed ? { name: N.name, min: N.min, left: N.min - (xp || 0) } : null, perks: perks, own: L.perks, fixed: !!fixed };
+  }
+  function levelInfo(xp) { return levelAt(levelIndex(xp), xp, false); }
+  /* Уровень, закреплённый вручную в таблице (колонка «Уровень вручную»): название уровня или пусто/«авто». */
+  function fixIndex(name) {
+    var s = String(name || '').trim().toLowerCase().replace(/ё/g, 'е');
+    if (!s || /^авто/.test(s)) return -1;
+    for (var i = 0; i < RULES.levels.length; i++) {
+      var n = RULES.levels[i].name.toLowerCase().replace(/ё/g, 'е');
+      if (n === s || n.indexOf(s) === 0 || s.indexOf(n) === 0) return i;
+    }
+    return -1;
+  }
+  function levelOf(u) {
+    var f = fixIndex(u && u.levelFix);
+    return f >= 0 ? levelAt(f, u.xp, true) : levelInfo(u && u.xp);
   }
   function genCode(db, prefix, len) {
     var s = prefix || '';
@@ -119,7 +135,7 @@ var OnionCore = (function () {
     grantPerks(db, u);
   }
   function grantPerks(db, u) {
-    var li = levelIndex(u.xp), mk = u.xpMonth;
+    var li = levelOf(u).index, mk = u.xpMonth;
     if (li >= 2 && u.perkSpinMonth !== mk) { u.freeSpins = (u.freeSpins || 0) + 1; u.perkSpinMonth = mk; log(db, u, 0, 'Бесплатный прокрут за уровень Профи'); }
     if (li >= 4 && u.perkIconMonth !== mk) {
       for (var i = 0; i < 3; i++) u.promos.push({ code: genCode(db, 'ICON', 5), pct: 5, from: 'Икона стиля', at: db.now() });
@@ -143,9 +159,9 @@ var OnionCore = (function () {
     });
     return {
       id: u.id, code: 'OS' + u.id, login: u.login, name: u.name, phone: u.phone, tg: u.tg, email: u.email || '', avatar: u.avatar || '',
-      tasks: tasksFor(u.xp).map(function (t) { return t.key; }),
+      tasks: tasksFor(u).map(function (t) { return t.key; }),
       balance: u.balance || 0, balanceRub: tokensToRub(u.balance || 0),
-      xp: u.xp || 0, level: levelInfo(u.xp), spent: u.spent || 0, ordersCount: u.ordersCount || 0,
+      xp: u.xp || 0, level: levelOf(u), spent: u.spent || 0, ordersCount: u.ordersCount || 0,
       streak: u.lastCheckin === today || u.lastCheckin === dayKey(db.now() - 86400000) ? (u.streak || 0) : 0,
       checkedToday: u.lastCheckin === today, tasksDone: (u.tasks && u.tasks.day === today) ? u.tasks.done.slice() : [],
       freeSpins: u.freeSpins || 0,
@@ -362,7 +378,7 @@ var OnionCore = (function () {
 
   A.task = function (db, p) {
     var u = sessionUser(db, p); if (!u) return err('auth');
-    var t = tasksFor(u.xp).filter(function (x) { return x.key === p.task && x.key !== 'checkin'; })[0];
+    var t = tasksFor(u).filter(function (x) { return x.key === p.task && x.key !== 'checkin'; })[0];
     if (!t) return err('Это задание откроется на следующем уровне');
     if (u.tasks.done.indexOf(t.key) >= 0) return ok({ got: 0, user: publicUser(db, u) });
     var got = t.reward;
@@ -536,14 +552,14 @@ var OnionCore = (function () {
     var toPay = Math.max(0, total - tokenRub - promoRub);
     var seq = db.nextOrderSeq();
     var no = orderNo(db, seq), at = db.now();
-    var li = u ? levelInfo(u.xp) : null;
+    var li = u ? levelOf(u) : null;
     var perk = li ? (li.own.filter(function (x) { return /упаков/i.test(x); })[0] || '') : '';
     var text = orderText({ no: no, at: at, f: f, lines: built.lines, total: total, tokens: tokens, tokenRub: tokenRub, promo: promo, promoRub: promoRub, toPay: toPay, user: u ? { login: u.login, id: u.id, levelName: li.name, levelPerk: perk } : null });
     if (built.unverified) text += '\n\n⚠️ Каталог был недоступен — цены взяты с сайта, проверьте.';
     if (u) {
       if (tokens) log(db, u, -tokens, 'Оплата заказа №' + no);
-      u.xp = (u.xp || 0) + toPay; u.spent = (u.spent || 0) + toPay; u.ordersCount = (u.ordersCount || 0) + 1;
-      grantPerks(db, u);
+      // сумма идёт в уровень и в «Потрачено всего» только когда заказ получен (статус «Получен» — см. receive)
+      u.ordersCount = (u.ordersCount || 0) + 1;
       if (u.referredBy && !u.refRewarded && total >= RULES.refMinOrder) {
         u.refRewarded = true;
         var ref = db.getUser(u.referredBy);
@@ -572,6 +588,22 @@ var OnionCore = (function () {
     return ok({ order: order, notified: notified, user: u ? publicUser(db, u) : null });
   };
 
+  /* Заказ получен (sign = 1) или статус «Получен» сняли (sign = -1).
+     Сумма «К оплате» добавляется к покупкам месяца (уровень) и к «Потрачено всего».
+     month — месяц, в котором сумму засчитали: при отмене из уровня вычитаем, только если месяц тот же. */
+  function receive(db, u, amount, sign, month) {
+    touch(db, u);
+    amount = Math.max(0, Math.round(+amount || 0));
+    if (sign > 0) {
+      u.xp = (u.xp || 0) + amount; u.spent = (u.spent || 0) + amount;
+      grantPerks(db, u);
+    } else {
+      u.spent = Math.max(0, (u.spent || 0) - amount);
+      if (!month || month === u.xpMonth) u.xp = Math.max(0, (u.xp || 0) - amount);
+    }
+    return u;
+  }
+
   // без сервера: номер из даты и случайных символов (повтор практически невозможен)
   function offlineNo(ms, rnd) {
     var d = msk(ms), s = '';
@@ -586,8 +618,8 @@ var OnionCore = (function () {
 
   return {
     RULES: RULES, handle: handle, orderText: orderText, buildLines: buildLines, checkFields: checkFields,
-    offlineNo: offlineNo, levelInfo: levelInfo, tokensToRub: tokensToRub, settings: settings, dayKey: dayKey, monthKey: monthKey,
-    cleanTg: cleanTg, fmtPhone: fmtPhone, digits: digits, validEmail: validEmail, tasksFor: tasksFor, stagesFor: stagesFor
+    offlineNo: offlineNo, levelInfo: levelInfo, levelOf: levelOf, fixIndex: fixIndex, receive: receive, touch: touch, tokensToRub: tokensToRub, settings: settings, dayKey: dayKey, monthKey: monthKey,
+    cleanTg: cleanTg, cleanEmail: cleanEmail, phoneKey: phoneKey, fmtPhone: fmtPhone, digits: digits, validEmail: validEmail, tasksFor: tasksFor, stagesFor: stagesFor
   };
 })();
 if (typeof module !== 'undefined') module.exports = OnionCore;

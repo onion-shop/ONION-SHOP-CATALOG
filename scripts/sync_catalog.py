@@ -125,6 +125,30 @@ def split_list(value: str):
     return [p.strip(" .") for p in parts if p.strip(" .")]
 
 
+COLOR_NO = re.compile(
+    r"^(.*?)\s*(?:\(\s*(?:фото\s*№?\s*)?(\d{1,2})\s*\)|[—–-]\s*(?:фото\s*№?\s*)?(\d{1,2})|\s+фото\s*№?\s*(\d{1,2}))\s*$",
+    re.I,
+)
+
+
+def parse_colors(value: str):
+    """'красный (7), голубой — 8, белый' -> (['красный', 'голубой', 'белый'], {'красный': 7, 'голубой': 8}).
+    Номер — это номер фото в посте (1 — первое). Так цвет на сайте сам покажет своё фото."""
+    names, photo_no = [], {}
+    for part in split_list(value):
+        m = COLOR_NO.match(part)
+        if m:
+            name = m.group(1).strip(" .:·").lower()
+            num = int(next(g for g in m.groups()[1:] if g))
+            if name:
+                names.append(name)
+                if num > 0:
+                    photo_no[name] = num
+            continue
+        names.append(part.lower())
+    return names, photo_no
+
+
 def parse_sizes(value: str, is_shoes: bool):
     value = norm_space(value.replace(STRIKE_L, "").replace(STRIKE_R, ""))
     if not value:
@@ -217,6 +241,7 @@ def parse_post(text: str):
 
     price = old = None
     sizes, colors, details, notes = [], [], [], []
+    color_photos = {}
     pending = None  # ключ, значение которого на следующей строке
     started = False
     for l in lines:
@@ -254,7 +279,7 @@ def parse_post(text: str):
                     if key == "sizes":
                         sizes = parse_sizes(val, is_shoes)
                     else:
-                        colors = [c.lower() for c in split_list(val)]
+                        colors, color_photos = parse_colors(val)
                     pending = None
                 else:
                     pending = key
@@ -273,7 +298,7 @@ def parse_post(text: str):
             pending = None
             continue
         if pending == "colors":
-            colors = [c.lower() for c in split_list(body)]
+            colors, color_photos = parse_colors(body)
             pending = None
             continue
         if isinstance(pending, tuple):
@@ -297,7 +322,7 @@ def parse_post(text: str):
         old = None
     cat_key, cat_label = find_category(title)
     # «Носки … размер 41–47» — один универсальный размер
-    return {
+    item = {
         "title": title,
         "subtitle": subtitle,
         "brand": find_brand(title),
@@ -312,6 +337,9 @@ def parse_post(text: str):
         "notes": notes[:6],
         "sold": sold,
     }
+    if color_photos:
+        item["colorPhotos"] = color_photos
+    return item
 
 
 # ---------------------------------------------------------------- источники
@@ -495,27 +523,47 @@ def main():
         print("Товары не найдены — похоже, страница канала изменилась. Каталог оставлен без изменений.", file=sys.stderr)
         sys.exit(2)
 
+    # Фото скачиваем каждый раз (параллельно) и сравниваем с прежним отпечатком:
+    # если фото в посте заменили, на сайте оно тоже заменится. Неизменённые фото не перезаписываются.
+    from concurrent.futures import ThreadPoolExecutor
+
+    def load(src):
+        try:
+            return open(src, "rb").read() if source == "export" else fetch(src, tries=2)
+        except Exception as e:  # noqa: BLE001
+            print(f"  фото {src}: {e}", file=sys.stderr)
+            return None
+
+    jobs = [(pid, src) for p in active for pid, src in p["_photos"]]
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        raws = dict(zip([pid for pid, _ in jobs], pool.map(load, [src for _, src in jobs])))
+
     used = set()
+    changed_photos = 0
     for p in active:
         hashes = set()
         files = []
         known = {f["id"]: f for f in old_meta.get(p["id"], {}).get("photos", [])}
         for photo_id, src in p.pop("_photos"):
             full_path = os.path.join(IMG_FULL, f"{photo_id}.jpg")
-            if photo_id in known and os.path.exists(full_path):
-                f = known[photo_id]
-                if f.get("hash") in hashes:
-                    continue
-                hashes.add(f.get("hash"))
-                files.append(f)
-                used.add(photo_id)
-                continue
-            try:
-                raw = open(src, "rb").read() if source == "export" else fetch(src)
-            except Exception as e:  # noqa: BLE001
-                print(f"  фото {photo_id}: {e}", file=sys.stderr)
+            raw = raws.get(photo_id)
+            old_f = known.get(photo_id) if os.path.exists(full_path) else None
+            if raw is None:
+                if old_f and old_f.get("hash") not in hashes:  # не скачалось — оставляем прежнее фото
+                    hashes.add(old_f.get("hash"))
+                    files.append(old_f)
+                    used.add(photo_id)
                 continue
             h = hashlib.md5(raw).hexdigest()[:12]
+            if old_f and old_f.get("hash") == h:
+                if h in hashes:
+                    continue
+                hashes.add(h)
+                files.append(old_f)
+                used.add(photo_id)
+                continue
+            if old_f:
+                changed_photos += 1
             if h in hashes:
                 continue
             hashes.add(h)
@@ -557,7 +605,7 @@ def main():
         f.write("/* Файл создаётся автоматически из Telegram-канала. Вручную не редактируйте. */\n")
         f.write("window.ONION_CATALOG = " + body + ";\n")
     st = sum(1 for p in active if p["status"] == "stock")
-    print(f"Готово: {len(active)} товаров ({st} в наличии, {len(active) - st} по предзаказу), фото: {len(used)}")
+    print(f"Готово: {len(active)} товаров ({st} в наличии, {len(active) - st} по предзаказу), фото: {len(used)}, заменённых фото: {changed_photos}")
 
 
 if __name__ == "__main__":
