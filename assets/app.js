@@ -1355,7 +1355,7 @@
       '<div class="xp-how"><b>Как получить XP</b><ul>' +
       '<li>' + icon('bag') + '<span>Полученный заказ — <b>1 XP за каждые 10&nbsp;₽</b>. Засчитывается, когда у заказа статус «Получен»</span></li>' +
       '<li>' + icon('gift') + '<span>Ежедневный вход — <b>+' + RULES.xpReward.checkin + ' XP</b></span></li>' +
-      '<li>' + icon('check') + '<span>Задания — ежедневные <b>+2–3 XP</b>, недельные <b>+12–40 XP</b>, месячные <b>+40–300 XP</b></span></li>' +
+      '<li>' + icon('check') + '<span>Задания — ежедневные <b>+2–3 XP</b>, еженедельные <b>+12–40 XP</b>, ежемесячные <b>+40–300 XP</b></span></li>' +
       '<li>' + icon('sparkles') + '<span>Рулетка — приз <b>+50 XP</b></span></li></ul></div>' +
       '<div class="lvl-list">' + RULES.levels.map(function (l, i) {
         return '<section class="lvl-card lv-' + l.key + (i === cur ? ' cur' : '') + '"><header>' + lvlImg(l.key, 56) + '<div><h3>' + esc(l.name) + (i === cur ? ' <span class="chip">ваш уровень</span>' : '') + '</h3><span class="small">' + (l.min ? 'от ' + num(l.min) + ' XP за месяц' : 'сразу после регистрации') + '</span></div></header>' +
@@ -1397,8 +1397,8 @@
     var all = board[per], done = all.filter(function (t) { return t.d; }).length;
     $('#task-side', root).textContent = done + ' из ' + all.length + ' · ' + RULES.taskPer[per].until;
     $('#task-note', root).textContent = per === 'd' ? 'Простые задания: токены и XP. Обновляются в 00:00 по Москве; чем выше уровень, тем их больше.'
-      : per === 'w' ? 'Недельные сложнее и награда больше. «Оформить заказ» считается сразу при оформлении. Обновляются в понедельник.'
-        : 'Месячные — самые сложные и самые щедрые. Заказы засчитываются, когда статус «Получен». Обновляются 1-го числа.';
+      : per === 'w' ? 'Еженедельные сложнее и награда больше. «Оформить заказ» считается сразу при оформлении. Обновляются в понедельник.'
+        : 'Ежемесячные — самые сложные и самые щедрые. Заказы засчитываются, когда статус «Получен». Обновляются 1-го числа.';
     $$('[data-tt]', tabs).forEach(function (b) { b.addEventListener('click', function () { taskTab = b.getAttribute('data-tt'); drawTasks(root); }); });
   }
   function renderDash(v) {
