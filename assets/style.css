@@ -1210,3 +1210,6 @@ details.fold[open]>summary .i{transform:rotate(180deg)}
 .mtbl tbody th{text-align:left;font-weight:600;color:var(--ink-2);white-space:nowrap;padding-left:12px}
 .mtbl .on{background:var(--accent-soft);color:var(--accent-ink);font-weight:800}
 @media (prefers-reduced-motion: reduce){ .bn::after,.tk-in,.pcard .ph img{animation:none} .pcard.rv{opacity:1;transform:none} }
+.bn-txt{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.bn-txt .i{width:26px;height:26px;flex:none;color:#43c9e3}
+.bn-chips{display:none}

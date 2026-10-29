@@ -536,8 +536,7 @@
     return '<a class="bn ' + (cls || '') + '" href="' + href + '"><div class="bn-pics" style="grid-template-columns:repeat(' + picks.length + ',1fr)">' +
       '<span class="bn-big">' + picks.map(function (p, i) { return '<img class="' + (i ? '' : 'on') + '" src="' + thumb(p.photos[0].id) + '" alt="" loading="' + (i ? 'lazy' : 'eager') + '" decoding="async">'; }).join('') + '</span>' +
       picks.map(function (p, i) { return '<span class="bn-th' + (i ? '' : ' on') + '"><img src="' + thumb(p.photos[0].id) + '" alt="" loading="lazy" decoding="async"></span>'; }).join('') +
-      '<div class="bn-chips">' + (chips || []).map(function (c, i) { return '<span class="bn-chip' + (i ? '' : ' on') + '">' + c + '</span>'; }).join('') + '</div></div>' +
-      '<div class="bn-txt"><b>' + title + '</b><span>' + sub + '</span></div></a>';
+      '</div><div class="bn-txt"><b>' + title + '</b>' + icon('arrow-right') + '</div></a>';
   }
   function startBanners(v) {
     stopHomeTimers();
@@ -569,13 +568,6 @@
     var tiles = catTile('#stock', 'В наличии', 'stock') + catTile('#preorder', 'Из Китая', 'china');
     var ART = { shoes: 1, tees: 1, hoodies: 1, outerwear: 1, pants: 1, accessories: 1 };
     categories(PRODUCTS).forEach(function (c) { if (ART[c.key]) tiles += catTile('#catalog', c.label, c.key, c.key); });
-    var maxOff = hot.reduce(function (m, p) { return Math.max(m, discount(p)); }, 0);
-    var hotChips = [maxOff >= 3 ? 'Скидки до −' + maxOff + '%' : 'Выгодные цены'];
-    var cnChips = ['Доставка из Китая уже в цене'];
-    if (API.enabled) {
-      hotChips.push('Токенами — до ' + Math.round(RULES.maxShare * 100) + '% заказа', 'Бесплатный прокрут рулетки каждый день');
-      cnChips.push('+' + RULES.reward.register + ' токенов за регистрацию', 'Промокоды из рулетки');
-    }
     var fresh = PRODUCTS.slice(0, 12);
     var seenB = {}, brands = [];
     PRODUCTS.forEach(function (p) { var b = (p.brand || '').trim(), k = norm(b); if (b && !seenB[k]) { seenB[k] = 1; brands.push(b); } });
@@ -585,7 +577,7 @@
       '<form class="h-search" id="hero-search" role="search">' + icon('search') + '<label class="sr" for="hero-q">Поиск по каталогу</label><input id="hero-q" type="search" placeholder="Найти товар или бренд" autocomplete="off" enterkeyhint="search"><button class="btn btn-sm" type="submit">Найти</button></form>' +
       '<div class="cts">' + tiles + '</div>' +
       (brands.length ? '<div class="ticker" aria-hidden="true"><div class="tk-in">' + brands.concat(brands).map(function (b) { return '<span>' + esc(b) + '</span>'; }).join('') + '</div></div>' : '') +
-      '<div class="bns">' + banner('Супер эксклюзивные предложения', 'Самые выгодные вещи в наличии', '#stock', hot, 'bn-hot', hotChips) + banner('Находки из Китая', 'Под заказ · фурой', '#preorder', preL, 'bn-cn', cnChips) + '</div>' +
+      '<div class="bns">' + banner('Супер эксклюзивные предложения', '', '#stock', hot, 'bn-hot') + banner('Находки из Китая', '', '#preorder', preL, 'bn-cn') + '</div>' +
       (rec.length ? '<div class="sec"><div class="sec-head"><h2>Вы смотрели</h2></div><div class="hscroll">' + rec.map(card).join('') + '</div></div>' : '') +
       '<div class="sec"><div class="sec-head"><h2>Новинки</h2><a class="btn btn-ghost btn-sm" href="#catalog">Весь каталог</a></div>' + grid(fresh, 'home-grid') + '</div>' +
       '<div class="sec"><a class="faq-link" href="#info">Частые вопросы' + icon('arrow-right') + '</a></div>';
@@ -764,11 +756,13 @@
     copyText(url, 'Ссылка на товар скопирована'); done();
   }
   // цвет → фото: если фото не меньше, чем цветов, i-й цвет показан на i-м фото
+  var MLAB = { 'грудь': 'Обхват груди', 'обхват груди': 'Обхват груди', 'ширина груди': 'Обхват груди', 'плечи': 'Ширина плеч', 'ширина плеч': 'Ширина плеч', 'плечо': 'Ширина плеч', 'рукав': 'Длина рукава', 'длина рукава': 'Длина рукава', 'длина': 'Длина изделия', 'длина изделия': 'Длина изделия', 'талия': 'Обхват талии', 'обхват талии': 'Обхват талии', 'бедра': 'Обхват бедер', 'обхват бедер': 'Обхват бедер', 'шаг': 'Длина шага', 'длина шага': 'Длина шага' };
+  function mlab(l) { var k = String(l || '').trim().toLowerCase(); return MLAB[k] || cap(k); }
   function measTable(tbl, selSize) {
     var sizes = Object.keys(tbl), labels = [];
-    sizes.forEach(function (z) { tbl[z].forEach(function (r) { if (labels.indexOf(r[0]) < 0) labels.push(r[0]); }); });
+    sizes.forEach(function (z) { tbl[z].forEach(function (r) { if (labels.indexOf(mlab(r[0])) < 0) labels.push(mlab(r[0])); }); });
     return '<div class="mtbl-wrap"><table class="mtbl"><thead><tr><th></th>' + sizes.map(function (z) { return '<th data-mz="' + esc(z) + '"' + (z === selSize ? ' class="on"' : '') + '>' + esc(z) + '</th>'; }).join('') + '</tr></thead><tbody>' +
-      labels.map(function (l) { return '<tr><th scope="row">' + esc(cap(l)) + '</th>' + sizes.map(function (z) { var r = tbl[z].filter(function (x) { return x[0] === l; })[0]; return '<td data-mz="' + esc(z) + '"' + (z === selSize ? ' class="on"' : '') + '>' + (r ? esc(String(r[1]).replace(/\s*см$/i, '')) : '—') + '</td>'; }).join('') + '</tr>'; }).join('') + '</tbody></table></div><p class="small">Размеры в сантиметрах. Выберите размер — столбец подсветится.</p>';
+      labels.map(function (l) { return '<tr><th scope="row">' + esc(l) + '</th>' + sizes.map(function (z) { var r = tbl[z].filter(function (x) { return mlab(x[0]) === l; })[0]; return '<td data-mz="' + esc(z) + '"' + (z === selSize ? ' class="on"' : '') + '>' + (r ? esc(String(r[1]).replace(/\s*см$/i, '')) : '—') + '</td>'; }).join('') + '</tr>'; }).join('') + '</tbody></table></div><p class="small">Размеры в сантиметрах. Выберите размер — столбец подсветится.</p>';
   }
   function colorPhotoMap(p) { return !!p.colorPhoto; }
   function renderProduct(id) {
@@ -819,7 +813,7 @@
       '<button class="btn" type="button" id="add-btn">' + icon('bag') + '<span id="add-lbl">В корзину · ' + rub(p.price) + '</span></button></div>' +
       '<div class="acc">' +
       ((specs.length || p.notes.length) ? '<details><summary>Характеристики' + icon('chevron-down') + '</summary><div class="acc-body">' + (specs.length ? '<dl class="specs">' + specs.map(function (r) { return '<div><dt>' + esc(r[0]) + '</dt><dd>' + esc(r[1]) + '</dd></div>'; }).join('') + '</dl>' : '') + (p.notes.length ? '<div class="notes">' + p.notes.map(function (n) { return '<span>' + icon('check') + esc(n) + '</span>'; }).join('') + '</div>' : '') + '</div></details>' : '') +
-      (hasMeas ? '<details id="meas-det"><summary>Замеры изделия' + icon('chevron-down') + '</summary><div class="acc-body">' + (tbl ? measTable(tbl, sel.size) : '<dl class="specs">' + measures.map(function (r) { return '<div><dt>' + esc(r[0]) + '</dt><dd>' + esc(r[1]) + '</dd></div>'; }).join('') + '</dl>') + '</div></details>' : '') +
+      (hasMeas ? '<details id="meas-det"><summary>Замеры изделия' + icon('chevron-down') + '</summary><div class="acc-body">' + (tbl ? measTable(tbl, sel.size) : (p.sizes.length === 1 ? '<p class="small" style="margin:0 0 8px">Размер ' + esc(p.sizes[0]) + '</p>' : '') + '<dl class="specs">' + measures.map(function (r) { return '<div><dt>' + esc(mlab(r[0])) + '</dt><dd>' + esc(r[1]) + '</dd></div>'; }).join('') + '</dl>') + '</div></details>' : '') +
       (API.enabled ? '<details id="rev-det"><summary>Отзывы <span class="rev-n" id="rev-n"></span>' + icon('chevron-down') + '</summary><div class="acc-body" id="rev-body"><p class="small">Загружаем…</p></div></details>' : '') +
       '</div>' +
       '<a class="tg-link" href="' + esc(p.link) + '" target="_blank" rel="noopener">' + icon('send') + 'Пост с этим товаром в канале</a>' +
@@ -917,7 +911,7 @@
       var box = $('#size-meas', v); if (!box || !tbl) return;
       var rows = sel.size && tbl[sel.size];
       box.hidden = !rows;
-      if (rows) box.innerHTML = '<b>Замеры · ' + esc(sel.size) + '</b>' + rows.map(function (r) { return '<span>' + esc(cap(r[0])) + ' <i>' + esc(r[1]) + '</i></span>'; }).join('');
+      if (rows) box.innerHTML = '<b>Замеры · ' + esc(sel.size) + '</b>' + rows.map(function (r) { return '<span>' + esc(mlab(r[0])) + ' <i>' + esc(r[1]) + '</i></span>'; }).join('');
       $$('.mtbl [data-mz]', v).forEach(function (c) { c.classList.toggle('on', c.getAttribute('data-mz') === sel.size); });
     }
     showSizeMeas();
