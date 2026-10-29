@@ -1777,20 +1777,30 @@
     if (!acct.user) return;
     var md = openModal(modalHead('Уведомления в Telegram') + '<div id="tg-body"></div>', { cls: 'sm' });
     var polls = 0;
+    var perks = [['receipt', 'Статус заказа', 'выкуплен, в пути, на складе, получен'], ['clock', 'Товар снова в продаже', 'из списка «Жду появления»'], ['star', 'Без спама', 'только про ваши заказы и товары']];
+    function hero(ic, title, sub, cls) { return '<div class="tg-hero ' + (cls || '') + '"><span class="tg-ic">' + icon(ic) + '</span><h3>' + title + '</h3><p>' + sub + '</p></div>'; }
     function draw() {
       var u = acct.user, b = $('#tg-body', md); if (!b) return;
       if (u.tgOn) {
-        b.innerHTML = '<div class="notice notice-info">' + icon('check-circle') + '<div><b>Подключено</b>' + (u.tgName ? ' · ' + esc(u.tgName) : '') + '. Напишем, когда заказ меняет статус и когда товар из «Жду появления» снова в продаже.</div></div><button class="btn btn-ghost" type="button" id="tg-off" style="margin-top:12px">Отключить</button>';
+        b.innerHTML = hero('check-circle', 'Telegram подключён', (u.tgName ? esc(u.tgName) + ' · ' : '') + 'уведомления включены', 'ok') +
+          '<ul class="tg-perks">' + perks.map(function (x) { return '<li><span class="ic">' + icon(x[0]) + '</span><span><b>' + x[1] + '</b><small>' + x[2] + '</small></span></li>'; }).join('') + '</ul>' +
+          '<button class="btn btn-ghost" type="button" id="tg-off">Отключить уведомления</button>';
         $('#tg-off', b).addEventListener('click', function () { API.call('tgUnlink').then(function (r) { if (r.ok) { setUser(r.user); draw(); toast('Уведомления отключены'); } }); });
       } else {
-        b.innerHTML = '<p class="small">Бот пришлёт сообщение, когда заказ выкуплен, в пути, на складе или получен, и когда нужный товар снова в наличии. Больше он ничего не пишет.</p><button class="btn" type="button" id="tg-on">' + icon('send') + 'Подключить Telegram</button><div id="tg-out" style="margin-top:12px"></div>';
+        b.innerHTML = hero('send', 'Заказы — в Telegram', 'Подключите бота ONION SHOP — и не нужно заходить на сайт, чтобы узнать, где ваш заказ.') +
+          '<ul class="tg-perks">' + perks.map(function (x) { return '<li><span class="ic">' + icon(x[0]) + '</span><span><b>' + x[1] + '</b><small>' + x[2] + '</small></span></li>'; }).join('') + '</ul>' +
+          '<button class="btn" type="button" id="tg-on">' + icon('send') + 'Подключить Telegram</button><div id="tg-out"></div>';
         $('#tg-on', b).addEventListener('click', function () {
           var btn = this; busy(btn, true, 'Секунду');
           API.call('tgLink').then(function (r) {
             busy(btn, false); var out = $('#tg-out', b);
             if (!r.ok) { out.innerHTML = '<div class="form-err">' + esc(r.error) + '</div>'; return; }
             if (!r.bot) { out.innerHTML = '<div class="form-err">Бот магазина ещё не подключён. Напишите менеджеру — включим.</div>'; return; }
-            out.innerHTML = '<a class="btn" target="_blank" rel="noopener" href="https://t.me/' + esc(r.bot) + '?start=' + esc(r.code) + '">' + icon('send') + 'Открыть бота и нажать «Старт»</a><p class="small" style="margin-top:8px">Ждём подтверждение от бота…</p>';
+            btn.hidden = true; var pk = $('.tg-perks', b); if (pk) pk.hidden = true; var hp = $('.tg-hero p', b); if (hp) hp.hidden = true;
+            out.innerHTML = '<ol class="tg-steps"><li class="done"><i>' + icon('check') + '</i><span>Код создан</span></li>' +
+              '<li class="now"><i>2</i><span>Откройте бота и нажмите «Старт»<a class="btn" target="_blank" rel="noopener" href="https://t.me/' + esc(r.bot) + '?start=' + esc(r.code) + '">' + icon('send') + 'Открыть @' + esc(r.bot) + '</a></span></li>' +
+              '<li><i>3</i><span>Вернитесь сюда — подключится само <em class="tg-wait"><span class="spinner"></span>ждём бота…</em></span></li></ol>' +
+              '<p class="small">Код действует час. Если Telegram не открылся, откройте бота вручную и отправьте ему: <b>/start ' + esc(r.code) + '</b></p>';
             (function poll() {
               if (!document.body.contains(md) || !$('#tg-body', md) || ++polls > 45) return;
               setTimeout(function () {
