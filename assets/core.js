@@ -410,7 +410,7 @@ var OnionCore = (function () {
     orders.forEach(function (o) { o.reviewed = (o.items || []).filter(function (it) { return rk.indexOf(o.no + '|' + it.id) >= 0; }).map(function (it) { return it.id; }); });
     var waits = (db.waitsOf ? db.waitsOf(u.id) : []).map(function (w) { var pr = db.product ? db.product(w.productId) : null; return { id: w.productId, title: w.title, ready: !!(pr && pr.status !== 'out' && pr.status !== 'sold') }; });
     return {
-      tgOn: !!u.tgChat, tgName: u.tgName || '', waits: waits, reviewCount: rk.length,
+      tgOn: !!u.tgChat, tgName: u.tgName || '', tgCats: String(u.tgCats || '').split(',').filter(Boolean), waits: waits, reviewCount: rk.length,
       id: u.id, code: 'OS' + u.id, login: u.login, name: u.name, phone: u.phone, tg: u.tg, email: u.email || '', avatar: u.avatar || '',
       board: boardFor(u, db.now()), taskNews: ((u.tasks && u.tasks.news) || []).slice(),
       balance: u.balance || 0, balanceRub: tokensToRub(u.balance || 0),
@@ -629,7 +629,7 @@ var OnionCore = (function () {
     if (u.streak % 7 === 0) { var sr = levelOf(u).streak; log(db, u, sr, 'Серия 7 дней (' + levelOf(u).name + ')'); got += sr; extra.push('серия 7 дней +' + sr); }
     var year = String(msk(now).getUTCFullYear());
     if (u.birthday && u.birthday === today.slice(5) && u.bdayYear !== year) {
-      u.bdayYear = year; log(db, u, RULES.reward.birthday, 'С днём рождения!'); got += RULES.reward.birthday; extra.push('день рождения +' + RULES.reward.birthday);
+      u.bdayYear = year; log(db, u, RULES.reward.birthday, 'С днём рождения!'); if (u.tgChat && db.userNotify) { try { db.userNotify(u, '🎂 С днём рождения, ' + String(u.name || '').split(' ')[0] + '! На баланс зачислено ' + RULES.reward.birthday + ' токенов — ими можно оплатить часть заказа.'); } catch (e) { /* */ } } got += RULES.reward.birthday; extra.push('день рождения +' + RULES.reward.birthday);
     }
     settle(db, u); db.saveUser(u);
     return ok({ got: got, xp: RULES.xpReward.checkin, extra: extra, user: publicUser(db, u) });
@@ -880,7 +880,7 @@ var OnionCore = (function () {
     db.saveOrder(order);
     if (u && u.tgChat && db.userNotify) { try { db.userNotify(u, '🧾 Заказ ' + no + ' принят. Сумма к оплате: ' + toPay + ' ₽.\nМенеджер скоро свяжется с вами. Статусы заказа будут приходить сюда.'); } catch (e) { /* не критично */ } }
     var notified = false;
-    try { notified = db.notify ? !!db.notify(text) : false; } catch (e) { notified = false; }
+    try { notified = db.notify ? !!db.notify(text, { no: no, kind: order.kind }) : false; } catch (e) { notified = false; }
     return ok({ order: order, notified: notified, user: u ? publicUser(db, u) : null });
   };
 
@@ -929,6 +929,12 @@ var OnionCore = (function () {
   A.tgUnlink = function (db, p) {
     var u = sessionUser(db, p); if (!u) return err('auth');
     u.tgChat = ''; u.tgName = ''; db.saveUser(u);
+    return ok({ user: publicUser(db, u) });
+  };
+  A.tgCats = function (db, p) {
+    var u = sessionUser(db, p); if (!u) return err('auth');
+    var l = (Array.isArray(p.cats) ? p.cats : []).map(function (c) { return String(c).replace(/[^\w-]/g, '').slice(0, 24); }).filter(Boolean).slice(0, 12);
+    u.tgCats = l.join(','); db.saveUser(u);
     return ok({ user: publicUser(db, u) });
   };
   // вызывается ботом (не сайтом): текст «/start T123…» из чата → привязка к клиенту

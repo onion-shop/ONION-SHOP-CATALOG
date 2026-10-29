@@ -1784,7 +1784,9 @@
       if (u.tgOn) {
         b.innerHTML = hero('check-circle', 'Telegram подключён', (u.tgName ? esc(u.tgName) + ' · ' : '') + 'уведомления включены', 'ok') +
           '<ul class="tg-perks">' + perks.map(function (x) { return '<li><span class="ic">' + icon(x[0]) + '</span><span><b>' + x[1] + '</b><small>' + x[2] + '</small></span></li>'; }).join('') + '</ul>' +
+          '<h4 class="tg-sub">Сообщать о новинках</h4><div class="choices" id="tg-cats"></div><p class="small">Отметьте категории — бот напишет, когда в них появится новый товар.</p>' +
           '<button class="btn btn-ghost" type="button" id="tg-off">Отключить уведомления</button>';
+        drawTgCats($('#tg-cats', b));
         $('#tg-off', b).addEventListener('click', function () { API.call('tgUnlink').then(function (r) { if (r.ok) { setUser(r.user); draw(); toast('Уведомления отключены'); } }); });
       } else {
         b.innerHTML = hero('send', 'Заказы — в Telegram', 'Подключите бота ONION SHOP — и не нужно заходить на сайт, чтобы узнать, где ваш заказ.') +
@@ -1814,6 +1816,19 @@
       }
     }
     draw();
+  }
+  function drawTgCats(box) {
+    var seen = {}, cats = [];
+    PRODUCTS.forEach(function (p) { if (!seen[p.category]) { seen[p.category] = 1; cats.push([p.category, p.categoryLabel]); } });
+    var on = (acct.user.tgCats || []).slice();
+    box.innerHTML = cats.map(function (c) { return '<button class="choice" type="button" data-c="' + esc(c[0]) + '" aria-pressed="' + (on.indexOf(c[0]) >= 0) + '">' + esc(c[1]) + '</button>'; }).join('');
+    $$('[data-c]', box).forEach(function (b) {
+      b.addEventListener('click', function () {
+        var k = b.getAttribute('data-c'), i = on.indexOf(k); if (i >= 0) on.splice(i, 1); else on.push(k);
+        b.setAttribute('aria-pressed', String(on.indexOf(k) >= 0));
+        API.call('tgCats', { cats: on }).then(function (r) { if (r.ok) { acct.user = r.user; } else toast(r.error, null, 'warn'); });
+      });
+    });
   }
   var SIZE_SCALE = ['XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL', '4XL', '5XL'];
   function normSize(s) { s = String(s).trim().toUpperCase().replace(/\s/g, ''); return s === '2XL' ? 'XXL' : s === 'XXXL' ? '3XL' : s === '4XL' || s === 'XXXXL' ? '4XL' : s === 'XXS' ? 'XXS' : s; }
