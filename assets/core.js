@@ -32,18 +32,18 @@ var OnionCore = (function () {
       { key: 'info', title: 'Прочитать «Доставку и оплату»', hint: 'Раздел с условиями', reward: 1, lvl: 3 },
       { key: 'cart', title: 'Положить товар в корзину', hint: 'Любой товар', reward: 1, lvl: 4 }
     ],
-    // рулетка: веса из 200 (шанс = вес / 2 %). Приз в 65% прокрутов, «Пусто» — 35%
+    // рулетка: веса из 200 (шанс = вес / 2 %). Приз в 70% прокрутов, «Пусто» — 30%
     wheel: [
-      { id: 'none', label: 'Пусто', sub: 'в другой раз', w: 70 },
-      { id: 't50', label: '+50', sub: 'токенов', w: 48, tokens: 50 },
-      { id: 't100', label: '+100', sub: 'токенов', w: 26, tokens: 100 },
-      { id: 't200', label: '+200', sub: 'токенов', w: 10, tokens: 200 },
-      { id: 't500', label: '+500', sub: 'токенов', w: 3, tokens: 500 },
+      { id: 'none', label: 'Пусто', sub: 'в другой раз', w: 59 },
+      { id: 't50', label: '+50', sub: 'токенов', w: 51, tokens: 50 },
+      { id: 't100', label: '+100', sub: 'токенов', w: 28, tokens: 100 },
+      { id: 't200', label: '+200', sub: 'токенов', w: 11, tokens: 200 },
+      { id: 't500', label: '+500', sub: 'токенов', w: 4, tokens: 500 },
       { id: 'jackpot', label: 'Повезло!', sub: '+2000 токенов', w: 1, tokens: 2000 },
-      { id: 'xp', label: '+300', sub: 'к уровню', w: 18, xp: 300 },
-      { id: 'frame', label: 'Рамка', sub: 'для аватара', w: 10, frame: true },
-      { id: 'promo', label: '−3%', sub: 'промокод', w: 4, promo: 3 },
-      { id: 're1', label: 'Ещё раз', sub: '×1', w: 8, spins: 1 },
+      { id: 'xp', label: '+300', sub: 'к уровню', w: 19, xp: 300 },
+      { id: 'frame', label: 'Рамка', sub: 'для аватара', w: 11, frame: true },
+      { id: 'promo', label: '−3%', sub: 'промокод', w: 5, promo: 3 },
+      { id: 're1', label: 'Ещё раз', sub: '×1', w: 9, spins: 1 },
       { id: 're2', label: 'Ещё раз', sub: '×2', w: 2, spins: 2 }
     ],
     // статусы заказа (меняются в таблице, клиент видит их в «Моих заказах»)
@@ -123,6 +123,7 @@ var OnionCore = (function () {
     u.balance = Math.max(0, (u.balance || 0) + delta);
     db.log({ at: db.now(), userId: u.id, login: u.login, delta: delta, reason: reason, balance: u.balance });
   }
+  function adjustTokens(db, u, delta, reason) { touch(db, u); log(db, u, Math.round(+delta || 0), reason); return u; }
   function orderNo(db, seq) { return 'OS-' + String(msk(db.now()).getUTCFullYear()).slice(2) + '-' + pad(seq, 5); }
 
   // месяц сменился — XP обнуляется; задания — каждый день новые; бонусы уровня
@@ -618,7 +619,7 @@ var OnionCore = (function () {
 
   return {
     RULES: RULES, handle: handle, orderText: orderText, buildLines: buildLines, checkFields: checkFields,
-    offlineNo: offlineNo, levelInfo: levelInfo, levelOf: levelOf, fixIndex: fixIndex, receive: receive, touch: touch, tokensToRub: tokensToRub, settings: settings, dayKey: dayKey, monthKey: monthKey,
+    offlineNo: offlineNo, levelInfo: levelInfo, levelOf: levelOf, fixIndex: fixIndex, receive: receive, adjustTokens: adjustTokens, touch: touch, tokensToRub: tokensToRub, settings: settings, dayKey: dayKey, monthKey: monthKey,
     cleanTg: cleanTg, cleanEmail: cleanEmail, phoneKey: phoneKey, fmtPhone: fmtPhone, digits: digits, validEmail: validEmail, tasksFor: tasksFor, stagesFor: stagesFor
   };
 })();

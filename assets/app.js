@@ -138,6 +138,7 @@
   }
 
   // ------------------------------------------------------------ состояние
+  var draftReady = false;
   var cart = store.get('cart', []);
   var localOrders = store.get('orders', []);
   var favs = store.get('favs', []);
@@ -146,7 +147,7 @@
   var returnTo = null;
   var current = 'home';
 
-  function saveCart() { store.set('cart', cart); updateCounts(true); }
+  function saveCart() { store.set('cart', cart); updateCounts(true); if (draftReady) saveDraft(); }
   function lineKey(l) { return [l.id, l.size || '', l.color || '', l.photo || '', l.note || ''].join('|'); }
   function cartLines() { return cart.filter(function (l) { return BY_ID[l.id]; }); }
   function cartCount() { return cartLines().reduce(function (s, l) { return s + l.qty; }, 0); }
@@ -698,7 +699,10 @@
 
   // ------------------------------------------------------------ корзина, анкета, токены, промокод
   var form = Object.assign({ name: '', phone: '', tg: '', recv: '', recvCity: '', recvAddr: '', ship: '', city: '', preRecv: '', comment: '' }, store.get('form', {}));
-  var ack = null, tokUse = 0, cartPromo = null; // cartPromo: {code, pct, withTokens, personal}
+  var draft0 = store.get('draft', {}) || {};
+  var ack = draft0.ack === 'yes' || draft0.ack === 'no' ? draft0.ack : null, tokUse = Math.max(0, +draft0.tokUse || 0), cartPromo = draft0.promo && draft0.promo.code ? draft0.promo : null; // cartPromo: {code, pct, withTokens, personal}
+  draftReady = true;
+  function saveDraft() { store.set('draft', { ack: ack, tokUse: tokUse, promo: cartPromo }); }
   function saveForm() { store.set('form', form); }
   function optionText(l, p) {
     var o = [];
@@ -735,9 +739,9 @@
       if (!form.name) form.name = u.name; if (!form.phone) form.phone = u.phone; if (!form.tg) form.tg = u.tg;
       if (cartPromo && cartPromo.personal && !u.promos.some(function (x) { return x.code === cartPromo.code; })) cartPromo = null;
     }
-    var t = totals(lines), n = 0;
+    var t = totals(lines), n = 0; saveDraft();
     v.innerHTML =
-      '<div class="view-head"><div><span class="eyebrow">Оформление заказа</span><h1>Корзина и оформление</h1><p class="muted">' + (API.enabled ? 'Заказ с номером сам уйдёт менеджеру — копировать ничего не нужно.' : 'Заполните анкету, и мы получим заказ.') + '</p></div></div>' +
+      '<div class="view-head"><div><span class="eyebrow">Оформление заказа</span><h1>Корзина и оформление</h1><p class="muted">Черновик сохранён: можно уйти в другой раздел и вернуться к оформлению в любой момент. ' + (API.enabled ? 'Заказ с номером сам уйдёт менеджеру — копировать ничего не нужно.' : 'Заполните анкету, и мы получим заказ.') + '</p></div></div>' +
       (gone.length ? '<div class="notice notice-info" style="margin-bottom:12px">' + icon('alert') + '<div>Проданные товары убраны из корзины: ' + gone.length + '.</div></div>' : '') +
       '<form class="checkout" id="checkout" novalidate><div class="col">' +
       '<div class="card panel"><div class="panel-head"><h2><span class="n">' + (++n) + '</span>Товары · ' + t.cnt + ' шт.</h2><button class="link-btn" type="button" id="cart-clear">Очистить</button></div><div class="lines">' +
@@ -816,6 +820,7 @@
       if (range) { range.style.setProperty('--p', (tt.maxTok ? tt.tok / tt.maxTok * 100 : 0) + '%'); $('#tok-n').textContent = num(tt.tok); $('#tok-w').textContent = tokWord(tt.tok); $('#tok-rub').textContent = '−' + rub(tt.tokRub); }
       var st = $('#sum-tok'); st.hidden = !tt.tok; $('b', st).textContent = '−' + rub(tt.tokRub);
       var sp = $('#sum-promo'); sp.hidden = !tt.promoRub; $('b', sp).textContent = '−' + rub(tt.promoRub); $('#sum-promo-code').textContent = tt.promo;
+      saveDraft();
       var pay = $('#sum-pay'); pay.textContent = rub(tt.toPay); bump(pay);
     }
     if (range) {
@@ -862,7 +867,7 @@
       });
     });
     function setAck(val) {
-      ack = val;
+      ack = val; saveDraft();
       $$('[data-ack]', v).forEach(function (b) { if (b.getAttribute('data-ack') !== 'cancel') b.setAttribute('aria-pressed', String(b.getAttribute('data-ack') === ack)); });
       var box = $('#ack-box', v); box.classList.toggle('on', ack === 'yes'); box.setAttribute('aria-label', ack === 'yes' ? 'Подтверждено' : 'Не подтверждено');
       $('#ack-hint', v).hidden = ack !== 'no';
