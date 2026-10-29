@@ -74,9 +74,14 @@
     get: function (k, d) { try { var v = localStorage.getItem('onion.shop.' + k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
     set: function (k, v) { try { localStorage.setItem('onion.shop.' + k, JSON.stringify(v)); } catch (e) { /* нет хранилища */ } }
   };
+  function lvlImg(key, size, cls) { return '<img class="lvl-img' + (cls ? ' ' + cls : '') + '" src="assets/lvl/' + esc(key) + '.svg?v=2" width="' + size + '" height="' + size + '" alt="" decoding="async">'; }
+  function lvlByKey(k) { return RULES.levels.filter(function (l) { return l.key === k; })[0] || RULES.levels[0]; }
+  function pctTxt(p) { return String(p).replace('.', ','); }
+  function perkItems(list) { return list.map(function (x) { return '<li>' + icon('check') + '<span><b>' + esc(x[0]) + '</b>' + (x[1] ? '<small>' + esc(x[1]) + '</small>' : '') + '</span></li>'; }).join(''); }
+  function promoLine(p) { return (p.cat ? 'только «' + esc(p.catLabel) + '»' : esc(p.from || '')) + (p.exp ? ' · до конца месяца' : ''); }
   function ava(u, cls) {
     var f = esc((u && u.frame) || 'base');
-    return '<span class="ava f-' + f + (cls ? ' ' + cls : '') + '">' + (u && u.avatar ? '<img src="' + esc(u.avatar) + '" alt="">' : esc(initials(u && u.name))) + '</span>';
+    return '<span class="ava f-' + f + (f === 'lvl-diamond' ? ' an-' + esc((u && u.frameAnim) || 'shine') : '') + (cls ? ' ' + cls : '') + '">' + (u && u.avatar ? '<img src="' + esc(u.avatar) + '" alt="">' : esc(initials(u && u.name))) + '</span>';
   }
 
   // ------------------------------------------------------------ время (Москва)
@@ -338,7 +343,7 @@
     taskBusy[key] = true;
     API.call('task', { task: key }).then(function (r) {
       taskBusy[key] = false;
-      if (r.ok && r.got > 0) { setUser(r.user); reward('+' + r.got + ' ' + tokWord(r.got) + ' · задание «' + r.title + '»'); }
+      if (r.ok && r.got > 0) { setUser(r.user); reward('+' + r.got + ' ' + tokWord(r.got) + (r.xp ? ' и +' + r.xp + ' XP' : '') + ' · задание «' + r.title + '»'); }
     });
   }
   function doCheckin(btn) {
@@ -347,7 +352,7 @@
     API.call('checkin').then(function (r) {
       if (!r.ok) { toast(r.error, null, 'warn'); if (btn) btn.disabled = false; return; }
       setUser(r.user);
-      reward('+' + r.got + ' ' + tokWord(r.got) + ' за вход' + (r.extra.length ? ' · ' + r.extra.join(', ') : ''));
+      reward('+' + r.got + ' ' + tokWord(r.got) + (r.xp ? ' и +' + r.xp + ' XP' : '') + ' за вход' + (r.extra.length ? ' · ' + r.extra.join(', ') : ''));
       if (r.extra.length) confetti(90);
     });
   }
@@ -407,7 +412,7 @@
       '<a class="btn btn-ghost" href="' + SHOP.preorderUrl + '" target="_blank" rel="noopener">Условия и сроки' + icon('arrow-up-right') + '</a></div>';
   }
   function stepsBlock() {
-    var st = [['Выберите вещь', 'В наличии — отправим сразу. Предзаказ — выкупим в Китае под вас.'], ['Размер и цвет', 'Фото варианта подберётся по цвету само, можно отметить другое.'],
+    var st = [['Выберите вещь', 'В наличии — отправим сразу. Предзаказ — выкупим в Китае под вас.'], ['Размер и цвет', 'Выберите размер и цвет в карточке товара. Пожелания можно написать в комментарии.'],
       ['Токены и промокод', API.enabled ? 'Спишите до 15% суммы токенами и введите промокод.' : 'Укажите контакты и способ получения.'],
       ['Номер заказа', 'Заказ сам уходит менеджеру. Статус видно в «Моих заказах».']];
     return '<div class="steps">' + st.map(function (s, i) { return '<div class="step"><span class="n">' + (i + 1) + '</span><h3>' + s[0] + '</h3><p>' + s[1] + '</p></div>'; }).join('') + '</div>';
@@ -417,8 +422,8 @@
     var u = acct.user;
     if (!u) return '<div class="strip" id="tok-strip"><span class="ic">' + tk() + '</span><div><h3>Токены ONION SHOP</h3><p class="small">+' + RULES.reward.register + ' за регистрацию, задания каждый день, рулетка и бонус за друга. До 15% заказа можно оплатить токенами.</p></div><div class="acts"><a class="btn btn-sm" href="#account">' + icon('gift') + 'Забрать ' + RULES.reward.register + '</a></div></div>';
     var L = u.level, p = L.next ? Math.min(100, Math.round((u.xp - L.min) / (L.next.min - L.min) * 100)) : 100;
-    return '<div class="strip" id="tok-strip"><span class="ic">' + tk() + '</span><div><h3>' + num(u.balance) + ' ' + tokWord(u.balance) + ' · уровень «' + esc(L.name) + '»</h3>' +
-      '<div class="bar"><i data-w="' + p + '%"></i></div><p class="small" style="margin-top:6px">' + (L.next ? 'Ещё ' + rub(L.next.left) + ' покупок до «' + esc(L.next.name) + '»' : (L.fixed ? 'Уровень закреплён менеджером' : 'Максимальный уровень месяца')) + '</p></div>' +
+    return '<div class="strip" id="tok-strip"><span class="ic">' + lvlImg(L.key, 44) + '</span><div><h3>' + num(u.balance) + ' ' + tokWord(u.balance) + ' · ' + esc(L.name) + ' · ' + num(u.xp) + ' XP</h3>' +
+      '<div class="bar"><i data-w="' + p + '%"></i></div><p class="small" style="margin-top:6px">' + (L.next ? 'Ещё ' + num(L.next.left) + ' XP до «' + esc(L.next.name) + '»' : (L.fixed ? 'Уровень закреплён менеджером' : 'Максимальный уровень месяца')) + '</p></div>' +
       '<div class="acts"><a class="btn btn-sm" href="#roulette">' + icon('sparkles') + 'Рулетка</a><a class="btn btn-ghost btn-sm" href="#account">Кабинет</a></div></div>';
   }
   function growBars(root) { requestAnimationFrame(function () { $$('[data-w]', root).forEach(function (b) { b.style.width = b.getAttribute('data-w'); }); }); }
@@ -576,7 +581,7 @@
       '<nav class="crumbs" aria-label="Навигация"><a href="#catalog">Каталог</a>' + icon('chevron-right') + '<a href="#' + (p.status === 'preorder' ? 'preorder' : 'stock') + '">' + (p.status === 'preorder' ? 'Предзаказ' : 'В наличии') + '</a>' + icon('chevron-right') + '<span>' + esc(p.categoryLabel) + '</span></nav>' +
       '<div class="product">' +
       '<div class="gallery"><div class="stage"><div class="slides" id="slides" tabindex="0" aria-label="Фотографии товара. Нажмите, чтобы увеличить">' +
-      p.photos.map(function (ph, i) { return '<figure data-i="' + i + '"><img src="' + full(ph.id) + '" alt="' + esc(p.title) + ', фото ' + (i + 1) + '" ' + (i ? 'loading="lazy" ' : '') + 'decoding="async" width="' + ph.w + '" height="' + ph.ht + '"></figure>'; }).join('') + '</div>' +
+      p.photos.map(function (ph, i) { return '<figure data-i="' + i + '" style="--bg:url(\'' + thumb(ph.id) + '\')"><img src="' + full(ph.id) + '" alt="' + esc(p.title) + ', фото ' + (i + 1) + '" ' + (i ? 'loading="lazy" ' : '') + 'decoding="async" width="' + ph.w + '" height="' + ph.ht + '"></figure>'; }).join('') + '</div>' +
       (many ? '<button class="nav-b prev" type="button" aria-label="Предыдущее фото">' + icon('chevron-right') + '</button><button class="nav-b next" type="button" aria-label="Следующее фото">' + icon('chevron-right') + '</button><span class="gal-count" id="gal-count">1 / ' + p.photos.length + '</span>' : '') +
       '<button class="zoom" type="button" id="zoom-btn" aria-label="Увеличить фото">' + icon('expand') + '</button></div>' +
       (many ? '<div class="thumbs" id="thumbs">' + p.photos.map(function (ph, i) { return '<button type="button" data-i="' + i + '" aria-label="Фото ' + (i + 1) + '"' + (i === 0 ? ' aria-current="true"' : '') + '><img src="' + thumb(ph.id) + '" alt="" loading="lazy"></button>'; }).join('') + '</div>' : '') + '</div>' +
@@ -702,7 +707,8 @@
   var draft0 = store.get('draft', {}) || {};
   var ack = draft0.ack === 'yes' || draft0.ack === 'no' ? draft0.ack : null, tokUse = Math.max(0, +draft0.tokUse || 0), cartPromo = draft0.promo && draft0.promo.code ? draft0.promo : null; // cartPromo: {code, pct, withTokens, personal}
   draftReady = true;
-  function saveDraft() { store.set('draft', { ack: ack, tokUse: tokUse, promo: cartPromo }); }
+  var usePack = draft0.usePack !== false;
+  function saveDraft() { store.set('draft', { ack: ack, tokUse: tokUse, promo: cartPromo, usePack: usePack }); }
   function saveForm() { store.set('form', form); }
   function optionText(l, p) {
     var o = [];
@@ -719,7 +725,10 @@
     t.maxTok = u && !noTok ? Math.min(u.balance, Math.floor(t.total * RULES.maxShare / RULES.tokenRub)) : 0;
     t.tok = Math.max(0, Math.min(tokUse, t.maxTok));
     t.tokRub = CORE.tokensToRub(t.tok);
-    t.promo = cartPromo ? cartPromo.code : ''; t.promoRub = cartPromo ? Math.round(t.total * cartPromo.pct / 100) : 0;
+    var pbase = t.total;
+    if (cartPromo && cartPromo.cat) { var pc = (RULES.promoCats || []).filter(function (c) { return c.key === cartPromo.cat; })[0]; pbase = 0; lines.forEach(function (l) { var p = BY_ID[l.id]; if (pc && pc.cats.indexOf(p.category) >= 0) pbase += p.price * l.qty; }); }
+    t.promo = cartPromo ? cartPromo.code : ''; t.promoRub = cartPromo ? Math.round(pbase * cartPromo.pct / 100) : 0; t.promoNoBase = !!(cartPromo && cartPromo.cat && !pbase);
+    t.pack = u && u.pack && u.pack.available ? u.pack : null; t.packOk = !!(t.pack && (t.pack.kind === 'free' || t.pre));
     t.toPay = Math.max(0, t.total - t.tokRub - t.promoRub);
     return t;
   }
@@ -737,7 +746,7 @@
     var u = acct.user;
     if (u) {
       if (!form.name) form.name = u.name; if (!form.phone) form.phone = u.phone; if (!form.tg) form.tg = u.tg;
-      if (cartPromo && cartPromo.personal && !u.promos.some(function (x) { return x.code === cartPromo.code; })) cartPromo = null;
+      if (cartPromo && cartPromo.personal) { var cp = u.promos.filter(function (x) { return x.code === cartPromo.code; })[0]; if (!cp) cartPromo = null; else { cartPromo.pct = cp.pct; cartPromo.cat = cp.cat || ''; cartPromo.catLabel = cp.catLabel || ''; } }
     }
     var t = totals(lines), n = 0; saveDraft();
     v.innerHTML =
@@ -759,9 +768,11 @@
             '<label class="sr" for="tok-range">Сколько токенов списать</label><input class="range" id="tok-range" type="range" min="0" max="' + t.maxTok + '" step="1" value="' + t.tok + '">' +
             '<div class="tokrow"><span class="small">До 15% заказа · максимум ' + num(t.maxTok) + ' = ' + rub(CORE.tokensToRub(t.maxTok)) + '</span><span class="tokq"><button type="button" data-tq="0">0</button><button type="button" data-tq="1">Максимум</button></span></div></div>'
             : '<p class="small">' + (cartPromo && cartPromo.withTokens === false ? 'Промокод ' + esc(cartPromo.code) + ' нельзя совмещать с токенами.' : 'Пока нечего списывать. Отмечайтесь каждый день и выполняйте задания — токены пригодятся в следующем заказе.') + '</p>') +
-          (u.promos.length ? '<div class="promos">' + u.promos.map(function (pr) { return '<button type="button" class="ticket" data-promo="' + esc(pr.code) + '" data-pct="' + pr.pct + '" aria-pressed="' + (!!cartPromo && cartPromo.code === pr.code) + '"><code>' + esc(pr.code) + '</code><span class="pct">−' + pr.pct + '%</span></button>'; }).join('') + '</div>' : '')
+          (u.promos.length ? '<div class="promos">' + u.promos.map(function (pr) { return '<button type="button" class="ticket" data-promo="' + esc(pr.code) + '" aria-pressed="' + (!!cartPromo && cartPromo.code === pr.code) + '"><code>' + esc(pr.code) + '</code><span class="pct">−' + pctTxt(pr.pct) + '%</span>' + (pr.cat ? '<span class="small">на «' + esc(pr.catLabel) + '»</span>' : '') + '</button>'; }).join('') + '</div>' : '')
           : '<div class="guest-box">' + tk('lg') + '<div><b>Войдите — и спишем до 15% суммы токенами</b><p class="small">За регистрацию — ' + RULES.reward.register + ' токенов. Корзина сохранится.</p></div></div><div class="acts"><button class="btn btn-sm btn-ghost" type="button" id="go-auth">' + icon('user') + 'Войти или создать аккаунт</button></div>') +
-        '<div class="f"><label for="promo-in">Промокод</label><div class="promo-row"><input class="input" id="promo-in" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Например, HALLOWEEN" value="' + esc(cartPromo && !cartPromo.personal ? cartPromo.code : '') + '"><button class="btn btn-dark" type="button" id="promo-btn">' + (cartPromo && !cartPromo.personal ? 'Убрать' : 'Применить') + '</button></div><div id="promo-msg">' + (cartPromo ? '<span class="promo-ok">' + icon('check-circle') + 'Промокод ' + esc(cartPromo.code) + ': −' + cartPromo.pct + '%</span>' : '') + '</div></div>' +
+        '<div class="f"><label for="promo-in">Промокод</label><div class="promo-row"><input class="input" id="promo-in" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Например, HALLOWEEN" value="' + esc(cartPromo && !cartPromo.personal ? cartPromo.code : '') + '"><button class="btn btn-dark" type="button" id="promo-btn">' + (cartPromo && !cartPromo.personal ? 'Убрать' : 'Применить') + '</button></div><div id="promo-msg">' + (cartPromo ? (t.promoNoBase ? '<span class="promo-bad">Промокод ' + esc(cartPromo.code) + ' действует только на «' + esc(cartPromo.catLabel) + '» — таких товаров в корзине нет</span>' : '<span class="promo-ok">' + icon('check-circle') + 'Промокод ' + esc(cartPromo.code) + ': −' + pctTxt(cartPromo.pct) + '%' + (cartPromo.cat ? ' на «' + esc(cartPromo.catLabel) + '»' : '') + '</span>') : '') + '</div></div>' +
+        (t.pack ? (t.packOk ? '<label class="pack-row"><input type="checkbox" id="use-pack"' + (usePack ? ' checked' : '') + '><span class="cbx">' + icon('check') + '</span><span><b>' + esc(t.pack.label) + ' — применить к этому заказу</b><small>' + esc(t.pack.note) + '. Менеджер учтёт при расчёте упаковки.</small></span></label>'
+          : '<p class="small pack-note">' + icon('info') + esc(t.pack.label) + ' (привилегия ' + esc(t.pack.level) + ') действует только для заказа с предзаказом из Китая.</p>') : '') +
         '</div>' : '') +
 
       '<div class="card panel"><div class="panel-head"><h2><span class="n">' + (++n) + '</span>Контакты</h2>' + (u ? '<span class="small">из профиля</span>' : '') + '</div><div class="fgrid">' +
@@ -830,8 +841,8 @@
     }
     $$('[data-promo]', v).forEach(function (b) {
       b.addEventListener('click', function () {
-        var c = b.getAttribute('data-promo');
-        cartPromo = cartPromo && cartPromo.code === c ? null : { code: c, pct: +b.getAttribute('data-pct'), withTokens: true, personal: true };
+        var c = b.getAttribute('data-promo'), pr = u.promos.filter(function (x) { return x.code === c; })[0];
+        cartPromo = cartPromo && cartPromo.code === c ? null : { code: c, pct: pr.pct, withTokens: true, personal: true, cat: pr.cat || '', catLabel: pr.catLabel || '' };
         renderCart();
       });
     });
@@ -847,14 +858,15 @@
         API.call('checkPromo', { promo: code, phone: form.phone, useTokens: totals(lines).tok }).then(function (r) {
           busy(pbtn, false);
           if (!r.ok) { msg.innerHTML = '<span class="promo-bad">' + esc(r.error) + '</span>'; return; }
-          cartPromo = { code: r.promo.code, pct: r.promo.pct, withTokens: r.promo.withTokens !== false, personal: !!r.promo.personal };
+          cartPromo = { code: r.promo.code, pct: r.promo.pct, withTokens: r.promo.withTokens !== false, personal: !!r.promo.personal, cat: r.promo.cat || '', catLabel: r.promo.catLabel || '' };
           if (!cartPromo.withTokens) tokUse = 0;
           renderCart();
-          toast('Промокод ' + cartPromo.code + ' применён: −' + cartPromo.pct + '%');
+          toast('Промокод ' + cartPromo.code + ' применён: −' + pctTxt(cartPromo.pct) + '%' + (cartPromo.cat ? ' на «' + cartPromo.catLabel + '»' : ''));
         });
       });
     }
 
+    var up = $('#use-pack', v); if (up) up.addEventListener('change', function () { usePack = up.checked; saveDraft(); });
     // анкета
     function bind(id, key) { var el = $('#' + id, v); if (!el) return; el.addEventListener('input', function () { form[key] = el.value; saveForm(); clearF(key); }); }
     bind('f-name', 'name'); bind('f-phone', 'phone'); bind('f-tg', 'tg'); bind('f-recv-city', 'recvCity'); bind('f-recv-addr', 'recvAddr'); bind('f-city', 'city'); bind('f-comment', 'comment');
@@ -935,7 +947,7 @@
       if (order.status && !order.stages) { order.stages = CORE.stagesFor(order.kind); order.active = true; }
       localOrders = [order].concat(localOrders.filter(function (o) { return o.no !== order.no; })).slice(0, 50);
       store.set('orders', localOrders);
-      cart = []; ack = null; tokUse = 0; cartPromo = null; saveCart();
+      cart = []; ack = null; tokUse = 0; cartPromo = null; usePack = true; saveCart();
       form.comment = ''; saveForm();
       renderCart();
       showReceipt(order, { fresh: true });
@@ -943,7 +955,7 @@
     };
     if (!API.enabled) { finish(offlineOrder(lines, tt), { offline: true }); return; }
     busy(btn, true, 'Отправляем…');
-    API.call('order', { items: itemsPayload(lines), form: Object.assign({}, form, { ack: ack === 'yes' }), useTokens: tt.tok, promo: tt.promo }).then(function (r) {
+    API.call('order', { items: itemsPayload(lines), form: Object.assign({}, form, { ack: ack === 'yes' }), useTokens: tt.tok, promo: tt.promo, usePack: usePack }).then(function (r) {
       if (r.ok) { if (r.user) setUser(r.user); finish(r.order, {}); return; }
       busy(btn, false);
       if (r.network) { confirmBox({ title: 'Сервер не отвечает', text: 'Проверьте интернет и нажмите «Оформить» ещё раз. Корзина сохранена. Если не получается — напишите менеджеру.', actions: [{ label: 'Хорошо', cls: 'btn' }, { label: 'Написать менеджеру', cls: 'btn-ghost', run: function () { window.open(SHOP.managerUrl, '_blank', 'noopener'); } }] }); return; }
@@ -1063,7 +1075,8 @@
     return '<div class="auth-side"><h2>Что даёт аккаунт</h2><ul>' +
       '<li>' + tk('lg') + '<span><b>+' + R.register + ' токенов</b> сразу за регистрацию</span></li>' +
       '<li>' + tk('lg') + '<span>Токенами можно оплатить <b>до 15%</b> заказа · 1 токен = 0,4 ₽</span></li>' +
-      '<li>' + tk('lg') + '<span><b>Задания дня</b> по 1 токену и +' + R.streak7 + ' за 7 дней подряд</span></li>' +
+      '<li>' + tk('lg') + '<span><b>Задания дня</b> по 1 токену и до ' + RULES.levels[4].streak + ' за 7 дней подряд</span></li>' +
+      '<li>' + tk('lg') + '<span><b>Программа лояльности</b>: Бронза → Серебро → Золото → Платина → Алмаз</span></li>' +
       '<li>' + tk('lg') + '<span><b>Рулетка</b>: токены, промокоды, рамки для аватара</span></li>' +
       '<li>' + tk('lg') + '<span><b>Статусы заказов</b> — от выкупа в Китае до получения</span></li>' +
       '<li>' + tk('lg') + '<span><b>+' + R.referrer + ' токенов</b> за друга по вашей ссылке</span></li>' +
@@ -1226,9 +1239,36 @@
     $('#m-save', md).addEventListener('click', function () { var val = $('#m-bday', md).value; if (!val) { toast('Выберите дату', null, 'warn'); return; } API.call('profile', { birthday: val.slice(5) }).then(function (r) { if (r.ok) { closeModal(); setUser(r.user); toast('Дата сохранена'); } else toast(r.error, null, 'warn'); }); });
   }
   function framesModal() {
-    var u = acct.user;
-    var md = openModal(modalHead('Рамка аватара') + '<p class="muted">Новые рамки выпадают в рулетке.</p><div class="frames">' + RULES.frames.map(function (f) { var own = u.frames.indexOf(f.id) >= 0; return '<button type="button" data-frame="' + f.id + '" aria-pressed="' + (u.frame === f.id) + '"' + (own ? '' : ' disabled title="Выпадает в рулетке"') + '>' + ava({ name: u.name, avatar: u.avatar, frame: f.id }) + esc(f.name) + (own ? '' : ' ' + icon('lock')) + '</button>'; }).join('') + '</div>', { cls: 'sm' });
+    var u = acct.user, li = u.level.index;
+    function lockText(f) {
+      if (f.src === 'level') return 'Уровень «' + RULES.levels[f.lvl].name + '» и выше';
+      if (f.rare) return 'Только в рулетке';
+      return 'В рулетке или на «Алмазе»';
+    }
+    var anims = RULES.frameAnims || [];
+    var md = openModal(modalHead('Рамка аватара') + '<p class="muted">Рамки выпадают в рулетке, а «Серебро», «Золото» и «Алмаз» даёт уровень — пока он у вас есть.</p><div class="frames">' + RULES.frames.map(function (f) {
+      var own = u.frames.indexOf(f.id) >= 0;
+      return '<button type="button" data-frame="' + f.id + '" aria-pressed="' + (u.frame === f.id) + '"' + (own ? '' : ' disabled') + '>' + ava({ name: u.name, avatar: u.avatar, frame: f.id, frameAnim: u.frameAnim }) + '<span>' + esc(f.name) + (own ? '' : ' ' + icon('lock')) + '</span>' + (own ? '' : '<small>' + esc(lockText(f)) + '</small>') + '</button>';
+    }).join('') + '</div>' +
+      (li >= 4 ? '<div class="f" style="margin-top:14px"><span class="lbl">Анимация рамки «Алмаз»</span><div class="choices" id="anims">' + anims.map(function (a) { return '<button class="choice" type="button" data-anim="' + a[0] + '" aria-pressed="' + ((u.frameAnim || 'shine') === a[0]) + '">' + esc(a[1]) + '</button>'; }).join('') + '</div></div>'
+        : '<p class="small" style="margin-top:12px">На уровне «Алмаз» у рамки можно выбрать анимацию.</p>'), { cls: 'sm' });
     $$('[data-frame]', md).forEach(function (b) { b.addEventListener('click', function () { API.call('profile', { frame: b.getAttribute('data-frame') }).then(function (r) { if (r.ok) { closeModal(); setUser(r.user); toast('Рамка надета'); } else toast(r.error, null, 'warn'); }); }); });
+    $$('[data-anim]', md).forEach(function (b) { b.addEventListener('click', function () { API.call('profile', { frameAnim: b.getAttribute('data-anim'), frame: 'lvl-diamond' }).then(function (r) { if (r.ok) { closeModal(); setUser(r.user); toast('Анимация выбрана'); } else toast(r.error, null, 'warn'); }); }); });
+  }
+  // все уровни программы лояльности
+  function levelsModal() {
+    var u = acct.user, cur = u ? u.level.index : -1;
+    openModal(modalHead('Программа лояльности') +
+      '<p class="muted">Уровень растёт от XP — опыта за месяц. 1-го числа XP обнуляется, и уровень начинается заново с Бронзы.</p>' +
+      '<div class="xp-how"><b>Как получить XP</b><ul>' +
+      '<li>' + icon('bag') + '<span>Полученный заказ — <b>1 XP за каждые 10&nbsp;₽</b>. Засчитывается, когда у заказа статус «Получен»</span></li>' +
+      '<li>' + icon('gift') + '<span>Ежедневный вход — <b>+' + RULES.xpReward.checkin + ' XP</b></span></li>' +
+      '<li>' + icon('check') + '<span>Каждое задание дня — <b>+' + RULES.xpReward.task + ' XP</b></span></li>' +
+      '<li>' + icon('sparkles') + '<span>Рулетка — приз <b>+50 XP</b></span></li></ul></div>' +
+      '<div class="lvl-list">' + RULES.levels.map(function (l, i) {
+        return '<section class="lvl-card lv-' + l.key + (i === cur ? ' cur' : '') + '"><header>' + lvlImg(l.key, 56) + '<div><h3>' + esc(l.name) + (i === cur ? ' <span class="chip">ваш уровень</span>' : '') + '</h3><span class="small">' + (l.min ? 'от ' + num(l.min) + ' XP за месяц' : 'сразу после регистрации') + '</span></div></header>' +
+          '<ul class="perks">' + perkItems(l.perks) + '</ul></section>';
+      }).join('') + '</div>');
   }
   function deleteModal() {
     var u = acct.user;
@@ -1255,7 +1295,7 @@
       return '<div class="task' + (done ? ' done' : '') + '"><span class="ck">' + icon('check') + '</span><span><b>' + esc(t.title) + '</b><small>' + (done ? 'Выполнено сегодня' : esc(t.hint)) + '</small></span><span class="rw">+' + t.reward + tk() + '</span></div>';
     }).join('');
     var inWeek = u.streak ? ((u.streak - 1) % 7) + 1 : 0, streakDays = [];
-    for (var i = 1; i <= 7; i++) streakDays.push('<span class="' + (i <= inWeek ? 'on' : '') + (i === 7 ? ' gift' : '') + '" style="animation-delay:' + i * 50 + 'ms">' + (i === 7 ? '+' + R.streak7 : i) + '</span>');
+    for (var i = 1; i <= 7; i++) streakDays.push('<span class="' + (i <= inWeek ? 'on' : '') + (i === 7 ? ' gift' : '') + '" style="animation-delay:' + i * 50 + 'ms">' + (i === 7 ? '+' + L.streak : i) + '</span>');
     var refLink = location.href.split('#')[0].split('?')[0] + '#ref=' + u.refCode;
     var since = typeof u.createdAt === 'number' ? fmtAt(u.createdAt).split(',')[0] : String(u.createdAt || '').split(' ')[0];
     var active = u.orders.filter(function (o) { return o.active; });
@@ -1264,28 +1304,29 @@
       (u.email ? '' : '<div class="notice notice-warn" style="margin-bottom:12px">' + icon('mail') + '<div><b>Добавьте почту.</b> Без неё не получится восстановить пароль. <button class="link-btn" type="button" id="add-email">Добавить</button></div></div>') +
       '<div class="dash">' +
       '<div class="profile c12"><div class="who"><div class="ava-wrap">' + ava(u, 'lg') + '<button class="ava-cam" type="button" id="ava-cam" aria-label="Изменить фото профиля">' + icon('camera') + '</button></div>' +
-      '<div style="min-width:0"><span class="lvl-pill">' + icon('crown') + esc(L.name) + '</span><h1 style="margin-top:8px">' + esc(u.name) + '</h1>' +
+      '<div style="min-width:0"><span class="lvl-pill">' + lvlImg(L.key, 22) + esc(L.name) + '</span><h1 style="margin-top:8px">' + esc(u.name) + '</h1>' +
       '<div class="meta"><span>@' + esc(u.login) + '</span>' + (u.email ? '<span>' + esc(u.email) + '</span>' : '') + '<button class="idb" type="button" data-copy="' + esc(u.code) + '">ID ' + esc(u.code) + icon('copy') + '</button><span>с нами с ' + esc(since) + '</span></div></div></div>' +
       '<div class="ptiles"><div class="ptile"><small>Токены</small><b>' + tk() + num(u.balance) + '</b></div><div class="ptile"><small>Это скидка до</small><b>' + rub(u.balanceRub) + '</b></div><div class="ptile"><small>Серия входов</small><b>' + u.streak + ' ' + plural(u.streak, 'день', 'дня', 'дней') + '</b></div><div class="ptile"><small>Активные заказы</small><b>' + active.length + '</b></div></div>' +
-      '<div class="acts"><a class="btn btn-light" href="#roulette">' + icon('sparkles') + 'Рулетка' + (u.freeSpins ? ' · ' + u.freeSpins + ' бесплатн.' : '') + '</a><a class="btn btn-glass" href="#cart">' + icon('bag') + 'Потратить токены</a></div></div>' +
+      '<div class="acts"><a class="btn btn-light" href="#roulette">' + icon('sparkles') + 'Рулетка' + (u.freeSpins ? ' · ' + u.freeSpins + ' ' + plural(u.freeSpins, 'бесплатный', 'бесплатных', 'бесплатных') : '') + '</a><a class="btn btn-glass" href="#cart">' + icon('bag') + 'Потратить токены</a></div></div>' +
 
-      '<div class="card tile c6"><div class="tile-h"><h3>Уровень месяца</h3><span class="side">' + (L.next ? rub(u.xp) + ' из ' + rub(L.next.min) : L.fixed ? 'закреплён' : 'максимум') + '</span></div>' +
-      '<div class="bar"><i data-w="' + pctL + '%"></i></div>' +
-      '<div class="lvl-steps">' + RULES.levels.map(function (l, j) { return '<span class="' + (j <= L.index ? 'on' : '') + (j === L.index ? ' cur' : '') + '"><i></i>' + esc(l.name.split(' ')[0]) + '</span>'; }).join('') + '</div>' +
-      '<p class="info-line">' + (L.next ? 'Ещё ' + rub(L.next.left) + ' покупок до «' + esc(L.next.name) + '»: ' + esc(RULES.levels[L.index + 1].perks.join(', ').toLowerCase()) + '.' : (L.fixed ? 'Уровень закреплён менеджером.' : 'Максимальный уровень этого месяца.')) + ' В уровень идут полученные заказы, он обнуляется 1-го числа.</p>' +
-      '<ul class="perks">' + L.perks.map(function (p) { return '<li>' + icon('check') + esc(p) + '</li>'; }).join('') + '</ul></div>' +
+      '<div class="card tile c6 loyal lv-' + L.key + '"><div class="tile-h"><h3>Программа лояльности</h3><button class="link-btn" type="button" id="all-levels">Все уровни</button></div>' +
+      '<div class="loyal-top">' + lvlImg(L.key, 72) + '<div><span class="small">Ваш уровень' + (L.fixed ? ' · закреплён менеджером' : '') + '</span><b class="loyal-name">' + esc(L.name) + '</b><span class="xp-num">' + num(u.xp) + ' XP <span class="small">за месяц</span></span></div></div>' +
+      (L.next ? '<div class="xp-bar"><div class="bar"><i data-w="' + pctL + '%"></i></div><div class="xp-meta"><span>' + num(u.xp) + ' / ' + num(L.next.min) + ' XP</span><span>до ' + lvlImg(L.next.key, 18) + '«' + esc(L.next.name) + '» ещё <b>' + num(L.next.left) + ' XP</b></span></div></div>' : '') +
+      '<div class="lvl-steps">' + RULES.levels.map(function (l, j) { return '<span class="' + (j <= L.index ? 'on' : '') + (j === L.index ? ' cur' : '') + '">' + lvlImg(l.key, 30) + esc(l.name) + '</span>'; }).join('') + '</div>' +
+      '<p class="info-line">' + (L.next ? 'XP дают полученные заказы, ежедневный вход, задания и рулетка. ' : L.fixed ? '' : 'Максимальный уровень! ') + '1-го числа XP обнуляется и уровень начинается заново.</p>' +
+      '<h4 class="perks-h">Ваши привилегии</h4><ul class="perks">' + perkItems(lvlByKey(L.key).perks) + '</ul></div>' +
 
       '<div class="card tile c6"><div class="tile-h"><h3>Задания дня</h3><span class="side">' + doneN + ' из ' + mine.length + '</span></div>' +
       '<div class="streak">' + streakDays.join('') + '</div>' +
-      (u.checkedToday ? '<p class="small">Сегодня отмечено. 7 дней подряд — +' + R.streak7 + ' токенов.</p>' : '<button class="btn btn-sm" type="button" id="checkin-btn">' + icon('gift') + 'Отметиться · +' + R.checkin + '</button>') +
-      '<div class="tasks">' + tasks + '</div><p class="small">Задания обновляются в 00:00 по Москве. Каждый уровень открывает ещё одно.</p></div>' +
+      (u.checkedToday ? '<p class="small">Сегодня отмечено. 7 дней подряд — +' + L.streak + ' токенов (уровень «' + esc(L.name) + '»).</p>' : '<button class="btn btn-sm" type="button" id="checkin-btn">' + icon('gift') + 'Отметиться · +' + R.checkin + ' и +' + RULES.xpReward.checkin + ' XP</button>') +
+      '<div class="tasks">' + tasks + '</div><p class="small">Задание: +1 токен и +' + RULES.xpReward.task + ' XP. Обновляются в 00:00 по Москве. На Серебре 5 заданий, с Золота — 6.</p></div>' +
 
       '<div class="card tile c6"><div class="tile-h"><h3>Пригласить друга</h3><span class="side">' + u.refCount + ' ' + plural(u.refCount, 'друг', 'друга', 'друзей') + '</span></div>' +
       '<p class="small">Друг получит +' + R.refFriend + ' токенов при регистрации по ссылке, вы — +' + R.referrer + ' после его первого заказа от ' + rub(RULES.refMinOrder) + '.</p>' +
       '<div class="ref-row"><span class="lnk">' + esc(refLink.replace(/^https?:\/\//, '')) + '</span><button class="icon-btn" type="button" data-copy="' + esc(refLink) + '" aria-label="Скопировать ссылку">' + icon('copy') + '</button><button class="icon-btn acc" type="button" id="ref-share" aria-label="Поделиться">' + icon('share') + '</button></div>' +
       '<p class="small">Ваш код: <b>' + esc(u.refCode) + '</b></p></div>' +
 
-      '<div class="card tile c6"><div class="tile-h"><h3>Промокоды</h3></div>' + (u.promos.length ? '<div class="promos">' + u.promos.map(function (p) { return '<span class="ticket"><code>' + esc(p.code) + '</code><span class="pct">−' + p.pct + '%</span><span class="small">' + esc(p.from) + '</span></span>'; }).join('') + '</div><p class="small">Выберите промокод в корзине. Каждый — на один заказ.</p>' : '<p class="small">Личные промокоды выпадают в рулетке, а на уровне «Икона стиля» — по 3 каждый месяц. Промокоды магазина вводятся в корзине.</p>') + '</div>' +
+      '<div class="card tile c6"><div class="tile-h"><h3>Промокоды</h3></div>' + (u.promos.length ? '<div class="promos">' + u.promos.map(function (p) { return '<span class="ticket"><code>' + esc(p.code) + '</code><span class="pct">−' + pctTxt(p.pct) + '%</span><span class="small">' + promoLine(p) + '</span></span>'; }).join('') + '</div><p class="small">Выберите промокод в корзине. Каждый — на один заказ.</p>' : '<p class="small">Личные промокоды выпадают в рулетке. С уровня «Золото» — промокод −1,5% каждый месяц, на «Алмазе» — ещё 3 по −2,5%. Промокоды магазина вводятся в корзине.</p>') + '</div>' +
 
       '<div class="card tile c12"><div class="tile-h"><h3>Мои заказы</h3><a class="link-btn" href="#orders">Все заказы</a></div>' +
       (u.orders.length ? '<div class="orders">' + u.orders.slice(0, 3).map(orderCard).join('') + '</div>' : '<p class="small">Здесь появятся заказы с номерами и статусами. <a href="#catalog">Перейти в каталог</a></p>') + '</div>' +
@@ -1303,7 +1344,7 @@
     growBars(v);
     var on = function (id, fn) { var el = $('#' + id, v); if (el) el.addEventListener('click', fn); };
     on('ava-cam', pickAvatar); on('add-email', emailModal); on('r-prof', profileModal); on('r-email', emailModal); on('r-pass', passModal);
-    on('r-bday', bdayModal); on('r-frame', framesModal); on('r-del', deleteModal);
+    on('r-bday', bdayModal); on('r-frame', framesModal); on('r-del', deleteModal); on('all-levels', levelsModal);
     on('r-noava', function () { API.call('profile', { avatar: '' }).then(function (r) { if (r.ok) { setUser(r.user); toast('Фото убрано'); } }); });
     on('r-logout', function () { API.call('logout'); API.setSession(''); setUser(null); toast('Вы вышли из аккаунта'); });
     on('checkin-btn', function () { doCheckin($('#checkin-btn', v)); });
@@ -1317,29 +1358,30 @@
 
   // ------------------------------------------------------------ рулетка
   var spinning = false, spinHistory = [];
-  var SHORT = { none: 'Пусто', t50: '+50', t100: '+100', t200: '+200', t500: '+500', jackpot: '+2000', xp: '+300 XP', frame: 'Рамка', promo: '−3%', re1: '+1 прокрут', re2: '+2 прокрута' };
+  var SHORT = { none: 'Пусто', t50: '+50', t100: '+100', t200: '+200', t500: '+500', jackpot: '+2000', xp: '+50 XP', frame: 'Рамка', promo: '−3%', re1: '+1 прокрут', re2: '+2 прокрута' };
   function tileHtml(w) { return '<div class="reel-tile r-' + w.id + '">' + pz(w.id) + '<b>' + esc(SHORT[w.id] || w.label) + '</b></div>'; }
   function randomTile() { var W = RULES.wheel, tot = 0, r; W.forEach(function (w) { tot += Math.sqrt(w.w); }); r = Math.random() * tot; for (var i = 0; i < W.length; i++) { r -= Math.sqrt(W[i].w); if (r <= 0) return W[i]; } return W[0]; }
   function updateRoulBalance() {
     var u = acct.user, b = $('#roul-bal'); if (!b || !u) return;
     b.innerHTML = tk('lg') + '<span>' + num(u.balance) + '</span>';
-    var fb = $('#spin-free'); if (fb) { fb.hidden = !u.freeSpins; fb.innerHTML = icon('gift') + 'Бесплатно · ' + u.freeSpins; }
+    var fb = $('#spin-free'); if (fb) { fb.hidden = !u.freeSpins; fb.innerHTML = icon('gift') + 'Крутить бесплатно · ' + u.freeSpins; }
     var pbtn = $('#spin-paid'); if (pbtn) pbtn.disabled = spinning || u.balance < RULES.spinCost;
   }
   function renderRoulette() {
     var v = $('#v-roulette');
     if (!API.enabled) { v.innerHTML = '<div class="empty"><span class="ico">' + icon('gift') + '</span><h3>Рулетка скоро появится</h3><a class="btn" href="#catalog">В каталог</a></div>'; return; }
     var u = acct.user, tiles = []; for (var i = 0; i < 14; i++) tiles.push(randomTile());
-    var win = RULES.wheel.filter(function (w) { return w.id !== 'none'; }).reduce(function (a, w) { return a + w.w; }, 0);
+    var WW = u && u.wheel && u.wheel.length === RULES.wheel.length ? u.wheel : RULES.wheel.map(function (w) { return w.w; });
+    var win = WHEEL_SUM - WW[0], boosted = WW[0] < RULES.wheel[0].w;
     v.innerHTML = '<div class="roul"><div class="pad roul-head"><div><span class="eyebrow" style="color:#8fe6f5">Рулетка ONION SHOP</span><h1>Крутите ленту — забирайте призы</h1></div>' +
       (u ? '<span class="roul-bal" id="roul-bal"></span>' : '<a class="btn btn-light" href="#account">' + icon('gift') + 'Войти и получить ' + RULES.reward.register + '</a>') + '</div>' +
       '<div class="reel" id="reel"><div class="reel-pin"></div><div class="reel-strip" id="strip">' + tiles.map(tileHtml).join('') + '</div></div>' +
       '<div class="pad roul-acts">' + (u ? '<button class="btn btn-light" type="button" id="spin-paid">' + icon('sparkles') + 'Крутить за ' + RULES.spinCost + ' ' + tokWord(RULES.spinCost) + '</button><button class="btn btn-glass" type="button" id="spin-free" hidden></button>' : '<button class="btn btn-light" type="button" id="spin-guest">' + icon('sparkles') + 'Крутить</button>') + '</div>' +
-      '<p class="pad small" style="color:var(--navy-ink-2);text-align:center">Приз выпадает в ' + pct(win) + ' прокрутов. Результат определяет сервер — подкрутить его нельзя.</p>' +
+      '<p class="pad small" style="color:var(--navy-ink-2);text-align:center">Приз выпадает в ' + pct(win) + ' прокрутов' + (boosted ? ' — шансы повышены уровнем «' + esc(u.level.name) + '»' : '') + '. Каждый день — ' + (u && u.level.spins > 1 ? u.level.spins + ' бесплатных прокрута' : 'бесплатный прокрут') + '. Результат определяет сервер.</p>' +
       '<div class="pad" id="spin-hist"></div></div>' +
-      '<div class="sec card tile"><div class="tile-h"><h3>Призы и шансы</h3></div><div class="chances">' + RULES.wheel.map(function (w) { return '<div class="c-' + w.id + '">' + pz(w.id) + '<span>' + esc(w.id === 'none' ? 'Пусто' : w.label + ' ' + w.sub) + '</span><b>' + pct(w.w) + '</b></div>'; }).join('') + '</div></div>' +
-      '<div class="sec info-grid"><div class="card icard"><h3><span class="ic">' + icon('info') + '</span>Как это работает</h3><ul><li>Прокрут стоит ' + RULES.spinCost + ' токенов. Бесплатные прокруты дают «Ещё раз» и уровень «Профи».</li><li>Токены из рулетки сразу на балансе: ими можно оплатить до 15% заказа.</li><li>Промокод из рулетки — скидка 3% на один заказ, выбирается в корзине.</li><li>XP повышают уровень месяца, рамки меняют вид аватара.</li></ul></div>' +
-      '<div class="card icard"><h3><span class="ic">' + icon('gift') + '</span>Где взять токены</h3><ul><li>+' + RULES.reward.register + ' за регистрацию</li><li>+' + RULES.reward.checkin + ' за вход и +' + RULES.reward.streak7 + ' за 7 дней подряд</li><li>Задания дня — по 1 токену, с уровнем их больше</li><li>+' + RULES.reward.referrer + ' за друга и +' + RULES.reward.birthday + ' в день рождения</li></ul></div></div>';
+      '<div class="sec card tile"><div class="tile-h"><h3>Призы и шансы</h3></div><div class="chances">' + RULES.wheel.map(function (w, i) { return '<div class="c-' + w.id + '">' + pz(w.id) + '<span>' + esc(w.id === 'none' ? 'Пусто' : w.label + ' ' + w.sub) + '</span><b>' + pct(WW[i]) + '</b></div>'; }).join('') + '</div></div>' +
+      '<div class="sec info-grid"><div class="card icard"><h3><span class="ic">' + icon('info') + '</span>Как это работает</h3><ul><li>1 бесплатный прокрут каждый день на любом уровне, на «Алмазе» — 3. Не копятся: обновляются в 00:00 по Москве.</li><li>Дальше прокрут стоит ' + RULES.spinCost + ' токенов. «Ещё раз» даёт бесплатные прокруты — они не сгорают.</li><li>На «Платине» и «Алмазе» «Пусто» выпадает реже.</li><li>Токены из рулетки сразу на балансе, промокод −3% выбирается в корзине, XP идут в уровень месяца.</li></ul></div>' +
+      '<div class="card icard"><h3><span class="ic">' + icon('gift') + '</span>Где взять токены</h3><ul><li>+' + RULES.reward.register + ' за регистрацию</li><li>+' + RULES.reward.checkin + ' за вход и от ' + RULES.levels[0].streak + ' до ' + RULES.levels[4].streak + ' за 7 дней подряд — зависит от уровня</li><li>Задания дня — по 1 токену, с уровнем их больше</li><li>+' + RULES.reward.referrer + ' за друга и +' + RULES.reward.birthday + ' в день рождения</li></ul></div></div>';
     updateRoulBalance();
     var g = $('#spin-guest', v); if (g) g.addEventListener('click', function () { requireAuth('roulette'); });
     var pbtn = $('#spin-paid', v); if (pbtn) pbtn.addEventListener('click', function () { spin(false); });
@@ -1403,10 +1445,11 @@
     $('#v-info').innerHTML = '<div class="view-head"><div><span class="eyebrow">Информация</span><h1>Как заказать, доставка и оплата</h1></div></div>' + stepsBlock() +
       '<div class="sec">' + preorderBanner() + '</div>' +
       '<div class="sec info-grid">' + deliveryCard() + paymentCard() + '</div>' +
-      (API.enabled ? '<div class="sec info-grid"><div class="card icard"><h3><span class="ic">' + tk() + '</span>Токены</h3><ul><li>1 токен = 0,4 ₽ скидки, до 15% суммы заказа</li><li>+' + RULES.reward.register + ' за регистрацию, +' + RULES.reward.checkin + ' за вход каждый день, +' + RULES.reward.streak7 + ' за 7 дней подряд</li><li>Задания дня по 1 токену: у Новичка 4, каждый уровень +1</li><li>Рулетка, +' + RULES.reward.referrer + ' за друга, +' + RULES.reward.birthday + ' в день рождения</li><li>Токены не сгорают и не переводятся другим людям</li></ul><a class="btn btn-ghost btn-sm" href="#account" style="justify-self:start">Мой кабинет</a></div>' +
-        '<div class="card icard"><h3><span class="ic">' + icon('trophy') + '</span>Уровни месяца</h3><div style="overflow-x:auto"><table class="lvl-table"><tr><th>Уровень</th><th>Покупки</th><th>Бонус</th></tr>' + RULES.levels.map(function (l) { return '<tr><td><b>' + esc(l.name) + '</b></td><td>от ' + rub(l.min) + '</td><td>' + esc(l.perks.join('; ')) + '</td></tr>'; }).join('') + '</table></div><p class="small">Уровень считается по полученным заказам за месяц и обнуляется 1-го числа.</p></div></div>' : '') +
+      (API.enabled ? '<div class="sec info-grid"><div class="card icard"><h3><span class="ic">' + tk() + '</span>Токены</h3><ul><li>1 токен = 0,4 ₽ скидки, до 15% суммы заказа</li><li>+' + RULES.reward.register + ' за регистрацию, +' + RULES.reward.checkin + ' за вход каждый день, за 7 дней подряд — от ' + RULES.levels[0].streak + ' до ' + RULES.levels[4].streak + ' по уровню</li><li>Задания дня по 1 токену: на Бронзе 4, на Серебре 5, с Золота 6</li><li>Рулетка, +' + RULES.reward.referrer + ' за друга, +' + RULES.reward.birthday + ' в день рождения</li><li>Токены не сгорают и не переводятся другим людям</li></ul><a class="btn btn-ghost btn-sm" href="#account" style="justify-self:start">Мой кабинет</a></div>' +
+        '<div class="card icard"><h3><span class="ic">' + icon('trophy') + '</span>Программа лояльности</h3><div class="lvl-mini">' + RULES.levels.map(function (l) { return '<div>' + lvlImg(l.key, 40) + '<b>' + esc(l.name) + '</b><span class="small">' + (l.min ? 'от ' + num(l.min) + ' XP' : 'старт') + '</span></div>'; }).join('') + '</div><p class="small">Уровень растёт от XP: полученные заказы (1 XP за 10 ₽), вход, задания и рулетка. 1-го числа XP обнуляется.</p><button class="btn btn-ghost btn-sm" type="button" id="info-levels" style="justify-self:start">Все привилегии уровней</button></div></div>' : '') +
       '<div class="sec info-grid">' + contactsCard() +
       '<div class="card icard"><h3><span class="ic">' + icon('shield') + '</span>Перед заказом</h3><ul><li>Наличие и размеры менеджер подтвердит перед оплатой.</li><li>Предзаказ: выкуп у поставщика, проверка на брак и фотоотчёт на складе в Китае.</li><li>Статус заказа виден в «Моих заказах»: оформлен → выкуплен → в пути → на складе → едет к нам → едет к вам → получен.</li><li>Нужной вещи нет в каталоге — напишите менеджеру, подберём под заказ.</li></ul><a class="btn btn-ghost btn-sm" href="' + SHOP.infoUrl + '" target="_blank" rel="noopener" style="justify-self:start">Подробно о предзаказе' + icon('arrow-up-right') + '</a></div></div>';
+    var il = $('#info-levels'); if (il) il.addEventListener('click', levelsModal);
   }
 
   // ------------------------------------------------------------ маршруты
