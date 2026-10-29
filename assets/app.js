@@ -74,7 +74,7 @@
     get: function (k, d) { try { var v = localStorage.getItem('onion.shop.' + k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
     set: function (k, v) { try { localStorage.setItem('onion.shop.' + k, JSON.stringify(v)); } catch (e) { /* нет хранилища */ } }
   };
-  function lvlImg(key, size, cls) { return '<img class="lvl-img' + (cls ? ' ' + cls : '') + '" src="assets/lvl/' + esc(key) + '.svg?v=2" width="' + size + '" height="' + size + '" alt="" decoding="async">'; }
+  function lvlImg(key, size, cls) { return '<img class="lvl-img' + (cls ? ' ' + cls : '') + '" src="assets/lvl/' + esc(key) + '.svg?v=3" width="' + size + '" height="' + size + '" alt="" decoding="async">'; }
   function lvlByKey(k) { return RULES.levels.filter(function (l) { return l.key === k; })[0] || RULES.levels[0]; }
   function pctTxt(p) { return String(p).replace('.', ','); }
   function perkItems(list) { return list.map(function (x) { return '<li>' + icon('check') + '<span><b>' + esc(x[0]) + '</b>' + (x[1] ? '<small>' + esc(x[1]) + '</small>' : '') + '</span></li>'; }).join(''); }
@@ -165,7 +165,7 @@
     var key = lineKey(line), ex = cart.find(function (l) { return lineKey(l) === key; });
     if (ex) ex.qty = Math.min(10, ex.qty + line.qty); else cart.push(line);
     saveCart();
-    maybeTask('cart');
+    track('cart', line.id);
   }
   function isFav(id) { return favs.indexOf(String(id)) >= 0; }
   function toggleFav(id, btn) {
@@ -177,7 +177,7 @@
     if (btn && on) { btn.classList.remove('pop'); void btn.offsetWidth; btn.classList.add('pop'); }
     updateCounts();
     toast(on ? 'Добавлено в избранное' : 'Убрано из избранного', on ? { label: 'Избранное', run: function () { go('favorites'); } } : null);
-    if (on) maybeTask('fav');
+    if (on) track('fav', id);
     if (current === 'favorites' && !on) renderFavorites();
   }
   function pushRecent(id) { recent = [String(id)].concat(recent.filter(function (x) { return x !== String(id); })).slice(0, 12); store.set('recent', recent); }
@@ -278,6 +278,7 @@
   function setUser(u) {
     acct.user = u || null;
     updateAcctUI();
+    showNews(u);
     if (current === 'account') renderAccount();
     else if (current === 'roulette') updateRoulBalance();
     else if (current === 'cart' && !$('#checkout :focus')) renderCart();
@@ -307,7 +308,7 @@
       if (!r.ok) { if (r.error === 'auth') { API.setSession(''); setUser(null); refreshView(); } return; }
       var key = JSON.stringify(r.user);
       if (key === lastMe) return;
-      lastMe = key;
+      lastMe = key; showNews(r.user);
       var typing = document.activeElement && /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName);
       if (typing || $('#modal-root .modal')) { acct.user = r.user; updateAcctUI(); return; }
       acct.user = r.user; updateAcctUI();
@@ -337,16 +338,32 @@
     }
   }
   function requireAuth(back) { returnTo = back || current; go('account'); toast('Войдите или создайте аккаунт — за регистрацию ' + RULES.reward.register + ' токенов'); }
-  var taskBusy = {};
-  function maybeTask(key) {
-    var u = acct.user;
-    if (!u || !u.tasks || u.tasks.indexOf(key) < 0 || u.tasksDone.indexOf(key) >= 0 || taskBusy[key]) return;
-    taskBusy[key] = true;
-    API.call('task', { task: key }).then(function (r) {
-      taskBusy[key] = false;
-      if (r.ok && r.got > 0) { setUser(r.user); reward('+' + r.got + ' ' + tokWord(r.got) + (r.xp ? ' и +' + r.xp + ' XP' : '') + ' · задание «' + r.title + '»'); }
-    });
+  // события для заданий копим и отправляем пачкой раз в несколько секунд (каждое — один раз в день)
+  var evQ = [], evSent = {}, evTimer = null, newsSeen = {};
+  function track(ev, id) {
+    if (!acct.user || !API.enabled) return;
+    var k = ev + ':' + (id || '') + ':' + CORE.dayKey(Date.now());
+    if (evSent[k]) return; evSent[k] = 1;
+    evQ.push({ ev: ev, id: id ? String(id) : '' });
+    clearTimeout(evTimer); evTimer = setTimeout(flushTrack, 5000);
   }
+  function flushTrack() {
+    clearTimeout(evTimer);
+    if (!evQ.length || !acct.user) return Promise.resolve();
+    var batch = evQ.splice(0, 40);
+    return API.call('track', { events: batch }).then(function (r) { if (r && r.ok) setUserLite(r.user); });
+  }
+  function showNews(u) {
+    var list = (u && u.taskNews || []).filter(function (n) { var k = n.k + '@' + n.at; if (newsSeen[k]) return false; newsSeen[k] = 1; return true; });
+    if (!list.length) return;
+    API.call('ackNews');
+    list.slice(0, 3).forEach(function (n, i) {
+      setTimeout(function () { reward('+' + n.tk + ' ' + tokWord(n.tk) + ' и +' + n.xp + ' XP · задание «' + n.title + '»'); if (n.per === 'm') confetti(80); }, i * 900);
+    });
+    if (list.length > 3) setTimeout(function () { reward('Ещё выполнено заданий: ' + (list.length - 3) + ' — награды уже начислены'); }, 3 * 900);
+  }
+  // тихое обновление пользователя после событий: без перерисовки корзины и ввода
+  function setUserLite(u) { acct.user = u; updateAcctUI(); if (current === 'account') renderAccount(); showNews(u); }
   function doCheckin(btn) {
     if (!acct.user) return requireAuth('account');
     if (btn && btn.disabled !== undefined) btn.disabled = true;
@@ -359,12 +376,13 @@
   }
 
   // ------------------------------------------------------------ карточка товара
-  function badge(p) { return p.status === 'preorder' ? '<span class="badge badge-pre">Предзаказ</span>' : '<span class="badge badge-stock">В наличии</span>'; }
+  function badge(p) { return p.status === 'preorder' ? '<span class="badge badge-pre">Предзаказ</span>' : p.status === 'out' ? '<span class="badge badge-out">Временно нет в наличии</span>' : '<span class="badge badge-stock">В наличии</span>'; }
+  function inStockTab(p) { return p.status === 'stock' || p.status === 'out'; }
   function discount(p) { return p.oldPrice ? Math.round((1 - p.price / p.oldPrice) * 100) : 0; }
   function card(p, i) {
     var a = p.photos[0], d = discount(p), id = esc(p.id);
     var sw = p.colors.length > 1 ? '<div class="sw-row">' + p.colors.slice(0, 5).map(function (c) { return '<i class="sw" style="' + swatch(c) + '" title="' + esc(c) + '"></i>'; }).join('') + (p.colors.length > 5 ? '<small>+' + (p.colors.length - 5) + '</small>' : '') + '</div>' : '';
-    return '<article class="pcard" style="--i:' + (i || 0) + '">' +
+    return '<article class="pcard" data-pid="' + id + '" style="--i:' + (i || 0) + '">' +
       '<a class="ph" href="#p-' + id + '" tabindex="-1" aria-hidden="true"><img class="a" src="' + thumb(a.id) + '" alt="" loading="lazy" decoding="async">' +
       '<div class="tags">' + badge(p) + '</div></a>' +
       '<button class="fav" type="button" data-fav="' + id + '" aria-pressed="' + isFav(p.id) + '" aria-label="Избранное: ' + esc(p.title) + '">' + icon('heart') + '</button>' +
@@ -431,7 +449,7 @@
 
   // ------------------------------------------------------------ главная
   function renderHome() {
-    var stock = PRODUCTS.filter(function (p) { return p.status === 'stock'; }).length, pre = PRODUCTS.length - stock;
+    var stock = PRODUCTS.filter(inStockTab).length, pre = PRODUCTS.length - stock;
     var brands = {}; PRODUCTS.forEach(function (p) { if (p.brand) brands[norm(p.brand)] = 1; });
     var nb = Object.keys(brands).length, cats = categories(PRODUCTS).slice(0, 4);
     var rec = recent.map(function (id) { return BY_ID[id]; }).filter(Boolean);
@@ -467,7 +485,7 @@
   var filter = newFilter();
   var PRICE = { lt2: [0, 2000, 'До 2 000 ₽'], mid: [2000, 5000, '2–5 тыс. ₽'], gt5: [5000, 1e9, 'От 5 000 ₽'] };
   function matches(p, f, skip) {
-    if (skip !== 'tab' && f.tab !== 'all' && p.status !== f.tab) return false;
+    if (skip !== 'tab' && f.tab !== 'all' && (f.tab === 'stock' ? !inStockTab(p) : p.status !== f.tab)) return false;
     if (skip !== 'cat' && f.cat !== 'all' && p.category !== f.cat) return false;
     if (f.brand !== 'all' && norm(p.brand) !== f.brand) return false;
     if (f.price !== 'all') { var r = PRICE[f.price]; if (p.price < r[0] || p.price >= r[1]) return false; }
@@ -489,31 +507,32 @@
       '<div class="result-line"><span id="cat-count"></span><button class="link-btn" type="button" id="cat-reset" hidden>Сбросить фильтры</button></div><div id="cat-grid"></div>';
     $('#cat-sort', v).value = filter.sort;
     var q = $('#cat-q', v), qt;
-    q.addEventListener('input', function () { filter.q = q.value.trim(); $('#cat-clear').hidden = !q.value; clearTimeout(qt); qt = setTimeout(updateCatalog, 120); });
+    q.addEventListener('input', function () { filter.q = q.value.trim(); if (filter.q.length >= 2) { clearTimeout(q._t); q._t = setTimeout(function () { track('search'); }, 1500); } $('#cat-clear').hidden = !q.value; clearTimeout(qt); qt = setTimeout(updateCatalog, 120); });
     $('#cat-clear', v).addEventListener('click', function () { q.value = ''; filter.q = ''; this.hidden = true; q.focus(); updateCatalog(); });
-    $('#cat-brand', v).addEventListener('change', function () { filter.brand = this.value; updateCatalog(); });
+    $('#cat-brand', v).addEventListener('change', function () { filter.brand = this.value; if (this.value !== 'all') track('brand'); updateCatalog(); });
     $('#cat-sort', v).addEventListener('change', function () { filter.sort = this.value; updateCatalog(); });
     $('#cat-reset', v).addEventListener('click', function () { var t = filter.tab; filter = newFilter(); filter.tab = t; renderCatalog(); });
     updateCatalog();
   }
   function updateCatalog() {
     var f = filter, base = PRODUCTS.filter(function (p) { return matches(p, f, 'tab'); });
-    var tabs = [['all', 'Все', base.length], ['stock', 'В наличии', base.filter(function (p) { return p.status === 'stock'; }).length], ['preorder', 'Предзаказ', base.filter(function (p) { return p.status === 'preorder'; }).length]];
+    var tabs = [['all', 'Все', base.length], ['stock', 'В наличии', base.filter(inStockTab).length], ['preorder', 'Предзаказ', base.filter(function (p) { return p.status === 'preorder'; }).length]];
     var tEl = $('#cat-tabs');
     tEl.innerHTML = tabs.map(function (t) { return '<button type="button" role="tab" aria-selected="' + (f.tab === t[0]) + '" data-tab="' + t[0] + '">' + t[1] + '<span class="n">' + t[2] + '</span></button>'; }).join('');
-    $$('button', tEl).forEach(function (b) { b.addEventListener('click', function () { filter.tab = b.getAttribute('data-tab'); silentHash(filter.tab === 'all' ? 'catalog' : filter.tab); updateCatalog(); setNav(location.hash.slice(1)); if (filter.tab === 'preorder') maybeTask('pre'); }); });
+    $$('button', tEl).forEach(function (b) { b.addEventListener('click', function () { filter.tab = b.getAttribute('data-tab'); silentHash(filter.tab === 'all' ? 'catalog' : filter.tab); updateCatalog(); setNav(location.hash.slice(1)); if (filter.tab === 'preorder') track('pre'); else if (filter.tab === 'stock') track('stock'); }); });
     var forCats = PRODUCTS.filter(function (p) { return matches(p, f, 'cat'); }), cats = categories(forCats);
     var cEl = $('#cat-cats');
     cEl.innerHTML = '<button type="button" aria-pressed="' + (f.cat === 'all') + '" data-cat="all">Все категории <span class="n">' + forCats.length + '</span></button>' + cats.map(function (c) { return '<button type="button" aria-pressed="' + (f.cat === c.key) + '" data-cat="' + c.key + '">' + esc(c.label) + ' <span class="n">' + c.n + '</span></button>'; }).join('');
     $$('button', cEl).forEach(function (b) { b.addEventListener('click', function () { filter.cat = b.getAttribute('data-cat'); updateCatalog(); }); });
     var pEl = $('#cat-price');
     pEl.innerHTML = Object.keys(PRICE).map(function (k) { return '<button type="button" aria-pressed="' + (f.price === k) + '" data-price="' + k + '">' + PRICE[k][2] + '</button>'; }).join('') + '<span class="sep"></span><button type="button" aria-pressed="' + f.sale + '" data-sale="1">' + icon('percent') + 'Со скидкой</button>';
-    $$('[data-price]', pEl).forEach(function (b) { b.addEventListener('click', function () { var k = b.getAttribute('data-price'); filter.price = filter.price === k ? 'all' : k; updateCatalog(); }); });
+    $$('[data-price]', pEl).forEach(function (b) { b.addEventListener('click', function () { var k = b.getAttribute('data-price'); filter.price = filter.price === k ? 'all' : k; if (filter.price !== 'all') track('price'); updateCatalog(); }); });
     $('[data-sale]', pEl).addEventListener('click', function () { filter.sale = !filter.sale; updateCatalog(); });
     var list = PRODUCTS.filter(function (p) { return matches(p, f); });
     if (f.sort === 'cheap') list.sort(function (a, b) { return a.price - b.price; });
     else if (f.sort === 'exp') list.sort(function (a, b) { return b.price - a.price; });
     else if (f.sort === 'sale') list.sort(function (a, b) { return discount(b) - discount(a) || (+b.id - +a.id); });
+    list.sort(function (a, b) { return (a.status === 'out') - (b.status === 'out'); });
     $('#cat-title').textContent = f.tab === 'stock' ? 'В наличии' : f.tab === 'preorder' ? 'Предзаказ из Китая' : 'Все товары';
     $('#cat-sub').textContent = f.tab === 'preorder' ? 'Выкупаем у поставщика после заказа. Доставка из Китая оплачивается отдельно.' : f.tab === 'stock' ? 'Вещи уже в Москве — отправим сразу.' : 'Одежда, обувь и аксессуары из Telegram-канала магазина.';
     $('#cat-count').textContent = 'Найдено: ' + list.length + ' ' + plural(list.length, 'товар', 'товара', 'товаров');
@@ -525,7 +544,7 @@
 
   // ------------------------------------------------------------ лайтбокс
   function openLightbox(p, start) {
-    closeLightbox();
+    closeLightbox(); track('zoom');
     var el = document.createElement('div');
     el.className = 'lightbox'; el.id = 'lightbox'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-label', 'Фото: ' + p.title);
     el.innerHTML = '<div class="lb-top"><span id="lb-count" class="num"></span><button class="icon-btn" type="button" aria-label="Закрыть">' + icon('x') + '</button></div>' +
@@ -552,12 +571,11 @@
     if (v.day !== d) v = { day: d, ids: [] };
     if (v.ids.indexOf(id) < 0) v.ids.push(id);
     store.set('views', v);
-    if (v.ids.length >= 3) maybeTask('view3');
-    if (v.ids.length >= 5) maybeTask('view5');
+    track('view', id);
   }
   function shareProduct(p) {
     var url = location.href.split('#')[0].split('?')[0] + '#p-' + p.id;
-    var done = function () { maybeTask('share'); };
+    var done = function () { track('share', p.id); };
     try {
       if (navigator.share) { navigator.share({ title: p.title, text: p.title + ' — ' + rub(p.price), url: url }).then(done, function () { /* отменили */ }); return; }
     } catch (e) { /* нет Web Share */ }
@@ -575,7 +593,7 @@
     var measures = p.details.filter(function (r) { return /(груд|плеч|рукав|длин|ширин|обхват|талия|бедр)/i.test(r[0]); });
     var specs = p.details.filter(function (r) { return measures.indexOf(r) < 0; });
     var related = PRODUCTS.filter(function (x) { return x.id !== p.id && x.category === p.category; });
-    if (related.length < 4) related = related.concat(PRODUCTS.filter(function (x) { return x.id !== p.id && x.category !== p.category && x.status === p.status; }));
+    if (related.length < 4) related = related.concat(PRODUCTS.filter(function (x) { return x.id !== p.id && x.category !== p.category && (x.status === 'preorder') === (p.status === 'preorder'); }));
     related = related.slice(0, 4);
 
     v.innerHTML =
@@ -593,8 +611,10 @@
       '<div>' + (p.brand ? '<div class="brand-top">' + esc(p.brand) + '</div>' : '') + '<h1>' + esc(p.title) + '</h1>' + (p.subtitle ? '<p class="sub">' + esc(cap(p.subtitle)) + '</p>' : '') + '</div>' +
       '<div class="price-box"><div class="price-row"><span class="price">' + rub(p.price) + '</span>' + (p.oldPrice ? '<span class="old">' + rub(p.oldPrice) + '</span><span class="badge badge-ok">выгода ' + rub(p.oldPrice - p.price) + '</span>' : '') + '</div>' +
       (API.enabled ? '<span class="tok-hint">' + tk() + 'Токенами можно оплатить до <b>' + rub(maxTokRub) + '</b></span>' : '') + '</div>' +
+      ((p.facts && p.facts.length) ? '<ul class="facts" aria-label="Главное о товаре">' + p.facts.slice(0, 6).map(function (f) { return '<li><small>' + esc(f[0]) + '</small><b>' + esc(f[1]) + '</b></li>'; }).join('') + '</ul>' : '') +
       (p.status === 'preorder'
         ? '<div class="notice notice-pre">' + icon('plane') + '<div><b>Предзаказ из Китая.</b> Выкупим у поставщика после заказа, проверим на складе и отправим. Доставка из Китая — отдельно по весу. <a href="' + SHOP.preorderUrl + '" target="_blank" rel="noopener">Как это работает</a></div></div>'
+        : p.status === 'out' ? '<div class="notice notice-out">' + icon('clock') + '<div><b>Временно нет в наличии.</b> Заказ можно оформить — менеджер уточнит у вас срок поступления и подтвердит заказ. Оплата только после согласования.</div></div>'
         : '<div class="notice notice-info">' + icon('box') + '<div><b>В наличии в Москве.</b> Доставка по Москве и в другие города через Авито, курьер — по согласованию с менеджером, самовывоз.</div></div>') +
       (p.sizes.length ? '<div class="opt" id="opt-size"><div class="opt-head"><b>Размер' + (p.sizes.length > 1 ? ' <span class="req">*</span>' : '') + '</b><span class="val"><span id="size-val">' + (sel.size ? esc(sel.size) : 'не выбран') + '</span>' + (measures.length ? ' · <button class="link-btn" type="button" id="measure-btn">Замеры</button>' : '') + '</span></div><div class="choices">' +
         p.sizes.map(function (s) { return '<button class="choice" type="button" data-size="' + esc(s) + '" aria-pressed="' + (sel.size === s) + '">' + esc(s) + '</button>'; }).join('') + '</div><span class="msg" hidden>Выберите размер</span></div>' : '') +
@@ -639,7 +659,7 @@
     $('#zoom-btn', v).addEventListener('click', function () { openLightbox(p, cur); });
     $('#share-btn', v).addEventListener('click', function () { shareProduct(p); });
     var mb = $('#measure-btn', v);
-    if (mb) mb.addEventListener('click', function () { openModal(modalHead('Замеры: ' + p.title) + '<dl class="specs">' + measures.map(function (r) { return '<div><dt>' + esc(r[0]) + '</dt><dd>' + esc(r[1]) + '</dd></div>'; }).join('') + '</dl><p class="small">Замеры сделаны по изделию, без растяжения. Сомневаетесь с размером — спросите менеджера.</p>', { cls: 'sm' }); });
+    if (mb) mb.addEventListener('click', function () { track('measure'); openModal(modalHead('Замеры: ' + p.title) + '<dl class="specs">' + measures.map(function (r) { return '<div><dt>' + esc(r[0]) + '</dt><dd>' + esc(r[1]) + '</dd></div>'; }).join('') + '</dl><p class="small">Замеры сделаны по изделию, без растяжения. Сомневаетесь с размером — спросите менеджера.</p>', { cls: 'sm' }); });
 
     // параметры
     function clearErr(oid) { var o = $('#' + oid); if (o) { o.classList.remove('err'); var m = $('.msg', o); if (m) m.hidden = true; } }
@@ -721,7 +741,7 @@
   function radio(name, value, cur, title, sub, tag) { return '<label class="radio"><input type="radio" name="' + name + '" value="' + value + '"' + (cur === value ? ' checked' : '') + '><span class="mark"></span><b>' + title + (tag ? '<span class="tag">' + tag + '</span>' : '') + '</b>' + (sub ? '<small>' + sub + '</small>' : '') + '</label>'; }
   function totals(lines) {
     var t = { total: 0, old: 0, cnt: 0, pre: false, stock: false };
-    lines.forEach(function (l) { var p = BY_ID[l.id]; t.total += p.price * l.qty; t.old += (p.oldPrice || p.price) * l.qty; t.cnt += l.qty; if (p.status === 'preorder') t.pre = true; else t.stock = true; });
+    lines.forEach(function (l) { var p = BY_ID[l.id]; t.total += p.price * l.qty; t.old += (p.oldPrice || p.price) * l.qty; t.cnt += l.qty; if (p.status === 'preorder') t.pre = true; else { t.stock = true; if (p.status === 'out') t.out = true; } });
     var u = acct.user, noTok = cartPromo && cartPromo.withTokens === false;
     t.maxTok = u && !noTok ? Math.min(u.balance, Math.floor(t.total * RULES.maxShare / RULES.tokenRub)) : 0;
     t.tok = Math.max(0, Math.min(tokUse, t.maxTok));
@@ -810,6 +830,7 @@
       '<div class="sumrow good" id="sum-promo"' + (t.promoRub ? '' : ' hidden') + '><span>Промокод <span id="sum-promo-code">' + esc(t.promo) + '</span></span><b>−' + rub(t.promoRub) + '</b></div>' +
       '<div class="sumtotal"><span>К оплате</span><b id="sum-pay">' + rub(t.toPay) + '</b></div>' +
       (t.pre ? '<p class="small">Доставка из Китая оплачивается отдельно по весу посылки.</p>' : '') +
+      (t.out ? '<p class="small">⏳ В заказе есть товар, которого временно нет в наличии — менеджер уточнит срок поступления.</p>' : '') +
       (API.enabled && !u ? '<button class="btn btn-block" type="submit" id="submit-btn">' + icon('user') + '<span>Войти, чтобы оформить</span></button>' : '<button class="btn btn-block" type="submit" id="submit-btn">' + icon('check-circle') + '<span>Оформить заказ</span></button>') +
       '<p class="small">Оплаты на сайте нет. Менеджер подтвердит заказ и пришлёт реквизиты.</p></aside></form>';
 
@@ -1040,9 +1061,14 @@
     var v = $('#v-orders'), list = allOrders();
     var head = '<div class="view-head"><div><span class="eyebrow">История</span><h1>Мои заказы</h1><p class="muted">' + (acct.user ? 'Статус меняет менеджер — обновляется сам.' : 'Хранятся в этом браузере.' + (API.enabled ? ' Войдите, чтобы видеть статусы на любом устройстве.' : '')) + '</p></div>' + (API.enabled && !acct.user ? '<a class="btn btn-ghost" href="#account">' + icon('user') + 'Войти</a>' : '') + '</div>';
     if (!list.length) { v.innerHTML = head + '<div class="empty"><span class="ico">' + icon('receipt') + '</span><h3>Заказов пока нет</h3><p>Здесь будут номера заказов, статусы и суммы.</p><a class="btn" href="#catalog">' + icon('grid') + 'Перейти в каталог</a></div>'; return; }
-    v.innerHTML = head + '<div class="orders">' + list.map(orderCard).join('') + '</div>';
+    var act = [], hist = [];
+    list.forEach(function (o, i) { (isDoneOrder(o) ? hist : act).push(orderCard(o, i)); });
+    v.innerHTML = head +
+      (act.length ? '<h2 class="sec-h">Активные · ' + act.length + '</h2><div class="orders">' + act.join('') + '</div>' : '<div class="notice notice-info" style="margin-bottom:12px">' + icon('check-circle') + '<div>Активных заказов нет. Завершённые лежат в «Истории заказов» ниже — любой можно повторить в один клик.</div></div>') +
+      (hist.length ? '<details class="hist"' + (act.length ? '' : ' open') + '><summary>' + icon('receipt') + '<span>История заказов</span><b>' + hist.length + '</b>' + icon('chevron-down') + '</summary><div class="orders">' + hist.join('') + '</div></details>' : '');
     bindOrders(v, list);
   }
+  function isDoneOrder(o) { return RULES.finalStages.indexOf(o.status) >= 0; }
 
   // ------------------------------------------------------------ избранное
   function renderFavorites() {
@@ -1229,6 +1255,66 @@
       API.call('profile', { name: $('#p-name', md).value, phone: $('#p-phone', md).value, tg: $('#p-tg', md).value }).then(function (r) { if (r.ok) { closeModal(); setUser(r.user); toast('Профиль сохранён'); } else toast(r.error, null, 'warn'); });
     });
   }
+
+  // ------------------------------------------------------------ значок на экране «Домой»
+  var HOME_ICONS = [['dark', 'Тёмная'], ['white', 'Белая'], ['halloween', 'Хэллоуин']];
+  var installEvt = null;
+  window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); installEvt = e; });
+  function homeIcon() { var v = store.get('homeIcon', 'dark'); return HOME_ICONS.some(function (x) { return x[0] === v; }) ? v : 'dark'; }
+  function applyHomeIcon(id) {
+    id = id || homeIcon();
+    var base = location.href.split('#')[0].split('?')[0].replace(/[^\/]*$/, '');
+    function set(rel, href, extra) {
+      var el = document.querySelector('link[rel="' + rel + '"]' + (extra || ''));
+      if (!el) { el = document.createElement('link'); el.rel = rel; document.head.appendChild(el); }
+      el.href = href; return el;
+    }
+    set('apple-touch-icon', 'assets/icons/' + id + '-180.png');
+    var fv = set('icon', 'assets/icons/' + id + '-48.png'); fv.type = 'image/png';
+    try {
+      var mf = {
+        name: 'Onion Shop', short_name: 'Onion Shop', lang: 'ru', start_url: base, scope: base, display: 'standalone',
+        background_color: id === 'white' ? '#ffffff' : id === 'halloween' ? '#1a0a2e' : '#050a1d', theme_color: id === 'white' ? '#ffffff' : id === 'halloween' ? '#1a0a2e' : '#050a1d',
+        icons: [{ src: base + 'assets/icons/' + id + '-192.png', sizes: '192x192', type: 'image/png' }, { src: base + 'assets/icons/' + id + '-512.png', sizes: '512x512', type: 'image/png' },
+          { src: base + 'assets/icons/' + id + '-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }]
+      };
+      if (/^https?:/.test(base) && window.Blob && URL.createObjectURL) {
+        var el = document.querySelector('link[rel="manifest"]') || document.head.appendChild(Object.assign(document.createElement('link'), { rel: 'manifest' }));
+        if (el.dataset.blob) { try { URL.revokeObjectURL(el.dataset.blob); } catch (e) { /* */ } }
+        var u = URL.createObjectURL(new Blob([JSON.stringify(mf)], { type: 'application/manifest+json' }));
+        el.dataset.blob = u; el.href = u;
+      }
+    } catch (e) { /* без манифеста значок возьмётся из apple-touch-icon */ }
+  }
+  function homeModal() {
+    var ua = navigator.userAgent || '', ios = /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+    var standalone = (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone;
+    var cur = homeIcon();
+    var steps = ios
+      ? ['Откройте сайт в <b>Safari</b> (в других браузерах на iPhone кнопки нет).', 'Нажмите <b>«Поделиться»</b> — квадрат со стрелкой внизу экрана.', 'Прокрутите список и выберите <b>«На экран «Домой»»</b>.', 'Название оставьте <b>Onion Shop</b> и нажмите <b>«Добавить»</b>.']
+      : /Android/.test(ua)
+        ? ['Откройте сайт в <b>Chrome</b>.', 'Нажмите <b>⋮</b> (меню) в правом верхнем углу.', 'Выберите <b>«Установить приложение»</b> или <b>«Добавить на главный экран»</b>.', 'Подтвердите — значок <b>Onion Shop</b> появится среди приложений.']
+        : ['В Chrome или Edge нажмите значок установки в адресной строке (справа) или меню <b>⋮ → «Установить Onion Shop»</b>.', 'На телефоне откройте сайт и повторите те же шаги там.'];
+    var md = openModal(modalHead('Значок на экране «Домой»') +
+      '<p class="small" style="margin:0 0 10px">Сайт откроется как приложение — без адресной строки, одним нажатием. Сначала выберите значок, потом добавьте его на экран.</p>' +
+      '<div class="home-icons" role="group" aria-label="Значок">' + HOME_ICONS.map(function (x) {
+        return '<button type="button" data-hi="' + x[0] + '" aria-pressed="' + (x[0] === cur) + '"><img src="assets/icons/' + x[0] + '-192.png" width="72" height="72" alt="" loading="lazy"><span>' + x[1] + '</span></button>';
+      }).join('') + '</div>' +
+      (standalone ? '<div class="notice notice-info" style="margin-top:12px">' + icon('check-circle') + '<div>Вы уже открыли сайт с экрана «Домой». Чтобы сменить значок, удалите старый и добавьте заново — iPhone запоминает значок при добавлении.</div></div>' : '') +
+      '<ol class="home-steps">' + steps.map(function (t) { return '<li>' + t + '</li>'; }).join('') + '</ol>' +
+      (installEvt ? '<button class="btn btn-block" type="button" id="hi-install">' + icon('plus') + '<span>Установить приложение</span></button>' : '') +
+      '<p class="small" style="margin:10px 0 0">Название на экране: <b>Onion Shop</b>. Значок можно поменять в любой момент.</p>', { cls: 'sm' });
+    $$('[data-hi]', md).forEach(function (b) {
+      b.addEventListener('click', function () {
+        var id = b.getAttribute('data-hi'); store.set('homeIcon', id); applyHomeIcon(id);
+        $$('[data-hi]', md).forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+        var val = $('#r-home .val'); if (val) val.textContent = (HOME_ICONS.filter(function (x) { return x[0] === id; })[0] || [])[1];
+      });
+    });
+    var ib = $('#hi-install', md);
+    if (ib) ib.addEventListener('click', function () { try { installEvt.prompt(); installEvt.userChoice.then(function () { installEvt = null; closeModal(); }); } catch (e) { closeModal(); } });
+  }
+
   function passModal() {
     var md = openModal(modalHead('Сменить пароль') + '<div class="f"><label for="m-old">Текущий пароль</label><input class="input" id="m-old" type="password" autocomplete="current-password"></div>' +
       '<div class="f"><label for="m-new">Новый пароль</label><input class="input" id="m-new" type="password" autocomplete="new-password" placeholder="не короче 6 символов"></div><div id="m-msg"></div>' +
@@ -1268,7 +1354,7 @@
       '<div class="xp-how"><b>Как получить XP</b><ul>' +
       '<li>' + icon('bag') + '<span>Полученный заказ — <b>1 XP за каждые 10&nbsp;₽</b>. Засчитывается, когда у заказа статус «Получен»</span></li>' +
       '<li>' + icon('gift') + '<span>Ежедневный вход — <b>+' + RULES.xpReward.checkin + ' XP</b></span></li>' +
-      '<li>' + icon('check') + '<span>Каждое задание дня — <b>+' + RULES.xpReward.task + ' XP</b></span></li>' +
+      '<li>' + icon('check') + '<span>Задания — ежедневные <b>+2–3 XP</b>, недельные <b>+12–40 XP</b>, месячные <b>+40–300 XP</b></span></li>' +
       '<li>' + icon('sparkles') + '<span>Рулетка — приз <b>+50 XP</b></span></li></ul></div>' +
       '<div class="lvl-list">' + RULES.levels.map(function (l, i) {
         return '<section class="lvl-card lv-' + l.key + (i === cur ? ' cur' : '') + '"><header>' + lvlImg(l.key, 56) + '<div><h3>' + esc(l.name) + (i === cur ? ' <span class="chip">ваш уровень</span>' : '') + '</h3><span class="small">' + (l.min ? 'от ' + num(l.min) + ' XP за месяц' : 'сразу после регистрации') + '</span></div></header>' +
@@ -1290,20 +1376,39 @@
       API.call('deleteAccount', { password: $('#m-pass', md).value }).then(function (r) { busy(b, false); if (!r.ok) { $('#m-msg', md).innerHTML = '<div class="form-err">' + esc(r.error) + '</div>'; return; } closeModal(); API.setSession(''); setUser(null); toast('Аккаунт удалён'); });
     });
   }
+  var taskTab = 'd';
+  function taskRow(t) {
+    var def = RULES.tasks.filter(function (x) { return x.key === t.k; })[0]; if (!def) return '';
+    var money = def.m === 'ordSum' || def.m === 'recvSum', multi = def.n > 1 && !t.d;
+    var prog = money ? rub(t.p) + ' из ' + rub(def.n) : t.p + ' из ' + def.n;
+    return '<div class="task' + (t.d ? ' done' : '') + '"><span class="ck">' + icon('check') + '</span><span class="tt"><b>' + esc(def.title) + '</b><small>' + (t.d ? 'Выполнено · награда начислена' : esc(def.hint)) + '</small>' +
+      (multi ? '<span class="tbar"><i style="width:' + Math.round(t.p / def.n * 100) + '%"></i></span><small class="tcnt">' + prog + '</small>' : '') + '</span>' +
+      '<span class="rw"><b>+' + def.tk + tk() + '</b><small>+' + def.xp + ' XP</small></span></div>';
+  }
+  function drawTasks(root) {
+    var u = acct.user, tabs = $('#task-tabs', root), list = $('#task-list', root); if (!u || !tabs || !list) return;
+    var board = u.board || { d: [], w: [], m: [] }, per = taskTab;
+    tabs.innerHTML = ['d', 'w', 'm'].map(function (k) {
+      var n = board[k].filter(function (t) { return t.d; }).length;
+      return '<button type="button" role="tab" data-tt="' + k + '" aria-selected="' + (k === per) + '">' + esc(RULES.taskPer[k].name) + '<small>' + n + '/' + board[k].length + '</small></button>';
+    }).join('');
+    list.innerHTML = board[per].map(taskRow).join('');
+    var all = board[per], done = all.filter(function (t) { return t.d; }).length;
+    $('#task-side', root).textContent = done + ' из ' + all.length + ' · ' + RULES.taskPer[per].until;
+    $('#task-note', root).textContent = per === 'd' ? 'Простые задания: токены и XP. Обновляются в 00:00 по Москве; чем выше уровень, тем их больше.'
+      : per === 'w' ? 'Недельные сложнее и награда больше. «Оформить заказ» считается сразу при оформлении. Обновляются в понедельник.'
+        : 'Месячные — самые сложные и самые щедрые. Заказы засчитываются, когда статус «Получен». Обновляются 1-го числа.';
+    $$('[data-tt]', tabs).forEach(function (b) { b.addEventListener('click', function () { taskTab = b.getAttribute('data-tt'); drawTasks(root); }); });
+  }
   function renderDash(v) {
     var u = acct.user, L = u.level, R = RULES.reward;
     var pctL = L.next ? Math.min(100, Math.round((u.xp - L.min) / (L.next.min - L.min) * 100)) : 100;
-    var mine = u.tasks || [], doneN = u.tasksDone.filter(function (k) { return mine.indexOf(k) >= 0; }).length;
-    var tasks = RULES.tasks.map(function (t) {
-      var open = mine.indexOf(t.key) >= 0, done = u.tasksDone.indexOf(t.key) >= 0;
-      if (!open) return '<div class="task locked"><span class="ck">' + icon('lock') + '</span><span><b>' + esc(t.title) + '</b><small>Откроется на уровне «' + esc(RULES.levels[t.lvl].name) + '»</small></span><span class="rw">+' + t.reward + tk() + '</span></div>';
-      return '<div class="task' + (done ? ' done' : '') + '"><span class="ck">' + icon('check') + '</span><span><b>' + esc(t.title) + '</b><small>' + (done ? 'Выполнено сегодня' : esc(t.hint)) + '</small></span><span class="rw">+' + t.reward + tk() + '</span></div>';
-    }).join('');
     var inWeek = u.streak ? ((u.streak - 1) % 7) + 1 : 0, streakDays = [];
     for (var i = 1; i <= 7; i++) streakDays.push('<span class="' + (i <= inWeek ? 'on' : '') + (i === 7 ? ' gift' : '') + '" style="animation-delay:' + i * 50 + 'ms">' + (i === 7 ? '+' + L.streak : i) + '</span>');
     var refLink = location.href.split('#')[0].split('?')[0] + '#ref=' + u.refCode;
     var since = typeof u.createdAt === 'number' ? fmtAt(u.createdAt).split(',')[0] : String(u.createdAt || '').split(' ')[0];
     var active = u.orders.filter(function (o) { return o.active; });
+    var dashOrders = active.length ? active.slice(0, 3) : u.orders.slice(0, 1);
     var bd = u.birthday ? u.birthday.split('-') : null;
     v.innerHTML =
       (u.email ? '' : '<div class="notice notice-warn" style="margin-bottom:12px">' + icon('mail') + '<div><b>Добавьте почту.</b> Без неё не получится восстановить пароль. <button class="link-btn" type="button" id="add-email">Добавить</button></div></div>') +
@@ -1321,10 +1426,10 @@
       '<p class="info-line">' + (L.next ? 'XP дают полученные заказы, ежедневный вход, задания и рулетка. ' : L.fixed ? '' : 'Максимальный уровень! ') + '1-го числа XP обнуляется и уровень начинается заново.</p>' +
       '<h4 class="perks-h">Ваши привилегии</h4><ul class="perks">' + perkItems(lvlByKey(L.key).perks) + '</ul></div>' +
 
-      '<div class="card tile c6"><div class="tile-h"><h3>Задания дня</h3><span class="side">' + doneN + ' из ' + mine.length + '</span></div>' +
+      '<div class="card tile c6"><div class="tile-h"><h3>Задания</h3><span class="side" id="task-side"></span></div>' +
       '<div class="streak">' + streakDays.join('') + '</div>' +
       (u.checkedToday ? '<p class="small">Сегодня отмечено. 7 дней подряд — +' + L.streak + ' токенов (уровень «' + esc(L.name) + '»).</p>' : '<button class="btn btn-sm" type="button" id="checkin-btn">' + icon('gift') + 'Отметиться · +' + R.checkin + ' и +' + RULES.xpReward.checkin + ' XP</button>') +
-      '<div class="tasks">' + tasks + '</div><p class="small">Задание: +1 токен и +' + RULES.xpReward.task + ' XP. Обновляются в 00:00 по Москве. На Серебре 5 заданий, с Золота — 6.</p></div>' +
+      '<div class="ttabs" role="tablist" aria-label="Период заданий" id="task-tabs"></div><div class="tasks" id="task-list"></div><p class="small" id="task-note"></p></div>' +
 
       '<div class="card tile c6"><div class="tile-h"><h3>Пригласить друга</h3><span class="side">' + u.refCount + ' ' + plural(u.refCount, 'друг', 'друга', 'друзей') + '</span></div>' +
       '<p class="small">Друг получит +' + R.refFriend + ' токенов при регистрации по ссылке, вы — +' + R.referrer + ' после его первого заказа от ' + rub(RULES.refMinOrder) + '.</p>' +
@@ -1334,21 +1439,22 @@
       '<div class="card tile c6"><div class="tile-h"><h3>Промокоды</h3></div>' + (u.promos.length ? '<div class="promos">' + u.promos.map(function (p) { return '<span class="ticket"><code>' + esc(p.code) + '</code><span class="pct">−' + pctTxt(p.pct) + '%</span><span class="small">' + promoLine(p) + '</span></span>'; }).join('') + '</div><p class="small">Выберите промокод в корзине. Каждый — на один заказ.</p>' : '<p class="small">Личные промокоды выпадают в рулетке. С уровня «Золото» — промокод −1,5% каждый месяц, на «Алмазе» — ещё 3 по −2,5%. Промокоды магазина вводятся в корзине.</p>') + '</div>' +
 
       '<div class="card tile c12"><div class="tile-h"><h3>Мои заказы</h3><a class="link-btn" href="#orders">Все заказы</a></div>' +
-      (u.orders.length ? '<div class="orders">' + u.orders.slice(0, 3).map(orderCard).join('') + '</div>' : '<p class="small">Здесь появятся заказы с номерами и статусами. <a href="#catalog">Перейти в каталог</a></p>') + '</div>' +
+      (dashOrders.length ? '<div class="orders">' + dashOrders.map(orderCard).join('') + '</div>' + (u.orders.filter(isDoneOrder).length ? '<p class="small" style="margin-top:10px"><a href="#orders">История заказов · ' + u.orders.filter(isDoneOrder).length + '</a> — завершённые заказы, их можно повторить</p>' : '') : '<p class="small">Здесь появятся заказы с номерами и статусами. <a href="#catalog">Перейти в каталог</a></p>') + '</div>' +
 
       '<div class="card tile c12" style="padding-block:6px"><div class="rows">' +
       '<button class="rowl" type="button" id="r-prof"><span class="ic">' + icon('user') + '</span><span class="tx">Имя, телефон и Telegram</span><span class="val">' + esc(u.phone) + '</span>' + icon('chevron-right') + '</button>' +
       '<button class="rowl" type="button" id="r-email"><span class="ic">' + icon('mail') + '</span><span class="tx">Почта</span><span class="val">' + (u.email ? esc(u.email) : 'не указана') + '</span>' + icon('chevron-right') + '</button>' +
       '<button class="rowl" type="button" id="r-pass"><span class="ic">' + icon('key') + '</span><span class="tx">Сменить пароль</span>' + icon('chevron-right') + '</button>' +
+      '<button class="rowl" type="button" id="r-home"><span class="ic">' + icon('phone') + '</span><span class="tx">Добавить на экран «Домой»</span><span class="val">' + esc((HOME_ICONS.filter(function (x) { return x[0] === homeIcon(); })[0] || [])[1]) + '</span>' + icon('chevron-right') + '</button>' +
       '<button class="rowl" type="button" id="r-bday"' + (bd ? ' disabled' : '') + '><span class="ic">' + icon('gift') + '</span><span class="tx">День рождения</span><span class="val">' + (bd ? (+bd[1]) + ' ' + MONTHS[+bd[0] - 1] : 'указать · +' + R.birthday) + '</span>' + (bd ? '' : icon('chevron-right')) + '</button>' +
       '<button class="rowl" type="button" id="r-frame"><span class="ic">' + icon('star') + '</span><span class="tx">Рамка аватара</span><span class="val">' + esc((RULES.frames.filter(function (f) { return f.id === u.frame; })[0] || {}).name || '') + '</span>' + icon('chevron-right') + '</button>' +
       (u.avatar ? '<button class="rowl" type="button" id="r-noava"><span class="ic">' + icon('camera') + '</span><span class="tx">Убрать фото профиля</span>' + icon('chevron-right') + '</button>' : '') +
       '<button class="rowl" type="button" id="r-logout"><span class="ic">' + icon('logout') + '</span><span class="tx">Выйти</span>' + icon('chevron-right') + '</button>' +
       '<button class="rowl danger" type="button" id="r-del"><span class="ic">' + icon('trash') + '</span><span class="tx">Удалить аккаунт</span>' + icon('chevron-right') + '</button>' +
       '</div></div></div>';
-    growBars(v);
+    growBars(v); drawTasks(v);
     var on = function (id, fn) { var el = $('#' + id, v); if (el) el.addEventListener('click', fn); };
-    on('ava-cam', pickAvatar); on('add-email', emailModal); on('r-prof', profileModal); on('r-email', emailModal); on('r-pass', passModal);
+    on('ava-cam', pickAvatar); on('add-email', emailModal); on('r-prof', profileModal); on('r-email', emailModal); on('r-pass', passModal); on('r-home', homeModal);
     on('r-bday', bdayModal); on('r-frame', framesModal); on('r-del', deleteModal); on('all-levels', levelsModal);
     on('r-noava', function () { API.call('profile', { avatar: '' }).then(function (r) { if (r.ok) { setUser(r.user); toast('Фото убрано'); } }); });
     on('r-logout', function () { API.call('logout'); API.setSession(''); setUser(null); toast('Вы вышли из аккаунта'); });
@@ -1358,7 +1464,7 @@
       try { if (navigator.share) { navigator.share({ title: 'ONION SHOP', text: text, url: refLink }).catch(function () { /* отменили */ }); return; } } catch (e) { /* */ }
       copyText(refLink, 'Ссылка-приглашение скопирована');
     });
-    bindOrders(v, u.orders.slice(0, 3));
+    bindOrders(v, dashOrders);
   }
 
   // ------------------------------------------------------------ рулетка
@@ -1446,7 +1552,7 @@
 
   // ------------------------------------------------------------ информация
   function renderInfo() {
-    maybeTask('info');
+    track('info');
     $('#v-info').innerHTML = '<div class="view-head"><div><span class="eyebrow">Информация</span><h1>Как заказать, доставка и оплата</h1></div></div>' + stepsBlock() +
       '<div class="sec">' + preorderBanner() + '</div>' +
       '<div class="sec info-grid">' + deliveryCard() + paymentCard() + '</div>' +
@@ -1458,7 +1564,7 @@
   }
 
   // ------------------------------------------------------------ маршруты
-  var skipHash = null;
+  var skipHash = null, catBack = null;
   function silentHash(h) { if (location.hash.slice(1) === h) return; skipHash = h; location.hash = h; }
   function go(h) { if (location.hash.slice(1) === h || (!h && !location.hash)) route(); else location.hash = h; }
   function setNav(h) {
@@ -1488,19 +1594,36 @@
       history.replaceState(null, '', location.pathname + location.search + '#account'); h = 'account';
     }
     closeModal(); closeLightbox(); hideBuybar();
+    // запоминаем место в каталоге, когда уходим из него в товар; вернёмся к этой же карточке
+    var restore = null;
+    if (current === 'catalog' && /^p-\d+$/.test(h)) catBack = { y: window.scrollY, id: h.slice(2), tab: filter.tab };
+    else if (current === 'product' && catBack && (h === 'catalog' || h === 'stock' || h === 'preorder')) restore = catBack;
+    else if (!/^p-\d+$/.test(h)) catBack = null;
     if (!h || h === 'home') { renderHome(); show('home'); }
-    else if (h === 'catalog' || h === 'stock' || h === 'preorder') { filter.tab = h === 'catalog' ? 'all' : h; renderCatalog(); show('catalog'); if (h === 'preorder') maybeTask('pre'); }
+    else if (h === 'catalog' || h === 'stock' || h === 'preorder') {
+      filter.tab = restore ? restore.tab : (h === 'catalog' ? 'all' : h);
+      if (restore) { var hh = restore.tab === 'all' ? 'catalog' : restore.tab; if (hh !== h) { try { history.replaceState(null, '', location.pathname + location.search + '#' + hh); h = hh; } catch (e) { /* */ } } }
+      renderCatalog(); show('catalog'); if (h === 'preorder') track('pre'); else if (h === 'stock') track('stock');
+    }
     else if (/^p-\d+$/.test(h)) { renderProduct(h.slice(2)); show('product'); }
     else if (h === 'cart') { renderCart(); show('cart'); }
     else if (h === 'orders') { renderOrders(); show('orders'); }
     else if (h === 'favorites') { renderFavorites(); show('favorites'); }
-    else if (h === 'account') { renderAccount(); show('account'); }
+    else if (h === 'account') { renderAccount(); show('account'); flushTrack(); }
     else if (h === 'roulette') { renderRoulette(); show('roulette'); }
     else if (h === 'info') { renderInfo(); show('info'); }
     else { renderHome(); show('home'); }
     setNav(h);
-    window.scrollTo(0, 0);
+    if (restore) restoreCatalogSpot(restore); else window.scrollTo(0, 0);
     tickClock();
+  }
+  function restoreCatalogSpot(pos) {
+    function place() {
+      var el = pos.id && $('#cat-grid [data-pid="' + pos.id + '"]');
+      if (el) { var r = el.getBoundingClientRect(); window.scrollTo(0, Math.max(0, window.scrollY + r.top - Math.max(80, (window.innerHeight - r.height) / 2))); }
+      else window.scrollTo(0, pos.y || 0);
+    }
+    place(); requestAnimationFrame(place); setTimeout(place, 250); // картинки подгружаются и чуть двигают раскладку
   }
   // после загрузки аккаунта обновляем только то, что от него зависит (без прокрутки наверх)
   function refreshView() {
@@ -1509,8 +1632,8 @@
     else if (current === 'roulette') renderRoulette();
     else if (current === 'cart') renderCart();
     else if (current === 'orders') renderOrders();
-    if (acct.user && current === 'catalog' && filter.tab === 'preorder') maybeTask('pre');
-    if (acct.user && current === 'info') maybeTask('info');
+    if (acct.user && current === 'catalog') { if (filter.tab === 'preorder') track('pre'); else if (filter.tab === 'stock') track('stock'); }
+    if (acct.user && current === 'info') track('info');
   }
 
   // ------------------------------------------------------------ тема
@@ -1525,7 +1648,7 @@
   // ------------------------------------------------------------ запуск
   function init() {
     try { var ref = new URLSearchParams(location.search).get('ref'); if (ref) store.set('ref', ref.toUpperCase().slice(0, 12)); } catch (e) { /* */ }
-    updateCounts(); updateAcctUI(); startClock(); themeIcon();
+    updateCounts(); updateAcctUI(); startClock(); themeIcon(); applyHomeIcon();
     $('#demo-bar').hidden = API.mode !== 'demo';
     $('#demo-reset').addEventListener('click', function () { confirmBox({ title: 'Сбросить демо?', text: 'Удалятся демо-аккаунты, токены и заказы в этом браузере.', actions: [{ label: 'Отмена', cls: 'btn-ghost' }, { label: 'Сбросить', cls: 'btn-danger', run: function () { API.resetDemo(); acct.user = null; updateAcctUI(); route(); toast('Демо сброшено'); } }] }); });
     $('#theme-btn').addEventListener('click', function () {
@@ -1536,6 +1659,7 @@
     });
     if (window.matchMedia) { try { matchMedia('(prefers-color-scheme: dark)').addEventListener('change', themeIcon); } catch (e) { /* */ } }
     document.addEventListener('click', function (e) {
+      var mg = e.target.closest('a[href]'); if (mg && SHOP.managerUrl && (mg.getAttribute('href') || '').indexOf(SHOP.managerUrl) === 0) track('mgr');
       var c = e.target.closest('[data-copy]');
       if (c) { e.preventDefault(); copyText(c.getAttribute('data-copy'), 'Скопировано'); return; }
       var f = e.target.closest('[data-fav]');
@@ -1548,7 +1672,7 @@
     route();
     refreshMe().then(function () { lastMe = acct.user ? JSON.stringify(acct.user) : ''; refreshView(); });
     setInterval(silentRefresh, 45000);
-    document.addEventListener('visibilitychange', function () { if (!document.hidden) silentRefresh(); });
+    document.addEventListener('visibilitychange', function () { if (document.hidden) flushTrack(); else silentRefresh(); });
     window.addEventListener('focus', silentRefresh);
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
