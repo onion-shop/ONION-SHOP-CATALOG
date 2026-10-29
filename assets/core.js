@@ -629,6 +629,8 @@ var OnionCore = (function () {
 
   A.order = function (db, p) {
     var f = p.form || {};
+    // заказ — только из кабинета: без входа в аккаунт оформить нельзя (db.allowGuest — только для автотестов)
+    if (!db.allowGuest && !sessionUser(db, p)) return { ok: false, error: 'Чтобы оформить заказ, войдите в кабинет или создайте его', needAccount: true };
     var built = buildLines(db, p.items);
     if (built.gone.length) return err('Уже продано: ' + built.gone.join(', ') + '. Уберите из корзины и попробуйте снова');
     if (!built.lines.length) return err('Корзина пуста');

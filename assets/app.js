@@ -280,6 +280,7 @@
     updateAcctUI();
     if (current === 'account') renderAccount();
     else if (current === 'roulette') updateRoulBalance();
+    else if (current === 'cart' && !$('#checkout :focus')) renderCart();
   }
   var checkinHinted = false;
   function refreshMe() {
@@ -752,6 +753,7 @@
     v.innerHTML =
       '<div class="view-head"><div><span class="eyebrow">Оформление заказа</span><h1>Корзина и оформление</h1><p class="muted">Черновик сохранён: можно уйти в другой раздел и вернуться к оформлению в любой момент. ' + (API.enabled ? 'Заказ с номером сам уйдёт менеджеру — копировать ничего не нужно.' : 'Заполните анкету, и мы получим заказ.') + '</p></div></div>' +
       (gone.length ? '<div class="notice notice-info" style="margin-bottom:12px">' + icon('alert') + '<div>Проданные товары убраны из корзины: ' + gone.length + '.</div></div>' : '') +
+      (API.enabled && !u && acct.ready ? '<div class="notice notice-info need-acc" style="margin-bottom:12px">' + icon('user') + '<div><b>Заказ оформляется из кабинета.</b> Создайте кабинет или войдите — корзина и анкета сохранятся. Регистрация занимает минуту, и вы получите ' + RULES.reward.register + ' токенов.<div class="acts" style="margin-top:10px"><button class="btn btn-sm" type="button" id="need-acc">' + icon('user') + 'Войти или создать кабинет</button></div></div></div>' : '') +
       '<form class="checkout" id="checkout" novalidate><div class="col">' +
       '<div class="card panel"><div class="panel-head"><h2><span class="n">' + (++n) + '</span>Товары · ' + t.cnt + ' шт.</h2><button class="link-btn" type="button" id="cart-clear">Очистить</button></div><div class="lines">' +
       lines.map(function (l, i) {
@@ -769,7 +771,7 @@
             '<div class="tokrow"><span class="small">До 15% заказа · максимум ' + num(t.maxTok) + ' = ' + rub(CORE.tokensToRub(t.maxTok)) + '</span><span class="tokq"><button type="button" data-tq="0">0</button><button type="button" data-tq="1">Максимум</button></span></div></div>'
             : '<p class="small">' + (cartPromo && cartPromo.withTokens === false ? 'Промокод ' + esc(cartPromo.code) + ' нельзя совмещать с токенами.' : 'Пока нечего списывать. Отмечайтесь каждый день и выполняйте задания — токены пригодятся в следующем заказе.') + '</p>') +
           (u.promos.length ? '<div class="promos">' + u.promos.map(function (pr) { return '<button type="button" class="ticket" data-promo="' + esc(pr.code) + '" aria-pressed="' + (!!cartPromo && cartPromo.code === pr.code) + '"><code>' + esc(pr.code) + '</code><span class="pct">−' + pctTxt(pr.pct) + '%</span>' + (pr.cat ? '<span class="small">на «' + esc(pr.catLabel) + '»</span>' : '') + '</button>'; }).join('') + '</div>' : '')
-          : '<div class="guest-box">' + tk('lg') + '<div><b>Войдите — и спишем до 15% суммы токенами</b><p class="small">За регистрацию — ' + RULES.reward.register + ' токенов. Корзина сохранится.</p></div></div><div class="acts"><button class="btn btn-sm btn-ghost" type="button" id="go-auth">' + icon('user') + 'Войти или создать аккаунт</button></div>') +
+          : '<div class="guest-box">' + tk('lg') + '<div><b>Заказ оформляется из кабинета — войдите или создайте его</b><p class="small">За регистрацию — ' + RULES.reward.register + ' токенов. Корзина сохранится.</p></div></div><div class="acts"><button class="btn btn-sm btn-ghost" type="button" id="go-auth">' + icon('user') + 'Войти или создать аккаунт</button></div>') +
         '<div class="f"><label for="promo-in">Промокод</label><div class="promo-row"><input class="input" id="promo-in" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Например, HALLOWEEN" value="' + esc(cartPromo && !cartPromo.personal ? cartPromo.code : '') + '"><button class="btn btn-dark" type="button" id="promo-btn">' + (cartPromo && !cartPromo.personal ? 'Убрать' : 'Применить') + '</button></div><div id="promo-msg">' + (cartPromo ? (t.promoNoBase ? '<span class="promo-bad">Промокод ' + esc(cartPromo.code) + ' действует только на «' + esc(cartPromo.catLabel) + '» — таких товаров в корзине нет</span>' : '<span class="promo-ok">' + icon('check-circle') + 'Промокод ' + esc(cartPromo.code) + ': −' + pctTxt(cartPromo.pct) + '%' + (cartPromo.cat ? ' на «' + esc(cartPromo.catLabel) + '»' : '') + '</span>') : '') + '</div></div>' +
         (t.pack ? (t.packOk ? '<label class="pack-row"><input type="checkbox" id="use-pack"' + (usePack ? ' checked' : '') + '><span class="cbx">' + icon('check') + '</span><span><b>' + esc(t.pack.label) + ' — применить к этому заказу</b><small>' + esc(t.pack.note) + '. Менеджер учтёт при расчёте упаковки.</small></span></label>'
           : '<p class="small pack-note">' + icon('info') + esc(t.pack.label) + ' (привилегия ' + esc(t.pack.level) + ') действует только для заказа с предзаказом из Китая.</p>') : '') +
@@ -808,7 +810,7 @@
       '<div class="sumrow good" id="sum-promo"' + (t.promoRub ? '' : ' hidden') + '><span>Промокод <span id="sum-promo-code">' + esc(t.promo) + '</span></span><b>−' + rub(t.promoRub) + '</b></div>' +
       '<div class="sumtotal"><span>К оплате</span><b id="sum-pay">' + rub(t.toPay) + '</b></div>' +
       (t.pre ? '<p class="small">Доставка из Китая оплачивается отдельно по весу посылки.</p>' : '') +
-      '<button class="btn btn-block" type="submit" id="submit-btn">' + icon('check-circle') + '<span>Оформить заказ</span></button>' +
+      (API.enabled && !u ? '<button class="btn btn-block" type="submit" id="submit-btn">' + icon('user') + '<span>Войти, чтобы оформить</span></button>' : '<button class="btn btn-block" type="submit" id="submit-btn">' + icon('check-circle') + '<span>Оформить заказ</span></button>') +
       '<p class="small">Оплаты на сайте нет. Менеджер подтвердит заказ и пришлёт реквизиты.</p></aside></form>';
 
     // строки корзины
@@ -900,8 +902,10 @@
       });
     }
 
+    var na = $('#need-acc', v); if (na) na.addEventListener('click', function () { requireAuth('cart'); });
     $('#checkout', v).addEventListener('submit', function (e) {
       e.preventDefault();
+      if (API.enabled && !acct.user) { requireAuth('cart'); return; }
       var tt = totals(lines);
       var errs = validateForm(tt.stock, tt.pre);
       if (errs.length) {
@@ -958,6 +962,7 @@
     API.call('order', { items: itemsPayload(lines), form: Object.assign({}, form, { ack: ack === 'yes' }), useTokens: tt.tok, promo: tt.promo, usePack: usePack }).then(function (r) {
       if (r.ok) { if (r.user) setUser(r.user); finish(r.order, {}); return; }
       busy(btn, false);
+      if (r.needAccount) { toast(r.error, null, 'warn'); API.setSession(''); setUser(null); requireAuth('cart'); return; }
       if (r.network) { confirmBox({ title: 'Сервер не отвечает', text: 'Проверьте интернет и нажмите «Оформить» ещё раз. Корзина сохранена. Если не получается — напишите менеджеру.', actions: [{ label: 'Хорошо', cls: 'btn' }, { label: 'Написать менеджеру', cls: 'btn-ghost', run: function () { window.open(SHOP.managerUrl, '_blank', 'noopener'); } }] }); return; }
       toast(r.error || 'Не получилось оформить заказ', null, 'warn');
       if (/промокод/i.test(r.error || '')) { cartPromo = null; renderCart(); }
