@@ -10,7 +10,7 @@ var OnionCore = (function () {
     tokenRub: 0.4,          // 1 токен = 0,4 ₽ скидки
     maxShare: 0.15,         // токенами можно оплатить не больше 15% суммы заказа
     spinCost: 100,          // прокрут рулетки
-    reward: { register: 100, refFriend: 50, referrer: 100, checkin: 1, streak7: 10, task: 1, birthday: 550 },
+    reward: { register: 100, refFriend: 50, referrer: 100, checkin: 1, streak7: 10, task: 1, birthday: 550, review: 5, reviewText: 15 },
     refMinOrder: 1000,      // друг засчитывается после первого заказа от 1000 ₽
     refMaxPerMonth: 10,
     sessionDays: 60,
@@ -406,7 +406,11 @@ var OnionCore = (function () {
       var st = String(o.status || 'Оформлен');
       return { no: o.no, at: o.at, count: o.count, total: o.total, tokens: o.tokens, tokenRub: o.tokenRub, promo: o.promo || '', promoRub: o.promoRub, toPay: o.toPay, text: o.text, items: o.items || [], kind: o.kind || '', status: st, stages: stagesFor(o.kind), active: RULES.finalStages.indexOf(st) < 0 };
     });
+    var rk = db.reviewKeys ? db.reviewKeys(u.id) : [];
+    orders.forEach(function (o) { o.reviewed = (o.items || []).filter(function (it) { return rk.indexOf(o.no + '|' + it.id) >= 0; }).map(function (it) { return it.id; }); });
+    var waits = (db.waitsOf ? db.waitsOf(u.id) : []).map(function (w) { var pr = db.product ? db.product(w.productId) : null; return { id: w.productId, title: w.title, ready: !!(pr && pr.status !== 'out' && pr.status !== 'sold') }; });
     return {
+      tgOn: !!u.tgChat, tgName: u.tgName || '', waits: waits, reviewCount: rk.length,
       id: u.id, code: 'OS' + u.id, login: u.login, name: u.name, phone: u.phone, tg: u.tg, email: u.email || '', avatar: u.avatar || '',
       board: boardFor(u, db.now()), taskNews: ((u.tasks && u.tasks.news) || []).slice(),
       balance: u.balance || 0, balanceRub: tokensToRub(u.balance || 0),
@@ -874,6 +878,7 @@ var OnionCore = (function () {
       kind: hasPre && hasStock ? 'смешанный' : hasPre ? 'предзаказ' : (hasOut && !built.lines.some(function (l) { return l.status === 'stock'; })) ? 'временно нет' : 'в наличии', comment: String(f.comment || '').trim(), text: text
     };
     db.saveOrder(order);
+    if (u && u.tgChat && db.userNotify) { try { db.userNotify(u, '🧾 Заказ ' + no + ' принят. Сумма к оплате: ' + toPay + ' ₽.\nМенеджер скоро свяжется с вами. Статусы заказа будут приходить сюда.'); } catch (e) { /* не критично */ } }
     var notified = false;
     try { notified = db.notify ? !!db.notify(text) : false; } catch (e) { notified = false; }
     return ok({ order: order, notified: notified, user: u ? publicUser(db, u) : null });
@@ -905,6 +910,75 @@ var OnionCore = (function () {
     return u;
   }
 
+
+  /* ---------- Telegram: подключение, статусы заказов ---------- */
+  var STATUS_EMO = { 'Оформлен': '🧾', 'Выкуплен': '✅', 'В пути': '🚚', 'На складе': '📦', 'Едет к нам': '✈️', 'Едет к вам': '🚚', 'Получен': '🎉', 'Отменён': '❌' };
+  function statusMessage(no, status) {
+    var note = RULES.stageNotes[status] || '';
+    var t = (STATUS_EMO[status] || '🔔') + ' Заказ ' + no + ': ' + status + (note ? '\n' + note : '');
+    if (status === 'Получен') t += '\nОставьте отзыв на сайте — получите токены.';
+    if (status === 'Отменён') t += '\nТокены, если вы их тратили, вернутся на баланс.';
+    return t;
+  }
+  A.tgLink = function (db, p) {
+    var u = sessionUser(db, p); if (!u) return err('auth');
+    var code = 'T' + makeCode(db) + makeCode(db);
+    db.putCode('tg:' + code, { userId: u.id }, 3600);
+    return ok({ code: code, bot: db.botUser ? (db.botUser() || '') : '', on: !!u.tgChat });
+  };
+  A.tgUnlink = function (db, p) {
+    var u = sessionUser(db, p); if (!u) return err('auth');
+    u.tgChat = ''; u.tgName = ''; db.saveUser(u);
+    return ok({ user: publicUser(db, u) });
+  };
+  // вызывается ботом (не сайтом): текст «/start T123…» из чата → привязка к клиенту
+  function tgBind(db, text, chat, name) {
+    var m = /^\/start(?:@\w+)?\s+(T\d{12})\s*$/.exec(String(text || '').trim());
+    if (!m) return null;
+    var c = db.getCode('tg:' + m[1]); if (!c) return { ok: false };
+    var u = db.getUser(c.userId); if (!u) return { ok: false };
+    u.tgChat = String(chat); u.tgName = String(name || ''); db.saveUser(u); db.delCode('tg:' + m[1]);
+    return { ok: true, user: u };
+  }
+
+  /* ---------- отзывы ---------- */
+  function firstName(n) { return String(n || 'Клиент').trim().split(/\s+/)[0].slice(0, 20); }
+  A.review = function (db, p) {
+    var u = sessionUser(db, p); if (!u) return err('auth');
+    var no = String(p.no || ''), pid = String(p.productId || ''), rating = parseInt(p.rating, 10);
+    if (!(rating >= 1 && rating <= 5)) return err('Поставьте оценку от 1 до 5');
+    var o = (db.listOrders(u.id, 200) || []).filter(function (x) { return x.no === no; })[0];
+    if (!o || String(o.status) !== 'Получен') return err('Отзыв можно оставить после получения заказа');
+    var it = (o.items || []).filter(function (x) { return String(x.id) === pid; })[0];
+    if (!it) return err('Этого товара нет в заказе');
+    if (db.reviewHas(no, pid)) return err('Вы уже оставили отзыв на этот товар');
+    var text = String(p.text || '').replace(/\s+/g, ' ').trim().slice(0, 600);
+    var tokens = text.length >= 20 ? RULES.reward.reviewText : RULES.reward.review;
+    touch(db, u);
+    db.reviewAdd({ at: db.now(), no: no, userId: u.id, login: u.login, name: firstName(u.name), productId: pid, title: it.title, rating: rating, text: text, status: 'опубликован', reward: tokens });
+    log(db, u, tokens, 'Отзыв на товар «' + String(it.title).slice(0, 40) + '»');
+    track(db, u, 'review'); settle(db, u); db.saveUser(u);
+    return ok({ reward: tokens, user: publicUser(db, u) });
+  };
+  A.reviews = function (db, p) {
+    var rows = (db.reviewsFor ? db.reviewsFor(String(p.productId || '')) : []) || [], sum = 0;
+    rows.forEach(function (r) { sum += +r.rating || 0; });
+    return ok({ count: rows.length, avg: rows.length ? Math.round(sum / rows.length * 10) / 10 : 0,
+      list: rows.slice(0, 20).map(function (r) { return { name: r.name, rating: +r.rating, text: r.text, at: r.at }; }) });
+  };
+
+  /* ---------- «Сообщить, когда появится» ---------- */
+  A.waitlist = function (db, p) {
+    var u = sessionUser(db, p); if (!u) return err('auth');
+    var pid = String(p.productId || ''), pr = db.product(pid);
+    if (p.on === false) { db.waitRemove(u.id, pid); return ok({ user: publicUser(db, u) }); }
+    if (!pr) return err('Товар не найден');
+    if (pr.status !== 'out') return err('Этот товар уже можно заказать');
+    if (db.waitsOf(u.id).length >= 20) return err('Можно следить не больше чем за 20 товарами');
+    if (!db.waitsOf(u.id).some(function (w) { return w.productId === pid; })) db.waitAdd({ at: db.now(), userId: u.id, login: u.login, productId: pid, title: pr.title });
+    return ok({ user: publicUser(db, u) });
+  };
+
   // без сервера: номер из даты и случайных символов (повтор практически невозможен)
   function offlineNo(ms, rnd) {
     var d = msk(ms), s = '';
@@ -920,6 +994,7 @@ var OnionCore = (function () {
   return {
     RULES: RULES, handle: handle, orderText: orderText, buildLines: buildLines, checkFields: checkFields,
     offlineNo: offlineNo, levelInfo: levelInfo, levelOf: levelOf, fixIndex: fixIndex, receive: receive, adjustTokens: adjustTokens, xpOfRub: xpOfRub, wheelFor: wheelFor, framesFor: framesFor, pctText: pctText, promoBase: promoBase, touch: touch, tokensToRub: tokensToRub, settings: settings, dayKey: dayKey, monthKey: monthKey,
+    statusMessage: statusMessage, tgBind: tgBind,
     cleanTg: cleanTg, cleanEmail: cleanEmail, phoneKey: phoneKey, fmtPhone: fmtPhone, digits: digits, validEmail: validEmail, taskPick: picksFor, weekKey: weekKey, stagesFor: stagesFor
   };
 })();

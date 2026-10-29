@@ -15,7 +15,7 @@ var OnionAPI = (function () {
   // ------------------------------------------------ демо-база в браузере
   var DKEY = 'onion.shop.demo.v2';
   function load() { try { return JSON.parse(localStorage.getItem(DKEY)) || null; } catch (e) { return null; } }
-  var mem = load() || { users: [], sessions: [], orders: [], log: [], seq: { user: 1000, order: 0 } };
+  var mem = load() || { users: [], sessions: [], orders: [], log: [], reviews: [], waits: [], tg: [], seq: { user: 1000, order: 0 } };
   function save() { try { localStorage.setItem(DKEY, JSON.stringify(mem)); } catch (e) { /* только в памяти */ } }
   function hashStr(s) {
     // FNV-1a ×2 — для демо достаточно; на сервере SHA-256
@@ -57,6 +57,15 @@ var OnionAPI = (function () {
     mail: function () { return true; },
     deleteUser: function (u) { mem.users = mem.users.filter(function (x) { return x.id !== u.id; }); save(); },
     deleteSessionsOf: function (id) { mem.sessions = mem.sessions.filter(function (s) { return s.userId !== id; }); save(); },
+    botUser: function () { return 'onion_shop_demo_bot'; },
+    userNotify: function (u, text) { (mem.tg = mem.tg || []).push({ chat: u.tgChat, text: text }); save(); return true; },
+    reviewKeys: function (uid) { return (mem.reviews || []).filter(function (r) { return r.userId === uid; }).map(function (r) { return r.no + '|' + r.productId; }); },
+    reviewHas: function (no, pid) { return (mem.reviews || []).some(function (r) { return r.no === no && r.productId === pid; }); },
+    reviewAdd: function (r) { (mem.reviews = mem.reviews || []).push(r); save(); },
+    reviewsFor: function (pid) { return (mem.reviews || []).filter(function (r) { return r.productId === pid && r.status === 'опубликован'; }).reverse().map(function (r) { var d = new Date(r.at); return { name: r.name, rating: r.rating, text: r.text, at: ('0' + d.getDate()).slice(-2) + '.' + ('0' + (d.getMonth() + 1)).slice(-2) + '.' + d.getFullYear() }; }); },
+    waitsOf: function (uid) { return (mem.waits || []).filter(function (w) { return w.userId === uid; }); },
+    waitAdd: function (w) { (mem.waits = mem.waits || []).push(w); save(); },
+    waitRemove: function (uid, pid) { mem.waits = (mem.waits || []).filter(function (w) { return !(w.userId === uid && w.productId === pid); }); save(); },
     shopPromo: function (code) { return code === 'HALLOWEEN' ? { code: code, pct: 10, active: true, withTokens: true, once: true, limit: 0, until: Date.parse('2026-10-31T23:59:59+03:00') } : null; },
     promoUses: function (code) {
       var r = { total: 0, users: [], phones: [] };
@@ -80,7 +89,8 @@ var OnionAPI = (function () {
     if (mode !== 'live') return Promise.resolve({ ok: false, error: 'off' });
     return fetch(cfg.apiUrl, { method: 'POST', body: JSON.stringify(payload), redirect: 'follow' })
       .then(function (r) { return r.json(); })
-      .catch(function () { return { ok: false, error: 'Нет связи с сервером. Проверьте интернет и попробуйте ещё раз', network: true }; });
+      .then(function (r) { try { window.dispatchEvent(new Event('onion:netok')); } catch (e) { /* */ } return r; })
+      .catch(function () { try { window.dispatchEvent(new Event('onion:neterr')); } catch (e) { /* */ } return { ok: false, error: 'Нет связи с сервером. Проверьте интернет и попробуйте ещё раз', network: true }; });
   }
 
   return {

@@ -490,8 +490,44 @@
     if (f.brand !== 'all' && norm(p.brand) !== f.brand) return false;
     if (f.price !== 'all') { var r = PRICE[f.price]; if (p.price < r[0] || p.price >= r[1]) return false; }
     if (f.sale && !p.oldPrice) return false;
-    if (f.q) { var hay = norm([p.title, p.subtitle, p.brand, p.categoryLabel, p.colors.join(' '), p.sizes.join(' ')].join(' ')); if (!norm(f.q).split(/\s+/).every(function (w) { return hay.indexOf(w) >= 0; })) return false; }
+    if (f.q && !qMatch(p, f.q, f._fz || 0)) return false;
     return true;
+  }
+  // поиск: точный → с опечатками → с исправлением раскладки (куртка / regnrf)
+  var LAT = "qwertyuiop[]asdfghjkl;'zxcvbnm,.", CYR = 'йцукенгшщзхъфывапролджэячсмитьбю';
+  function swapLayout(t) { return t.replace(/[a-z\[\];',.]/g, function (c) { return CYR.charAt(LAT.indexOf(c)) || c; }); }
+  function lev(a, b, max) {
+    if (Math.abs(a.length - b.length) > max) return max + 1;
+    var prev = [], cur, i, j;
+    for (j = 0; j <= b.length; j++) prev[j] = j;
+    for (i = 1; i <= a.length; i++) {
+      cur = [i]; var best = i;
+      for (j = 1; j <= b.length; j++) { cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a.charAt(i - 1) === b.charAt(j - 1) ? 0 : 1)); if (cur[j] < best) best = cur[j]; }
+      if (best > max) return max + 1;
+      prev = cur;
+    }
+    return prev[b.length];
+  }
+  function hayOf(p) { if (!p._h) { p._h = norm([p.title, p.subtitle, p.brand, p.categoryLabel, p.colors.join(' '), p.sizes.join(' ')].join(' ')); p._w = p._h.split(/[^a-zа-я0-9]+/).filter(Boolean); } return p; }
+  function tokOk(t, p, fuzzy) {
+    hayOf(p); if (p._h.indexOf(t) >= 0) return true;
+    if (!fuzzy || t.length < 4) return false;
+    var m = t.length >= 7 ? 2 : 1;
+    return p._w.some(function (w) { return lev(w, t, m) <= m || (w.length > t.length && lev(w.slice(0, t.length), t, m) <= m); });
+  }
+  function qMatch(p, q, mode) {
+    var t = norm(q); if (mode === 2) t = swapLayout(t);
+    return t.split(/\s+/).filter(Boolean).every(function (w) { return tokOk(w, p, mode > 0); });
+  }
+  function searchWords() {
+    if (!searchWords.v) { var c = {}; PRODUCTS.forEach(function (p) { hayOf(p); p._w.forEach(function (w) { if (w.length >= 4 && !/^\d+$/.test(w)) c[w] = (c[w] || 0) + 1; }); }); searchWords.v = c; }
+    return searchWords.v;
+  }
+  function didYouMean(q) {
+    var t = norm(q).split(/\s+/).filter(Boolean)[0]; if (!t || t.length < 3) return '';
+    var W = searchWords(), best = '', bd = 99;
+    Object.keys(W).forEach(function (w) { var m = t.length >= 7 ? 3 : 2, d = lev(w, t, m); if (d < bd || (d === bd && W[w] > (W[best] || 0))) { bd = d; best = w; } });
+    return bd <= (t.length >= 7 ? 3 : 2) && best !== t ? best : '';
   }
   function renderCatalog() {
     var v = $('#v-catalog'), brands = {};
@@ -515,7 +551,13 @@
     updateCatalog();
   }
   function updateCatalog() {
-    var f = filter, base = PRODUCTS.filter(function (p) { return matches(p, f, 'tab'); });
+    var f = filter;
+    f._fz = 0;
+    if (f.q && !PRODUCTS.some(function (p) { return matches(p, f); })) {
+      f._fz = 1;
+      if (!PRODUCTS.some(function (p) { return matches(p, f); })) { f._fz = 2; if (!PRODUCTS.some(function (p) { return matches(p, f); })) f._fz = 0; }
+    }
+    var base = PRODUCTS.filter(function (p) { return matches(p, f, 'tab'); });
     var tabs = [['all', 'Все', base.length], ['stock', 'В наличии', base.filter(inStockTab).length], ['preorder', 'Предзаказ', base.filter(function (p) { return p.status === 'preorder'; }).length]];
     var tEl = $('#cat-tabs');
     tEl.innerHTML = tabs.map(function (t) { return '<button type="button" role="tab" aria-selected="' + (f.tab === t[0]) + '" data-tab="' + t[0] + '">' + t[1] + '<span class="n">' + t[2] + '</span></button>'; }).join('');
@@ -537,8 +579,11 @@
     $('#cat-sub').textContent = f.tab === 'preorder' ? 'Выкупаем у поставщика после заказа. Доставка из Китая оплачивается отдельно.' : f.tab === 'stock' ? 'Вещи уже в Москве — отправим сразу.' : 'Одежда, обувь и аксессуары из Telegram-канала магазина.';
     $('#cat-count').textContent = 'Найдено: ' + list.length + ' ' + plural(list.length, 'товар', 'товара', 'товаров');
     $('#cat-reset').hidden = !(f.cat !== 'all' || f.brand !== 'all' || f.q || f.price !== 'all' || f.sale);
-    $('#cat-grid').innerHTML = list.length ? grid(list) :
-      '<div class="empty"><span class="ico">' + icon('search') + '</span><h3>Ничего не нашлось</h3><p>Попробуйте другое слово или сбросьте фильтры. Нужной вещи нет — напишите менеджеру, подберём под заказ.</p><div class="acts" style="justify-content:center"><button class="btn btn-ghost btn-sm" type="button" id="empty-reset">Сбросить фильтры</button><a class="btn btn-sm" href="' + SHOP.managerUrl + '" target="_blank" rel="noopener">' + icon('send') + 'Написать менеджеру</a></div></div>';
+    var fzNote = f._fz === 1 ? '<div class="notice notice-info fz-note">' + icon('search') + '<div>Точных совпадений нет — показали похожие на «' + esc(f.q) + '».</div></div>' : f._fz === 2 ? '<div class="notice notice-info fz-note">' + icon('search') + '<div>Исправили раскладку: искали «' + esc(swapLayout(norm(f.q))) + '».</div></div>' : '';
+    var dym = f.q && !f._fz ? didYouMean(f.q) : '';
+    $('#cat-grid').innerHTML = list.length ? fzNote + grid(list) :
+      '<div class="empty"><span class="ico">' + icon('search') + '</span><h3>Ничего не нашлось</h3>' + (dym ? '<p>Возможно, вы искали <button class="link-btn" type="button" id="dym-btn">' + esc(dym) + '</button></p>' : '') + '<p>Попробуйте другое слово или сбросьте фильтры. Нужной вещи нет — напишите менеджеру, подберём под заказ.</p><div class="acts" style="justify-content:center"><button class="btn btn-ghost btn-sm" type="button" id="empty-reset">Сбросить фильтры</button><a class="btn btn-sm" href="' + SHOP.managerUrl + '" target="_blank" rel="noopener">' + icon('send') + 'Написать менеджеру</a></div></div>';
+    var dy = $('#dym-btn'); if (dy) dy.addEventListener('click', function () { filter.q = dym; var qi = $('#cat-q'); if (qi) { qi.value = dym; $('#cat-clear').hidden = false; } updateCatalog(); });
     var er = $('#empty-reset'); if (er) er.addEventListener('click', function () { filter = newFilter(); silentHash('catalog'); renderCatalog(); setNav('catalog'); });
   }
 
@@ -614,9 +659,9 @@
       ((p.facts && p.facts.length) ? '<ul class="facts" aria-label="Главное о товаре">' + p.facts.slice(0, 6).map(function (f) { return '<li><small>' + esc(f[0]) + '</small><b>' + esc(f[1]) + '</b></li>'; }).join('') + '</ul>' : '') +
       (p.status === 'preorder'
         ? '<div class="notice notice-pre">' + icon('plane') + '<div><b>Предзаказ из Китая.</b> Выкупим у поставщика после заказа, проверим на складе и отправим. Доставка из Китая — отдельно по весу. <a href="' + SHOP.preorderUrl + '" target="_blank" rel="noopener">Как это работает</a></div></div>'
-        : p.status === 'out' ? '<div class="notice notice-out">' + icon('clock') + '<div><b>Временно нет в наличии.</b> Заказ можно оформить — менеджер уточнит у вас срок поступления и подтвердит заказ. Оплата только после согласования.</div></div>'
+        : p.status === 'out' ? '<div class="notice notice-out">' + icon('clock') + '<div><b>Временно нет в наличии.</b> Заказ можно оформить — менеджер уточнит у вас срок поступления и подтвердит заказ. Оплата только после согласования.</div></div>' + (API.enabled ? '<button class="btn btn-ghost btn-sm wait-btn" type="button" id="wait-btn"></button>' : '')
         : '<div class="notice notice-info">' + icon('box') + '<div><b>В наличии в Москве.</b> Доставка по Москве и в другие города через Авито, курьер — по согласованию с менеджером, самовывоз.</div></div>') +
-      (p.sizes.length ? '<div class="opt" id="opt-size"><div class="opt-head"><b>Размер' + (p.sizes.length > 1 ? ' <span class="req">*</span>' : '') + '</b><span class="val"><span id="size-val">' + (sel.size ? esc(sel.size) : 'не выбран') + '</span>' + (measures.length ? ' · <button class="link-btn" type="button" id="measure-btn">Замеры</button>' : '') + '</span></div><div class="choices">' +
+      (p.sizes.length ? '<div class="opt" id="opt-size"><div class="opt-head"><b>Размер' + (p.sizes.length > 1 ? ' <span class="req">*</span>' : '') + '</b><span class="val"><span id="size-val">' + (sel.size ? esc(sel.size) : 'не выбран') + '</span>' + (measures.length ? ' · <button class="link-btn" type="button" id="measure-btn">Замеры</button>' : '') + (p.sizes.length > 1 ? ' · <button class="link-btn" type="button" id="fit-btn">Подобрать</button>' : '') + '</span></div><div class="choices">' +
         p.sizes.map(function (s) { return '<button class="choice" type="button" data-size="' + esc(s) + '" aria-pressed="' + (sel.size === s) + '">' + esc(s) + '</button>'; }).join('') + '</div><span class="msg" hidden>Выберите размер</span></div>' : '') +
       (p.colors.length ? '<div class="opt" id="opt-color"><div class="opt-head"><b>Цвет' + (p.colors.length > 1 ? ' <span class="req">*</span>' : '') + '</b><span class="val" id="color-val">' + (sel.color ? esc(cap(sel.color)) : 'не выбран') + '</span></div><div class="choices">' +
         p.colors.map(function (c) { return '<button class="choice color" type="button" data-color="' + esc(c) + '" aria-pressed="' + (sel.color === c) + '"><i class="sw" style="' + swatch(c) + '"></i>' + esc(cap(c)) + '</button>'; }).join('') + '</div><span class="msg" hidden>Выберите цвет</span></div>' : '') +
@@ -628,6 +673,7 @@
       ((specs.length || p.notes.length) ? '<details open><summary>Характеристики' + icon('chevron-down') + '</summary><div class="acc-body">' + (specs.length ? '<dl class="specs">' + specs.map(function (r) { return '<div><dt>' + esc(r[0]) + '</dt><dd>' + esc(r[1]) + '</dd></div>'; }).join('') + '</dl>' : '') + (p.notes.length ? '<div class="notes">' + p.notes.map(function (n) { return '<span>' + icon('check') + esc(n) + '</span>'; }).join('') + '</div>' : '') + '</div></details>' : '') +
       (measures.length ? '<details' + (specs.length ? '' : ' open') + '><summary>Замеры изделия' + icon('chevron-down') + '</summary><div class="acc-body"><dl class="specs">' + measures.map(function (r) { return '<div><dt>' + esc(r[0]) + '</dt><dd>' + esc(r[1]) + '</dd></div>'; }).join('') + '</dl></div></details>' : '') +
       '<details><summary>Доставка и оплата' + icon('chevron-down') + '</summary><div class="acc-body"><p>' + (p.status === 'preorder' ? 'Из Китая: самолёт — 5–9 дней до Москвы от склада, фура — 18–32 дня. По России — Авито, СДЭК или личная встреча в Москве.' : 'Доставка по Москве или в другой город через Авито — быстрее всего. Курьер по Москве — не всегда, согласуется с менеджером. Самовывоз: ' + esc(SHOP.address) + '.') + '</p><p>Оплата переводом или наличными при встрече — после подтверждения менеджером.' + (API.enabled ? ' До 15% суммы можно оплатить токенами, промокод вводится при оформлении.' : '') + '</p></div></details>' +
+      (API.enabled ? '<details id="rev-det"><summary>Отзывы <span class="rev-n" id="rev-n"></span>' + icon('chevron-down') + '</summary><div class="acc-body" id="rev-body"><p class="small">Загружаем…</p></div></details>' : '') +
       '</div>' +
       '<a class="tg-link" href="' + esc(p.link) + '" target="_blank" rel="noopener">' + icon('send') + 'Пост с этим товаром в канале</a>' +
       '</div></div></div>' +
@@ -661,6 +707,29 @@
     $('#share-btn', v).addEventListener('click', function () { shareProduct(p); });
     var mb = $('#measure-btn', v);
     if (mb) mb.addEventListener('click', function () { track('measure'); openModal(modalHead('Замеры: ' + p.title) + '<dl class="specs">' + measures.map(function (r) { return '<div><dt>' + esc(r[0]) + '</dt><dd>' + esc(r[1]) + '</dd></div>'; }).join('') + '</dl><p class="small">Замеры сделаны по изделию, без растяжения. Сомневаетесь с размером — спросите менеджера.</p>', { cls: 'sm' }); });
+
+    var fb = $('#fit-btn', v);
+    if (fb) fb.addEventListener('click', function () { track('measure'); fitModal(p, function (size) { var b = $('[data-size="' + size + '"]', v); if (b) b.click(); }); });
+    var rd = $('#rev-det', v);
+    if (rd) rd.addEventListener('toggle', function () { if (rd.open) loadReviews(p.id, $('#rev-body', v), $('#rev-n', v)); });
+    var wb = $('#wait-btn', v);
+    if (wb) {
+      var isWait = function () { return !!(acct.user && (acct.user.waits || []).some(function (w) { return w.id === p.id; })); };
+      var paintWait = function () { var on = isWait(); wb.classList.toggle('on', on); wb.innerHTML = icon('clock') + (on ? 'Вы ждёте этот товар · отменить' : 'Сообщить, когда появится'); };
+      paintWait();
+      wb.addEventListener('click', function () {
+        if (!acct.user) { toast('Войдите в кабинет — тогда сообщим, когда товар появится', { label: 'Войти', run: function () { go('account'); } }, 'warn'); return; }
+        var on = isWait(); busy(wb, true, 'Секунду');
+        API.call('waitlist', { productId: p.id, on: !on }).then(function (r) {
+          busy(wb, false);
+          if (!r.ok) { toast(r.error, null, 'warn'); return; }
+          acct.user = r.user; updateAcctUI(); paintWait();
+          if (on) toast('Больше не следим за этим товаром');
+          else if (r.user.tgOn) toast('Напишем в Telegram, когда товар появится');
+          else toast('Покажем в кабинете. Чтобы получить сообщение в Telegram — подключите бота', { label: 'Подключить', run: tgModal });
+        });
+      });
+    }
 
     // параметры
     function clearErr(oid) { var o = $('#' + oid); if (o) { o.classList.remove('err'); var m = $('.msg', o); if (m) m.hidden = true; } }
@@ -1045,12 +1114,13 @@
   function orderCard(o, i) {
     return '<article class="card order" data-o="' + i + '"><div class="order-top"><div><span class="order-no">№ ' + esc(o.no) + '</span><p class="date">' + esc(fmtAt(o.at)) + ' · ' + (o.count || 0) + ' шт.</p></div><div style="display:grid;justify-items:end;gap:6px"><span class="sum">' + rub(o.toPay != null ? o.toPay : o.total) + '</span>' + stPill(o) + '</div></div>' +
       '<div class="order-items">' + (o.items || []).map(function (it) { var id = it.photo || it.thumb; return '<a class="oi" href="#p-' + esc(it.id) + '" title="' + esc(it.title) + '">' + (id ? '<img src="' + thumb(id) + '" alt="' + esc(it.title) + '" loading="lazy">' : '') + (it.qty > 1 ? '<i>×' + it.qty + '</i>' : '') + '</a>'; }).join('') + '</div>' +
-      '<div class="acts"><button class="btn btn-sm" type="button" data-open>' + icon('receipt') + (o.stages ? 'Статус и чек' : 'Чек') + '</button><button class="btn btn-ghost btn-sm" type="button" data-repeat>' + icon('refresh') + 'Повторить</button></div></article>';
+      '<div class="acts"><button class="btn btn-sm" type="button" data-open>' + icon('receipt') + (o.stages ? 'Статус и чек' : 'Чек') + '</button><button class="btn btn-ghost btn-sm" type="button" data-repeat>' + icon('refresh') + 'Повторить</button>' + reviewBtn(o) + '</div></article>';
   }
   function bindOrders(root, list) {
     $$('.order', root).forEach(function (el) {
       var o = list[+el.getAttribute('data-o')];
       $('[data-open]', el).addEventListener('click', function () { showReceipt(o); });
+      var rv = $('[data-review]', el); if (rv) rv.addEventListener('click', function () { reviewModal(o); });
       $('[data-repeat]', el).addEventListener('click', function () {
         var added = 0, missing = 0;
         (o.items || []).forEach(function (it) { if (BY_ID[it.id]) { addToCart({ id: it.id, size: it.size || null, color: it.color || null, photo: it.photo || null, qty: it.qty, note: '' }); added++; } else missing++; });
@@ -1433,17 +1503,22 @@
       '<div class="ttabs" role="tablist" aria-label="Период заданий" id="task-tabs"></div><div class="tasks" id="task-list"></div><p class="small" id="task-note"></p></div>' +
 
       '<div class="card tile c6"><div class="tile-h"><h3>Пригласить друга</h3><span class="side">' + u.refCount + ' ' + plural(u.refCount, 'друг', 'друга', 'друзей') + '</span></div>' +
+      '<div class="ref-stats"><div><small>Друзей пришло</small><b>' + u.refCount + '</b></div><div><small>Заработано</small><b>' + tk() + num(u.refCount * R.referrer) + '</b></div><div><small>За каждого друга</small><b>+' + R.referrer + '</b></div></div>' +
       '<p class="small">Друг получит +' + R.refFriend + ' токенов при регистрации по ссылке, вы — +' + R.referrer + ' после его первого заказа от ' + rub(RULES.refMinOrder) + '.</p>' +
       '<div class="ref-row"><span class="lnk">' + esc(refLink.replace(/^https?:\/\//, '')) + '</span><button class="icon-btn" type="button" data-copy="' + esc(refLink) + '" aria-label="Скопировать ссылку">' + icon('copy') + '</button><button class="icon-btn acc" type="button" id="ref-share" aria-label="Поделиться">' + icon('share') + '</button></div>' +
       '<p class="small">Ваш код: <b>' + esc(u.refCode) + '</b></p></div>' +
 
       '<div class="card tile c6"><div class="tile-h"><h3>Промокоды</h3></div>' + (u.promos.length ? '<div class="promos">' + u.promos.map(function (p) { return '<span class="ticket"><code>' + esc(p.code) + '</code><span class="pct">−' + pctTxt(p.pct) + '%</span><span class="small">' + promoLine(p) + '</span></span>'; }).join('') + '</div><p class="small">Выберите промокод в корзине. Каждый — на один заказ.</p>' : '<p class="small">Личные промокоды выпадают в рулетке. С уровня «Золото» — промокод −1,5% каждый месяц, на «Алмазе» — ещё 3 по −2,5%. Промокоды магазина вводятся в корзине.</p>') + '</div>' +
 
+      ((u.waits || []).length ? '<div class="card tile c12"><div class="tile-h"><h3>Жду появления</h3><span class="side">' + u.waits.length + '</span></div><div class="waits">' + u.waits.map(function (w) {
+        return '<div class="wait-row"><a href="#p-' + esc(w.id) + '">' + esc(w.title) + '</a>' + (w.ready ? '<span class="badge badge-ok">можно заказать</span>' : '<span class="small">ждём поступления</span>') + '<button class="icon-btn" type="button" data-wx="' + esc(w.id) + '" aria-label="Больше не ждать">' + icon('x') + '</button></div>';
+      }).join('') + '</div></div>' : '') +
       '<div class="card tile c12"><div class="tile-h"><h3>Мои заказы</h3><a class="link-btn" href="#orders">Все заказы</a></div>' +
       (dashOrders.length ? '<div class="orders">' + dashOrders.map(orderCard).join('') + '</div>' + (u.orders.filter(isDoneOrder).length ? '<p class="small" style="margin-top:10px"><a href="#orders">История заказов · ' + u.orders.filter(isDoneOrder).length + '</a> — завершённые заказы, их можно повторить</p>' : '') : '<p class="small">Здесь появятся заказы с номерами и статусами. <a href="#catalog">Перейти в каталог</a></p>') + '</div>' +
 
       '<div class="card tile c12" style="padding-block:6px"><div class="rows">' +
       '<button class="rowl" type="button" id="r-prof"><span class="ic">' + icon('user') + '</span><span class="tx">Имя, телефон и Telegram</span><span class="val">' + esc(u.phone) + '</span>' + icon('chevron-right') + '</button>' +
+      (API.enabled ? '<button class="rowl" type="button" id="r-tg"><span class="ic">' + icon('send') + '</span><span class="tx">Уведомления в Telegram</span><span class="val">' + (u.tgOn ? 'подключены' : 'не подключены') + '</span>' + icon('chevron-right') + '</button>' : '') +
       '<button class="rowl" type="button" id="r-email"><span class="ic">' + icon('mail') + '</span><span class="tx">Почта</span><span class="val">' + (u.email ? esc(u.email) : 'не указана') + '</span>' + icon('chevron-right') + '</button>' +
       '<button class="rowl" type="button" id="r-pass"><span class="ic">' + icon('key') + '</span><span class="tx">Сменить пароль</span>' + icon('chevron-right') + '</button>' +
       '<button class="rowl" type="button" id="r-home"><span class="ic">' + icon('phone') + '</span><span class="tx">Добавить на экран «Домой»</span><span class="val">' + esc((HOME_ICONS.filter(function (x) { return x[0] === homeIcon(); })[0] || [])[1]) + '</span>' + icon('chevron-right') + '</button>' +
@@ -1456,7 +1531,7 @@
     growBars(v); drawTasks(v);
     var on = function (id, fn) { var el = $('#' + id, v); if (el) el.addEventListener('click', fn); };
     on('ava-cam', pickAvatar); on('add-email', emailModal); on('r-prof', profileModal); on('r-email', emailModal); on('r-pass', passModal); on('r-home', homeModal);
-    on('r-bday', bdayModal); on('r-frame', framesModal); on('r-del', deleteModal); on('all-levels', levelsModal);
+    on('r-tg', tgModal); on('r-bday', bdayModal); on('r-frame', framesModal); on('r-del', deleteModal); on('all-levels', levelsModal);
     on('r-noava', function () { API.call('profile', { avatar: '' }).then(function (r) { if (r.ok) { setUser(r.user); toast('Фото убрано'); } }); });
     on('r-logout', function () { API.call('logout'); API.setSession(''); setUser(null); toast('Вы вышли из аккаунта'); });
     on('checkin-btn', function () { doCheckin($('#checkin-btn', v)); });
@@ -1465,6 +1540,7 @@
       try { if (navigator.share) { navigator.share({ title: 'ONION SHOP', text: text, url: refLink }).catch(function () { /* отменили */ }); return; } } catch (e) { /* */ }
       copyText(refLink, 'Ссылка-приглашение скопирована');
     });
+    $$('[data-wx]', v).forEach(function (b) { b.addEventListener('click', function () { API.call('waitlist', { productId: b.getAttribute('data-wx'), on: false }).then(function (r) { if (r.ok) setUser(r.user); }); }); });
     bindOrders(v, dashOrders);
   }
 
@@ -1647,6 +1723,134 @@
   }
 
   // ------------------------------------------------------------ запуск
+
+  // ------------------------------------------------------------ Telegram, отзывы, размеры
+  function stars(n) { var h = ''; for (var i = 1; i <= 5; i++) h += '<i class="' + (i <= Math.round(n) ? 'on' : '') + '">★</i>'; return '<span class="stars" role="img" aria-label="' + n + ' из 5">' + h + '</span>'; }
+  function reviewBtn(o) {
+    if (!acct.user || String(o.status) !== 'Получен' || !o.reviewed) return '';
+    var left = (o.items || []).filter(function (it) { return o.reviewed.indexOf(it.id) < 0; }).length;
+    return left ? '<button class="btn btn-sm" type="button" data-review>' + icon('star') + 'Оставить отзыв · +' + RULES.reward.reviewText + '</button>' : '';
+  }
+  function reviewModal(o) {
+    var R = RULES.reward, items = (o.items || []).filter(function (it) { return (o.reviewed || []).indexOf(it.id) < 0; });
+    var md = openModal(modalHead('Отзыв о заказе') + '<p class="small">За оценку — +' + R.review + ' токенов, за оценку с отзывом от 20 символов — +' + R.reviewText + '. Отзыв увидят другие покупатели на странице товара.</p><div class="rv-list">' +
+      items.map(function (it) {
+        var id = it.photo || it.thumb;
+        return '<div class="rv" data-id="' + esc(it.id) + '"><div class="rv-h">' + (id ? '<img src="' + thumb(id) + '" alt="">' : '') + '<b>' + esc(it.title) + '</b></div>' +
+          '<div class="rv-pick" role="radiogroup" aria-label="Оценка">' + [1, 2, 3, 4, 5].map(function (n) { return '<button type="button" data-r="' + n + '" aria-label="' + n + '">★</button>'; }).join('') + '</div>' +
+          '<textarea maxlength="600" placeholder="Как сидит, качество, совпало ли с фото"></textarea><div class="rv-act"><button class="btn btn-sm" type="button" data-send disabled>Отправить</button><span class="rv-msg small"></span></div></div>';
+      }).join('') + '</div>', { cls: 'sm' });
+    $$('.rv', md).forEach(function (box) {
+      var rating = 0, send = $('[data-send]', box), msg = $('.rv-msg', box);
+      $$('.rv-pick button', box).forEach(function (b) {
+        b.addEventListener('click', function () { rating = +b.getAttribute('data-r'); $$('.rv-pick button', box).forEach(function (x) { x.classList.toggle('on', +x.getAttribute('data-r') <= rating); }); send.disabled = false; });
+      });
+      send.addEventListener('click', function () {
+        busy(send, true, 'Отправляем');
+        API.call('review', { no: o.no, productId: box.getAttribute('data-id'), rating: rating, text: $('textarea', box).value }).then(function (r) {
+          busy(send, false);
+          if (!r.ok) { msg.textContent = r.error; return; }
+          acct.user = r.user; updateAcctUI(); revCache = {};
+          box.innerHTML = '<div class="rv-done">' + icon('check-circle') + '<span>Спасибо! <b>+' + r.reward + '</b> ' + plural(r.reward, 'токен', 'токена', 'токенов') + ' на балансе</span></div>';
+          reward('Спасибо за отзыв: +' + r.reward + ' токенов');
+          if (!$('.rv [data-send]', md)) setTimeout(function () { closeModal(); refreshView(); }, 1300);
+        });
+      });
+    });
+  }
+  var revCache = {};
+  function drawReviews(r, body, n) {
+    if (n) n.textContent = r.count ? '· ' + r.count : '';
+    body.innerHTML = r.count
+      ? '<div class="rev-sum">' + stars(r.avg) + '<b>' + String(r.avg).replace('.', ',') + '</b><span class="small">' + r.count + ' ' + plural(r.count, 'отзыв', 'отзыва', 'отзывов') + '</span></div>' +
+        r.list.map(function (x) { return '<div class="rev"><div class="rev-h"><b>' + esc(x.name) + '</b>' + stars(x.rating) + '<span class="small">' + esc(x.at) + '</span></div>' + (x.text ? '<p>' + esc(x.text) + '</p>' : '') + '</div>'; }).join('')
+      : '<p class="small">Отзывов пока нет. Они появляются после получения заказа — их оставляют покупатели в кабинете.</p>';
+  }
+  function loadReviews(pid, body, n) {
+    if (revCache[pid]) { drawReviews(revCache[pid], body, n); return; }
+    API.call('reviews', { productId: pid }).then(function (r) {
+      if (!r.ok) { body.innerHTML = '<p class="small">Не удалось загрузить отзывы. Попробуйте позже.</p>'; return; }
+      revCache[pid] = r; drawReviews(r, body, n);
+    });
+  }
+  function tgModal() {
+    if (!acct.user) return;
+    var md = openModal(modalHead('Уведомления в Telegram') + '<div id="tg-body"></div>', { cls: 'sm' });
+    var polls = 0;
+    function draw() {
+      var u = acct.user, b = $('#tg-body', md); if (!b) return;
+      if (u.tgOn) {
+        b.innerHTML = '<div class="notice notice-info">' + icon('check-circle') + '<div><b>Подключено</b>' + (u.tgName ? ' · ' + esc(u.tgName) : '') + '. Напишем, когда заказ меняет статус и когда товар из «Жду появления» снова в продаже.</div></div><button class="btn btn-ghost" type="button" id="tg-off" style="margin-top:12px">Отключить</button>';
+        $('#tg-off', b).addEventListener('click', function () { API.call('tgUnlink').then(function (r) { if (r.ok) { setUser(r.user); draw(); toast('Уведомления отключены'); } }); });
+      } else {
+        b.innerHTML = '<p class="small">Бот пришлёт сообщение, когда заказ выкуплен, в пути, на складе или получен, и когда нужный товар снова в наличии. Больше он ничего не пишет.</p><button class="btn" type="button" id="tg-on">' + icon('send') + 'Подключить Telegram</button><div id="tg-out" style="margin-top:12px"></div>';
+        $('#tg-on', b).addEventListener('click', function () {
+          var btn = this; busy(btn, true, 'Секунду');
+          API.call('tgLink').then(function (r) {
+            busy(btn, false); var out = $('#tg-out', b);
+            if (!r.ok) { out.innerHTML = '<div class="form-err">' + esc(r.error) + '</div>'; return; }
+            if (!r.bot) { out.innerHTML = '<div class="form-err">Бот магазина ещё не подключён. Напишите менеджеру — включим.</div>'; return; }
+            out.innerHTML = '<a class="btn" target="_blank" rel="noopener" href="https://t.me/' + esc(r.bot) + '?start=' + esc(r.code) + '">' + icon('send') + 'Открыть бота и нажать «Старт»</a><p class="small" style="margin-top:8px">Ждём подтверждение от бота…</p>';
+            (function poll() {
+              if (!document.body.contains(md) || !$('#tg-body', md) || ++polls > 45) return;
+              setTimeout(function () {
+                API.call('me').then(function (m) {
+                  if (m.ok && m.user && m.user.tgOn) { setUser(m.user); draw(); reward('Telegram подключён'); } else poll();
+                });
+              }, 4000);
+            })();
+          });
+        });
+      }
+    }
+    draw();
+  }
+  var SIZE_SCALE = ['XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL', '4XL', '5XL'];
+  function normSize(s) { s = String(s).trim().toUpperCase().replace(/\s/g, ''); return s === '2XL' ? 'XXL' : s === 'XXXL' ? '3XL' : s === '4XL' || s === 'XXXXL' ? '4XL' : s === 'XXS' ? 'XXS' : s; }
+  function fitModal(p, apply) {
+    var nums = p.sizes.map(function (x) { return parseFloat(String(x).replace(',', '.')); });
+    var shoe = nums.every(function (n) { return n >= 30 && n <= 50; }), letters = p.sizes.every(function (x) { return SIZE_SCALE.indexOf(normSize(x)) >= 0; });
+    var saved = store.get('fit', {});
+    var form = shoe
+      ? '<label for="fit-foot"><b>Длина стопы, см</b></label><input class="input" id="fit-foot" type="number" inputmode="decimal" min="18" max="34" step="0.1" placeholder="например, 26,5" value="' + (saved.foot || '') + '">'
+      : letters ? '<div class="fit-grid"><div><label for="fit-h"><b>Рост, см</b></label><input class="input" id="fit-h" type="number" inputmode="numeric" min="130" max="215" placeholder="170" value="' + (saved.h || '') + '"></div><div><label for="fit-w"><b>Вес, кг</b></label><input class="input" id="fit-w" type="number" inputmode="numeric" min="30" max="200" placeholder="65" value="' + (saved.w || '') + '"></div></div>' +
+        '<label for="fit-s"><b>Как носите</b></label><select class="select" id="fit-s"><option value="0">По фигуре</option><option value="1"' + (saved.s === '1' ? ' selected' : '') + '>Свободно</option></select>'
+      : '<p>У этого товара нестандартная сетка размеров (' + p.sizes.map(esc).join(', ') + '). Сверьтесь с замерами изделия или спросите менеджера — подскажем.</p>';
+    var md = openModal(modalHead('Подобрать размер') + '<div class="fit">' + form + (shoe || letters ? '<button class="btn" type="button" id="fit-go" style="margin-top:12px">Подобрать</button><div id="fit-out" aria-live="polite"></div>' : '') +
+      '<p class="small" style="margin-top:12px">Это ориентир по общей сетке. Сверьте с замерами изделия (кнопка «Замеры»), а если сомневаетесь — спросите менеджера.</p></div>', { cls: 'sm' });
+    var go1 = $('#fit-go', md); if (!go1) return;
+    go1.addEventListener('click', function () {
+      var out = $('#fit-out', md), want, label;
+      if (shoe) {
+        var foot = parseFloat(String($('#fit-foot', md).value).replace(',', '.'));
+        if (!(foot >= 18 && foot <= 34)) { out.innerHTML = '<div class="form-err">Введите длину стопы от 18 до 34 см</div>'; return; }
+        store.set('fit', Object.assign(saved, { foot: foot }));
+        want = Math.round((foot + 1.5) * 1.5); label = 'по стопе ' + String(foot).replace('.', ',') + ' см';
+        var best = null; nums.forEach(function (n, i) { if (best === null || Math.abs(n - want) < Math.abs(nums[best] - want)) best = i; });
+        draw(p.sizes[best], Math.abs(nums[best] - want) < 0.6, want);
+      } else {
+        var h = parseFloat($('#fit-h', md).value), w = parseFloat($('#fit-w', md).value), fs = $('#fit-s', md).value;
+        if (!(h >= 130 && h <= 215) || !(w >= 30 && w <= 200)) { out.innerHTML = '<div class="form-err">Проверьте рост и вес</div>'; return; }
+        store.set('fit', Object.assign(saved, { h: h, w: w, s: fs }));
+        var idx = w < 47 ? 1 : w < 55 ? 2 : w < 64 ? 3 : w < 74 ? 4 : w < 85 ? 5 : w < 96 ? 6 : w < 108 ? 7 : 8;
+        if (h >= 182) idx += 1; else if (h <= 155) idx -= 1;
+        idx = Math.max(0, Math.min(SIZE_SCALE.length - 1, idx + (+fs)));
+        var bestI = null; p.sizes.forEach(function (x, i) { var k = SIZE_SCALE.indexOf(normSize(x)); if (bestI === null || Math.abs(k - idx) < Math.abs(SIZE_SCALE.indexOf(normSize(p.sizes[bestI])) - idx)) bestI = i; });
+        draw(p.sizes[bestI], normSize(p.sizes[bestI]) === SIZE_SCALE[idx], SIZE_SCALE[idx]);
+      }
+      function draw(size, exact, calc) {
+        out.innerHTML = '<div class="fit-res"><small>' + (exact ? 'Вам подойдёт' : 'Ближайший в наличии') + '</small><b>' + esc(size) + '</b>' + (exact ? '' : '<span class="small">по расчёту — ' + esc(calc) + ', такого нет</span>') + '<button class="btn btn-sm" type="button" id="fit-pick">Выбрать ' + esc(size) + '</button></div>';
+        $('#fit-pick', out).addEventListener('click', function () { closeModal(); apply(size); });
+      }
+    });
+  }
+  // нет связи: плашка сверху
+  function netBar(show) {
+    var el = $('#net-bar');
+    if (!el) { el = document.createElement('div'); el.id = 'net-bar'; el.className = 'net-bar'; el.setAttribute('role', 'status'); el.hidden = true; el.innerHTML = '<span>Нет связи — каталог открыт, но войти и оформить заказ пока нельзя.</span><button type="button">Повторить</button>'; document.body.insertBefore(el, document.body.firstChild); $('button', el).addEventListener('click', function () { refreshMe().then(function () { refreshView(); }); }); }
+    el.hidden = !show;
+  }
+
   function init() {
     try { var ref = new URLSearchParams(location.search).get('ref'); if (ref) store.set('ref', ref.toUpperCase().slice(0, 12)); } catch (e) { /* */ }
     updateCounts(); updateAcctUI(); startClock(); themeIcon(); applyHomeIcon();
@@ -1670,7 +1874,13 @@
     if (upd && CATALOG.updatedAt) { var t = msk(new Date(CATALOG.updatedAt)); upd.textContent = 'Каталог обновлён ' + String(t.d).padStart(2, '0') + '.' + String(t.mo).padStart(2, '0') + '.' + t.y + ' в ' + t.hh + ':' + t.mm + ' (МСК).'; }
     window.addEventListener('hashchange', route);
     window.addEventListener('storage', function (e) { if (e.key === 'onion.shop.cart') { cart = store.get('cart', []); updateCounts(); if (current === 'cart') renderCart(); } });
+    window.addEventListener('offline', function () { netBar(true); });
+    window.addEventListener('online', function () { netBar(false); silentRefresh(); });
+    window.addEventListener('onion:neterr', function () { netBar(true); });
+    window.addEventListener('onion:netok', function () { netBar(false); });
+    if (navigator.onLine === false) netBar(true);
     route();
+    window.__onionBoot = true;
     refreshMe().then(function () { lastMe = acct.user ? JSON.stringify(acct.user) : ''; refreshView(); });
     setInterval(silentRefresh, 45000);
     document.addEventListener('visibilitychange', function () { if (document.hidden) flushTrack(); else silentRefresh(); });
