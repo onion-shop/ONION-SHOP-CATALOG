@@ -881,3 +881,36 @@ canvas.confetti{position:fixed;inset:0;width:100%;height:100%;pointer-events:non
 .task .rw{display:grid;justify-items:end;gap:1px;text-align:right}
 .task .rw small{font-size:11px;font-weight:700;color:var(--ink-3);display:block}
 .task .rw b{display:inline-flex;align-items:center;gap:4px;font-weight:800;font-size:13px;color:var(--accent-ink)}
+
+/* новые рамки аватара */
+.ava.f-mint{--ring:#2fd6a0;box-shadow:0 0 0 2px var(--card),0 0 0 4px #2fd6a0,0 0 12px 2px rgba(47,214,160,.45)}
+.ava.f-rose{--ring:#ff7aa8;box-shadow:0 0 0 2px var(--card),0 0 0 4px #ff7aa8,0 0 12px 2px rgba(255,122,168,.45)}
+.ava.f-violet{--ring:#9b6bff;box-shadow:0 0 0 2px var(--card),0 0 0 4px #9b6bff,0 0 12px 2px rgba(155,107,255,.45)}
+.ava.f-amber{--ring:#ffb21f;box-shadow:0 0 0 2px var(--card),0 0 0 4px #ffb21f,0 0 12px 2px rgba(255,178,31,.45)}
+.ava.f-coral{--ring:#ff6b57;box-shadow:0 0 0 2px var(--card),0 0 0 4px #ff6b57,0 0 12px 2px rgba(255,107,87,.45)}
+.ava.f-lime{--ring:#9be031;box-shadow:0 0 0 2px var(--card),0 0 0 4px #9be031,0 0 12px 2px rgba(155,224,49,.45)}
+.ava.f-sky{--ring:#3fa9ff;box-shadow:0 0 0 2px var(--card),0 0 0 4px #3fa9ff,0 0 12px 2px rgba(63,169,255,.45)}
+.ava.lg.f-mint{box-shadow:0 0 0 3px var(--navy),0 0 0 6px #2fd6a0,0 0 22px 5px rgba(47,214,160,.45)}
+.ava.lg.f-rose{box-shadow:0 0 0 3px var(--navy),0 0 0 6px #ff7aa8,0 0 22px 5px rgba(255,122,168,.45)}
+.ava.lg.f-violet{box-shadow:0 0 0 3px var(--navy),0 0 0 6px #9b6bff,0 0 22px 5px rgba(155,107,255,.45)}
+.ava.lg.f-amber{box-shadow:0 0 0 3px var(--navy),0 0 0 6px #ffb21f,0 0 22px 5px rgba(255,178,31,.45)}
+.ava.lg.f-coral{box-shadow:0 0 0 3px var(--navy),0 0 0 6px #ff6b57,0 0 22px 5px rgba(255,107,87,.45)}
+.ava.lg.f-lime{box-shadow:0 0 0 3px var(--navy),0 0 0 6px #9be031,0 0 22px 5px rgba(155,224,49,.45)}
+.ava.lg.f-sky{box-shadow:0 0 0 3px var(--navy),0 0 0 6px #3fa9ff,0 0 22px 5px rgba(63,169,255,.45)}
+.ava.f-aurora,.ava.f-sunset,.ava.f-rainbow{--ring:transparent}
+.ava.f-aurora::before,.ava.f-sunset::before,.ava.f-rainbow::before{content:"";position:absolute;inset:-5px;border-radius:50%;-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 calc(100% - 3px));mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 calc(100% - 3px));pointer-events:none;animation:rot 7s linear infinite}
+.ava.lg.f-aurora::before,.ava.lg.f-sunset::before,.ava.lg.f-rainbow::before{inset:-8px;-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 5px),#000 calc(100% - 5px));mask:radial-gradient(farthest-side,transparent calc(100% - 5px),#000 calc(100% - 5px))}
+.ava.f-aurora::before{background:conic-gradient(#2fe6c0,#3f8cff,#9b6bff,#2fe6c0)}
+.ava.f-sunset::before{background:conic-gradient(#ff9a3c,#ff5f8a,#a24bff,#ff9a3c)}
+.ava.f-rainbow::before{background:conic-gradient(#ff5f5f,#ffd23f,#5fe08a,#3fb4ff,#a56bff,#ff5f5f)}
+.ava.f-aurora{box-shadow:0 0 0 2px var(--card),0 0 14px 3px rgba(63,140,255,.5)}
+.ava.f-sunset{box-shadow:0 0 0 2px var(--card),0 0 14px 3px rgba(255,95,138,.45)}
+.ava.f-rainbow{box-shadow:0 0 0 2px var(--card),0 0 14px 3px rgba(165,107,255,.45)}
+@media (prefers-reduced-motion:reduce){.ava.f-aurora::before,.ava.f-sunset::before,.ava.f-rainbow::before{animation:none}}
+.back-row{display:flex;align-items:center;gap:10px;margin:2px 0 12px;flex-wrap:wrap}
+.back-btn{display:inline-flex;align-items:center;gap:6px;height:42px;padding:0 16px 0 12px;border-radius:999px;border:1px solid var(--line-2);background:var(--card);font-weight:700;font-size:14.5px;color:var(--ink);box-shadow:0 1px 6px rgba(8,30,70,.1)}
+.back-btn .i{transform:rotate(180deg);width:18px;height:18px}
+.back-row .cr{font-size:13px;color:var(--ink-3);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.frames{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.frames button{min-width:0;align-content:start;text-align:center;font-size:11.5px;padding:10px 4px}
+.frames button small,.frames button span:not(.ava){font-size:11px;line-height:1.25}

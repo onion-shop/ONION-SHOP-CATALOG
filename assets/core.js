@@ -10,7 +10,7 @@ var OnionCore = (function () {
     tokenRub: 0.4,          // 1 токен = 0,4 ₽ скидки
     maxShare: 0.15,         // токенами можно оплатить не больше 15% суммы заказа
     spinCost: 100,          // прокрут рулетки
-    reward: { register: 100, refFriend: 50, referrer: 100, checkin: 1, streak7: 10, task: 1, birthday: 200 },
+    reward: { register: 100, refFriend: 50, referrer: 100, checkin: 1, streak7: 10, task: 1, birthday: 550 },
     refMinOrder: 1000,      // друг засчитывается после первого заказа от 1000 ₽
     refMaxPerMonth: 10,
     sessionDays: 60,
@@ -120,24 +120,35 @@ var OnionCore = (function () {
       { per: 'm', key: 'm_xp', title: 'Набрать 500 XP за месяц', hint: 'Серебро — это уже 500 XP', m: 'xp', n: 500, tk: 30, xp: 40 }
     ],
     taskPer: { d: { name: 'Ежедневные', until: 'до конца дня' }, w: { name: 'Недельные', until: 'до воскресенья' }, m: { name: 'Месячные', until: 'до конца месяца' } },
-    // рулетка: веса из 200 (шанс = вес / 2 %). Приз в 70% прокрутов, «Пусто» — 30%
+    // рулетка: веса из 10 000 (шанс = вес / 100 %). «Пусто» добирает остаток до 10 000 само
     wheel: [
-      { id: 'none', label: 'Пусто', sub: 'в другой раз', w: 59 },
-      { id: 't50', label: '+50', sub: 'токенов', w: 51, tokens: 50 },
-      { id: 't100', label: '+100', sub: 'токенов', w: 28, tokens: 100 },
-      { id: 't200', label: '+200', sub: 'токенов', w: 11, tokens: 200 },
-      { id: 't500', label: '+500', sub: 'токенов', w: 4, tokens: 500 },
-      { id: 'jackpot', label: 'Повезло!', sub: '+2000 токенов', w: 1, tokens: 2000 },
-      { id: 'xp', label: '+50 XP', sub: 'к уровню', w: 19, xp: 50 },
-      { id: 'frame', label: 'Рамка', sub: 'для аватара', w: 11, frame: true },
-      { id: 'promo', label: '−3%', sub: 'промокод', w: 5, promo: 3 },
-      { id: 're1', label: 'Ещё раз', sub: '×1', w: 9, spins: 1 },
-      { id: 're2', label: 'Ещё раз', sub: '×2', w: 2, spins: 2 }
+      { id: 'none', label: 'Пусто', sub: 'в другой раз', w: 2071 },
+      { id: 't25', label: '+25', sub: 'токенов', w: 1500, tokens: 25 },
+      { id: 't50', label: '+50', sub: 'токенов', w: 1700, tokens: 50 },
+      { id: 't100', label: '+100', sub: 'токенов', w: 1050, tokens: 100 },
+      { id: 't150', label: '+150', sub: 'токенов', w: 600, tokens: 150 },
+      { id: 't200', label: '+200', sub: 'токенов', w: 400, tokens: 200 },
+      { id: 't300', label: '+300', sub: 'токенов', w: 200, tokens: 300 },
+      { id: 't500', label: '+500', sub: 'токенов', w: 120, tokens: 500 },
+      { id: 't1000', label: '+1000', sub: 'токенов', w: 30, tokens: 1000 },
+      { id: 'jackpot', label: 'Повезло!', sub: '+2000 токенов', w: 8, tokens: 2000 },
+      { id: 'xp', label: '+50 XP', sub: 'к уровню', w: 650, xp: 50 },
+      { id: 'xp100', label: '+100 XP', sub: 'к уровню', w: 380, xp: 100 },
+      { id: 'xp150', label: '+150 XP', sub: 'к уровню', w: 220, xp: 150 },
+      { id: 'xp300', label: '+300 XP', sub: 'к уровню', w: 90, xp: 300 },
+      { id: 'xp500', label: '+500 XP', sub: 'к уровню', w: 25, xp: 500 },
+      { id: 'xp2000', label: '+2000 XP', sub: 'сверхредкий приз', w: 1, xp: 2000 },
+      { id: 'frame', label: 'Рамка', sub: 'для аватара', w: 330, frame: true },
+      { id: 'frame2', label: 'Редкая рамка', sub: 'для аватара', w: 25, frame: 'rare' },
+      { id: 'promo', label: '−3%', sub: 'промокод', w: 190, promo: 3 },
+      { id: 'promo5', label: '−5%', sub: 'промокод', w: 20, promo: 5 },
+      { id: 're1', label: 'Ещё раз', sub: '×1', w: 330, spins: 1 },
+      { id: 're2', label: 'Ещё раз', sub: '×2', w: 60, spins: 2 }
     ],
-    // Платина и Алмаз: «Пусто» реже, призы чаще (сумма весов та же — 200)
+    // Платина и Алмаз: «Пусто» реже, призы чаще (сумма весов та же — 10 000)
     wheelBoost: {
-      1: { none: -4, t50: 2, t100: 1, xp: 1 },
-      2: { none: -8, t50: 3, t100: 2, t200: 1, t500: 1, promo: 1 }
+      1: { none: -200, t50: 80, t100: 60, xp: 60 },
+      2: { none: -400, t50: 100, t100: 100, t200: 80, t300: 40, t500: 40, xp100: 40 }
     },
     // статусы заказа (меняются в таблице, клиент видит их в «Моих заказах»)
     stagesPre: ['Оформлен', 'Выкуплен', 'В пути', 'На складе', 'Едет к нам', 'Едет к вам', 'Получен'],
@@ -153,6 +164,16 @@ var OnionCore = (function () {
       { id: 'ice', name: 'Лёд', src: 'wheel' },
       { id: 'cosmos', name: 'Космос', src: 'wheel', rare: true },
       { id: 'flame', name: 'Пламя', src: 'wheel', rare: true },
+      { id: 'mint', name: 'Мята', src: 'wheel' },
+      { id: 'rose', name: 'Роза', src: 'wheel' },
+      { id: 'violet', name: 'Фиалка', src: 'wheel' },
+      { id: 'amber', name: 'Янтарь', src: 'wheel' },
+      { id: 'coral', name: 'Коралл', src: 'wheel' },
+      { id: 'lime', name: 'Лайм', src: 'wheel' },
+      { id: 'sky', name: 'Небо', src: 'wheel' },
+      { id: 'aurora', name: 'Аврора', src: 'wheel', rare: true },
+      { id: 'sunset', name: 'Закат', src: 'wheel', rare: true },
+      { id: 'rainbow', name: 'Радуга', src: 'wheel', rare: true },
       { id: 'lvl-silver', name: 'Серебро', src: 'level', lvl: 1 },
       { id: 'lvl-gold', name: 'Золото', src: 'level', lvl: 2 },
       { id: 'lvl-diamond', name: 'Алмаз', src: 'level', lvl: 4 }
@@ -651,7 +672,8 @@ var OnionCore = (function () {
     if (prize.spins) { u.freeSpins = (u.freeSpins || 0) + prize.spins; result.spins = prize.spins; }
     if (prize.promo) { var code = genCode(db, 'LUCK', 5); u.promos.push({ code: code, pct: prize.promo, from: 'Рулетка', at: db.now() }); result.code = code; result.pct = prize.promo; }
     if (prize.frame) {
-      var left = RULES.frames.filter(function (f) { return f.src === 'wheel' && u.frames.indexOf(f.id) < 0; });
+      var left = RULES.frames.filter(function (f) { return f.src === 'wheel' && u.frames.indexOf(f.id) < 0 && (prize.frame !== 'rare' || f.rare); });
+      if (!left.length && prize.frame === 'rare') left = RULES.frames.filter(function (f) { return f.src === 'wheel' && u.frames.indexOf(f.id) < 0; });
       if (left.length) { var f = left[Math.floor(db.random() * left.length)]; u.frames.push(f.id); result.frameId = f.id; result.frameName = f.name; }
       else { log(db, u, 50, 'Рулетка: все рамки уже открыты'); result.tokens = 50; result.sub = 'все рамки открыты: +50 токенов'; }
     }

@@ -69,7 +69,7 @@
   function full(id) { return 'img/full/' + id + '.jpg' + (PHOTO_V[id] ? '?v=' + PHOTO_V[id] : ''); }
   function norm(s) { return String(s || '').toLowerCase().replace(/ё/g, 'е'); }
   function initials(name) { var p = String(name || '?').trim().split(/\s+/); return (p[0].charAt(0) + (p[1] ? p[1].charAt(0) : '')).toUpperCase(); }
-  function pct(w) { return String(Math.round(w / WHEEL_SUM * 1000) / 10).replace('.', ',') + '%'; }
+  function pct(w) { var v = w / WHEEL_SUM * 100; return String(v < 0.1 ? Math.round(v * 100) / 100 : Math.round(v * 10) / 10).replace('.', ',') + '%'; }
   var store = {
     get: function (k, d) { try { var v = localStorage.getItem('onion.shop.' + k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
     set: function (k, v) { try { localStorage.setItem('onion.shop.' + k, JSON.stringify(v)); } catch (e) { /* нет хранилища */ } }
@@ -597,7 +597,7 @@
     related = related.slice(0, 4);
 
     v.innerHTML =
-      '<nav class="crumbs" aria-label="Навигация"><a href="#catalog">Каталог</a>' + icon('chevron-right') + '<a href="#' + (p.status === 'preorder' ? 'preorder' : 'stock') + '">' + (p.status === 'preorder' ? 'Предзаказ' : 'В наличии') + '</a>' + icon('chevron-right') + '<span>' + esc(p.categoryLabel) + '</span></nav>' +
+      '<div class="back-row"><button class="back-btn" type="button" id="back-btn" aria-label="Назад">' + icon('arrow-right') + 'Назад</button><span class="cr">' + (p.status === 'preorder' ? 'Предзаказ' : 'В наличии') + ' · ' + esc(p.categoryLabel) + '</span></div>' +
       '<div class="product">' +
       '<div class="gallery"><div class="stage"><div class="slides" id="slides" tabindex="0" aria-label="Фотографии товара. Нажмите, чтобы увеличить">' +
       p.photos.map(function (ph, i) { return '<figure data-i="' + i + '" style="--bg:url(\'' + thumb(ph.id) + '\')"><img src="' + full(ph.id) + '" alt="' + esc(p.title) + ', фото ' + (i + 1) + '" ' + (i ? 'loading="lazy" ' : '') + 'decoding="async" width="' + ph.w + '" height="' + ph.ht + '"></figure>'; }).join('') + '</div>' +
@@ -631,7 +631,7 @@
       '</div>' +
       '<a class="tg-link" href="' + esc(p.link) + '" target="_blank" rel="noopener">' + icon('send') + 'Пост с этим товаром в канале</a>' +
       '</div></div></div>' +
-      (related.length ? '<div class="sec"><div class="sec-head"><h2>Похожие товары</h2><a class="btn btn-ghost btn-sm" href="#catalog">В каталог' + icon('arrow-right') + '</a></div>' + grid(related, 'home-grid') + '</div>' : '');
+      (related.length ? '<div class="sec"><div class="sec-head"><h2>Похожие товары</h2></div>' + grid(related, 'home-grid') + '</div>' : '');
 
     // галерея
     var slides = $('#slides', v), thumbs = $('#thumbs', v), count = $('#gal-count', v), cur = 0;
@@ -656,6 +656,7 @@
     if (next) next.addEventListener('click', function () { goTo(cur + 1); });
     slides.addEventListener('keydown', function (e) { if (e.key === 'ArrowRight') { e.preventDefault(); goTo(cur + 1); } if (e.key === 'ArrowLeft') { e.preventDefault(); goTo(cur - 1); } if (e.key === 'Enter') openLightbox(p, cur); });
     $$('figure', slides).forEach(function (f) { f.addEventListener('click', function () { openLightbox(p, +f.getAttribute('data-i')); }); });
+    $('#back-btn', v).addEventListener('click', function () { if (routed > 1) history.back(); else go('catalog'); });
     $('#zoom-btn', v).addEventListener('click', function () { openLightbox(p, cur); });
     $('#share-btn', v).addEventListener('click', function () { shareProduct(p); });
     var mb = $('#measure-btn', v);
@@ -1300,7 +1301,7 @@
       '<div class="home-icons" role="group" aria-label="Значок">' + HOME_ICONS.map(function (x) {
         return '<button type="button" data-hi="' + x[0] + '" aria-pressed="' + (x[0] === cur) + '"><img src="assets/icons/' + x[0] + '-192.png" width="72" height="72" alt="" loading="lazy"><span>' + x[1] + '</span></button>';
       }).join('') + '</div>' +
-      (standalone ? '<div class="notice notice-info" style="margin-top:12px">' + icon('check-circle') + '<div>Вы уже открыли сайт с экрана «Домой». Чтобы сменить значок, удалите старый и добавьте заново — iPhone запоминает значок при добавлении.</div></div>' : '') +
+      '<div class="notice notice-info" style="margin-top:12px">' + icon('info') + '<div>' + (standalone ? 'Вы открыли сайт с экрана «Домой». ' : '') + 'Телефон запоминает значок в момент добавления и сам его не меняет: чтобы на рабочем столе стал другой, <b>удалите старый значок и добавьте сайт заново</b> — он возьмёт тот, что выбран здесь.</div></div>' +
       '<ol class="home-steps">' + steps.map(function (t) { return '<li>' + t + '</li>'; }).join('') + '</ol>' +
       (installEvt ? '<button class="btn btn-block" type="button" id="hi-install">' + icon('plus') + '<span>Установить приложение</span></button>' : '') +
       '<p class="small" style="margin:10px 0 0">Название на экране: <b>Onion Shop</b>. Значок можно поменять в любой момент.</p>', { cls: 'sm' });
@@ -1469,7 +1470,7 @@
 
   // ------------------------------------------------------------ рулетка
   var spinning = false, spinHistory = [];
-  var SHORT = { none: 'Пусто', t50: '+50', t100: '+100', t200: '+200', t500: '+500', jackpot: '+2000', xp: '+50 XP', frame: 'Рамка', promo: '−3%', re1: '+1 прокрут', re2: '+2 прокрута' };
+  var SHORT = { none: 'Пусто', t25: '+25', t50: '+50', t100: '+100', t150: '+150', t200: '+200', t300: '+300', t500: '+500', t1000: '+1000', jackpot: '+2000', xp: '+50 XP', xp100: '+100 XP', xp150: '+150 XP', xp300: '+300 XP', xp500: '+500 XP', xp2000: '+2000 XP', frame: 'Рамка', frame2: 'Редкая рамка', promo: '−3%', promo5: '−5%', re1: '+1 прокрут', re2: '+2 прокрута' };
   function tileHtml(w) { return '<div class="reel-tile r-' + w.id + '">' + pz(w.id) + '<b>' + esc(SHORT[w.id] || w.label) + '</b></div>'; }
   function randomTile() { var W = RULES.wheel, tot = 0, r; W.forEach(function (w) { tot += Math.sqrt(w.w); }); r = Math.random() * tot; for (var i = 0; i < W.length; i++) { r -= Math.sqrt(W[i].w); if (r <= 0) return W[i]; } return W[0]; }
   function updateRoulBalance() {
@@ -1564,7 +1565,7 @@
   }
 
   // ------------------------------------------------------------ маршруты
-  var skipHash = null, catBack = null;
+  var skipHash = null, catBack = null, routed = 0;
   function silentHash(h) { if (location.hash.slice(1) === h) return; skipHash = h; location.hash = h; }
   function go(h) { if (location.hash.slice(1) === h || (!h && !location.hash)) route(); else location.hash = h; }
   function setNav(h) {
@@ -1584,7 +1585,7 @@
     current = view;
   }
   function route() {
-    var h = decodeURIComponent(location.hash.replace(/^#/, ''));
+    var h = decodeURIComponent(location.hash.replace(/^#/, '')); routed++;
     if (skipHash !== null && h === skipHash) { skipHash = null; return; }
     skipHash = null;
     var m = h.match(/^ref=([A-Za-z0-9]{4,12})$/);
