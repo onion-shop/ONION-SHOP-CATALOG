@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>ONION SHOP — редактор товаров</title>
+<style>
+:root{--bg:#e6edf6;--card:#fff;--ink:#0f2747;--ink2:#4a5d78;--line:#d3dde9;--acc:#1a86c0;--navy:#0b1d3a;--soft:#e1f2f9}
+*{box-sizing:border-box}
+body{margin:0;font:16px/1.4 Inter,system-ui,sans-serif;background:var(--bg);color:var(--ink)}
+header{background:linear-gradient(100deg,#0b1d3a,#124a8c 62%,#1a86c0);color:#fff;padding:14px 16px;position:sticky;top:0;z-index:5}
+header h1{margin:0;font-size:18px}
+header p{margin:2px 0 0;font-size:13px;opacity:.8}
+main{max-width:860px;margin:0 auto;padding:14px 12px 60px;display:grid;gap:12px}
+.card{background:var(--card);border-radius:16px;padding:14px;box-shadow:0 2px 10px rgba(11,29,58,.06)}
+label{display:block;font-weight:700;font-size:13.5px;margin:10px 0 4px}
+input,select,textarea{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:12px;font:inherit;background:#fff;color:var(--ink)}
+textarea{min-height:70px;resize:vertical}
+button{font:inherit;font-weight:800;border:0;border-radius:12px;padding:12px 16px;background:var(--acc);color:#fff;cursor:pointer}
+button.ghost{background:var(--soft);color:#0b4f9a}
+button.danger{background:#fbe9eb;color:#b42318}
+button:disabled{opacity:.5}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.item{display:flex;gap:12px;align-items:center;padding:10px;border-radius:14px;cursor:pointer;border:1px solid transparent}
+.item:hover{background:var(--soft)}
+.item img{width:54px;height:54px;border-radius:10px;object-fit:cover;background:#eee;flex:none}
+.item b{display:block;font-size:15px}
+.item small{color:var(--ink2)}
+.tag{display:inline-block;font-size:11px;font-weight:800;padding:2px 8px;border-radius:999px;background:var(--soft);color:#0b4f9a;margin-left:6px}
+.tag.h{background:#fbe9eb;color:#b42318}
+.tag.e{background:#fff4d6;color:#8a5a00}
+.msg{padding:10px 12px;border-radius:12px;font-size:14px;margin-top:10px}
+.ok{background:#e3eefb;color:#0b4f9a}.er{background:#fbe9eb;color:#b42318}
+.hint{font-size:12.5px;color:var(--ink2);margin-top:4px}
+.bar{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.hid{display:none}
+</style>
+</head>
+<body>
+<header><h1>Редактор товаров ONION SHOP</h1><p>Правки сильнее текста поста. Удалите правку — вернётся то, что написано в канале.</p></header>
+<main>
+  <section class="card" id="login">
+    <b>Вход</b>
+    <p class="hint">Один раз вставьте токен GitHub (fine-grained, репозиторий ONION-SHOP-CATALOG, права Contents: Read and write и Actions: Read and write). Он хранится только в этом браузере.</p>
+    <input id="tok" type="password" placeholder="github_pat_…" autocomplete="off">
+    <div class="bar"><button id="enter">Войти</button></div>
+    <div id="lmsg"></div>
+  </section>
+
+  <section class="hid" id="list">
+    <div class="card"><input id="q" type="search" placeholder="Найти товар"><div id="items" style="margin-top:8px"></div></div>
+  </section>
+
+  <section class="card hid" id="edit">
+    <div style="display:flex;gap:10px;align-items:center"><img id="e-img" alt="" style="width:64px;height:64px;border-radius:12px;object-fit:cover"><div><b id="e-id"></b><div class="hint" id="e-link"></div></div></div>
+    <label>Название</label><input id="f-title">
+    <div class="row"><div><label>Бренд</label><input id="f-brand"></div><div><label>Категория</label><select id="f-cat">
+      <option value="shoes">Обувь</option><option value="tees">Футболки и поло</option><option value="hoodies">Худи и свитеры</option><option value="outerwear">Куртки</option><option value="pants">Штаны</option><option value="accessories">Аксессуары</option><option value="other">Другое</option></select></div></div>
+    <div class="row"><div><label>Цена, ₽</label><input id="f-price" inputmode="numeric"></div><div><label>Старая цена, ₽ (пусто — без скидки)</label><input id="f-old" inputmode="numeric"></div></div>
+    <label>Статус</label><select id="f-status"><option value="stock">В наличии</option><option value="preorder">Предзаказ</option><option value="out">Временно нет в наличии</option></select>
+    <label>Размеры (через запятую)</label><input id="f-sizes">
+    <label>Цвета (через запятую)</label><input id="f-colors">
+    <label>Характеристики (по строке: «Название: значение»)</label><textarea id="f-details"></textarea>
+    <label style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="f-hidden" style="width:auto"> Скрыть товар с сайта</label>
+    <div class="bar"><button id="save">Сохранить на сайт</button><button class="ghost" id="reset">Вернуть как в канале</button><button class="ghost" id="back">К списку</button></div>
+    <div id="emsg"></div>
+  </section>
+</main>
+<script>
+(function(){
+  var REPO='onion-shop/ONION-SHOP-CATALOG', API='https://api.github.com/repos/'+REPO;
+  var $=function(s){return document.querySelector(s)}, token='', ov={}, sha=null, items=[], cur=null;
+  try{token=localStorage.getItem('onion.admin.tok')||''}catch(e){}
+  function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+  function msg(id,t,ok){$(id).innerHTML=t?'<div class="msg '+(ok?'ok':'er')+'">'+esc(t)+'</div>':''}
+  function gh(path,opt){opt=opt||{};opt.headers=Object.assign({Authorization:'Bearer '+token,Accept:'application/vnd.github+json'},opt.headers||{});return fetch(API+path,opt)}
+  function utf8b64(s){return btoa(unescape(encodeURIComponent(s)))}
+  function b64utf8(s){return decodeURIComponent(escape(atob(s.replace(/\n/g,''))))}
+  function loadCatalog(){
+    return fetch('data/catalog.js?t='+Date.now(),{cache:'no-store'}).then(function(r){return r.text()}).then(function(t){
+      var m=t.match(/window\.ONION_CATALOG\s*=\s*([\s\S]*?);\s*$/); return JSON.parse(m[1]).products;
+    });
+  }
+  function loadOv(){
+    return gh('/contents/data/overrides.json').then(function(r){
+      if(r.status===404){ov={};sha=null;return}
+      if(!r.ok)throw new Error('Токен не подошёл или нет прав (код '+r.status+')');
+      return r.json().then(function(j){sha=j.sha;ov=JSON.parse(b64utf8(j.content)||'{}')});
+    });
+  }
+  function enter(){
+    msg('#lmsg','Проверяем…',true);
+    Promise.all([loadCatalog(),loadOv()]).then(function(r){
+      items=r[0]; try{localStorage.setItem('onion.admin.tok',token)}catch(e){}
+      $('#login').classList.add('hid'); $('#list').classList.remove('hid'); draw();
+    }).catch(function(e){msg('#lmsg',e.message||'Не получилось войти')});
+  }
+  function draw(){
+    var q=$('#q').value.trim().toLowerCase();
+    $('#items').innerHTML=items.filter(function(p){return !q||(p.title+' '+p.brand).toLowerCase().indexOf(q)>=0}).map(function(p){
+      var o=ov[p.id];
+      return '<div class="item" data-id="'+esc(p.id)+'"><img src="img/thumb/'+esc(p.photos[0].id)+'.jpg" alt=""><div><b>'+esc(p.title)+(o?(o.hidden?'<span class="tag h">скрыт</span>':'<span class="tag e">правка</span>'):'')+'</b><small>'+p.price+' ₽ · '+(p.status==='preorder'?'предзаказ':p.status==='out'?'нет в наличии':'в наличии')+'</small></div></div>';
+    }).join('')||'<p class="hint">Ничего не найдено</p>';
+  }
+  function open_(id){
+    cur=items.filter(function(p){return p.id===id})[0]; if(!cur)return;
+    var o=ov[id]||{}, v=function(k,d){return o[k]!=null?o[k]:d};
+    $('#e-img').src='img/thumb/'+cur.photos[0].id+'.jpg'; $('#e-id').textContent='Пост №'+id; $('#e-link').innerHTML='<a href="'+esc(cur.link)+'" target="_blank" rel="noopener">Открыть в канале</a>';
+    $('#f-title').value=v('title',cur.title); $('#f-brand').value=v('brand',cur.brand); $('#f-cat').value=v('category',cur.category);
+    $('#f-price').value=v('price',cur.price); $('#f-old').value=v('oldPrice',cur.oldPrice||'')||''; $('#f-status').value=v('status',cur.status);
+    $('#f-sizes').value=(v('sizes',cur.sizes)||[]).join(', '); $('#f-colors').value=(v('colors',cur.colors)||[]).join(', ');
+    $('#f-details').value=(v('details',cur.details)||[]).map(function(d){return d[0]+': '+d[1]}).join('\n');
+    $('#f-hidden').checked=!!o.hidden; msg('#emsg','');
+    $('#list').classList.add('hid'); $('#edit').classList.remove('hid'); window.scrollTo(0,0);
+  }
+  function list(s){return s.split(',').map(function(x){return x.trim()}).filter(Boolean)}
+  function num(s){var n=parseInt(String(s).replace(/\D/g,''),10);return n>0?n:0}
+  function collect(){
+    var o={title:$('#f-title').value.trim(),brand:$('#f-brand').value.trim(),category:$('#f-cat').value,price:num($('#f-price').value),oldPrice:num($('#f-old').value),status:$('#f-status').value,
+      sizes:list($('#f-sizes').value),colors:list($('#f-colors').value),
+      details:$('#f-details').value.split('\n').map(function(l){var i=l.indexOf(':');return i>0?[l.slice(0,i).trim(),l.slice(i+1).trim()]:null}).filter(Boolean)};
+    if($('#f-hidden').checked)o.hidden=true; return o;
+  }
+  function put(done){
+    var body={message:'Правка товара из редактора',content:utf8b64(JSON.stringify(ov,null,1)),branch:'main'}; if(sha)body.sha=sha;
+    return gh('/contents/data/overrides.json',{method:'PUT',body:JSON.stringify(body)}).then(function(r){
+      if(!r.ok)return r.json().then(function(j){throw new Error(j.message||('Ошибка '+r.status))});
+      return r.json().then(function(j){sha=j.content.sha});
+    }).then(function(){
+      return gh('/actions/workflows/sync.yml/dispatches',{method:'POST',body:JSON.stringify({ref:'main'})}).then(function(r){return r.ok});
+    });
+  }
+  $('#enter').onclick=function(){token=$('#tok').value.trim();if(token)enter()};
+  $('#q').oninput=draw;
+  $('#items').onclick=function(e){var it=e.target.closest('.item');if(it)open_(it.getAttribute('data-id'))};
+  $('#back').onclick=function(){$('#edit').classList.add('hid');$('#list').classList.remove('hid');draw()};
+  $('#save').onclick=function(){
+    if(!cur)return; var o=collect(); if(!o.price&&!o.hidden){msg('#emsg','Укажите цену');return}
+    ov[cur.id]=o; $('#save').disabled=true; msg('#emsg','Сохраняем…',true);
+    put().then(function(started){msg('#emsg',started?'Сохранено. Сайт обновится примерно через минуту.':'Сохранено. Сайт обновится при ближайшей сверке (до 15 минут).',true)}).catch(function(e){msg('#emsg',e.message)}).then(function(){$('#save').disabled=false});
+  };
+  $('#reset').onclick=function(){
+    if(!cur)return; delete ov[cur.id]; msg('#emsg','Возвращаем…',true);
+    put().then(function(){open_(cur.id);msg('#emsg','Готово: товар снова как в канале. Сайт обновится примерно через минуту.',true)}).catch(function(e){msg('#emsg',e.message)});
+  };
+  if(token){$('#tok').value=token;enter()}
+})();
+</script>
+</body>
+</html>

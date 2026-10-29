@@ -525,7 +525,7 @@
   // ------------------------------------------------------------ главная
   var revealIO = null;
   function reveal(root) {
-    if (REDUCED || !('IntersectionObserver' in window)) return;
+    return;
     if (!revealIO) revealIO = new IntersectionObserver(function (en) { en.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add('in'); revealIO.unobserve(e.target); } }); }, { rootMargin: '0px 0px -6% 0px' });
     $$('.pcard:not(.rv)', root).forEach(function (el, i) { el.classList.add('rv'); el.style.setProperty('--d', (i % 4) * 60 + 'ms'); revealIO.observe(el); });
   }
@@ -574,14 +574,11 @@
     brands = brands.slice(0, 14);
     var v = $('#v-home');
     v.innerHTML =
-      '<form class="h-search" id="hero-search" role="search">' + icon('search') + '<label class="sr" for="hero-q">Поиск по каталогу</label><input id="hero-q" type="search" placeholder="Найти товар или бренд" autocomplete="off" enterkeyhint="search"><button class="btn btn-sm" type="submit">Найти</button></form>' +
       '<div class="cts">' + tiles + '</div>' +
-      (brands.length ? '<div class="ticker" aria-hidden="true"><div class="tk-in">' + brands.concat(brands).map(function (b) { return '<span>' + esc(b) + '</span>'; }).join('') + '</div></div>' : '') +
       '<div class="bns">' + banner('Супер эксклюзивные предложения', '', '#stock', hot, 'bn-hot') + banner('Находки из Китая', '', '#preorder', preL, 'bn-cn') + '</div>' +
       (rec.length ? '<div class="sec"><div class="sec-head"><h2>Вы смотрели</h2></div><div class="hscroll">' + rec.map(card).join('') + '</div></div>' : '') +
       '<div class="sec"><div class="sec-head"><h2>Новинки</h2><a class="btn btn-ghost btn-sm" href="#catalog">Весь каталог</a></div>' + grid(fresh, 'home-grid') + '</div>' +
       '<div class="sec"><a class="faq-link" href="#info">Частые вопросы' + icon('arrow-right') + '</a></div>';
-    $('#hero-search', v).addEventListener('submit', function (e) { e.preventDefault(); filter = newFilter(); filter.q = $('#hero-q').value.trim(); go('catalog'); });
     $$('.ct[data-cat]', v).forEach(function (a) { a.addEventListener('click', function () { filter = newFilter(); filter.cat = a.getAttribute('data-cat'); }); });
     startBanners(v); reveal(v);
   }
@@ -2064,6 +2061,8 @@
     });
     var upd = $('#catalog-updated');
     if (upd && CATALOG.updatedAt) { var t = msk(new Date(CATALOG.updatedAt)); upd.textContent = 'Каталог обновлён ' + String(t.d).padStart(2, '0') + '.' + String(t.mo).padStart(2, '0') + '.' + t.y + ' в ' + t.hh + ':' + t.mm + ' (МСК).'; }
+    var hs = $('#hdr-search');
+    if (hs) hs.addEventListener('submit', function (e) { e.preventDefault(); var q = $('#hdr-q').value.trim(); filter = newFilter(); filter.q = q; var inp = $('#hdr-q'); if (inp) inp.blur(); go('catalog'); });
     window.addEventListener('hashchange', route);
     window.addEventListener('storage', function (e) { if (e.key === 'onion.shop.cart') { cart = store.get('cart', []); updateCounts(); if (current === 'cart') renderCart(); } });
     window.addEventListener('offline', function () { netBar(true); });

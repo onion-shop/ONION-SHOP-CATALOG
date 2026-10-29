@@ -43,6 +43,7 @@ DATA_DIR = os.path.join(ROOT, "data")
 IMG_FULL = os.path.join(ROOT, "img", "full")
 IMG_THUMB = os.path.join(ROOT, "img", "thumb")
 CATALOG_JS = os.path.join(DATA_DIR, "catalog.js")
+OVERRIDES_JSON = os.path.join(DATA_DIR, "overrides.json")
 
 FULL_MAX = 1000  # px по длинной стороне
 THUMB_MAX = 520
@@ -657,6 +658,40 @@ def save_image(raw: bytes, photo_id: int):
     return full.size
 
 
+def apply_overrides(products):
+    """Ручные правки из data/overrides.json (их пишет редактор admin.html): {id: {price, title, hidden, ...}}.
+    Правка сильнее текста поста, пока она есть в файле. Удалите её в редакторе — вернётся то, что в канале."""
+    try:
+        ov = json.load(open(OVERRIDES_JSON, encoding="utf-8"))
+    except Exception:  # noqa: BLE001
+        return products
+    labels = {k: l for k, l, _ in CATEGORIES}
+    labels["other"] = "Другое"
+    out = []
+    for p in products:
+        o = ov.get(p["id"]) or {}
+        if o.get("hidden"):
+            continue
+        for k in ("title", "subtitle", "brand"):
+            if isinstance(o.get(k), str) and o[k].strip():
+                p[k] = o[k].strip()
+        for k in ("price", "oldPrice"):
+            if k in o:
+                v = o[k]
+                p[k] = int(v) if isinstance(v, (int, float)) and v > 0 else (None if k == "oldPrice" else p[k])
+        if o.get("status") in ("stock", "preorder", "out"):
+            p["status"] = o["status"]
+        if o.get("category") in labels:
+            p["category"], p["categoryLabel"] = o["category"], labels[o["category"]]
+        for k in ("colors", "sizes"):
+            if isinstance(o.get(k), list):
+                p[k] = [str(x).strip() for x in o[k] if str(x).strip()]
+        if isinstance(o.get("details"), list):
+            p["details"] = [[str(a).strip(), str(b).strip()] for a, b in o["details"] if str(a).strip() and str(b).strip()]
+        out.append(p)
+    return out
+
+
 def read_existing():
     if not os.path.exists(CATALOG_JS):
         return None
@@ -683,7 +718,7 @@ def main():
     products = build_products(posts, args.channel)
     old = read_existing()
     old_meta = {p["id"]: p for p in (old or {}).get("products", [])}
-    active = [p for p in products if not p["sold"]]
+    active = apply_overrides([p for p in products if not p["sold"]])
 
     # защита: если страница канала изменила формат и товаров не нашлось — каталог не трогаем
     if old and len(old.get("products", [])) >= 3 and len(active) == 0:
