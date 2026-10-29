@@ -1000,3 +1000,108 @@ canvas.confetti{position:fixed;inset:0;width:100%;height:100%;pointer-events:non
 .tg-wait{display:inline-flex;align-items:center;gap:8px;font-style:normal;font-size:13px;color:var(--ink-3)}
 .tg-steps li>span{flex:1}.tg-steps .btn{max-width:100%;white-space:normal;text-align:left;height:auto;min-height:44px;padding-block:8px}.tg-hero[hidden],.tg-perks[hidden]{display:none}
 .tg-sub{margin:4px 0 8px;font-size:14px}#tg-cats{margin-bottom:6px}
+
+/* =====================================================================
+   ЕДИНАЯ СТИЛИСТИКА (полировка): одни радиусы, одни кнопки, одни поля,
+   одни «выбираемые» элементы, одна анимация появления. Функции не тронуты.
+   ===================================================================== */
+:root{
+  --r-ctl:14px; --r-chip:12px; --r-card:20px;
+  --ring:0 0 0 3px rgba(26,134,192,.24);
+  --shadow-sm:0 1px 2px rgba(11,29,58,.05),0 4px 14px rgba(11,29,58,.05);
+  --shadow-hover:0 2px 4px rgba(11,29,58,.06),0 18px 38px rgba(11,29,58,.13);
+  --sel-bg:var(--ink); --sel-ink:var(--card);
+}
+:root[data-theme="dark"]{ --ring:0 0 0 3px rgba(67,201,227,.3); }
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){ --ring:0 0 0 3px rgba(67,201,227,.3); } }
+
+html{scrollbar-width:thin;scrollbar-color:var(--line-2) transparent}
+body{text-rendering:optimizeLegibility;-webkit-font-smoothing:antialiased;font-optical-sizing:auto}
+::selection{background:rgba(67,201,227,.35)}
+h1,h2,h3,h4{text-wrap:balance}
+p,li{text-wrap:pretty}
+:focus-visible{outline:0;box-shadow:var(--ring);border-radius:var(--r-chip)}
+.btn:focus-visible,.icon-btn:focus-visible{border-radius:var(--r-ctl)}
+
+/* заголовки-надписи: обычный регистр, акцентная точка вместо разрядки */
+.eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:700;letter-spacing:0;text-transform:none;color:var(--accent-ink)}
+.eyebrow::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--grad);flex:none}
+
+/* кнопки: один размер, один радиус, одно нажатие */
+.btn{min-height:48px;padding:12px 22px;border-radius:var(--r-ctl);font-weight:700;letter-spacing:.005em;
+  box-shadow:0 10px 22px -8px rgba(26,134,192,.6),inset 0 1px 0 rgba(255,255,255,.28);
+  transition:transform .18s var(--ease),box-shadow .2s,filter .2s,background-color .2s}
+.btn-sm{min-height:40px;padding:8px 16px;font-size:14px;border-radius:var(--r-chip)}
+@media (hover:hover){ .btn:hover{filter:none;transform:translateY(-1px);box-shadow:0 14px 26px -8px rgba(26,134,192,.66),inset 0 1px 0 rgba(255,255,255,.32)} }
+.btn:active{transform:scale(.975);transition-duration:.08s}
+.btn-dark,.btn-ghost,.btn-soft,.btn-glass,.btn-danger{box-shadow:none}
+.btn-ghost{box-shadow:inset 0 0 0 1.5px var(--line-2)}
+@media (hover:hover){ .btn-ghost:hover{background:var(--tile);box-shadow:inset 0 0 0 1.5px var(--accent-line);transform:none} .btn-dark:hover,.btn-soft:hover,.btn-glass:hover,.btn-danger:hover{transform:none;box-shadow:none} .btn-glass:hover{background:rgba(255,255,255,.2)} .btn-danger:hover{background:var(--danger-bg)} }
+.btn-light{box-shadow:0 10px 24px -8px rgba(67,201,227,.55),inset 0 1px 0 rgba(255,255,255,.5)}
+.icon-btn{width:42px;height:42px;border-radius:var(--r-chip);box-shadow:var(--shadow-sm);transition:transform .15s var(--ease),background-color .2s}
+.link-btn{border-radius:8px;transition:color .15s,opacity .15s}
+.link-btn:hover{text-decoration:none;opacity:.78}
+
+/* поля: одна высота, одна рамка, одно свечение при вводе */
+.field-search input,.select,.input,textarea{border:1.5px solid var(--line-2);border-radius:var(--r-ctl);background-color:var(--card);box-shadow:none;transition:border-color .15s,box-shadow .2s,background-color .2s}
+.field-search input{height:48px}
+.select{height:48px}
+.input{height:48px}
+.field-search input:focus,.select:focus,.input:focus,textarea:focus{border-color:var(--accent);box-shadow:var(--ring);outline:0}
+.field-search input::placeholder,.input::placeholder,textarea::placeholder{color:var(--ink-3);opacity:.85}
+@media (hover:hover){ .field-search input:hover,.select:hover,.input:hover,textarea:hover{border-color:var(--accent-line)} }
+
+/* «выбираемое»: вкладки, категории, размеры — одно состояние «выбрано» */
+.tabs{box-shadow:var(--shadow-sm);border-radius:var(--r-ctl)}
+.tabs button{border-radius:var(--r-chip);transition:background-color .2s,color .2s}
+.tabs button[aria-selected="true"]{background:var(--sel-bg);color:var(--sel-ink)}
+.cats button{height:36px;border:1.5px solid var(--line-2);box-shadow:none;background:var(--card);font-weight:600;transition:background-color .2s,color .2s,border-color .2s,transform .12s}
+.cats button:active{transform:scale(.96)}
+.cats button[aria-pressed="true"]{background:var(--sel-bg);border-color:var(--sel-bg);color:var(--sel-ink)}
+@media (hover:hover){ .cats button:not([aria-pressed="true"]):hover,.choice:not([aria-pressed="true"]):hover{border-color:var(--accent);color:var(--accent-ink)} }
+.choice{border:1.5px solid var(--line-2);border-radius:var(--r-chip);transition:border-color .15s,background-color .2s,color .2s,transform .12s}
+.choice[aria-pressed="true"]{border-color:var(--sel-bg);background:var(--sel-bg);color:var(--sel-ink)}
+.choice.color[aria-pressed="true"]{background:var(--accent-soft);color:var(--ink);border-color:var(--accent);box-shadow:none}
+
+/* карточки */
+.card,.pcard{box-shadow:var(--shadow-sm)}
+.card{border-radius:var(--r-card)}
+.pcard{border-radius:var(--r-card);transition:transform .3s var(--ease),box-shadow .3s var(--ease)}
+.pcard .ph{border-radius:var(--r-ctl);background:linear-gradient(110deg,var(--tile) 30%,var(--tile-2) 50%,var(--tile) 70%) 0 0/220% 100%;animation:shimmer 1.6s linear infinite}
+.pcard .ph img{animation:none}
+.pcard .t{font-size:14px;font-weight:600;line-height:1.32}
+.pcard .brand-l{font-size:11px;letter-spacing:.04em}
+.pcard .prices .price,.pcard .price{font-size:17px;font-weight:800;letter-spacing:-.01em}
+@media (hover:hover){ .pcard:hover{transform:translateY(-3px);box-shadow:var(--shadow-hover)} .pcard:hover .ph img{transform:scale(1.045)} }
+@keyframes shimmer{to{background-position:-220% 0}}
+.notice{border:1px solid var(--line);border-radius:var(--r-ctl)}
+.notice-pre{background:var(--pre-bg);border-color:rgba(29,79,184,.16)}
+.notice-info{background:var(--accent-soft);border-color:var(--accent-line)}
+.notice-warn{border-color:rgba(180,35,24,.22)}
+.badge{height:24px;letter-spacing:.005em}
+
+/* окна: одинаковое появление, аккуратная «ручка» на телефоне */
+.overlay{backdrop-filter:blur(6px) saturate(1.1);background:rgba(5,12,26,.52)}
+.modal{border-radius:var(--r-xl) var(--r-xl) var(--r-card) var(--r-card);padding:20px;scrollbar-width:thin}
+.modal::before{content:"";justify-self:center;width:38px;height:4px;border-radius:4px;background:var(--line-2);margin:-8px 0 -2px}
+@media (min-width:640px){ .modal{border-radius:var(--r-xl)} .modal::before{display:none} .modal{animation:modalIn .26s var(--ease)} }
+@keyframes modalIn{from{opacity:0;transform:translateY(10px) scale(.97)}to{opacity:1;transform:none}}
+.modal-head h2{font-size:clamp(1.15rem,2.6vw,1.4rem)}
+.toast{border-radius:var(--r-ctl);box-shadow:var(--shadow-lg),0 0 0 1px rgba(255,255,255,.06)}
+
+/* рулетка: призы — читаемым списком, без обрезанных названий */
+.chances{grid-template-columns:1fr;gap:6px}
+@media (min-width:760px){ .chances{grid-template-columns:repeat(2,minmax(0,1fr))} }
+.chances div{padding:9px 12px;border-radius:var(--r-ctl);background:var(--tile);border:1px solid var(--line);font-size:14px}
+.chances span{overflow:visible;white-space:normal;text-overflow:clip;line-height:1.25}
+.chances b{font-size:13.5px;color:var(--accent-ink);background:var(--card);padding:3px 9px;border-radius:999px;box-shadow:inset 0 0 0 1px var(--line)}
+.chances .c-none b{color:var(--ink-3)}
+
+/* одно появление экрана (быстрое, без «прыжков») */
+.view:not([hidden]){animation:viewIn .32s var(--ease)}
+@keyframes viewIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.view:not([hidden]),.modal,.pcard .ph{animation:none!important}}
+.sw{box-shadow:inset 0 0 0 1px rgba(15,39,71,.22),0 0 0 1px rgba(255,255,255,.0)}
+:root[data-theme="dark"] .sw{box-shadow:inset 0 0 0 1px rgba(255,255,255,.28)}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .sw{box-shadow:inset 0 0 0 1px rgba(255,255,255,.28)} }
+@media (min-width:900px){ .dash{align-items:start} .dash > .profile{align-self:stretch} }
