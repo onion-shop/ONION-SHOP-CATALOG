@@ -277,6 +277,7 @@
   // ------------------------------------------------------------ аккаунт
   function setUser(u) {
     acct.user = u || null;
+    if (u && localOrders.length) { localOrders = []; store.set('orders', []); } // старые заказы без входа не должны попадать в новый кабинет
     updateAcctUI();
     showNews(u);
     if (current === 'account') renderAccount();
@@ -819,7 +820,7 @@
     var pbase = t.total;
     if (cartPromo && cartPromo.cat) { var pc = (RULES.promoCats || []).filter(function (c) { return c.key === cartPromo.cat; })[0]; pbase = 0; lines.forEach(function (l) { var p = BY_ID[l.id]; if (pc && pc.cats.indexOf(p.category) >= 0) pbase += p.price * l.qty; }); }
     t.promo = cartPromo ? cartPromo.code : ''; t.promoRub = cartPromo ? Math.round(pbase * cartPromo.pct / 100) : 0; t.promoNoBase = !!(cartPromo && cartPromo.cat && !pbase);
-    t.pack = u && u.pack && u.pack.available ? u.pack : null; t.packOk = !!(t.pack && (t.pack.kind === 'free' || t.pre));
+    t.pack = u && u.pack && u.pack.available ? u.pack : null; t.packOk = !!(t.pack && t.pre);
     t.toPay = Math.max(0, t.total - t.tokRub - t.promoRub);
     return t;
   }
@@ -883,7 +884,7 @@
         '<div class="f" data-f="recvAddr"' + (form.recv === 'courier' ? '' : ' hidden') + '><label for="f-recv-addr">Адрес или район <span class="opt-l">· по желанию</span></label><input class="input" id="f-recv-addr" autocomplete="street-address" placeholder="Уточним с менеджером" value="' + esc(form.recvAddr) + '"></div></div>' : '') +
 
       (t.pre ? '<div class="card panel"><div class="panel-head"><h2><span class="n">' + (++n) + '</span>Предзаказ из Китая</h2><a class="link-btn" href="' + SHOP.preorderUrl + '" target="_blank" rel="noopener">Условия</a></div>' +
-        '<div class="f" data-f="ship"><span class="lbl">Отправка со склада в Китае</span><div class="radios cols">' + radio('ship', 'air', form.ship, 'Самолёт', 'Быстрее: 5–9 дней до Москвы от склада') + radio('ship', 'truck', form.ship, 'Фура', 'Дешевле: 18–32 дня от склада') + '</div><span class="err-msg" hidden></span></div>' +
+        '<div class="f" data-f="ship"><span class="lbl">Отправка со склада в Китае</span><div class="radios cols">' + radio('ship', 'air', form.ship, 'Самолёт', 'Быстрее: 5–9 дней до Москвы. Доставка по авиатарифу — за ваш счёт') + radio('ship', 'truck', form.ship, 'Фура', 'Дешевле: 18–32 дня от склада') + '</div><span class="err-msg" hidden></span></div>' +
         '<div class="f" data-f="city"><label for="f-city">Город, куда привезти</label><input class="input" id="f-city" autocomplete="address-level2" placeholder="Например, Москва" value="' + esc(form.city) + '"><span class="err-msg" hidden></span></div>' +
         '<div class="f" data-f="preRecv"><span class="lbl">Способ получения</span><div class="radios cols">' + radio('preRecv', 'avito', form.preRecv, 'Авито Доставка', '') + radio('preRecv', 'cdek', form.preRecv, 'СДЭК', 'До пункта выдачи') + radio('preRecv', 'meet', form.preRecv, 'Личная встреча', 'В Москве') + '</div><span class="err-msg" hidden></span></div>' +
         '<div class="f" data-f="ack"><div class="ack" id="ack"><div class="q"><span class="checkbox" id="ack-box" role="img" aria-label="Не подтверждено">' + icon('check') + '</span><div><b>Я прочитал(а) условия доставки и оформления заказа по предзаказу</b><p class="small" style="margin-top:4px">Сроки, оплата доставки по весу и что не зависит от магазина — на <a href="' + SHOP.preorderUrl + '" target="_blank" rel="noopener">странице о предзаказе</a>.</p></div></div>' +
@@ -1107,8 +1108,9 @@
   // ------------------------------------------------------------ мои заказы
   function allOrders() {
     var list = [];
-    if (acct.user) list = acct.user.orders.slice();
-    localOrders.forEach(function (o) { if (!list.some(function (x) { return x.no === o.no; })) list.push(o); });
+    // вошли в кабинет — история только с сервера; заказы, сохранённые в этом браузере раньше, показываем лишь без входа
+    if (acct.user) return acct.user.orders.slice();
+    localOrders.forEach(function (o) { list.push(o); });
     return list;
   }
   function orderCard(o, i) {

@@ -47,7 +47,7 @@ var OnionCore = (function () {
         ['Самое приоритетное внимание к заказам', 'Ваши заказы менеджер берёт первыми'],
         ['3 промокода −2,5% в месяц', 'По одному каждую неделю, действуют до конца месяца'],
         ['20 токенов за серию 7 дней', ''],
-        ['Бесплатная упаковка 1 раз в месяц', 'Для любого заказа. Отмечается в корзине'],
+        ['Бесплатная упаковка 1 раз в месяц', 'Только для заказа по предзаказу из Китая. Отмечается в корзине'],
         ['3 бесплатных прокрута каждый день', 'И шансы выше, чем на Платине'],
         ['Рамка «Алмаз» с анимацией', 'Можно выбрать анимацию. Открыты все рамки, кроме редких из рулетки'],
         ['Промокод −1,5% на любой товар и 6 заданий в день', 'Остаются с прошлых уровней']] }
@@ -389,7 +389,7 @@ var OnionCore = (function () {
   function packInfo(db, u) {
     var L = levelOf(u); if (!L.pack) return null;
     var mk = monthKey(db.now());
-    return { kind: L.pack, label: L.pack === 'free' ? 'Бесплатная упаковка' : 'Упаковка −10%', note: L.pack === 'free' ? 'Привилегия Алмаза: 1 раз в месяц, для любого заказа' : 'Привилегия Платины: 1 раз в месяц, только для заказа с предзаказом', level: L.name, available: u.packMonth !== mk };
+    return { kind: L.pack, label: L.pack === 'free' ? 'Бесплатная упаковка' : 'Упаковка −10%', note: L.pack === 'free' ? 'Привилегия Алмаза: 1 раз в месяц, только для предзаказа из Китая' : 'Привилегия Платины: 1 раз в месяц, только для заказа с предзаказом', level: L.name, available: u.packMonth !== mk };
   }
   function sessionUser(db, p) {
     if (!p || !p.session) return null;
@@ -737,6 +737,7 @@ var OnionCore = (function () {
     if (o.pack) L.push('🎁 ПРИВИЛЕГИЯ: ' + o.pack + ' — учесть при расчёте упаковки');
     L.push('✅ К ОПЛАТЕ: ' + rub(o.toPay));
     if (hasPre) L.push('(доставка из Китая оплачивается отдельно по весу)');
+    if (hasPre && o.f.ship === 'air') L.push('✈️ АВИА: доставка и все связанные расходы — полностью за счёт клиента по авиатарифу (≈40 $/кг, от 10 кг — 36 $/кг). Токены и промокод уменьшают только стоимость товаров, но не доставку и не упаковку.');
     if (hasOut) L.push('⏳ Есть товар, которого сейчас нет в наличии: сообщите клиенту срок поступления или предложите замену до оплаты.');
     L.push('');
     if (hasStock) {
@@ -846,7 +847,7 @@ var OnionCore = (function () {
     var no = orderNo(db, seq), at = db.now();
     var li = u ? levelOf(u) : null, priority = li && li.priority ? li.priority : '';
     var pk = u ? packInfo(db, u) : null;
-    if (pk && pk.available && p.usePack !== false && (pk.kind === 'free' || hasPre)) { pack = pk.label + ' (' + pk.level + ')'; u.packMonth = monthKey(at); }
+    if (pk && pk.available && p.usePack !== false && hasPre) { pack = pk.label + ' (' + pk.level + ')'; u.packMonth = monthKey(at); }
     var text = orderText({ no: no, at: at, f: f, lines: built.lines, total: total, tokens: tokens, tokenRub: tokenRub, promo: promo, promoRub: promoRub, promoNote: promoNote, pack: pack, priority: priority, toPay: toPay, user: u ? { login: u.login, id: u.id, levelName: li.name } : null });
     if (built.unverified) text += '\n\n⚠️ Каталог был недоступен — цены взяты с сайта, проверьте.';
     if (u) {
