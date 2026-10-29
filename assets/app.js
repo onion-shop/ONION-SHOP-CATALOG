@@ -27,6 +27,7 @@
   /* цвет → фото (номер фото в посте, 1 — первое). Источники по старшинству:
      1) data/colors.js — ручная привязка; 2) номера в самом посте: «Цвета: красный (7), голубой (8)».
      Цвета идут в порядке фото. */
+  var AUTO_COLOR_PHOTO = false; // false — цвет сам не выбирает фото (клиент отмечает фото вручную). true — вернуть автоподбор.
   var COLOR_PHOTOS = window.ONION_COLOR_PHOTOS || {};
   var PHOTO_V = {};
   function normColor(c) { return String(c || '').trim().toLowerCase().replace(/ё/g, 'е'); }
@@ -34,7 +35,7 @@
     BY_ID[p.id] = p;
     (p.photos || []).forEach(function (ph) { if (ph.hash) PHOTO_V[ph.id] = ph.hash; });
     var raw = Object.assign({}, p.colorPhotos || {}, COLOR_PHOTOS[p.id] || {}), map = {};
-    if (p.colors.length > 1) {
+    if (AUTO_COLOR_PHOTO && p.colors.length > 1) {
       Object.keys(raw).forEach(function (c) {
         var ph = p.photos[raw[c] - 1]; if (!ph) return;
         var own = p.colors.filter(function (x) { return normColor(x) === normColor(c); })[0];
@@ -592,9 +593,6 @@
         p.sizes.map(function (s) { return '<button class="choice" type="button" data-size="' + esc(s) + '" aria-pressed="' + (sel.size === s) + '">' + esc(s) + '</button>'; }).join('') + '</div><span class="msg" hidden>Выберите размер</span></div>' : '') +
       (p.colors.length ? '<div class="opt" id="opt-color"><div class="opt-head"><b>Цвет' + (p.colors.length > 1 ? ' <span class="req">*</span>' : '') + '</b><span class="val" id="color-val">' + (sel.color ? esc(cap(sel.color)) : 'не выбран') + '</span></div><div class="choices">' +
         p.colors.map(function (c) { return '<button class="choice color" type="button" data-color="' + esc(c) + '" aria-pressed="' + (sel.color === c) + '"><i class="sw" style="' + swatch(c) + '"></i>' + esc(cap(c)) + '</button>'; }).join('') + '</div><span class="msg" hidden>Выберите цвет</span></div>' : '') +
-      (many && p.colors.length > 1 ? '<div class="opt" id="opt-photo"><div class="opt-head"><b>Вариант по фото <span class="small">· по желанию</span></b><span class="val" id="photo-val">не отмечен</span></div><div class="photo-pick">' +
-        p.photos.map(function (ph, i) { return '<button type="button" data-photo="' + ph.id + '" data-i="' + i + '" aria-pressed="false" aria-label="Отметить фото ' + (i + 1) + '"><img src="' + thumb(ph.id) + '" alt="" loading="lazy"><span class="no">' + (i + 1) + '</span></button>'; }).join('') + '</div>' +
-        (mapOk ? '<span class="auto-note" id="auto-note">' + icon('sparkles') + 'Выберите цвет — фото подберётся само. Можно отметить другое.</span>' : '') + '</div>' : '') +
       '<div class="opt"><label for="p-note"><b style="font-size:14.5px">' + (p.status === 'preorder' ? 'Пожелания к товару' : 'Комментарий') + '</b> <span class="small">· по желанию</span></label><textarea id="p-note" maxlength="300" placeholder="' + (p.status === 'preorder' ? 'Например: посадка oversize, проверить швы, фото бирки' : 'Например: хочу примерить перед покупкой') + '"></textarea></div>' +
       '<div class="buy"><div class="qty" aria-label="Количество"><button type="button" id="q-minus" aria-label="Меньше" disabled>' + icon('minus') + '</button><output id="q-val">1</output><button type="button" id="q-plus" aria-label="Больше">' + icon('plus') + '</button></div>' +
       '<button class="btn" type="button" id="add-btn">' + icon('bag') + '<span id="add-lbl">В корзину · ' + rub(p.price) + '</span></button></div>' +
@@ -657,15 +655,6 @@
           var owner = Object.keys(p.colorPhoto).filter(function (c) { return p.colorPhoto[c] === sel.photo; })[0];
           if (sel.photoAuto || (owner && owner !== sel.color)) setPhoto(null); // отмеченное фото относится к другому цвету
         }
-      });
-    });
-    $$('[data-photo]', v).forEach(function (b) {
-      b.addEventListener('click', function () {
-        var pid = +b.getAttribute('data-photo'), i = +b.getAttribute('data-i');
-        if (sel.photo === pid) { setPhoto(null); return; }
-        setPhoto(pid, false);
-        var pc = mapOk ? Object.keys(p.colorPhoto).filter(function (c) { return p.colorPhoto[c] === pid; })[0] : null;
-        if (pc) { var cb = $$('[data-color]', v)[p.colors.indexOf(pc)]; if (cb && sel.color !== pc) { sel.color = pc; $$('[data-color]', v).forEach(function (x) { x.setAttribute('aria-pressed', String(x === cb)); }); $('#color-val').textContent = cap(sel.color); clearErr('opt-color'); } }
       });
     });
     var qv = $('#q-val', v), qm = $('#q-minus', v), qp = $('#q-plus', v), lbl = $('#add-lbl', v);
