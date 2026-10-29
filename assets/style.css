@@ -1177,3 +1177,36 @@ details.fold[open]>summary .i{transform:rotate(180deg)}
 @media (min-width:980px){ .float-back{left:max(16px,calc((100vw - 1240px)/2 - 8px))} }
 .has-back .view{padding-top:52px}
 .has-back #v-product{padding-top:0}
+
+/* ===== v23: плашки, анимации ===== */
+.bn-chip{background:linear-gradient(135deg,#1a86c0,#0b4f9a);color:#fff;box-shadow:0 8px 20px rgba(11,79,154,.45)}
+.bn::after{content:"";position:absolute;inset:0;background:linear-gradient(115deg,transparent 35%,rgba(255,255,255,.28) 50%,transparent 65%);transform:translateX(-120%);animation:bnshine 6s ease-in-out infinite;pointer-events:none}
+@keyframes bnshine{0%,70%{transform:translateX(-120%)}100%{transform:translateX(120%)}}
+.ticker{overflow:hidden;margin:0 -2px 14px;border-radius:14px;background:var(--navy-card);color:#fff;mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent);-webkit-mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent)}
+.tk-in{display:flex;gap:30px;white-space:nowrap;padding:11px 0;width:max-content;animation:tkmove 38s linear infinite;font-family:var(--f-d);font-weight:700;letter-spacing:.06em;text-transform:uppercase;font-size:13px}
+.tk-in span::after{content:"✦";margin-left:30px;color:#43c9e3}
+@keyframes tkmove{to{transform:translateX(-50%)}}
+.pcard.rv{opacity:0;transform:translateY(18px) scale(.98);transition:opacity .55s var(--ease) var(--d,0ms),transform .55s var(--ease) var(--d,0ms),box-shadow .25s}
+.pcard.rv.in{opacity:1;transform:none}
+.pcard.rv.in:hover{transform:translateY(-3px)}
+.fav[aria-pressed="true"] .i{animation:favpop .45s var(--ease)}
+@keyframes favpop{0%{transform:scale(.6)}55%{transform:scale(1.35)}100%{transform:scale(1)}}
+.pcard .qadd{position:relative;overflow:hidden}
+.pcard .qadd::after{content:"";position:absolute;inset:0;background:linear-gradient(110deg,transparent 30%,rgba(255,255,255,.35) 50%,transparent 70%);transform:translateX(-120%);transition:transform .6s}
+.pcard:hover .qadd::after{transform:translateX(120%)}
+.ct{transition:transform .25s var(--ease)}
+.ct:hover,.ct:focus-visible{transform:translateY(-4px)}
+.ct:hover .ct-i{box-shadow:0 10px 24px rgba(26,134,192,.28),inset 0 0 0 2px var(--accent)}
+.pcard .ph img{background:linear-gradient(100deg,var(--tile) 30%,var(--card) 50%,var(--tile) 70%);background-size:200% 100%;animation:shim 1.4s linear infinite}
+@keyframes shim{to{background-position:-200% 0}}
+.size-meas{display:flex;flex-wrap:wrap;gap:6px 8px;margin-top:10px;padding:10px 12px;border-radius:14px;background:var(--accent-soft);font-size:13px;color:var(--ink-2);align-items:center}
+.size-meas>b{color:var(--accent-ink);margin-right:4px}
+.size-meas span{white-space:nowrap}
+.size-meas i{font-style:normal;font-weight:700;color:var(--ink)}
+.mtbl-wrap{overflow-x:auto;border-radius:14px;box-shadow:inset 0 0 0 1px var(--line)}
+.mtbl{width:100%;border-collapse:collapse;font-size:14px;text-align:center}
+.mtbl th,.mtbl td{padding:10px 8px;border-top:1px solid var(--line);font-variant-numeric:tabular-nums}
+.mtbl thead th{border-top:0;background:var(--tile);font-weight:800}
+.mtbl tbody th{text-align:left;font-weight:600;color:var(--ink-2);white-space:nowrap;padding-left:12px}
+.mtbl .on{background:var(--accent-soft);color:var(--accent-ink);font-weight:800}
+@media (prefers-reduced-motion: reduce){ .bn::after,.tk-in,.pcard .ph img{animation:none} .pcard.rv{opacity:1;transform:none} }

@@ -31,8 +31,25 @@
   var COLOR_PHOTOS = window.ONION_COLOR_PHOTOS || {};
   var PHOTO_V = {};
   function normColor(c) { return String(c || '').trim().toLowerCase().replace(/ё/g, 'е'); }
-  PRODUCTS.forEach(function (p) {
-    BY_ID[p.id] = p;
+  var MEASURE_RE = /(груд|плеч|рукав|длин|ширин|обхват|талия|бедр|высота|шаг|стопа|подошв)/i;
+  var SIZE_LIKE = /^размер\s+(.+)$/i;
+  // замеры по размерам: sizeTable = {S: [[подпись, значение], ...], M: [...]}; старые посты (плоский список) разбираем сами
+  function buildSizeTable(p) {
+    p.details = p.details || []; p.notes = p.notes || [];
+    var rows = p.details.filter(function (r) { return MEASURE_RE.test(r[0]); });
+    var sizeNotes = p.notes.map(function (n) { var m = String(n).match(SIZE_LIKE); return m ? m[1].trim() : null; }).filter(Boolean);
+    if (!p.sizeTable && rows.length && sizeNotes.length > 1) {
+      var chunks = [], cur = null;
+      rows.forEach(function (r) { if (!cur || cur.some(function (x) { return x[0] === r[0]; })) { cur = []; chunks.push(cur); } cur.push(r); });
+      if (chunks.length === sizeNotes.length) { p.sizeTable = {}; sizeNotes.forEach(function (sz, i) { p.sizeTable[sz] = chunks[i]; }); }
+    }
+    if (p.sizeTable) { p.details = p.details.filter(function (r) { return !MEASURE_RE.test(r[0]); }); }
+    p.notes = p.notes.filter(function (n) { return !SIZE_LIKE.test(String(n)); });
+    p.measureRows = p.sizeTable ? [] : rows;
+    if (!p.sizeTable) p.details = p.details.filter(function (r) { return !MEASURE_RE.test(r[0]); });
+  }
+  function indexProduct(p) {
+    BY_ID[p.id] = p; buildSizeTable(p);
     (p.photos || []).forEach(function (ph) { if (ph.hash) PHOTO_V[ph.id] = ph.hash; });
     var raw = Object.assign({}, p.colorPhotos || {}, COLOR_PHOTOS[p.id] || {}), map = {};
     if (AUTO_COLOR_PHOTO && p.colors.length > 1) {
@@ -47,7 +64,8 @@
         p.colorPhoto = map;
       }
     }
-  });
+  }
+  PRODUCTS.forEach(indexProduct);
   var REDUCED = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
   var WHEEL_SUM = RULES.wheel.reduce(function (a, w) { return a + w.w; }, 0);
 
@@ -128,17 +146,57 @@
   }
 
   // ------------------------------------------------------------ цвета
-  var COLOR_HEX = { 'бел': '#f4f5f7', 'сер': '#9aa3ae', 'роз': '#f2b7c8', 'черн': '#1d1d22', 'темно-син': '#1d2b57', 'зел': '#4f8a5b', 'красн': '#c8303a', 'голуб': '#7cc4f2', 'желт': '#f2c230', 'коричн': '#7a4b2a', 'син': '#2f5bd3', 'фиолет': '#7b4fc4', 'беж': '#d9c3a0', 'бордов': '#7b1e2e', 'оранж': '#f08a24', 'хаки': '#6b6b3a', 'молочн': '#f3ead8', 'графит': '#3b3f46' };
+  // цвет по названию: корни слов → реальный оттенок; «светло-/темно-» меняют яркость, «черно-красный» — два цвета
+  var COLOR_HEX = {
+    'бел': '#f7f7f5', 'молочн': '#f3ead8', 'кремов': '#f0e4c4', 'айвори': '#f3ecd6', 'экрю': '#eadfc4', 'слоновой': '#f3ecd6',
+    'беж': '#d8c3a0', 'песоч': '#d9c59c', 'бежев': '#d8c3a0', 'кэмел': '#c19a6b', 'камел': '#c19a6b', 'табач': '#9c7a4e',
+    'сер': '#9aa3ae', 'графит': '#3b3f46', 'антрацит': '#2c3036', 'асфальт': '#4a5059', 'стальн': '#7f8b99', 'серебр': '#c3c7ce', 'мокр': '#6c7078',
+    'черн': '#1b1b1f', 'угольн': '#25262b',
+    'синий': '#2a58c9', 'синяя': '#2a58c9', 'синее': '#2a58c9', 'син': '#2a58c9', 'темно-син': '#1b2a57', 'нейви': '#1b2a57', 'индиго': '#2d3b8c', 'кобальт': '#1f4fb0', 'электрик': '#1e63e9', 'васильк': '#5b8def', 'джинс': '#4a6fa5', 'деним': '#4a6fa5',
+    'голуб': '#7cc4f2', 'небесн': '#8ccdf5', 'бирюз': '#2fc4c0', 'аквамарин': '#5ad7c8', 'морской': '#2b9bb0', 'лазурн': '#3aa9e6', 'циан': '#27c4de',
+    'мятн': '#a8e6cf', 'мят': '#a8e6cf', 'салат': '#9bd04a', 'лайм': '#b6e03c', 'зелен': '#3f9a5a', 'изумруд': '#1f9e6e', 'малахит': '#0f7d5a', 'бутылоч': '#17482f', 'хвойн': '#1f5a3e',
+    'болот': '#5f6b3a', 'оливк': '#6b7035', 'хаки': '#78794a', 'армейск': '#5a6140', 'мох': '#6a7a3c', 'фисташ': '#c3d9a0', 'шалфе': '#a3b18a',
+    'желт': '#f2c230', 'лимон': '#f7e04a', 'горчич': '#d4a017', 'золот': '#d4af37', 'солнеч': '#f6c23c', 'канар': '#f7e04a',
+    'оранж': '#f08a24', 'персик': '#f7b58a', 'абрикос': '#f4b27a', 'морковн': '#e8721c', 'рыж': '#c8641c', 'тыкв': '#e0701a',
+    'коралл': '#f27c68', 'лососев': '#f4977f', 'терракот': '#c1653f', 'кирпич': '#a8452c', 'ржав': '#a8522a',
+    'красн': '#c8303a', 'алый': '#e0262f', 'алая': '#e0262f', 'томат': '#d93a2a', 'вишн': '#8e1b34', 'бордов': '#6e1a2c', 'винн': '#6e1a2c', 'марсал': '#7a2e3a',
+    'роз': '#f2b7c8', 'пудр': '#e8c4c4', 'малин': '#c2185b', 'фукси': '#d6249f', 'неонов-роз': '#ff4fa0', 'лилов': '#c8a2d6',
+    'фиолет': '#7b4fc4', 'сирен': '#b79ad8', 'лаванд': '#b7a6e0', 'пурпур': '#8e2f8a', 'баклажан': '#4a2a54', 'слив': '#6a2f5e', 'виолет': '#7b4fc4',
+    'коричн': '#7a4b2a', 'шоколад': '#4b2e1e', 'кофе': '#6b4a35', 'капучин': '#b89b82', 'каштан': '#6e3b22', 'орех': '#8a5a36', 'карамел': '#c68642', 'мокко': '#5e4636', 'тауп': '#8b7d70',
+    'хром': '#c3c7ce', 'мульти': null,
+    'white': '#f7f7f5', 'black': '#1b1b1f', 'grey': '#9aa3ae', 'gray': '#9aa3ae', 'blue': '#2a58c9', 'navy': '#1b2a57', 'red': '#c8303a', 'green': '#3f9a5a', 'pink': '#f2b7c8', 'beige': '#d8c3a0', 'brown': '#7a4b2a', 'yellow': '#f2c230', 'orange': '#f08a24', 'purple': '#7b4fc4', 'cream': '#f0e4c4', 'khaki': '#78794a'
+  };
   var COLOR_KEYS = Object.keys(COLOR_HEX).sort(function (a, b) { return b.length - a.length; });
-  function hexFor(w) { w = norm(w).trim(); for (var i = 0; i < COLOR_KEYS.length; i++) if (w.indexOf(COLOR_KEYS[i]) === 0) return COLOR_HEX[COLOR_KEYS[i]]; return null; }
+  function mixHex(h, to, k) {
+    var a = parseInt(h.slice(1), 16), b = parseInt(to.slice(1), 16), out = 0;
+    for (var sh = 16; sh >= 0; sh -= 8) { var x = (a >> sh) & 255, y = (b >> sh) & 255; out |= Math.round(x + (y - x) * k) << sh; }
+    return '#' + ('000000' + out.toString(16)).slice(-6);
+  }
+  function hexFor(w) {
+    w = norm(w).replace(/ё/g, 'е').trim(); if (!w) return null;
+    var mod = null, m = w.match(/^(светло|темно|ярко|нежно|пастельно|насыщенно|глубок\S*|тускл\S*|пыльн\S*|бледно)[-\s]*(.+)$/);
+    if (m) { mod = m[1]; w = m[2]; }
+    var m2 = w.match(/^(.+?)\s+(светл\S*|темн\S*|ярк\S*|нежн\S*|пастельн\S*|пыльн\S*|бледн\S*)$/);
+    if (m2) { w = m2[1]; mod = ({ светл: 'светло', темн: 'темно', ярк: 'ярко', неж: 'нежно', паст: 'пастельно', пыль: 'пыльно', бледн: 'бледно' })[m2[2].slice(0, 4)] || ({ светл: 'светло' })[m2[2].slice(0, 5)] || 'светло'; }
+    var hex = null;
+    for (var i = 0; i < COLOR_KEYS.length; i++) { var k = COLOR_KEYS[i]; if (w.indexOf(k) === 0 && COLOR_HEX[k]) { hex = COLOR_HEX[k]; break; } }
+    if (!hex) return null;
+    if (mod === 'светло' || mod === 'бледно') hex = mixHex(hex, '#ffffff', hex === '#f7f7f5' ? 0 : 0.5);
+    else if (mod === 'нежно' || mod === 'пастельно') hex = mixHex(hex, '#ffffff', 0.6);
+    else if (mod === 'темно' || /^глубок/.test(mod || '')) hex = mixHex(hex, '#000000', 0.45);
+    else if (/^пыльн|^тускл/.test(mod || '')) hex = mixHex(hex, '#9a9a9a', 0.45);
+    return hex;
+  }
   function swatch(name) {
-    var n = norm(name).replace(/\s+в\s+полоску/, ''), striped = /полоск/.test(norm(name));
-    var parts = n.split(/[-–]\s*(?=[а-я])/).map(function (s) { return s.trim(); }).filter(Boolean);
-    if (/^(темно|светло)$/.test(parts[0] || '')) parts = [parts.slice(0, 2).join('-')].concat(parts.slice(2));
+    var full = norm(name).replace(/ё/g, 'е'), striped = /полоск/.test(full), checked = /клетк/.test(full);
+    var n = full.replace(/\s+в\s+(полоску|клетку)/, '').replace(/[()]/g, ' ').trim();
+    var parts = n.split(/\s*[-–\/]\s*(?=[а-яa-z])|\s+и\s+/).map(function (x) { return x.trim(); }).filter(Boolean);
+    if (/^(темно|светло|ярко|нежно|пастельно|пыльно|бледно)$/.test(parts[0] || '')) parts = [parts.slice(0, 2).join('-')].concat(parts.slice(2));
     var hx = parts.map(hexFor).filter(Boolean);
-    if (!hx.length) return 'background:conic-gradient(#e85d75,#43c9e3,#4f8a5b,#2f72ff,#7b4fc4,#e85d75)';
+    if (!hx.length) { var one = hexFor(n); if (one) hx = [one]; }
+    if (!hx.length) return 'background:#c9ced6';
     if (hx.length === 1) return 'background:' + hx[0];
-    if (striped) return 'background:repeating-linear-gradient(135deg,' + hx[0] + ' 0 4px,' + hx[1] + ' 4px 8px)';
+    if (striped || checked) return 'background:repeating-linear-gradient(135deg,' + hx[0] + ' 0 4px,' + hx[1] + ' 4px 8px)';
     return 'background:linear-gradient(135deg,' + hx[0] + ' 50%,' + hx[1] + ' 50%)';
   }
 
@@ -302,6 +360,20 @@
      в течение минуты и сразу при возвращении на вкладку. Экран не перерисовывается, если ничего
      не изменилось или клиент сейчас что-то вводит. */
   var silentBusy = false, lastMe = '';
+  // каталог обновляется сам: раз в 10 минут тихо читаем data/catalog.js и, если появились новые товары, перерисовываем главную и каталог
+  var lastCat = Date.now();
+  function refreshCatalog() {
+    lastCat = Date.now();
+    if (!window.fetch || /^(file|blob):/.test(location.protocol) || /demo/.test(location.search)) return;
+    fetch('data/catalog.js?t=' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.ok ? r.text() : ''; }).then(function (t) {
+      if (!t) return;
+      var m = t.match(/window\.ONION_CATALOG\s*=\s*([\s\S]*?);\s*$/); if (!m) return;
+      var data = JSON.parse(m[1]);
+      if (!data || !data.products || data.updatedAt === CATALOG.updatedAt || !data.products.length) return;
+      CATALOG = data; PRODUCTS = data.products.slice(); BY_ID = {}; PRODUCTS.forEach(indexProduct);
+      if (current === 'home') renderHome(); else if (current === 'catalog') updateCatalog();
+    }).catch(function () { /* без сети — оставляем как есть */ });
+  }
   function silentRefresh() {
     if (silentBusy || !API.enabled || API.mode !== 'live' || !API.getSession() || document.hidden || API.busy()) return;
     silentBusy = true;
@@ -451,6 +523,12 @@
   function growBars(root) { requestAnimationFrame(function () { $$('[data-w]', root).forEach(function (b) { b.style.width = b.getAttribute('data-w'); }); }); }
 
   // ------------------------------------------------------------ главная
+  var revealIO = null;
+  function reveal(root) {
+    if (REDUCED || !('IntersectionObserver' in window)) return;
+    if (!revealIO) revealIO = new IntersectionObserver(function (en) { en.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add('in'); revealIO.unobserve(e.target); } }); }, { rootMargin: '0px 0px -6% 0px' });
+    $$('.pcard:not(.rv)', root).forEach(function (el, i) { el.classList.add('rv'); el.style.setProperty('--d', (i % 4) * 60 + 'ms'); revealIO.observe(el); });
+  }
   var homeTimers = [];
   function stopHomeTimers() { homeTimers.forEach(clearInterval); homeTimers = []; }
   function banner(title, sub, href, picks, cls, chips) {
@@ -482,7 +560,8 @@
     var cats = categories(PRODUCTS).slice(0, 10);
     var rec = recent.map(function (id) { return BY_ID[id]; }).filter(Boolean);
     var stockL = PRODUCTS.filter(function (p) { return p.status === 'stock'; });
-    var hot = stockL.slice().sort(function (x, y) { return discount(y) - discount(x); }).slice(0, 5);
+    var hot = stockL.slice().sort(function (x, y) { return discount(y) - discount(x); }).filter(function (p) { return discount(p) >= 3; }).slice(0, 5);
+    stockL.forEach(function (p) { if (hot.length < 5 && hot.indexOf(p) < 0) hot.push(p); });
     var preL = PRODUCTS.filter(function (p) { return p.status === 'preorder'; }).slice(0, 5);
     var catTile = function (href, label, art, key) {
       return '<a class="ct" href="' + href + '"' + (key ? ' data-cat="' + key + '"' : '') + '><span class="ct-i"><img src="assets/cat/' + art + '.svg" alt="" loading="lazy"></span><span class="ct-l">' + esc(label) + '</span></a>';
@@ -498,17 +577,21 @@
       cnChips.push('+' + RULES.reward.register + ' токенов за регистрацию', 'Промокоды из рулетки');
     }
     var fresh = PRODUCTS.slice(0, 12);
+    var seenB = {}, brands = [];
+    PRODUCTS.forEach(function (p) { var b = (p.brand || '').trim(), k = norm(b); if (b && !seenB[k]) { seenB[k] = 1; brands.push(b); } });
+    brands = brands.slice(0, 14);
     var v = $('#v-home');
     v.innerHTML =
       '<form class="h-search" id="hero-search" role="search">' + icon('search') + '<label class="sr" for="hero-q">Поиск по каталогу</label><input id="hero-q" type="search" placeholder="Найти товар или бренд" autocomplete="off" enterkeyhint="search"><button class="btn btn-sm" type="submit">Найти</button></form>' +
       '<div class="cts">' + tiles + '</div>' +
+      (brands.length ? '<div class="ticker" aria-hidden="true"><div class="tk-in">' + brands.concat(brands).map(function (b) { return '<span>' + esc(b) + '</span>'; }).join('') + '</div></div>' : '') +
       '<div class="bns">' + banner('Супер эксклюзивные предложения', 'Самые выгодные вещи в наличии', '#stock', hot, 'bn-hot', hotChips) + banner('Находки из Китая', 'Под заказ · фурой', '#preorder', preL, 'bn-cn', cnChips) + '</div>' +
       (rec.length ? '<div class="sec"><div class="sec-head"><h2>Вы смотрели</h2></div><div class="hscroll">' + rec.map(card).join('') + '</div></div>' : '') +
       '<div class="sec"><div class="sec-head"><h2>Новинки</h2><a class="btn btn-ghost btn-sm" href="#catalog">Весь каталог</a></div>' + grid(fresh, 'home-grid') + '</div>' +
       '<div class="sec"><a class="faq-link" href="#info">Частые вопросы' + icon('arrow-right') + '</a></div>';
     $('#hero-search', v).addEventListener('submit', function (e) { e.preventDefault(); filter = newFilter(); filter.q = $('#hero-q').value.trim(); go('catalog'); });
     $$('.ct[data-cat]', v).forEach(function (a) { a.addEventListener('click', function () { filter = newFilter(); filter.cat = a.getAttribute('data-cat'); }); });
-    startBanners(v);
+    startBanners(v); reveal(v);
   }
 
   // быстрое добавление из карточки: размер/цвет — в окне выбора
@@ -636,6 +719,7 @@
     var dym = f.q && !f._fz ? didYouMean(f.q) : '';
     $('#cat-grid').innerHTML = list.length ? fzNote + grid(list) :
       '<div class="empty"><span class="ico">' + icon('search') + '</span><h3>Ничего не нашлось</h3>' + (dym ? '<p>Возможно, вы искали <button class="link-btn" type="button" id="dym-btn">' + esc(dym) + '</button></p>' : '') + '<p>Попробуйте другое слово или сбросьте фильтры. Нужной вещи нет — напишите менеджеру, подберём под заказ.</p><div class="acts" style="justify-content:center"><button class="btn btn-ghost btn-sm" type="button" id="empty-reset">Сбросить фильтры</button><a class="btn btn-sm" href="' + SHOP.managerUrl + '" target="_blank" rel="noopener">' + icon('send') + 'Написать менеджеру</a></div></div>';
+    reveal($('#cat-grid'));
     var dy = $('#dym-btn'); if (dy) dy.addEventListener('click', function () { filter.q = dym; var qi = $('#cat-q'); if (qi) { qi.value = dym; $('#cat-clear').hidden = false; } updateCatalog(); });
     var er = $('#empty-reset'); if (er) er.addEventListener('click', function () { filter = newFilter(); silentHash('catalog'); renderCatalog(); setNav('catalog'); });
   }
@@ -680,6 +764,12 @@
     copyText(url, 'Ссылка на товар скопирована'); done();
   }
   // цвет → фото: если фото не меньше, чем цветов, i-й цвет показан на i-м фото
+  function measTable(tbl, selSize) {
+    var sizes = Object.keys(tbl), labels = [];
+    sizes.forEach(function (z) { tbl[z].forEach(function (r) { if (labels.indexOf(r[0]) < 0) labels.push(r[0]); }); });
+    return '<div class="mtbl-wrap"><table class="mtbl"><thead><tr><th></th>' + sizes.map(function (z) { return '<th data-mz="' + esc(z) + '"' + (z === selSize ? ' class="on"' : '') + '>' + esc(z) + '</th>'; }).join('') + '</tr></thead><tbody>' +
+      labels.map(function (l) { return '<tr><th scope="row">' + esc(cap(l)) + '</th>' + sizes.map(function (z) { var r = tbl[z].filter(function (x) { return x[0] === l; })[0]; return '<td data-mz="' + esc(z) + '"' + (z === selSize ? ' class="on"' : '') + '>' + (r ? esc(String(r[1]).replace(/\s*см$/i, '')) : '—') + '</td>'; }).join('') + '</tr>'; }).join('') + '</tbody></table></div><p class="small">Размеры в сантиметрах. Выберите размер — столбец подсветится.</p>';
+  }
   function colorPhotoMap(p) { return !!p.colorPhoto; }
   function renderProduct(id) {
     var p = BY_ID[id], v = $('#v-product');
@@ -688,8 +778,14 @@
     var sel = { size: p.sizes.length === 1 ? p.sizes[0] : null, color: p.colors.length === 1 ? p.colors[0] : null, photo: null, photoAuto: false, qty: 1 };
     var many = p.photos.length > 1, d = discount(p), mapOk = colorPhotoMap(p);
     var maxTokRub = Math.floor(p.price * RULES.maxShare);
-    var measures = p.details.filter(function (r) { return /(груд|плеч|рукав|длин|ширин|обхват|талия|бедр)/i.test(r[0]); });
-    var specs = p.details.filter(function (r) { return measures.indexOf(r) < 0; });
+    var measures = p.measureRows, tbl = p.sizeTable, tblSizes = tbl ? Object.keys(tbl) : [];
+    var SPEC_ORDER = ['состояние', 'материал', 'состав', 'качество', 'сезон', 'страна производства', 'подкладка'];
+    var skip = {}; (p.facts || []).forEach(function (f) { skip[String(f[0]).toLowerCase()] = 1; });
+    var specs = [['Бренд', p.brand], ['Категория', p.categoryLabel]].concat(p.details.slice().sort(function (a, b) {
+      var x = SPEC_ORDER.indexOf(String(a[0]).toLowerCase()), y = SPEC_ORDER.indexOf(String(b[0]).toLowerCase());
+      return (x < 0 ? 99 : x) - (y < 0 ? 99 : y);
+    })).filter(function (r) { return r[1] && !skip[String(r[0]).toLowerCase()] && !/^(другое)$/i.test(r[1]); }).map(function (r) { return [cap(r[0]), cap(String(r[1]))]; });
+    var hasMeas = !!(tbl || (measures && measures.length));
     var related = PRODUCTS.filter(function (x) { return x.id !== p.id && x.category === p.category; });
     if (related.length < 4) related = related.concat(PRODUCTS.filter(function (x) { return x.id !== p.id && x.category !== p.category && (x.status === 'preorder') === (p.status === 'preorder'); }));
     related = related.slice(0, 4);
@@ -714,8 +810,8 @@
         ? '<div class="notice notice-pre">' + icon('plane') + '<div><b>Предзаказ из Китая.</b> Доставка из Китая уже в цене. <a href="#info">Условия</a></div></div>'
         : p.status === 'out' ? '<div class="notice notice-out">' + icon('clock') + '<div><b>Временно нет в наличии.</b> Менеджер уточнит срок поступления.</div></div>' + (API.enabled ? '<button class="btn btn-ghost btn-sm wait-btn" type="button" id="wait-btn"></button>' : '')
         : '') +
-      (p.sizes.length ? '<div class="opt" id="opt-size"><div class="opt-head"><b>Размер' + (p.sizes.length > 1 ? ' <span class="req">*</span>' : '') + '</b><span class="val"><span id="size-val">' + (sel.size ? esc(sel.size) : 'не выбран') + '</span>' + (measures.length ? ' · <button class="link-btn" type="button" id="measure-btn">Замеры</button>' : '') + (p.sizes.length > 1 ? ' · <button class="link-btn" type="button" id="fit-btn">Подобрать</button>' : '') + '</span></div><div class="choices">' +
-        p.sizes.map(function (s) { return '<button class="choice" type="button" data-size="' + esc(s) + '" aria-pressed="' + (sel.size === s) + '">' + esc(s) + '</button>'; }).join('') + '</div><span class="msg" hidden>Выберите размер</span></div>' : '') +
+      (p.sizes.length ? '<div class="opt" id="opt-size"><div class="opt-head"><b>Размер' + (p.sizes.length > 1 ? ' <span class="req">*</span>' : '') + '</b><span class="val"><span id="size-val">' + (sel.size ? esc(sel.size) : 'не выбран') + '</span>' + '</span></div><div class="choices">' +
+        p.sizes.map(function (s) { return '<button class="choice" type="button" data-size="' + esc(s) + '" aria-pressed="' + (sel.size === s) + '">' + esc(s) + '</button>'; }).join('') + '</div>' + (tbl ? '<div class="size-meas" id="size-meas" hidden></div>' : '') + '<span class="msg" hidden>Выберите размер</span></div>' : '') +
       (p.colors.length ? '<div class="opt" id="opt-color"><div class="opt-head"><b>Цвет' + (p.colors.length > 1 ? ' <span class="req">*</span>' : '') + '</b><span class="val" id="color-val">' + (sel.color ? esc(cap(sel.color)) : 'не выбран') + '</span></div><div class="choices">' +
         p.colors.map(function (c) { return '<button class="choice color" type="button" data-color="' + esc(c) + '" aria-pressed="' + (sel.color === c) + '"><i class="sw" style="' + swatch(c) + '"></i>' + esc(cap(c)) + '</button>'; }).join('') + '</div><span class="msg" hidden>Выберите цвет</span></div>' : '') +
       '<div class="opt"><label for="p-note"><b style="font-size:14.5px">' + (p.status === 'preorder' ? 'Пожелания к товару' : 'Комментарий') + '</b> <span class="small">· по желанию</span></label><textarea id="p-note" maxlength="300" placeholder="' + (p.status === 'preorder' ? 'Например: посадка oversize, проверить швы, фото бирки' : 'Например: хочу примерить перед покупкой') + '"></textarea></div>' +
@@ -723,7 +819,7 @@
       '<button class="btn" type="button" id="add-btn">' + icon('bag') + '<span id="add-lbl">В корзину · ' + rub(p.price) + '</span></button></div>' +
       '<div class="acc">' +
       ((specs.length || p.notes.length) ? '<details><summary>Характеристики' + icon('chevron-down') + '</summary><div class="acc-body">' + (specs.length ? '<dl class="specs">' + specs.map(function (r) { return '<div><dt>' + esc(r[0]) + '</dt><dd>' + esc(r[1]) + '</dd></div>'; }).join('') + '</dl>' : '') + (p.notes.length ? '<div class="notes">' + p.notes.map(function (n) { return '<span>' + icon('check') + esc(n) + '</span>'; }).join('') + '</div>' : '') + '</div></details>' : '') +
-      (measures.length ? '<details><summary>Замеры изделия' + icon('chevron-down') + '</summary><div class="acc-body"><dl class="specs">' + measures.map(function (r) { return '<div><dt>' + esc(r[0]) + '</dt><dd>' + esc(r[1]) + '</dd></div>'; }).join('') + '</dl></div></details>' : '') +
+      (hasMeas ? '<details id="meas-det"><summary>Замеры изделия' + icon('chevron-down') + '</summary><div class="acc-body">' + (tbl ? measTable(tbl, sel.size) : '<dl class="specs">' + measures.map(function (r) { return '<div><dt>' + esc(r[0]) + '</dt><dd>' + esc(r[1]) + '</dd></div>'; }).join('') + '</dl>') + '</div></details>' : '') +
       (API.enabled ? '<details id="rev-det"><summary>Отзывы <span class="rev-n" id="rev-n"></span>' + icon('chevron-down') + '</summary><div class="acc-body" id="rev-body"><p class="small">Загружаем…</p></div></details>' : '') +
       '</div>' +
       '<a class="tg-link" href="' + esc(p.link) + '" target="_blank" rel="noopener">' + icon('send') + 'Пост с этим товаром в канале</a>' +
@@ -756,11 +852,6 @@
     $('#back-btn', v).addEventListener('click', function () { if (routed > 1) history.back(); else go('catalog'); });
     $('#zoom-btn', v).addEventListener('click', function () { openLightbox(p, cur); });
     $('#share-btn', v).addEventListener('click', function () { shareProduct(p); });
-    var mb = $('#measure-btn', v);
-    if (mb) mb.addEventListener('click', function () { track('measure'); openModal(modalHead('Замеры: ' + p.title) + '<dl class="specs">' + measures.map(function (r) { return '<div><dt>' + esc(r[0]) + '</dt><dd>' + esc(r[1]) + '</dd></div>'; }).join('') + '</dl><p class="small">Замеры сделаны по изделию, без растяжения. Сомневаетесь с размером — спросите менеджера.</p>', { cls: 'sm' }); });
-
-    var fb = $('#fit-btn', v);
-    if (fb) fb.addEventListener('click', function () { track('measure'); fitModal(p, function (size) { var b = $('[data-size="' + size + '"]', v); if (b) b.click(); }); });
     var rd = $('#rev-det', v);
     if (rd) rd.addEventListener('toggle', function () { if (rd.open) loadReviews(p.id, $('#rev-body', v), $('#rev-n', v)); });
     var wb = $('#wait-btn', v);
@@ -791,7 +882,7 @@
       var pv = $('#photo-val'); if (pv) pv.textContent = pid ? 'фото №' + (i + 1) + (auto ? ' · по цвету' : '') : 'не отмечен';
       if (pid && i >= 0) { goTo(i, false); setTimeout(function () { if (sel.photo === pid) goTo(i, false); }, 80); }
     }
-    $$('[data-size]', v).forEach(function (b) { b.addEventListener('click', function () { sel.size = b.getAttribute('data-size'); $$('[data-size]', v).forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); }); $('#size-val').textContent = sel.size; clearErr('opt-size'); }); });
+    $$('[data-size]', v).forEach(function (b) { b.addEventListener('click', function () { sel.size = b.getAttribute('data-size'); $$('[data-size]', v).forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); }); $('#size-val').textContent = sel.size; clearErr('opt-size'); showSizeMeas(); }); });
     $$('[data-color]', v).forEach(function (b) {
       b.addEventListener('click', function () {
         sel.color = b.getAttribute('data-color');
@@ -822,6 +913,14 @@
       var img = $$('figure img', slides)[cur]; flyToCart(img);
       return true;
     }
+    function showSizeMeas() {
+      var box = $('#size-meas', v); if (!box || !tbl) return;
+      var rows = sel.size && tbl[sel.size];
+      box.hidden = !rows;
+      if (rows) box.innerHTML = '<b>Замеры · ' + esc(sel.size) + '</b>' + rows.map(function (r) { return '<span>' + esc(cap(r[0])) + ' <i>' + esc(r[1]) + '</i></span>'; }).join('');
+      $$('.mtbl [data-mz]', v).forEach(function (c) { c.classList.toggle('on', c.getAttribute('data-mz') === sel.size); });
+    }
+    showSizeMeas();
     var addBtn = $('#add-btn', v), addTimer;
     addBtn.addEventListener('click', function () {
       if (!add()) return;
@@ -1560,6 +1659,7 @@
 
       '<div class="card tile c12" style="padding-block:6px"><div class="rows">' +
       '<button class="rowl" type="button" id="r-prof"><span class="ic">' + icon('user') + '</span><span class="tx">Имя, телефон и Telegram</span><span class="val">' + esc(u.phone) + '</span>' + icon('chevron-right') + '</button>' +
+      '<a class="rowl" href="#info"><span class="ic">' + icon('info') + '</span><span class="tx">Частые вопросы</span>' + icon('chevron-right') + '</a>' +
       (API.enabled ? '<button class="rowl" type="button" id="r-tg"><span class="ic">' + icon('send') + '</span><span class="tx">Уведомления в Telegram</span><span class="val">' + (u.tgOn ? 'подключены' : 'не подключены') + '</span>' + icon('chevron-right') + '</button>' : '') +
       '<button class="rowl" type="button" id="r-email"><span class="ic">' + icon('mail') + '</span><span class="tx">Почта</span><span class="val">' + (u.email ? esc(u.email) : 'не указана') + '</span>' + icon('chevron-right') + '</button>' +
       '<button class="rowl" type="button" id="r-pass"><span class="ic">' + icon('key') + '</span><span class="tx">Сменить пароль</span>' + icon('chevron-right') + '</button>' +
@@ -1982,6 +2082,8 @@
     try { var mc = store.get('meCache', null); if (mc && mc.u && mc.s && mc.s === API.getSession() && API.mode === 'live') { acct.user = mc.u; acct.ready = true; updateAcctUI(); } } catch (e) { /* */ }
     refreshMe().then(function () { lastMe = acct.user ? JSON.stringify(acct.user) : ''; refreshView(); });
     setInterval(silentRefresh, 90000);
+    setInterval(refreshCatalog, 10 * 60 * 1000);
+    document.addEventListener('visibilitychange', function () { if (!document.hidden && Date.now() - lastCat > 5 * 60 * 1000) refreshCatalog(); });
     document.addEventListener('visibilitychange', function () { if (document.hidden) flushTrack(); else silentRefresh(); });
     window.addEventListener('focus', silentRefresh);
   }
