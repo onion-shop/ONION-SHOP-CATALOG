@@ -2,8 +2,62 @@
 window.ONION_CATALOG = {
  "channel": "ONION_SHOP_OFFICIAL",
  "source": "t.me",
- "updatedAt": "2026-10-28T15:06:38Z",
+ "updatedAt": "2026-10-29T05:53:27Z",
  "products": [
+  {
+   "title": "Утепленная кофта GAP на молнии",
+   "subtitle": "",
+   "brand": "GAP",
+   "category": "other",
+   "categoryLabel": "Другое",
+   "status": "preorder",
+   "price": 3280,
+   "oldPrice": null,
+   "sizes": [
+    "S",
+    "M",
+    "L"
+   ],
+   "colors": [
+    "белый"
+   ],
+   "details": [
+    [
+     "Состояние",
+     "новое с биркой"
+    ]
+   ],
+   "notes": [],
+   "id": "592",
+   "link": "https://t.me/ONION_SHOP_OFFICIAL/592",
+   "photos": [
+    {
+     "id": 592,
+     "w": 600,
+     "ht": 800,
+     "hash": "1bc91fd078c6"
+    },
+    {
+     "id": 593,
+     "w": 800,
+     "ht": 800,
+     "hash": "bc9d3d7e1dbe"
+    },
+    {
+     "id": 594,
+     "w": 800,
+     "ht": 800,
+     "hash": "78dc4e99b24c"
+    },
+    {
+     "id": 595,
+     "w": 800,
+     "ht": 800,
+     "hash": "dbadf9ce8f26"
+    }
+   ],
+   "date": "2026-10-29T05:12:20Z"
+  },
   {
    "title": "Зип худи Hollister с мехом",
    "subtitle": "",
