@@ -738,7 +738,7 @@ var OnionCore = (function () {
     if (o.promo) L.push('🏷 Промокод ' + o.promo + (o.promoNote ? ' (' + o.promoNote + ')' : '') + ': −' + rub(o.promoRub));
     if (o.pack) L.push('🎁 ПРИВИЛЕГИЯ: ' + o.pack + ' — учесть при расчёте упаковки');
     L.push('✅ К ОПЛАТЕ: ' + rub(o.toPay));
-    if (hasPre) L.push('(доставка из Китая оплачивается отдельно по весу)');
+    if (hasPre) L.push('(доставка из Китая уже включена в цену)');
     if (hasPre && o.f.ship === 'air') L.push('✈️ АВИА: доставка и все связанные расходы — полностью за счёт клиента по авиатарифу (≈40 $/кг, от 10 кг — 36 $/кг). Токены и промокод уменьшают только стоимость товаров, но не доставку и не упаковку.');
     if (hasOut) L.push('⏳ Есть товар, которого сейчас нет в наличии: сообщите клиенту срок поступления или предложите замену до оплаты.');
     L.push('');
@@ -815,6 +815,11 @@ var OnionCore = (function () {
     var f = p.form || {};
     // заказ — только из кабинета: без входа в аккаунт оформить нельзя (db.allowGuest — только для автотестов)
     if (!db.allowGuest && !sessionUser(db, p)) return { ok: false, error: 'Чтобы оформить заказ, войдите в кабинет или создайте его', needAccount: true };
+    var su = sessionUser(db, p);
+    if (su) { // контакты — из профиля; профиль должен быть заполнен
+      if (String(su.name || '').trim().length < 2 || phoneKey(su.phone || '').length < 10) return err('Заполните профиль (имя и телефон) в кабинете перед заказом');
+      f = Object.assign({}, f, { name: su.name, phone: su.phone, tg: su.tg || '' });
+    }
     var built = buildLines(db, p.items);
     if (built.gone.length) return err('Уже продано: ' + built.gone.join(', ') + '. Уберите из корзины и попробуйте снова');
     if (!built.lines.length) return err('Корзина пуста');

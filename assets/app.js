@@ -389,7 +389,8 @@
       '<div class="tags">' + badge(p) + '</div></a>' +
       '<button class="fav" type="button" data-fav="' + id + '" aria-pressed="' + isFav(p.id) + '" aria-label="Избранное: ' + esc(p.title) + '">' + icon('heart') + '</button>' +
       '<a class="body" href="#p-' + id + '"><span class="brand-l">' + esc(p.brand || p.categoryLabel) + '</span><span class="t">' + esc(p.title) + '</span>' + sw +
-      '<div class="prices"><span class="price">' + rub(p.price) + '</span>' + (p.oldPrice ? '<span class="old">' + rub(p.oldPrice) + '</span>' + (d >= 3 ? '<span class="off">−' + d + '%</span>' : '') : '') + '</div></a></article>';
+      '<div class="prices"><span class="price">' + rub(p.price) + '</span>' + (p.oldPrice ? '<span class="old">' + rub(p.oldPrice) + '</span>' + (d >= 3 ? '<span class="off">−' + d + '%</span>' : '') : '') + '</div></a>' +
+      '<button class="qadd" type="button" data-quick="' + id + '">В корзину</button></article>';
   }
   function grid(list, cls) { return '<div class="grid' + (cls ? ' ' + cls : '') + '">' + list.map(card).join('') + '</div>'; }
   function countBy(list, fn) { var m = {}; list.forEach(function (p) { var k = fn(p); m[k] = (m[k] || 0) + 1; }); return m; }
@@ -429,7 +430,7 @@
       '<a class="contact" href="' + SHOP.tiktokUrl + '" target="_blank" rel="noopener"><span class="l">' + icon('play') + '<span><small>TikTok</small><b>@onion_shop</b></span></span>' + icon('arrow-up-right') + '</a></div></div>';
   }
   function preorderBanner() {
-    return '<div class="banner"><span class="ic">' + icon('plane') + '</span><div><h3>Что такое предзаказ</h3><p>Выкупаем товар у поставщика в Китае после вашего заказа, проверяем на складе и отправляем фурой (самолётом — по согласованию с менеджером). Доставка из Китая оплачивается отдельно по весу.</p></div>' +
+    return '<div class="banner"><span class="ic">' + icon('plane') + '</span><div><h3>Что такое предзаказ</h3><p>Выкупаем товар у поставщика в Китае после вашего заказа, проверяем на складе и отправляем фурой (самолётом — по согласованию с менеджером).  Доставка из Китая уже включена в цену.</p></div>' +
       '<a class="btn btn-ghost" href="' + SHOP.preorderUrl + '" target="_blank" rel="noopener">Условия и сроки' + icon('arrow-up-right') + '</a></div>';
   }
   function stepsBlock() {
@@ -450,36 +451,86 @@
   function growBars(root) { requestAnimationFrame(function () { $$('[data-w]', root).forEach(function (b) { b.style.width = b.getAttribute('data-w'); }); }); }
 
   // ------------------------------------------------------------ главная
+  var homeTimers = [];
+  function stopHomeTimers() { homeTimers.forEach(clearInterval); homeTimers = []; }
+  function banner(title, sub, href, picks, cls, chips) {
+    if (!picks.length) return '';
+    return '<a class="bn ' + (cls || '') + '" href="' + href + '"><div class="bn-pics" style="grid-template-columns:repeat(' + picks.length + ',1fr)">' +
+      '<span class="bn-big">' + picks.map(function (p, i) { return '<img class="' + (i ? '' : 'on') + '" src="' + thumb(p.photos[0].id) + '" alt="" loading="' + (i ? 'lazy' : 'eager') + '" decoding="async">'; }).join('') + '</span>' +
+      picks.map(function (p, i) { return '<span class="bn-th' + (i ? '' : ' on') + '"><img src="' + thumb(p.photos[0].id) + '" alt="" loading="lazy" decoding="async"></span>'; }).join('') +
+      '<div class="bn-chips">' + (chips || []).map(function (c, i) { return '<span class="bn-chip' + (i ? '' : ' on') + '">' + c + '</span>'; }).join('') + '</div></div>' +
+      '<div class="bn-txt"><b>' + title + '</b><span>' + sub + '</span></div></a>';
+  }
+  function startBanners(v) {
+    stopHomeTimers();
+    if (REDUCED) return;
+    $$('.bn', v).forEach(function (b, k) {
+      var imgs = $$('.bn-big img', b), ths = $$('.bn-th', b), chips = $$('.bn-chip', b), i = 0, j = 0;
+      function live() { return !document.hidden && current === 'home'; }
+      if (imgs.length > 1) homeTimers.push(setInterval(function () {
+        if (!live()) return;
+        imgs[i].classList.remove('on'); ths[i].classList.remove('on');
+        i = (i + 1) % imgs.length; imgs[i].classList.add('on'); ths[i].classList.add('on');
+      }, 3800 + k * 900));
+      if (chips.length > 1) homeTimers.push(setInterval(function () {
+        if (!live()) return;
+        chips[j].classList.remove('on'); j = (j + 1) % chips.length; chips[j].classList.add('on');
+      }, 3200 + k * 600));
+    });
+  }
   function renderHome() {
-    var stock = PRODUCTS.filter(inStockTab).length, pre = PRODUCTS.length - stock;
-    var brands = {}; PRODUCTS.forEach(function (p) { if (p.brand) brands[norm(p.brand)] = 1; });
-    var nb = Object.keys(brands).length, cats = categories(PRODUCTS).slice(0, 4);
+    var cats = categories(PRODUCTS).slice(0, 10);
     var rec = recent.map(function (id) { return BY_ID[id]; }).filter(Boolean);
-    var art = PRODUCTS.slice(0, 4);
+    var stockL = PRODUCTS.filter(function (p) { return p.status === 'stock'; });
+    var hot = stockL.slice().sort(function (x, y) { return discount(y) - discount(x); }).slice(0, 5);
+    var preL = PRODUCTS.filter(function (p) { return p.status === 'preorder'; }).slice(0, 5);
+    var catTile = function (href, label, art, key) {
+      return '<a class="ct" href="' + href + '"' + (key ? ' data-cat="' + key + '"' : '') + '><span class="ct-i"><img src="assets/cat/' + art + '.svg" alt="" loading="lazy"></span><span class="ct-l">' + esc(label) + '</span></a>';
+    };
+    var tiles = catTile('#stock', 'В наличии', 'stock') + catTile('#preorder', 'Из Китая', 'china');
+    var ART = { shoes: 1, tees: 1, hoodies: 1, outerwear: 1, pants: 1, accessories: 1 };
+    categories(PRODUCTS).forEach(function (c) { if (ART[c.key]) tiles += catTile('#catalog', c.label, c.key, c.key); });
+    var maxOff = hot.reduce(function (m, p) { return Math.max(m, discount(p)); }, 0);
+    var hotChips = [maxOff >= 3 ? 'Скидки до −' + maxOff + '%' : 'Выгодные цены'];
+    var cnChips = ['Доставка из Китая уже в цене'];
+    if (API.enabled) {
+      hotChips.push('Токенами — до ' + Math.round(RULES.maxShare * 100) + '% заказа', 'Бесплатный прокрут рулетки каждый день');
+      cnChips.push('+' + RULES.reward.register + ' токенов за регистрацию', 'Промокоды из рулетки');
+    }
+    var fresh = PRODUCTS.slice(0, 12);
     var v = $('#v-home');
     v.innerHTML =
-      '<div class="hero"><div>' +
-      '<span class="eyebrow">ONION SHOP · с ' + SHOP.since + ' года</span>' +
-      '<h1>Одежда, обувь и аксессуары — <em>в наличии и под заказ из Китая</em></h1>' +
-      '<p class="lead">Выберите размер и цвет, спишите токены и введите промокод — заказ сам уйдёт менеджеру. Оплата после подтверждения.</p>' +
-      '<form class="hero-search" id="hero-search" role="search">' + icon('search') + '<label class="sr" for="hero-q">Поиск по каталогу</label><input id="hero-q" type="search" placeholder="Hollister, футболка, кроссовки…" autocomplete="off"><button class="btn" type="submit">Найти</button></form>' +
-      '<div class="quick"><a href="#stock">В наличии <span class="n">' + stock + '</span></a><a href="#preorder">Предзаказ <span class="n">' + pre + '</span></a>' +
-      cats.map(function (c) { return '<a href="#catalog" data-cat="' + c.key + '">' + esc(c.label) + ' <span class="n">' + c.n + '</span></a>'; }).join('') + '</div>' +
-      '</div><div class="hero-art" aria-hidden="true">' + art.map(function (p) { return '<a href="#p-' + esc(p.id) + '" tabindex="-1"><img src="' + thumb(p.photos[0].id) + '" alt="" loading="lazy"></a>'; }).join('') + '</div></div>' +
-      '<div class="stats">' +
-      '<a class="stat" href="#stock"><b>' + stock + '</b><span>' + plural(stock, 'товар', 'товара', 'товаров') + ' в наличии</span></a>' +
-      '<a class="stat" href="#preorder"><b>' + pre + '</b><span>по предзаказу</span></a>' +
-      '<a class="stat" href="#catalog"><b>' + nb + '</b><span>' + plural(nb, 'бренд', 'бренда', 'брендов') + ' в каталоге</span></a>' +
-      '<a class="stat" href="#info"><b>' + ageText() + '</b><span>работаем с марта ' + SHOP.since + '</span></a></div>' +
-      tokensStrip() +
-      '<div class="sec"><div class="sec-head"><div><span class="eyebrow">Новое в канале</span><h2>Последние поступления</h2></div><a class="btn btn-ghost btn-sm" href="#catalog">Весь каталог' + icon('arrow-right') + '</a></div>' + grid(PRODUCTS.slice(0, 8), 'home-grid') + '</div>' +
-      (rec.length ? '<div class="sec"><div class="sec-head"><div><span class="eyebrow">Для вас</span><h2>Вы смотрели</h2></div></div><div class="hscroll">' + rec.map(card).join('') + '</div></div>' : '') +
-      '<div class="sec"><div class="sec-head"><div><span class="eyebrow">Как заказать</span><h2>Четыре шага до заказа</h2></div></div>' + stepsBlock() + '</div>' +
-      '<div class="sec">' + preorderBanner() + '</div>' +
-      '<div class="sec info-grid">' + deliveryCard() + paymentCard() + contactsCard() + socialCard() + '</div>';
+      '<form class="h-search" id="hero-search" role="search">' + icon('search') + '<label class="sr" for="hero-q">Поиск по каталогу</label><input id="hero-q" type="search" placeholder="Найти товар или бренд" autocomplete="off" enterkeyhint="search"><button class="btn btn-sm" type="submit">Найти</button></form>' +
+      '<div class="cts">' + tiles + '</div>' +
+      '<div class="bns">' + banner('Супер эксклюзивные предложения', 'Самые выгодные вещи в наличии', '#stock', hot, 'bn-hot', hotChips) + banner('Находки из Китая', 'Под заказ · фурой', '#preorder', preL, 'bn-cn', cnChips) + '</div>' +
+      (rec.length ? '<div class="sec"><div class="sec-head"><h2>Вы смотрели</h2></div><div class="hscroll">' + rec.map(card).join('') + '</div></div>' : '') +
+      '<div class="sec"><div class="sec-head"><h2>Новинки</h2><a class="btn btn-ghost btn-sm" href="#catalog">Весь каталог</a></div>' + grid(fresh, 'home-grid') + '</div>' +
+      '<div class="sec"><a class="faq-link" href="#info">Частые вопросы' + icon('arrow-right') + '</a></div>';
     $('#hero-search', v).addEventListener('submit', function (e) { e.preventDefault(); filter = newFilter(); filter.q = $('#hero-q').value.trim(); go('catalog'); });
-    $$('.quick a[data-cat]', v).forEach(function (a) { a.addEventListener('click', function () { filter = newFilter(); filter.cat = a.getAttribute('data-cat'); }); });
-    growBars(v);
+    $$('.ct[data-cat]', v).forEach(function (a) { a.addEventListener('click', function () { filter = newFilter(); filter.cat = a.getAttribute('data-cat'); }); });
+    startBanners(v);
+  }
+
+  // быстрое добавление из карточки: размер/цвет — в окне выбора
+  function quickAdd(id) {
+    var p = BY_ID[id]; if (!p) return;
+    var sel = { size: p.sizes.length === 1 ? p.sizes[0] : null, color: p.colors.length === 1 ? p.colors[0] : null };
+    function put() {
+      addToCart({ id: p.id, size: sel.size, color: sel.color, photo: (sel.color && p.colorPhoto && p.colorPhoto[sel.color]) || null, qty: 1, note: '' });
+      toast('В корзине: ' + p.title, { label: 'Корзина', run: function () { go('cart'); } });
+    }
+    if (p.sizes.length <= 1 && p.colors.length <= 1) { put(); return; }
+    var md = openModal(modalHead(p.title) +
+      (p.sizes.length > 1 ? '<div class="opt"><div class="opt-head"><b>Размер</b></div><div class="choices" id="qa-sizes">' + p.sizes.map(function (x) { return '<button class="choice" type="button" data-size="' + esc(x) + '" aria-pressed="false">' + esc(x) + '</button>'; }).join('') + '</div></div>' : '') +
+      (p.colors.length > 1 ? '<div class="opt"><div class="opt-head"><b>Цвет</b></div><div class="choices" id="qa-colors">' + p.colors.map(function (c) { return '<button class="choice color" type="button" data-color="' + esc(c) + '" aria-pressed="false"><i class="sw" style="' + swatch(c) + '"></i>' + esc(cap(c)) + '</button>'; }).join('') + '</div></div>' : '') +
+      '<span class="msg err-msg" id="qa-msg" hidden></span><button class="btn btn-block" type="button" id="qa-go">' + icon('bag') + 'В корзину · ' + rub(p.price) + '</button>', { cls: 'sm' });
+    function pick(sel1, attr, key) { $$(sel1 + ' [' + attr + ']', md).forEach(function (b) { b.addEventListener('click', function () { sel[key] = b.getAttribute(attr); $$(sel1 + ' [' + attr + ']', md).forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); }); $('#qa-msg', md).hidden = true; }); }); }
+    pick('#qa-sizes', 'data-size', 'size'); pick('#qa-colors', 'data-color', 'color');
+    $('#qa-go', md).addEventListener('click', function () {
+      if (p.sizes.length > 1 && !sel.size) { var m = $('#qa-msg', md); m.textContent = 'Выберите размер'; m.hidden = false; return; }
+      if (p.colors.length > 1 && !sel.color) { var m2 = $('#qa-msg', md); m2.textContent = 'Выберите цвет'; m2.hidden = false; return; }
+      closeModal(); put();
+    });
   }
 
   // ------------------------------------------------------------ каталог
@@ -578,7 +629,7 @@
     else if (f.sort === 'sale') list.sort(function (a, b) { return discount(b) - discount(a) || (+b.id - +a.id); });
     list.sort(function (a, b) { return (a.status === 'out') - (b.status === 'out'); });
     $('#cat-title').textContent = f.tab === 'stock' ? 'В наличии' : f.tab === 'preorder' ? 'Предзаказ из Китая' : 'Все товары';
-    $('#cat-sub').textContent = f.tab === 'preorder' ? 'Выкупаем у поставщика после заказа. Доставка из Китая оплачивается отдельно.' : f.tab === 'stock' ? 'Вещи уже в Москве — отправим сразу.' : 'Одежда, обувь и аксессуары из Telegram-канала магазина.';
+    $('#cat-sub').textContent = f.tab === 'preorder' ? 'Выкупаем у поставщика после заказа. Доставка из Китая уже в цене.' : f.tab === 'stock' ? 'Вещи уже в Москве — отправим сразу.' : 'Одежда, обувь и аксессуары из Telegram-канала магазина.';
     $('#cat-count').textContent = 'Найдено: ' + list.length + ' ' + plural(list.length, 'товар', 'товара', 'товаров');
     $('#cat-reset').hidden = !(f.cat !== 'all' || f.brand !== 'all' || f.q || f.price !== 'all' || f.sale);
     var fzNote = f._fz === 1 ? '<div class="notice notice-info fz-note">' + icon('search') + '<div>Точных совпадений нет — показали похожие на «' + esc(f.q) + '».</div></div>' : f._fz === 2 ? '<div class="notice notice-info fz-note">' + icon('search') + '<div>Исправили раскладку: искали «' + esc(swapLayout(norm(f.q))) + '».</div></div>' : '';
@@ -660,9 +711,9 @@
       (API.enabled ? '<span class="tok-hint">' + tk() + 'Токенами можно оплатить до <b>' + rub(maxTokRub) + '</b></span>' : '') + '</div>' +
       ((p.facts && p.facts.length) ? '<ul class="facts" aria-label="Главное о товаре">' + p.facts.slice(0, 6).map(function (f) { return '<li><small>' + esc(f[0]) + '</small><b>' + esc(f[1]) + '</b></li>'; }).join('') + '</ul>' : '') +
       (p.status === 'preorder'
-        ? '<div class="notice notice-pre">' + icon('plane') + '<div><b>Предзаказ из Китая.</b> Выкупим у поставщика после заказа, проверим на складе и отправим. Доставка из Китая — отдельно по весу. <a href="' + SHOP.preorderUrl + '" target="_blank" rel="noopener">Как это работает</a></div></div>'
-        : p.status === 'out' ? '<div class="notice notice-out">' + icon('clock') + '<div><b>Временно нет в наличии.</b> Заказ можно оформить — менеджер уточнит у вас срок поступления и подтвердит заказ. Оплата только после согласования.</div></div>' + (API.enabled ? '<button class="btn btn-ghost btn-sm wait-btn" type="button" id="wait-btn"></button>' : '')
-        : '<div class="notice notice-info">' + icon('box') + '<div><b>В наличии в Москве.</b> Доставка по Москве и в другие города через Авито, курьер — по согласованию с менеджером, самовывоз.</div></div>') +
+        ? '<div class="notice notice-pre">' + icon('plane') + '<div><b>Предзаказ из Китая.</b> Доставка из Китая уже в цене. <a href="#info">Условия</a></div></div>'
+        : p.status === 'out' ? '<div class="notice notice-out">' + icon('clock') + '<div><b>Временно нет в наличии.</b> Менеджер уточнит срок поступления.</div></div>' + (API.enabled ? '<button class="btn btn-ghost btn-sm wait-btn" type="button" id="wait-btn"></button>' : '')
+        : '') +
       (p.sizes.length ? '<div class="opt" id="opt-size"><div class="opt-head"><b>Размер' + (p.sizes.length > 1 ? ' <span class="req">*</span>' : '') + '</b><span class="val"><span id="size-val">' + (sel.size ? esc(sel.size) : 'не выбран') + '</span>' + (measures.length ? ' · <button class="link-btn" type="button" id="measure-btn">Замеры</button>' : '') + (p.sizes.length > 1 ? ' · <button class="link-btn" type="button" id="fit-btn">Подобрать</button>' : '') + '</span></div><div class="choices">' +
         p.sizes.map(function (s) { return '<button class="choice" type="button" data-size="' + esc(s) + '" aria-pressed="' + (sel.size === s) + '">' + esc(s) + '</button>'; }).join('') + '</div><span class="msg" hidden>Выберите размер</span></div>' : '') +
       (p.colors.length ? '<div class="opt" id="opt-color"><div class="opt-head"><b>Цвет' + (p.colors.length > 1 ? ' <span class="req">*</span>' : '') + '</b><span class="val" id="color-val">' + (sel.color ? esc(cap(sel.color)) : 'не выбран') + '</span></div><div class="choices">' +
@@ -670,11 +721,9 @@
       '<div class="opt"><label for="p-note"><b style="font-size:14.5px">' + (p.status === 'preorder' ? 'Пожелания к товару' : 'Комментарий') + '</b> <span class="small">· по желанию</span></label><textarea id="p-note" maxlength="300" placeholder="' + (p.status === 'preorder' ? 'Например: посадка oversize, проверить швы, фото бирки' : 'Например: хочу примерить перед покупкой') + '"></textarea></div>' +
       '<div class="buy"><div class="qty" aria-label="Количество"><button type="button" id="q-minus" aria-label="Меньше" disabled>' + icon('minus') + '</button><output id="q-val">1</output><button type="button" id="q-plus" aria-label="Больше">' + icon('plus') + '</button></div>' +
       '<button class="btn" type="button" id="add-btn">' + icon('bag') + '<span id="add-lbl">В корзину · ' + rub(p.price) + '</span></button></div>' +
-      '<button class="btn btn-ghost" type="button" id="buy-now">Оформить сразу' + icon('arrow-right') + '</button>' +
       '<div class="acc">' +
-      ((specs.length || p.notes.length) ? '<details open><summary>Характеристики' + icon('chevron-down') + '</summary><div class="acc-body">' + (specs.length ? '<dl class="specs">' + specs.map(function (r) { return '<div><dt>' + esc(r[0]) + '</dt><dd>' + esc(r[1]) + '</dd></div>'; }).join('') + '</dl>' : '') + (p.notes.length ? '<div class="notes">' + p.notes.map(function (n) { return '<span>' + icon('check') + esc(n) + '</span>'; }).join('') + '</div>' : '') + '</div></details>' : '') +
-      (measures.length ? '<details' + (specs.length ? '' : ' open') + '><summary>Замеры изделия' + icon('chevron-down') + '</summary><div class="acc-body"><dl class="specs">' + measures.map(function (r) { return '<div><dt>' + esc(r[0]) + '</dt><dd>' + esc(r[1]) + '</dd></div>'; }).join('') + '</dl></div></details>' : '') +
-      '<details><summary>Доставка и оплата' + icon('chevron-down') + '</summary><div class="acc-body"><p>' + (p.status === 'preorder' ? 'Из Китая фурой — 18–32 дня от склада (самолётом — по согласованию с менеджером). По России — Авито, СДЭК или личная встреча в Москве.' : 'Доставка по Москве или в другой город через Авито — быстрее всего. Курьер по Москве — не всегда, согласуется с менеджером. Самовывоз: ' + esc(SHOP.address) + '.') + '</p><p>Оплата переводом или наличными при встрече — после подтверждения менеджером.' + (API.enabled ? ' До 15% суммы можно оплатить токенами, промокод вводится при оформлении.' : '') + '</p></div></details>' +
+      ((specs.length || p.notes.length) ? '<details><summary>Характеристики' + icon('chevron-down') + '</summary><div class="acc-body">' + (specs.length ? '<dl class="specs">' + specs.map(function (r) { return '<div><dt>' + esc(r[0]) + '</dt><dd>' + esc(r[1]) + '</dd></div>'; }).join('') + '</dl>' : '') + (p.notes.length ? '<div class="notes">' + p.notes.map(function (n) { return '<span>' + icon('check') + esc(n) + '</span>'; }).join('') + '</div>' : '') + '</div></details>' : '') +
+      (measures.length ? '<details><summary>Замеры изделия' + icon('chevron-down') + '</summary><div class="acc-body"><dl class="specs">' + measures.map(function (r) { return '<div><dt>' + esc(r[0]) + '</dt><dd>' + esc(r[1]) + '</dd></div>'; }).join('') + '</dl></div></details>' : '') +
       (API.enabled ? '<details id="rev-det"><summary>Отзывы <span class="rev-n" id="rev-n"></span>' + icon('chevron-down') + '</summary><div class="acc-body" id="rev-body"><p class="small">Загружаем…</p></div></details>' : '') +
       '</div>' +
       '<a class="tg-link" href="' + esc(p.link) + '" target="_blank" rel="noopener">' + icon('send') + 'Пост с этим товаром в канале</a>' +
@@ -780,7 +829,6 @@
       clearTimeout(addTimer); addTimer = setTimeout(function () { addBtn.classList.remove('done'); lbl.textContent = 'В корзину · ' + rub(p.price * sel.qty); }, 1500);
       toast('В корзине: ' + p.title, { label: 'Оформить', run: function () { go('cart'); } });
     });
-    $('#buy-now', v).addEventListener('click', function () { if (add()) setTimeout(function () { go('cart'); }, REDUCED ? 0 : 450); });
 
     // липкая кнопка на телефоне
     var bb = $('#buybar');
@@ -843,9 +891,9 @@
     }
     var t = totals(lines), n = 0; saveDraft();
     v.innerHTML =
-      '<div class="view-head"><div><span class="eyebrow">Оформление заказа</span><h1>Корзина и оформление</h1><p class="muted">Черновик сохранён: можно уйти в другой раздел и вернуться к оформлению в любой момент. ' + (API.enabled ? 'Заказ с номером сам уйдёт менеджеру — копировать ничего не нужно.' : 'Заполните анкету, и мы получим заказ.') + '</p></div></div>' +
+      '<div class="view-head"><div><h1>Корзина</h1></div></div>' +
       (gone.length ? '<div class="notice notice-info" style="margin-bottom:12px">' + icon('alert') + '<div>Проданные товары убраны из корзины: ' + gone.length + '.</div></div>' : '') +
-      (API.enabled && !u && acct.ready ? '<div class="notice notice-info need-acc" style="margin-bottom:12px">' + icon('user') + '<div><b>Заказ оформляется из кабинета.</b> Создайте кабинет или войдите — корзина и анкета сохранятся. Регистрация занимает минуту, и вы получите ' + RULES.reward.register + ' токенов.<div class="acts" style="margin-top:10px"><button class="btn btn-sm" type="button" id="need-acc">' + icon('user') + 'Войти или создать кабинет</button></div></div></div>' : '') +
+      (API.enabled && !u && acct.ready ? '<div class="notice notice-info need-acc" style="margin-bottom:12px">' + icon('user') + '<div><b>Заказ оформляется из кабинета.</b><div class="acts" style="margin-top:10px"><button class="btn btn-sm" type="button" id="need-acc">' + icon('user') + 'Войти или создать кабинет</button></div></div></div>' : '') +
       '<form class="checkout" id="checkout" novalidate><div class="col">' +
       '<div class="card panel"><div class="panel-head"><h2><span class="n">' + (++n) + '</span>Товары · ' + t.cnt + ' шт.</h2><button class="link-btn" type="button" id="cart-clear">Очистить</button></div><div class="lines">' +
       lines.map(function (l, i) {
@@ -857,42 +905,41 @@
           '<span class="price">' + rub(p.price * l.qty) + '</span><button class="icon-btn" type="button" data-del aria-label="Убрать из корзины" style="box-shadow:none;background:var(--tile)">' + icon('trash') + '</button></div></div>';
       }).join('') + '</div></div>' +
 
-      (API.enabled ? '<div class="card panel" id="tokpanel"><div class="panel-head"><h2><span class="n">' + (++n) + '</span>Токены и промокод</h2>' + (u ? '<span class="tok">' + tk() + num(u.balance) + '</span>' : '') + '</div>' +
-        (u ? (t.maxTok > 0 ? '<div class="tokbox"><div class="tokrow"><span>Списать <b id="tok-n">' + num(t.tok) + '</b> <span id="tok-w">' + tokWord(t.tok) + '</span></span><b id="tok-rub">−' + rub(t.tokRub) + '</b></div>' +
-            '<label class="sr" for="tok-range">Сколько токенов списать</label><input class="range" id="tok-range" type="range" min="0" max="' + t.maxTok + '" step="1" value="' + t.tok + '">' +
-            '<div class="tokrow"><span class="small">До 15% заказа · максимум ' + num(t.maxTok) + ' = ' + rub(CORE.tokensToRub(t.maxTok)) + '</span><span class="tokq"><button type="button" data-tq="0">0</button><button type="button" data-tq="1">Максимум</button></span></div></div>'
-            : '<p class="small">' + (cartPromo && cartPromo.withTokens === false ? 'Промокод ' + esc(cartPromo.code) + ' нельзя совмещать с токенами.' : 'Пока нечего списывать. Отмечайтесь каждый день и выполняйте задания — токены пригодятся в следующем заказе.') + '</p>') +
-          (u.promos.length ? '<div class="promos">' + u.promos.map(function (pr) { return '<button type="button" class="ticket" data-promo="' + esc(pr.code) + '" aria-pressed="' + (!!cartPromo && cartPromo.code === pr.code) + '"><code>' + esc(pr.code) + '</code><span class="pct">−' + pctTxt(pr.pct) + '%</span>' + (pr.cat ? '<span class="small">на «' + esc(pr.catLabel) + '»</span>' : '') + '</button>'; }).join('') + '</div>' : '')
-          : '<div class="guest-box">' + tk('lg') + '<div><b>Заказ оформляется из кабинета — войдите или создайте его</b><p class="small">За регистрацию — ' + RULES.reward.register + ' токенов. Корзина сохранится.</p></div></div><div class="acts"><button class="btn btn-sm btn-ghost" type="button" id="go-auth">' + icon('user') + 'Войти или создать аккаунт</button></div>') +
-        '<div class="f"><label for="promo-in">Промокод</label><div class="promo-row"><input class="input" id="promo-in" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Например, HALLOWEEN" value="' + esc(cartPromo && !cartPromo.personal ? cartPromo.code : '') + '"><button class="btn btn-dark" type="button" id="promo-btn">' + (cartPromo && !cartPromo.personal ? 'Убрать' : 'Применить') + '</button></div><div id="promo-msg">' + (cartPromo ? (t.promoNoBase ? '<span class="promo-bad">Промокод ' + esc(cartPromo.code) + ' действует только на «' + esc(cartPromo.catLabel) + '» — таких товаров в корзине нет</span>' : '<span class="promo-ok">' + icon('check-circle') + 'Промокод ' + esc(cartPromo.code) + ': −' + pctTxt(cartPromo.pct) + '%' + (cartPromo.cat ? ' на «' + esc(cartPromo.catLabel) + '»' : '') + '</span>') : '') + '</div></div>' +
-        (t.pack ? (t.packOk ? '<label class="pack-row"><input type="checkbox" id="use-pack"' + (usePack ? ' checked' : '') + '><span class="cbx">' + icon('check') + '</span><span><b>' + esc(t.pack.label) + ' — применить к этому заказу</b><small>' + esc(t.pack.note) + '. Менеджер учтёт при расчёте упаковки.</small></span></label>'
-          : '<p class="small pack-note">' + icon('info') + esc(t.pack.label) + ' (привилегия ' + esc(t.pack.level) + ') действует только для заказа с предзаказом из Китая.</p>') : '') +
-        '</div>' : '') +
+      (!API.enabled ? '<div class="card panel"><div class="panel-head"><h2><span class="n">' + (++n) + '</span>Контакты</h2></div><div class="fgrid">' +
+        '<div class="f" data-f="name"><label for="f-name">Имя</label><input class="input" id="f-name" autocomplete="name" value="' + esc(form.name) + '"><span class="err-msg" hidden></span></div>' +
+        '<div class="f" data-f="phone"><label for="f-phone">Телефон</label><input class="input" id="f-phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="+7 900 000-00-00" value="' + esc(form.phone) + '"><span class="err-msg" hidden></span></div>' +
+        '<div class="f full" data-f="tg"><label for="f-tg">Telegram</label><div class="prefix"><span>@</span><input class="input" id="f-tg" autocomplete="off" autocapitalize="off" value="' + esc(form.tg) + '"></div><span class="err-msg" hidden></span></div></div></div>' : '') +
+      (u && !profileOk(u) ? '<div class="notice notice-warn need-prof" data-f="prof">' + icon('user') + '<div><b>Заполните профиль</b> — имя и телефон берутся из него.</div><a class="btn btn-sm" href="#account">В профиль</a></div>' : '') +
 
-      '<div class="card panel"><div class="panel-head"><h2><span class="n">' + (++n) + '</span>Контакты</h2>' + (u ? '<span class="small">из профиля</span>' : '') + '</div><div class="fgrid">' +
-      '<div class="f" data-f="name"><label for="f-name">Имя</label><input class="input" id="f-name" autocomplete="name" placeholder="Как к вам обращаться" value="' + esc(form.name) + '"><span class="err-msg" hidden></span></div>' +
-      '<div class="f" data-f="phone"><label for="f-phone">Телефон</label><input class="input" id="f-phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="+7 900 000-00-00" value="' + esc(form.phone) + '"><span class="err-msg" hidden></span></div>' +
-      '<div class="f full" data-f="tg"><label for="f-tg">Username в Telegram <span class="opt-l">· желательно</span></label><div class="prefix"><span>@</span><input class="input" id="f-tg" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="username" value="' + esc(form.tg) + '"></div><span class="hint">Так менеджеру быстрее написать вам. Если username нет — оставьте пустым, свяжемся по телефону.</span><span class="err-msg" hidden></span></div>' +
-      '</div></div>' +
-
-      (t.stock ? '<div class="card panel"><div class="panel-head"><h2><span class="n">' + (++n) + '</span>Получение' + (t.pre ? ' товаров в наличии' : '') + '</h2></div>' +
-        '<div class="f" data-f="recv"><span class="lbl sr">Способ получения</span><div class="radios">' +
-        radio('recv', 'city', form.recv, 'Доставка по Москве или в другой город', 'Оформляем через Авито Доставку — так быстрее всего и так заказывают чаще всего.', 'Быстрее всего') +
-        radio('recv', 'courier', form.recv, 'Курьер по Москве', 'Не всегда доступен — согласуется с менеджером отдельно.') +
-        radio('recv', 'pickup', form.recv, 'Самовывоз', esc(SHOP.address) + '. Время согласуйте с менеджером.') +
+      (t.stock ? '<div class="card panel"><div class="panel-head"><h2><span class="n">' + (++n) + '</span>Получение' + (t.pre ? ' · в наличии' : '') + '</h2></div>' +
+        '<div class="f" data-f="recv"><span class="lbl sr">Способ получения</span><div class="radios mini">' +
+        radio('recv', 'city', form.recv, 'Авито Доставка', '') +
+        radio('recv', 'courier', form.recv, 'Курьер', '') +
+        radio('recv', 'pickup', form.recv, 'Самовывоз', '') +
         '</div><span class="err-msg" hidden></span></div>' +
         '<div class="f" data-f="recvCity"' + (form.recv === 'city' ? '' : ' hidden') + '><label for="f-recv-city">Город</label><input class="input" id="f-recv-city" autocomplete="address-level2" placeholder="Москва или другой город" value="' + esc(form.recvCity) + '"><span class="err-msg" hidden></span></div>' +
         '<div class="f" data-f="recvAddr"' + (form.recv === 'courier' ? '' : ' hidden') + '><label for="f-recv-addr">Адрес или район <span class="opt-l">· по желанию</span></label><input class="input" id="f-recv-addr" autocomplete="street-address" placeholder="Уточним с менеджером" value="' + esc(form.recvAddr) + '"></div></div>' : '') +
 
-      (t.pre ? '<div class="card panel"><div class="panel-head"><h2><span class="n">' + (++n) + '</span>Предзаказ из Китая</h2><a class="link-btn" href="' + SHOP.preorderUrl + '" target="_blank" rel="noopener">Условия</a></div>' +
-        '<div class="f" data-f="ship"><span class="lbl">Отправка со склада в Китае</span><div class="notice">' + icon('truck') + '<div><b>Фура</b> — 18–32 дня от склада. Стоимость доставки из Китая считается отдельно по весу.<br><small>Нужна быстрее, самолётом? Напишите менеджеру — рассчитает и согласует.</small></div></div></div>' +
+      (t.pre ? '<div class="card panel"><div class="panel-head"><h2><span class="n">' + (++n) + '</span>Предзаказ из Китая</h2><a class="link-btn" href="#info">Подробнее</a></div>' +
+        '<div class="f" data-f="ship"><span class="lbl">Отправка со склада в Китае</span><div class="notice">' + icon('truck') + '<div><b>Фура</b>, 18–32 дня от склада. Доставка из Китая уже в цене.</div></div></div>' +
         '<div class="f" data-f="city"><label for="f-city">Город, куда привезти</label><input class="input" id="f-city" autocomplete="address-level2" placeholder="Например, Москва" value="' + esc(form.city) + '"><span class="err-msg" hidden></span></div>' +
-        '<div class="f" data-f="preRecv"><span class="lbl">Способ получения</span><div class="radios cols">' + radio('preRecv', 'avito', form.preRecv, 'Авито Доставка', '') + radio('preRecv', 'cdek', form.preRecv, 'СДЭК', 'До пункта выдачи') + radio('preRecv', 'meet', form.preRecv, 'Личная встреча', 'В Москве') + '</div><span class="err-msg" hidden></span></div>' +
-        '<div class="f" data-f="ack"><div class="ack" id="ack"><div class="q"><span class="checkbox" id="ack-box" role="img" aria-label="Не подтверждено">' + icon('check') + '</span><div><b>Я прочитал(а) условия доставки и оформления заказа по предзаказу</b><p class="small" style="margin-top:4px">Сроки, оплата доставки по весу и что не зависит от магазина — на <a href="' + SHOP.preorderUrl + '" target="_blank" rel="noopener">странице о предзаказе</a>.</p></div></div>' +
+        '<div class="f" data-f="preRecv"><span class="lbl">Способ получения</span><div class="radios mini">' + radio('preRecv', 'avito', form.preRecv, 'Авито', '') + radio('preRecv', 'cdek', form.preRecv, 'СДЭК', '') + radio('preRecv', 'meet', form.preRecv, 'Встреча', '') + '</div><span class="err-msg" hidden></span></div>' +
+        '<div class="f" data-f="ack"><div class="ack" id="ack"><div class="q"><span class="checkbox" id="ack-box" role="img" aria-label="Не подтверждено">' + icon('check') + '</span><div><b>Я прочитал(а) условия предзаказа</b> <a class="small" href="' + SHOP.preorderUrl + '" target="_blank" rel="noopener">Открыть</a></div></div>' +
         '<div class="ack-opts"><button type="button" class="yes" data-ack="yes" aria-pressed="' + (ack === 'yes') + '">Да, ознакомился(-ась)</button><button type="button" class="no" data-ack="no" aria-pressed="' + (ack === 'no') + '">Нет, ещё не успел(а)</button><button type="button" class="cancel" data-ack="cancel">Отказаться от оформления</button></div>' +
-        '<div id="ack-hint"' + (ack === 'no' ? '' : ' hidden') + ' style="font-size:14px">Без подтверждения заказ по предзаказу не оформить. <a href="' + SHOP.preorderUrl + '" target="_blank" rel="noopener"><b>Открыть условия</b></a> — это пара минут, корзина сохранится.</div></div><span class="err-msg" hidden></span></div></div>' : '') +
+        '<div id="ack-hint"' + (ack === 'no' ? '' : ' hidden') + ' style="font-size:14px">Без подтверждения предзаказ не оформить. <a href="' + SHOP.preorderUrl + '" target="_blank" rel="noopener"><b>Открыть условия</b></a></div></div><span class="err-msg" hidden></span></div></div>' : '') +
 
-      '<div class="card panel"><div class="panel-head"><h2><span class="n">' + (++n) + '</span>Комментарий <span class="small" style="font-family:var(--f-b);font-weight:400">· по желанию</span></h2></div><div class="f"><label class="sr" for="f-comment">Комментарий к заказу</label><textarea id="f-comment" maxlength="500" placeholder="Удобное время связи, вопросы по размеру…">' + esc(form.comment) + '</textarea></div></div>' +
+      '<div class="card panel"><div class="panel-head"><h2><span class="n">' + (++n) + '</span>Комментарий</h2></div><div class="f"><label class="sr" for="f-comment">Комментарий к заказу</label><textarea id="f-comment" maxlength="500" placeholder="По желанию">' + esc(form.comment) + '</textarea></div></div>' +
+      (API.enabled ? '<div class="card panel" id="tokpanel"><div class="panel-head"><h2><span class="n">' + (++n) + '</span>Токены и промокод</h2>' + (u ? '<span class="tok">' + tk() + num(u.balance) + '</span>' : '') + '</div>' +
+        (u ? (t.maxTok > 0 ? '<div class="tokbox"><div class="tokrow"><span>Списать <b id="tok-n">' + num(t.tok) + '</b> <span id="tok-w">' + tokWord(t.tok) + '</span></span><b id="tok-rub">−' + rub(t.tokRub) + '</b></div>' +
+            '<label class="sr" for="tok-range">Сколько токенов списать</label><input class="range" id="tok-range" type="range" min="0" max="' + t.maxTok + '" step="1" value="' + t.tok + '">' +
+            '<div class="tokrow"><span class="small">максимум ' + num(t.maxTok) + '</span><span class="tokq"><button type="button" data-tq="0">0</button><button type="button" data-tq="1">Максимум</button></span></div></div>'
+            : (cartPromo && cartPromo.withTokens === false ? '<p class="small">Промокод ' + esc(cartPromo.code) + ' нельзя совмещать с токенами.</p>' : '')) +
+          (u.promos.length ? '<div class="promos">' + u.promos.map(function (pr) { return '<button type="button" class="ticket" data-promo="' + esc(pr.code) + '" aria-pressed="' + (!!cartPromo && cartPromo.code === pr.code) + '"><code>' + esc(pr.code) + '</code><span class="pct">−' + pctTxt(pr.pct) + '%</span>' + (pr.cat ? '<span class="small">на «' + esc(pr.catLabel) + '»</span>' : '') + '</button>'; }).join('') + '</div>' : '')
+          : '<div class="guest-box">' + tk('lg') + '<div><b>Заказ оформляется из кабинета — войдите или создайте его</b></div></div><div class="acts"><button class="btn btn-sm btn-ghost" type="button" id="go-auth">' + icon('user') + 'Войти или создать аккаунт</button></div>') +
+        '<div class="f"><label for="promo-in">Промокод</label><div class="promo-row"><input class="input" id="promo-in" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Например, HALLOWEEN" value="' + esc(cartPromo && !cartPromo.personal ? cartPromo.code : '') + '"><button class="btn btn-dark" type="button" id="promo-btn">' + (cartPromo && !cartPromo.personal ? 'Убрать' : 'Применить') + '</button></div><div id="promo-msg">' + (cartPromo ? (t.promoNoBase ? '<span class="promo-bad">Промокод ' + esc(cartPromo.code) + ' действует только на «' + esc(cartPromo.catLabel) + '» — таких товаров в корзине нет</span>' : '<span class="promo-ok">' + icon('check-circle') + 'Промокод ' + esc(cartPromo.code) + ': −' + pctTxt(cartPromo.pct) + '%' + (cartPromo.cat ? ' на «' + esc(cartPromo.catLabel) + '»' : '') + '</span>') : '') + '</div></div>' +
+        (t.pack ? (t.packOk ? '<label class="pack-row"><input type="checkbox" id="use-pack"' + (usePack ? ' checked' : '') + '><span class="cbx">' + icon('check') + '</span><span><b>' + esc(t.pack.label) + ' — применить к этому заказу</b><small>' + esc(t.pack.note) + '. Менеджер учтёт при расчёте упаковки.</small></span></label>'
+          : '<p class="small pack-note">' + icon('info') + esc(t.pack.label) + ' (привилегия ' + esc(t.pack.level) + ') действует только для заказа с предзаказом из Китая.</p>') : '') +
+        '</div>' : '') +
       '</div>' +
 
       '<aside class="card sumcard"><h2>Ваш заказ</h2>' +
@@ -901,10 +948,8 @@
       '<div class="sumrow" id="sum-tok"' + (t.tok ? '' : ' hidden') + '><span>Токены</span><b>−' + rub(t.tokRub) + '</b></div>' +
       '<div class="sumrow good" id="sum-promo"' + (t.promoRub ? '' : ' hidden') + '><span>Промокод <span id="sum-promo-code">' + esc(t.promo) + '</span></span><b>−' + rub(t.promoRub) + '</b></div>' +
       '<div class="sumtotal"><span>К оплате</span><b id="sum-pay">' + rub(t.toPay) + '</b></div>' +
-      (t.pre ? '<p class="small">Доставка из Китая оплачивается отдельно по весу посылки.</p>' : '') +
-      (t.out ? '<p class="small">⏳ В заказе есть товар, которого временно нет в наличии — менеджер уточнит срок поступления.</p>' : '') +
       (API.enabled && !u ? '<button class="btn btn-block" type="submit" id="submit-btn">' + icon('user') + '<span>Войти, чтобы оформить</span></button>' : '<button class="btn btn-block" type="submit" id="submit-btn">' + icon('check-circle') + '<span>Оформить заказ</span></button>') +
-      '<p class="small">Оплаты на сайте нет. Менеджер подтвердит заказ и пришлёт реквизиты.</p></aside></form>';
+      '</aside></form>';
 
     // строки корзины
     $$('.line', v).forEach(function (row) {
@@ -965,8 +1010,8 @@
     // анкета
     function bind(id, key) { var el = $('#' + id, v); if (!el) return; el.addEventListener('input', function () { form[key] = el.value; saveForm(); clearF(key); }); }
     bind('f-name', 'name'); bind('f-phone', 'phone'); bind('f-tg', 'tg'); bind('f-recv-city', 'recvCity'); bind('f-recv-addr', 'recvAddr'); bind('f-city', 'city'); bind('f-comment', 'comment');
-    var ph = $('#f-phone', v); ph.addEventListener('blur', function () { var f = CORE.fmtPhone(ph.value); if (f && CORE.digits(f).length === 11) { ph.value = f; form.phone = f; saveForm(); } });
-    var tg = $('#f-tg', v); tg.addEventListener('blur', function () { var c = CORE.cleanTg(tg.value); tg.value = c; form.tg = c; saveForm(); });
+    var ph = $('#f-phone', v); if (ph) ph.addEventListener('blur', function () { var f = CORE.fmtPhone(ph.value); if (f && CORE.digits(f).length === 11) { ph.value = f; form.phone = f; saveForm(); } });
+    var tg = $('#f-tg', v); if (tg) tg.addEventListener('blur', function () { var c = CORE.cleanTg(tg.value); tg.value = c; form.tg = c; saveForm(); });
     $$('input[type="radio"]', v).forEach(function (r) {
       r.addEventListener('change', function () {
         form[r.name] = r.value; saveForm(); clearF(r.name);
@@ -1013,11 +1058,16 @@
   }
   function setF(key, msg) { var f = $('[data-f="' + key + '"]'); if (!f) return; f.classList.add('err'); var m = $('.err-msg', f); if (m) { m.textContent = msg; m.hidden = false; } }
   function clearF(key) { var f = $('[data-f="' + key + '"]'); if (!f) return; f.classList.remove('err'); var m = $('.err-msg', f); if (m) m.hidden = true; }
+  function profileOk(u) { return !!u && String(u.name || '').trim().length >= 2 && CORE.digits(u.phone || '').length >= 10; }
   function validateForm(hasStock, hasPre) {
     var e = [];
-    if (form.name.trim().length < 2) e.push(['name', 'Укажите имя']);
-    var d = CORE.digits(form.phone); if (d.length < 10 || d.length > 15) e.push(['phone', 'Укажите телефон, например +7 900 000-00-00']);
-    var t = CORE.cleanTg(form.tg); if (t && !/^[A-Za-z0-9_]{4,32}$/.test(t)) e.push(['tg', 'Username — латиница, цифры и «_», от 4 символов. Нет username — оставьте пустым']);
+    var u0 = acct.user;
+    if (u0) { if (!profileOk(u0)) e.push(['prof', 'Заполните профиль: имя и телефон']); }
+    else {
+      if (form.name.trim().length < 2) e.push(['name', 'Укажите имя']);
+      var d = CORE.digits(form.phone); if (d.length < 10 || d.length > 15) e.push(['phone', 'Укажите телефон, например +7 900 000-00-00']);
+      var t = CORE.cleanTg(form.tg); if (t && !/^[A-Za-z0-9_]{4,32}$/.test(t)) e.push(['tg', 'Username — латиница, цифры и «_», от 4 символов']);
+    }
     if (hasStock) { if (!form.recv) e.push(['recv', 'Выберите способ получения']); else if (form.recv === 'city' && form.recvCity.trim().length < 2) e.push(['recvCity', 'Укажите город (можно Москва)']); }
     if (hasPre) {
       form.ship = 'truck';
@@ -1133,7 +1183,7 @@
   }
   function renderOrders() {
     var v = $('#v-orders'), list = allOrders();
-    var head = '<div class="view-head"><div><span class="eyebrow">История</span><h1>Мои заказы</h1><p class="muted">' + (acct.user ? 'Статус меняет менеджер — обновляется сам.' : 'Хранятся в этом браузере.' + (API.enabled ? ' Войдите, чтобы видеть статусы на любом устройстве.' : '')) + '</p></div>' + (API.enabled && !acct.user ? '<a class="btn btn-ghost" href="#account">' + icon('user') + 'Войти</a>' : '') + '</div>';
+    var head = '<div class="view-head"><div><span class="eyebrow">История</span><h1>Мои заказы</h1>' + '</div>' + (API.enabled && !acct.user ? '<a class="btn btn-ghost" href="#account">' + icon('user') + 'Войти</a>' : '') + '</div>';
     if (!list.length) { v.innerHTML = head + '<div class="empty"><span class="ico">' + icon('receipt') + '</span><h3>Заказов пока нет</h3><p>Здесь будут номера заказов, статусы и суммы.</p><a class="btn" href="#catalog">' + icon('grid') + 'Перейти в каталог</a></div>'; return; }
     var act = [], hist = [];
     list.forEach(function (o, i) { (isDoneOrder(o) ? hist : act).push(orderCard(o, i)); });
@@ -1147,8 +1197,8 @@
   // ------------------------------------------------------------ избранное
   function renderFavorites() {
     var v = $('#v-favorites'), list = favs.map(function (id) { return BY_ID[id]; }).filter(Boolean);
-    v.innerHTML = '<div class="view-head"><div><span class="eyebrow">Избранное</span><h1>Отложенные вещи</h1><p class="muted">Нажимайте ♡ на товарах, чтобы вернуться к ним позже.</p></div></div>' +
-      (list.length ? grid(list) : '<div class="empty"><span class="ico">' + icon('heart') + '</span><h3>Пока пусто</h3><p>Отмечайте понравившиеся вещи сердечком' + (API.enabled ? ' — это одно из заданий дня' : '') + '.</p><a class="btn" href="#catalog">' + icon('grid') + 'Перейти в каталог</a></div>');
+    v.innerHTML = '<div class="view-head"><div><h1>Избранное</h1></div></div>' +
+      (list.length ? grid(list) : '<div class="empty"><span class="ico">' + icon('heart') + '</span><h3>Пока пусто</h3><a class="btn" href="#catalog">Перейти в каталог</a></div>');
   }
 
   // ------------------------------------------------------------ коды на почту
@@ -1424,12 +1474,6 @@
   function levelsModal() {
     var u = acct.user, cur = u ? u.level.index : -1;
     openModal(modalHead('Программа лояльности') +
-      '<p class="muted">Уровень растёт от XP — опыта за месяц. 1-го числа XP обнуляется, и уровень начинается заново с Бронзы.</p>' +
-      '<div class="xp-how"><b>Как получить XP</b><ul>' +
-      '<li>' + icon('bag') + '<span>Полученный заказ — <b>1 XP за каждые 10&nbsp;₽</b>. Засчитывается, когда у заказа статус «Получен»</span></li>' +
-      '<li>' + icon('gift') + '<span>Ежедневный вход — <b>+' + RULES.xpReward.checkin + ' XP</b></span></li>' +
-      '<li>' + icon('check') + '<span>Задания — ежедневные <b>+2–3 XP</b>, еженедельные <b>+12–40 XP</b>, ежемесячные <b>+40–300 XP</b></span></li>' +
-      '<li>' + icon('sparkles') + '<span>Рулетка — приз <b>+50 XP</b></span></li></ul></div>' +
       '<div class="lvl-list">' + RULES.levels.map(function (l, i) {
         return '<section class="lvl-card lv-' + l.key + (i === cur ? ' cur' : '') + '"><header>' + lvlImg(l.key, 56) + '<div><h3>' + esc(l.name) + (i === cur ? ' <span class="chip">ваш уровень</span>' : '') + '</h3><span class="small">' + (l.min ? 'от ' + num(l.min) + ' XP за месяц' : 'сразу после регистрации') + '</span></div></header>' +
           '<ul class="perks">' + perkItems(l.perks) + '</ul></section>';
@@ -1469,9 +1513,6 @@
     list.innerHTML = board[per].map(taskRow).join('');
     var all = board[per], done = all.filter(function (t) { return t.d; }).length;
     $('#task-side', root).textContent = done + ' из ' + all.length + ' · ' + RULES.taskPer[per].until;
-    $('#task-note', root).textContent = per === 'd' ? 'Простые задания: токены и XP. Обновляются в 00:00 по Москве; чем выше уровень, тем их больше.'
-      : per === 'w' ? 'Еженедельные сложнее и награда больше. «Оформить заказ» считается сразу при оформлении. Обновляются в понедельник.'
-        : 'Ежемесячные — самые сложные и самые щедрые. Заказы засчитываются, когда статус «Получен». Обновляются 1-го числа.';
     $$('[data-tt]', tabs).forEach(function (b) { b.addEventListener('click', function () { taskTab = b.getAttribute('data-tt'); drawTasks(root); }); });
   }
   function renderDash(v) {
@@ -1497,21 +1538,19 @@
       '<div class="loyal-top">' + lvlImg(L.key, 72) + '<div><span class="small">Ваш уровень' + (L.fixed ? ' · закреплён менеджером' : '') + '</span><b class="loyal-name">' + esc(L.name) + '</b><span class="xp-num">' + num(u.xp) + ' XP <span class="small">за месяц</span></span></div></div>' +
       (L.next ? '<div class="xp-bar"><div class="bar"><i data-w="' + pctL + '%"></i></div><div class="xp-meta"><span>' + num(u.xp) + ' / ' + num(L.next.min) + ' XP</span><span>до ' + lvlImg(L.next.key, 18) + '«' + esc(L.next.name) + '» ещё <b>' + num(L.next.left) + ' XP</b></span></div></div>' : '') +
       '<div class="lvl-steps">' + RULES.levels.map(function (l, j) { return '<span class="' + (j <= L.index ? 'on' : '') + (j === L.index ? ' cur' : '') + '">' + lvlImg(l.key, 30) + esc(l.name) + '</span>'; }).join('') + '</div>' +
-      '<p class="info-line">' + (L.next ? 'XP дают полученные заказы, ежедневный вход, задания и рулетка. ' : L.fixed ? '' : 'Максимальный уровень! ') + '1-го числа XP обнуляется и уровень начинается заново.</p>' +
       '<h4 class="perks-h">Ваши привилегии</h4><ul class="perks">' + perkItems(lvlByKey(L.key).perks) + '</ul></div>' +
 
       '<div class="card tile c6"><div class="tile-h"><h3>Задания</h3><span class="side" id="task-side"></span></div>' +
       '<div class="streak">' + streakDays.join('') + '</div>' +
-      (u.checkedToday ? '<p class="small">Сегодня отмечено. 7 дней подряд — +' + L.streak + ' токенов (уровень «' + esc(L.name) + '»).</p>' : '<button class="btn btn-sm" type="button" id="checkin-btn">' + icon('gift') + 'Отметиться · +' + R.checkin + ' и +' + RULES.xpReward.checkin + ' XP</button>') +
-      '<div class="ttabs" role="tablist" aria-label="Период заданий" id="task-tabs"></div><div class="tasks" id="task-list"></div><p class="small" id="task-note"></p></div>' +
+      (u.checkedToday ? '<p class="small">Сегодня отмечено</p>' : '<button class="btn btn-sm" type="button" id="checkin-btn">' + icon('gift') + 'Отметиться · +' + R.checkin + ' и +' + RULES.xpReward.checkin + ' XP</button>') +
+      '<div class="ttabs" role="tablist" aria-label="Период заданий" id="task-tabs"></div><div class="tasks" id="task-list"></div></div>' +
 
       '<div class="card tile c6"><div class="tile-h"><h3>Пригласить друга</h3><span class="side">' + u.refCount + ' ' + plural(u.refCount, 'друг', 'друга', 'друзей') + '</span></div>' +
       '<div class="ref-stats"><div><small>Друзей пришло</small><b>' + u.refCount + '</b></div><div><small>Заработано</small><b>' + tk() + num(u.refCount * R.referrer) + '</b></div><div><small>За каждого друга</small><b>+' + R.referrer + '</b></div></div>' +
-      '<p class="small">Друг получит +' + R.refFriend + ' токенов при регистрации по ссылке, вы — +' + R.referrer + ' после его первого заказа от ' + rub(RULES.refMinOrder) + '.</p>' +
       '<div class="ref-row"><span class="lnk">' + esc(refLink.replace(/^https?:\/\//, '')) + '</span><button class="icon-btn" type="button" data-copy="' + esc(refLink) + '" aria-label="Скопировать ссылку">' + icon('copy') + '</button><button class="icon-btn acc" type="button" id="ref-share" aria-label="Поделиться">' + icon('share') + '</button></div>' +
       '<p class="small">Ваш код: <b>' + esc(u.refCode) + '</b></p></div>' +
 
-      '<div class="card tile c6"><div class="tile-h"><h3>Промокоды</h3></div>' + (u.promos.length ? '<div class="promos">' + u.promos.map(function (p) { return '<span class="ticket"><code>' + esc(p.code) + '</code><span class="pct">−' + pctTxt(p.pct) + '%</span><span class="small">' + promoLine(p) + '</span></span>'; }).join('') + '</div><p class="small">Выберите промокод в корзине. Каждый — на один заказ.</p>' : '<p class="small">Личные промокоды выпадают в рулетке. С уровня «Золото» — промокод −1,5% каждый месяц, на «Алмазе» — ещё 3 по −2,5%. Промокоды магазина вводятся в корзине.</p>') + '</div>' +
+      '<div class="card tile c6"><div class="tile-h"><h3>Промокоды</h3></div>' + (u.promos.length ? '<div class="promos">' + u.promos.map(function (p) { return '<span class="ticket"><code>' + esc(p.code) + '</code><span class="pct">−' + pctTxt(p.pct) + '%</span><span class="small">' + promoLine(p) + '</span></span>'; }).join('') + '</div>' : '<p class="small">Пока нет</p>') + '</div>' +
 
       ((u.waits || []).length ? '<div class="card tile c12"><div class="tile-h"><h3>Жду появления</h3><span class="side">' + u.waits.length + '</span></div><div class="waits">' + u.waits.map(function (w) {
         return '<div class="wait-row"><a href="#p-' + esc(w.id) + '">' + esc(w.title) + '</a>' + (w.ready ? '<span class="badge badge-ok">можно заказать</span>' : '<span class="small">ждём поступления</span>') + '<button class="icon-btn" type="button" data-wx="' + esc(w.id) + '" aria-label="Больше не ждать">' + icon('x') + '</button></div>';
@@ -1568,11 +1607,8 @@
       (u ? '<span class="roul-bal" id="roul-bal"></span>' : '<a class="btn btn-light" href="#account">' + icon('gift') + 'Войти и получить ' + RULES.reward.register + '</a>') + '</div>' +
       '<div class="reel" id="reel"><div class="reel-pin"></div><div class="reel-strip" id="strip">' + tiles.map(tileHtml).join('') + '</div></div>' +
       '<div class="pad roul-acts">' + (u ? '<button class="btn btn-light" type="button" id="spin-paid">' + icon('sparkles') + 'Крутить за ' + RULES.spinCost + ' ' + tokWord(RULES.spinCost) + '</button><button class="btn btn-glass" type="button" id="spin-free" hidden></button>' : '<button class="btn btn-light" type="button" id="spin-guest">' + icon('sparkles') + 'Крутить</button>') + '</div>' +
-      '<p class="pad small" style="color:var(--navy-ink-2);text-align:center">Приз выпадает в ' + pct(win) + ' прокрутов' + (boosted ? ' — шансы повышены уровнем «' + esc(u.level.name) + '»' : '') + '. Каждый день — ' + (u && u.level.spins > 1 ? u.level.spins + ' бесплатных прокрута' : 'бесплатный прокрут') + '. Результат определяет сервер.</p>' +
       '<div class="pad" id="spin-hist"></div></div>' +
-      '<div class="sec card tile"><div class="tile-h"><h3>Призы и шансы</h3></div><div class="chances">' + RULES.wheel.map(function (w, i) { return '<div class="c-' + w.id + '">' + pz(w.id) + '<span>' + esc(w.id === 'none' ? 'Пусто' : w.label + ' ' + w.sub) + '</span><b>' + pct(WW[i]) + '</b></div>'; }).join('') + '</div></div>' +
-      '<div class="sec info-grid"><div class="card icard"><h3><span class="ic">' + icon('info') + '</span>Как это работает</h3><ul><li>1 бесплатный прокрут каждый день на любом уровне, на «Алмазе» — 3. Не копятся: обновляются в 00:00 по Москве.</li><li>Дальше прокрут стоит ' + RULES.spinCost + ' токенов. «Ещё раз» даёт бесплатные прокруты — они не сгорают.</li><li>На «Платине» и «Алмазе» «Пусто» выпадает реже.</li><li>Токены из рулетки сразу на балансе, промокод −3% выбирается в корзине, XP идут в уровень месяца.</li></ul></div>' +
-      '<div class="card icard"><h3><span class="ic">' + icon('gift') + '</span>Где взять токены</h3><ul><li>+' + RULES.reward.register + ' за регистрацию</li><li>+' + RULES.reward.checkin + ' за вход и от ' + RULES.levels[0].streak + ' до ' + RULES.levels[4].streak + ' за 7 дней подряд — зависит от уровня</li><li>Задания дня — по 1 токену, с уровнем их больше</li><li>+' + RULES.reward.referrer + ' за друга и +' + RULES.reward.birthday + ' в день рождения</li></ul></div></div>';
+      '<details class="sec card tile fold"><summary class="tile-h"><h3>Призы и шансы</h3>' + icon('chevron-down') + '</summary><div class="chances" style="margin-top:12px">' + RULES.wheel.map(function (w, i) { return '<div class="c-' + w.id + '">' + pz(w.id) + '<span>' + esc(w.id === 'none' ? 'Пусто' : w.label + ' ' + w.sub) + '</span><b>' + pct(WW[i]) + '</b></div>'; }).join('') + '</div></details>';
     updateRoulBalance();
     var g = $('#spin-guest', v); if (g) g.addEventListener('click', function () { requireAuth('roulette'); });
     var pbtn = $('#spin-paid', v); if (pbtn) pbtn.addEventListener('click', function () { spin(false); });
@@ -1631,15 +1667,30 @@
   }
 
   // ------------------------------------------------------------ информация
+  function faqItem(q, body) { return '<details><summary>' + q + icon('chevron-down') + '</summary><div class="acc-body">' + body + '</div></details>'; }
+  function faqGroup(title, items) { return '<div class="sec"><h2 class="faq-h">' + title + '</h2><div class="acc card faq">' + items.join('') + '</div></div>'; }
   function renderInfo() {
     track('info');
-    $('#v-info').innerHTML = '<div class="view-head"><div><span class="eyebrow">Информация</span><h1>Как заказать, доставка и оплата</h1></div></div>' + stepsBlock() +
-      '<div class="sec">' + preorderBanner() + '</div>' +
-      '<div class="sec info-grid">' + deliveryCard() + paymentCard() + '</div>' +
-      (API.enabled ? '<div class="sec info-grid"><div class="card icard"><h3><span class="ic">' + tk() + '</span>Токены</h3><ul><li>1 токен = 0,4 ₽ скидки, до 15% суммы заказа</li><li>+' + RULES.reward.register + ' за регистрацию, +' + RULES.reward.checkin + ' за вход каждый день, за 7 дней подряд — от ' + RULES.levels[0].streak + ' до ' + RULES.levels[4].streak + ' по уровню</li><li>Задания дня по 1 токену: на Бронзе 4, на Серебре 5, с Золота 6</li><li>Рулетка, +' + RULES.reward.referrer + ' за друга, +' + RULES.reward.birthday + ' в день рождения</li><li>Токены не сгорают и не переводятся другим людям</li></ul><a class="btn btn-ghost btn-sm" href="#account" style="justify-self:start">Мой кабинет</a></div>' +
-        '<div class="card icard"><h3><span class="ic">' + icon('trophy') + '</span>Программа лояльности</h3><div class="lvl-mini">' + RULES.levels.map(function (l) { return '<div>' + lvlImg(l.key, 40) + '<b>' + esc(l.name) + '</b><span class="small">' + (l.min ? 'от ' + num(l.min) + ' XP' : 'старт') + '</span></div>'; }).join('') + '</div><p class="small">Уровень растёт от XP: полученные заказы (1 XP за 10 ₽), вход, задания и рулетка. 1-го числа XP обнуляется.</p><button class="btn btn-ghost btn-sm" type="button" id="info-levels" style="justify-self:start">Все привилегии уровней</button></div></div>' : '') +
-      '<div class="sec info-grid">' + contactsCard() +
-      '<div class="card icard"><h3><span class="ic">' + icon('shield') + '</span>Перед заказом</h3><ul><li>Наличие и размеры менеджер подтвердит перед оплатой.</li><li>Предзаказ: выкуп у поставщика, проверка на брак и фотоотчёт на складе в Китае.</li><li>Статус заказа виден в «Моих заказах»: оформлен → выкуплен → в пути → на складе → едет к нам → едет к вам → получен.</li><li>Нужной вещи нет в каталоге — напишите менеджеру, подберём под заказ.</li></ul><a class="btn btn-ghost btn-sm" href="' + SHOP.infoUrl + '" target="_blank" rel="noopener" style="justify-self:start">Подробно о предзаказе' + icon('arrow-up-right') + '</a></div></div>';
+    var R = RULES.reward, L = RULES.levels;
+    var order = [
+      faqItem('Как заказать', '<ol class="faq-ol"><li>Выберите вещь и нажмите «В корзину», выберите размер и цвет.</li><li>В корзине укажите город и способ получения. Имя и телефон берутся из профиля — он должен быть заполнен.</li><li>Токены и промокод — последним шагом перед оформлением.</li><li>Заказ получит номер и сам уйдёт менеджеру. Статус виден в «Моих заказах».</li></ol>'),
+      faqItem('Что такое предзаказ', '<p>Выкупаем товар у поставщика в Китае после вашего заказа, проверяем на складе и отправляем фурой. Самолётом — по согласованию с менеджером. Доставка из Китая уже включена в цену.</p><p><a href="' + SHOP.preorderUrl + '" target="_blank" rel="noopener">Условия и сроки</a></p>'),
+      faqItem('Условия доставки из Китая', '<ul><li>Фура: 18–32 дня от склада в Китае.</li><li>Доставка из Китая уже включена в указанную цену — доплачивать за неё не нужно.</li><li>Нужна быстрее самолётом — напишите менеджеру, он рассчитает и согласует.</li><li>По России: Авито Доставка, СДЭК до пункта выдачи или личная встреча в Москве.</li><li>Перед отправкой — проверка на брак и фотоотчёт на складе в Китае.</li></ul>'),
+      faqItem('Получение товаров в наличии', '<ul><li><b>Авито Доставка</b> — по Москве и в другой город, быстрее всего.</li><li><b>Курьер по Москве</b> — не всегда доступен, согласуется с менеджером.</li><li><b>Самовывоз</b> — ' + esc(SHOP.address) + '. Время согласуйте с менеджером.</li></ul>'),
+      faqItem('Оплата', '<ul><li>Перевод: Сбербанк, Т-Банк, Альфа-Банк, СБП.</li><li>Наличными — при встрече в Москве.</li><li>На сайте оплаты нет: менеджер подтвердит заказ и пришлёт реквизиты.</li><li>До 15% заказа можно оплатить токенами, 1 токен = 0,4 ₽.</li></ul>'),
+      faqItem('Статусы заказа', '<p>Оформлен → выкуплен → в пути → на складе → едет к нам → едет к вам → получен. Статус меняет менеджер, он обновляется сам.</p>')
+    ];
+    var bonus = API.enabled ? [
+      faqItem('Где взять токены', '<ul><li>+' + R.register + ' за регистрацию</li><li>+' + R.checkin + ' за вход каждый день и от ' + L[0].streak + ' до ' + L[4].streak + ' за 7 дней подряд — зависит от уровня</li><li>Задания дня — по 1 токену, с уровнем их больше</li><li>Рулетка</li><li>+' + R.referrer + ' за друга и +' + R.birthday + ' в день рождения</li></ul><p>Токены не сгорают и не передаются другим людям.</p>'),
+      faqItem('Промокоды', '<p>Личные промокоды выпадают в рулетке, с уровня «Золото» — −1,5% каждый месяц, на «Алмазе» — ещё 3 по −2,5%. Они появляются в кабинете, а в корзине выбираются последним шагом. Каждый действует на один заказ.</p><p>Промокоды магазина вводятся вручную в поле «Промокод» в корзине.</p>'),
+      faqItem('Как зарабатывается XP', '<ul><li>Полученный заказ — 1 XP за каждые 10 ₽ (когда статус «Получен»)</li><li>Ежедневный вход — +' + RULES.xpReward.checkin + ' XP</li><li>Задания: ежедневные +2–3 XP, еженедельные +12–40 XP, ежемесячные +40–300 XP</li><li>Рулетка — приз +50 XP</li></ul>'),
+      faqItem('Как работают уровни', '<p>Уровень растёт от XP — опыта за месяц. 1-го числа XP обнуляется, и уровень начинается заново с Бронзы.</p><button class="btn btn-ghost btn-sm" type="button" id="info-levels">Привилегии уровней</button>'),
+      faqItem('Задания: когда обновляются', '<ul><li>Ежедневные — в 00:00 по Москве. Простые: токены и XP, чем выше уровень, тем их больше.</li><li>Еженедельные — в понедельник. «Оформить заказ» засчитывается сразу при оформлении.</li><li>Ежемесячные — 1-го числа. Заказы засчитываются, когда статус «Получен».</li></ul>'),
+      faqItem('Рулетка: как это работает', '<ul><li>1 бесплатный прокрут каждый день на любом уровне, на «Алмазе» — 3. Не копятся: обновляются в 00:00 по Москве.</li><li>Дальше прокрут стоит ' + RULES.spinCost + ' токенов. «Ещё раз» даёт бесплатные прокруты — они не сгорают.</li><li>На «Платине» и «Алмазе» «Пусто» выпадает реже.</li><li>Токены из рулетки сразу на балансе, промокод выбирается в корзине, XP идут в уровень месяца.</li></ul>')
+    ] : [];
+    var shop = [faqItem('Магазин и связь', contactsCard()), faqItem('Мы в соцсетях', socialCard())];
+    $('#v-info').innerHTML = '<div class="view-head"><div><h1>Частые вопросы</h1></div></div>' +
+      faqGroup('Заказ и доставка', order) + (bonus.length ? faqGroup('Токены и уровни', bonus) : '') + faqGroup('Магазин', shop);
     var il = $('#info-levels'); if (il) il.addEventListener('click', levelsModal);
   }
 
@@ -1663,6 +1714,23 @@
     });
     current = view;
   }
+  // плавающая кнопка «Назад»: везде, кроме главной, и не уезжает при прокрутке
+  var floatBack = null;
+  function goBack() { if (routed > 1) history.back(); else { location.hash = ''; } }
+  function updFloatBack(h) {
+    if (!floatBack) {
+      floatBack = document.createElement('button'); floatBack.type = 'button'; floatBack.className = 'float-back'; floatBack.setAttribute('aria-label', 'Назад');
+      floatBack.innerHTML = icon('arrow-right') + '<span>Назад</span>';
+      floatBack.addEventListener('click', goBack);
+      document.body.appendChild(floatBack);
+      window.addEventListener('scroll', function () { if (floatBack._p) floatBack.classList.toggle('show', window.scrollY > 120); }, { passive: true });
+    }
+    var home = !h || h === 'home';
+    floatBack._p = /^p-\d+$/.test(h);
+    floatBack.hidden = home;
+    document.body.classList.toggle('has-back', !home && !floatBack._p);
+    floatBack.classList.toggle('show', !home && (!floatBack._p || window.scrollY > 120));
+  }
   function route() {
     var h = decodeURIComponent(location.hash.replace(/^#/, '')); routed++;
     if (skipHash !== null && h === skipHash) { skipHash = null; return; }
@@ -1673,7 +1741,7 @@
       if (!acct.user) { authTab = 'register'; toast('Приглашение принято: +' + RULES.reward.refFriend + ' токенов при регистрации'); }
       history.replaceState(null, '', location.pathname + location.search + '#account'); h = 'account';
     }
-    closeModal(); closeLightbox(); hideBuybar();
+    closeModal(); closeLightbox(); hideBuybar(); stopHomeTimers();
     // запоминаем место в каталоге, когда уходим из него в товар; вернёмся к этой же карточке
     var restore = null;
     if (current === 'catalog' && /^p-\d+$/.test(h)) catBack = { y: window.scrollY, id: h.slice(2), tab: filter.tab };
@@ -1693,7 +1761,7 @@
     else if (h === 'roulette') { renderRoulette(); show('roulette'); }
     else if (h === 'info') { renderInfo(); show('info'); }
     else { renderHome(); show('home'); }
-    setNav(h);
+    setNav(h); updFloatBack(h);
     if (restore) restoreCatalogSpot(restore); else window.scrollTo(0, 0);
     tickClock();
   }
@@ -1897,6 +1965,8 @@
       if (c) { e.preventDefault(); copyText(c.getAttribute('data-copy'), 'Скопировано'); return; }
       var f = e.target.closest('[data-fav]');
       if (f) { e.preventDefault(); toggleFav(f.getAttribute('data-fav'), f); }
+      var q = e.target.closest('[data-quick]');
+      if (q) { e.preventDefault(); quickAdd(q.getAttribute('data-quick')); }
     });
     var upd = $('#catalog-updated');
     if (upd && CATALOG.updatedAt) { var t = msk(new Date(CATALOG.updatedAt)); upd.textContent = 'Каталог обновлён ' + String(t.d).padStart(2, '0') + '.' + String(t.mo).padStart(2, '0') + '.' + t.y + ' в ' + t.hh + ':' + t.mm + ' (МСК).'; }
