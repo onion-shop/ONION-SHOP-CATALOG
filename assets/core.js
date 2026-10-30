@@ -7,7 +7,7 @@ var OnionCore = (function () {
 
   // ---------------------------------------------------------------- правила (вариант Б)
   var RULES = {
-    tokenRub: 0.4,          // 1 токен = 0,4 ₽ скидки
+    tokenRub: 0.3,          // 1 токен = 0,3 ₽ скидки
     maxShare: 0.15,         // токенами можно оплатить не больше 15% суммы заказа
     spinCost: 100,          // прокрут рулетки
     reward: { register: 100, refFriend: 50, referrer: 100, checkin: 1, streak7: 10, task: 1, birthday: 550, review: 5, reviewText: 15 },

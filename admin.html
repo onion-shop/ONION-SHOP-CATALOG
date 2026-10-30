@@ -66,6 +66,14 @@ button:disabled{opacity:.5}
     <input id="tok" type="password" placeholder="github_pat_…" autocomplete="off">
     <div class="bar"><button id="enter">Войти</button></div>
     <div id="lmsg"></div>
+    <details style="margin-top:12px"><summary style="font-weight:800;cursor:pointer">Как получить токен (один раз)</summary>
+      <ol class="hint" style="padding-left:18px;line-height:1.55">
+        <li>github.com → фото профиля → <b>Settings</b> → внизу слева <b>Developer settings</b>.</li>
+        <li><b>Personal access tokens → Fine-grained tokens → Generate new token</b>. Name: editor, срок 1 год.</li>
+        <li><b>Only select repositories</b> → ONION-SHOP-CATALOG.</li>
+        <li>Permissions: <b>Contents — Read and write</b> и <b>Actions — Read and write</b>.</li>
+        <li><b>Generate token</b>, скопируйте текст с <code>github_pat_</code> и вставьте выше.</li>
+      </ol></details>
   </section>
 
   <section class="hid" id="list">
@@ -76,16 +84,19 @@ button:disabled{opacity:.5}
     <div style="display:flex;gap:10px;align-items:center"><img id="e-img" alt="" style="width:64px;height:64px;border-radius:12px;object-fit:cover"><div><b id="e-id"></b><div class="hint" id="e-link"></div></div></div>
     <label>Название</label><input id="f-title">
     <div class="row"><div><label>Бренд</label><input id="f-brand"></div><div><label>Категория</label><select id="f-cat">
-      <option value="shoes">Обувь</option><option value="tees">Футболки и поло</option><option value="hoodies">Худи и свитеры</option><option value="outerwear">Куртки</option><option value="pants">Штаны</option><option value="accessories">Аксессуары</option><option value="other">Другое</option></select></div></div>
+      <option value="shoes">Обувь</option><option value="tees">Футболки и поло</option><option value="hoodies">Худи и свитеры</option><option value="outerwear">Куртки</option><option value="shirts">Рубашки</option><option value="pants">Штаны</option><option value="suits">Костюмы и комплекты</option><option value="dresses">Платья и юбки</option><option value="bags">Сумки и рюкзаки</option><option value="headwear">Шапки и кепки</option><option value="jewelry">Украшения</option><option value="watches">Часы и очки</option><option value="perfume">Парфюм</option><option value="underwear">Бельё и носки</option><option value="accessories">Аксессуары</option><option value="other">Другое</option></select></div></div>
     <div class="row"><div><label>Цена, ₽</label><input id="f-price" inputmode="numeric"></div><div><label>Старая цена, ₽ (пусто — без скидки)</label><input id="f-old" inputmode="numeric"></div></div>
     <label>Статус</label><select id="f-status"><option value="stock">В наличии</option><option value="preorder">Предзаказ</option><option value="out">Временно нет в наличии (жёлтый)</option><option value="sold">Продано (красный)</option></select>
     <label>Размеры (через запятую)</label><input id="f-sizes">
     <label>Цвета (через запятую)</label><input id="f-colors">
     <label>Характеристики (по строке: «Название: значение»)</label><textarea id="f-details"></textarea>
+    <label>Отзывы покупателей (по строке: «Имя: текст отзыва»)</label><textarea id="f-reviews" placeholder="Анна: Футболка пришла быстро, качество отличное"></textarea>
+    <div class="hint">Вставляйте только настоящие отзывы из канала отзывов.</div>
     <label>Фотографии</label>
     <div class="hint">Первое фото — обложка. Стрелками меняйте порядок, ✎ — править (поворот, обрезка, яркость), ✕ — убрать с сайта. Свои фото можно добавить кнопкой ниже. Фото в Telegram-канале при этом не меняются.</div>
     <div class="phg" id="ph-grid"></div>
     <div class="bar" style="margin-top:8px"><label class="up">+ Добавить фото<input type="file" id="ph-add" accept="image/*" multiple hidden></label></div>
+    <label style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="f-rec" style="width:auto"> Рекомендация магазина (хит продаж — на главной в большой витрине)</label>
     <label style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="f-hidden" style="width:auto"> Скрыть товар с сайта</label>
     <div class="bar"><button id="save">Сохранить на сайт</button><button class="ghost" id="reset">Вернуть как в канале</button><button class="ghost" id="back">К списку</button></div>
     <div id="emsg"></div>
@@ -145,7 +156,7 @@ button:disabled{opacity:.5}
     $('#f-price').value=v('price',cur.price); $('#f-old').value=v('oldPrice',cur.oldPrice||'')||''; $('#f-status').value=v('status',cur.status);
     $('#f-sizes').value=(v('sizes',cur.sizes)||[]).join(', '); $('#f-colors').value=(v('colors',cur.colors)||[]).join(', ');
     $('#f-details').value=(v('details',cur.details)||[]).map(function(d){return d[0]+': '+d[1]}).join('\n');
-    $('#f-hidden').checked=!!o.hidden; msg('#emsg',''); buildPh();
+    $('#f-reviews').value=(v('reviews',cur.reviews)||[]).map(function(r){return (r.name?r.name+': ':'')+r.text}).join('\n'); $('#f-hidden').checked=!!o.hidden; $('#f-rec').checked=!!(o.rec!=null?o.rec:cur.rec); msg('#emsg',''); buildPh();
     $('#list').classList.add('hid'); $('#edit').classList.remove('hid'); window.scrollTo(0,0);
   }
 
@@ -238,7 +249,9 @@ button:disabled{opacity:.5}
     if(phDirty){ var ord=ph.map(function(x){return x.id}), hd=ph.filter(function(x){return x.hidden}).map(function(x){return x.id}), ex=ph.filter(function(x){return /^u\d+$/.test(x.id)&&!x.hidden}).map(function(x){return x.id});
       o.photoOrder=ord; if(hd.length)o.photoHide=hd; if(ex.length)o.extra=ex; }
     else ['photoOrder','photoHide','extra'].forEach(function(k){if(old[k])o[k]=old[k]});
-    if($('#f-hidden').checked)o.hidden=true; return o;
+    var rv=$('#f-reviews').value.split('\n').map(function(l){l=l.trim();if(!l)return null;var i=l.indexOf(':');return i>0&&i<40?{name:l.slice(0,i).trim(),text:l.slice(i+1).trim()}:{name:'',text:l}}).filter(Boolean);
+    if(rv.length)o.reviews=rv;
+    if($('#f-rec').checked)o.rec=true; if($('#f-hidden').checked)o.hidden=true; return o;
   }
   function put(done){
     var body={message:'Правка товара из редактора',content:utf8b64(JSON.stringify(ov,null,1)),branch:'main'}; if(sha)body.sha=sha;
