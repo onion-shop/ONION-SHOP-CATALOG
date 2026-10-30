@@ -21,7 +21,7 @@
   };
   var API = window.OnionAPI, CORE = window.OnionCore, RULES = CORE.RULES;
   var CAT_ORDER = ['shoes', 'tees', 'hoodies', 'outerwear', 'shirts', 'pants', 'suits', 'dresses', 'bags', 'headwear', 'accessories', 'jewelry', 'watches', 'perfume', 'underwear', 'other'];
-  var CAT_LABELS = { shoes: 'Обувь', tees: 'Футболки и поло', hoodies: 'Худи и свитеры', outerwear: 'Куртки', shirts: 'Рубашки', pants: 'Штаны', suits: 'Костюмы и комплекты', dresses: 'Платья и юбки', bags: 'Сумки и рюкзаки', headwear: 'Шапки и кепки', accessories: 'Аксессуары', jewelry: 'Украшения', watches: 'Часы и очки', perfume: 'Парфюм', underwear: 'Бельё и носки', other: 'Другое' };
+  var CAT_LABELS = { shoes: 'Обувь', tees: 'Футболки и поло', hoodies: 'Худи и свитеры', outerwear: 'Куртки и пуховики', shirts: 'Рубашки', pants: 'Штаны', suits: 'Костюмы и комплекты', dresses: 'Платья и юбки', bags: 'Сумки и рюкзаки', headwear: 'Шапки и кепки', accessories: 'Аксессуары', jewelry: 'Украшения', watches: 'Часы и очки', perfume: 'Парфюм', underwear: 'Бельё и носки', other: 'Другое' };
   var CATALOG = window.ONION_CATALOG || { products: [] };
   var PRODUCTS = (CATALOG.products || []).slice();
   var BY_ID = {};
@@ -51,6 +51,7 @@
   }
   function indexProduct(p) {
     BY_ID[p.id] = p; buildSizeTable(p);
+    if (CAT_LABELS[p.category]) p.categoryLabel = CAT_LABELS[p.category];
     (p.photos || []).forEach(function (ph) { if (ph.hash) PHOTO_V[ph.id] = ph.hash; });
     var raw = Object.assign({}, p.colorPhotos || {}, COLOR_PHOTOS[p.id] || {}), map = {};
     if (AUTO_COLOR_PHOTO && p.colors.length > 1) {
@@ -601,7 +602,7 @@
     stockL.forEach(function (p) { if (hot.length < 5 && hot.indexOf(p) < 0) hot.push(p); });
     var preL = PRODUCTS.filter(function (p) { return p.status === 'preorder'; }).slice(0, 5);
     var catTile = function (href, label, art, key) {
-      return '<a class="ct" href="' + href + '"' + (key ? ' data-cat="' + key + '"' : '') + '><span class="ct-i"><img src="assets/cat/' + art + '.svg" alt="" loading="lazy"></span><span class="ct-l">' + esc(label) + '</span></a>';
+      return '<a class="ct" href="' + href + '"' + (key ? ' data-cat="' + key + '"' : '') + '><span class="ct-i"><img class="lt" src="assets/cat/' + art + '.svg" alt="" loading="lazy"><img class="dk" src="assets/cat/dark/' + art + '.svg" alt="" loading="lazy"></span><span class="ct-l">' + esc(label) + '</span></a>';
     };
     var tiles = catTile('#stock', 'В наличии', 'stock') + catTile('#preorder', 'Из Китая', 'china');
     categories(PRODUCTS).forEach(function (c) { if (c.key !== 'other') tiles += catTile('#catalog', c.label, c.key, c.key); });
@@ -684,9 +685,24 @@
     var m = t.length >= 7 ? 2 : 1;
     return p._w.some(function (w) { return lev(w, t, m) <= m || (w.length > t.length && lev(w.slice(0, t.length), t, m) <= m); });
   }
+  // поиск «по смыслу»: слово из запроса подтягивает всю категорию (майка → футболки и поло, пуховик → куртки)
+  var SYN = {
+    tees: ['майк', 'футбол', 'поло', 'тишк', 'тенниск', 'топ'], outerwear: ['пуховик', 'куртк', 'ветровк', 'парк', 'бомбер', 'пальто', 'жилет', 'дутик'],
+    hoodies: ['худи', 'толстовк', 'свитер', 'свитшот', 'кофт', 'кардиган', 'джемпер', 'пуловер', 'лонгслив', 'флис', 'зип'],
+    shoes: ['кросс', 'кед', 'ботинк', 'туфл', 'обув', 'лофер', 'мокасин', 'сандал', 'сланц', 'сапог', 'башмак'],
+    pants: ['штан', 'брюк', 'джинс', 'шорт', 'джоггер', 'леггинс'], shirts: ['рубашк', 'сорочк'], suits: ['костюм', 'комплект'], dresses: ['платье', 'платья', 'юбк', 'сарафан'],
+    bags: ['сумк', 'рюкзак', 'шопер', 'клатч', 'портфел', 'барсетк'], headwear: ['кепк', 'шапк', 'панам', 'шляп', 'бейсболк', 'бини'],
+    jewelry: ['цепь', 'цепочк', 'браслет', 'кольц', 'серьг', 'кулон', 'украшен'], watches: ['часы', 'часов', 'очки', 'очков'],
+    perfume: ['духи', 'парфюм', 'одеколон', 'аромат'], underwear: ['носк', 'бель', 'трус', 'боксер'], accessories: ['галстук', 'ремен', 'ремн', 'кошел', 'шарф', 'перчатк', 'платок', 'аксессуар']
+  };
+  function synCat(w) {
+    if (w.length < 3) return '';
+    for (var k in SYN) { for (var i = 0; i < SYN[k].length; i++) { var s = SYN[k][i]; if (w.indexOf(s) === 0 || (w.length >= 4 && s.indexOf(w) === 0)) return k; } }
+    return '';
+  }
   function qMatch(p, q, mode) {
     var t = norm(q); if (mode === 2) t = swapLayout(t);
-    return t.split(/\s+/).filter(Boolean).every(function (w) { return tokOk(w, p, mode > 0); });
+    return t.split(/\s+/).filter(Boolean).every(function (w) { return tokOk(w, p, mode > 0) || synCat(w) === p.category; });
   }
   function searchWords() {
     if (!searchWords.v) { var c = {}; PRODUCTS.forEach(function (p) { hayOf(p); p._w.forEach(function (w) { if (w.length >= 4 && !/^\d+$/.test(w)) c[w] = (c[w] || 0) + 1; }); }); searchWords.v = c; }
@@ -732,15 +748,13 @@
     $$('button', tEl).forEach(function (b) { b.addEventListener('click', function () { filter.tab = b.getAttribute('data-tab'); silentHash(filter.tab === 'all' ? 'catalog' : filter.tab); updateCatalog(); setNav(location.hash.slice(1)); if (filter.tab === 'preorder') track('pre'); else if (filter.tab === 'stock') track('stock'); }); });
     var forCats = PRODUCTS.filter(function (p) { return matches(p, f, 'cat'); }), cats = categories(forCats);
     var cEl = $('#cat-cats');
-    var tile = function (key, label, n, art) { return '<button type="button" class="ctile' + (n ? '' : ' empty') + '" aria-pressed="' + (f.cat === key) + '" data-cat="' + key + '"><span class="ctile-i">' + (art ? '<img src="assets/cat/' + art + '.svg" alt="" loading="lazy">' : '<span class="ctile-all">' + icon('grid') + '</span>') + '</span><span class="ctile-l">' + esc(label) + '</span><span class="ctile-n">' + n + '</span></button>'; };
+    var tile = function (key, label, n, art) { return '<button type="button" class="ctile' + (n ? '' : ' empty') + '" aria-pressed="' + (f.cat === key) + '" data-cat="' + key + '"><span class="ctile-i">' + (art ? '<img class="lt" src="assets/cat/' + art + '.svg" alt="" loading="lazy"><img class="dk" src="assets/cat/dark/' + art + '.svg" alt="" loading="lazy">' : '<span class="ctile-all">' + icon('grid') + '</span>') + '</span><span class="ctile-l">' + esc(label) + '</span><span class="ctile-n">' + n + '</span></button>'; };
     cEl.className = 'cat-rail';
-    var nSale = forCats.filter(function (p) { return discount(p) >= 3; }).length;
-    cEl.innerHTML = tile('all', 'Все', forCats.length, '') + (nSale ? '<button type="button" class="ctile ctile-sale" aria-pressed="' + f.sale + '" data-saletile="1"><span class="ctile-i"><span class="ctile-all">' + icon('percent') + '</span></span><span class="ctile-l">Скидки</span><span class="ctile-n">' + nSale + '</span></button>' : '') + cats.map(function (c) { return tile(c.key, c.label, c.n, c.key === 'other' ? 'stock' : c.key); }).join('');
+    cEl.innerHTML = tile('all', 'Все', forCats.length, '') +  cats.map(function (c) { return tile(c.key, c.label, c.n, c.key === 'other' ? 'stock' : c.key); }).join('');
     var qEl = $('#cat-qchip');
     qEl.innerHTML = f.q ? '<div class="qchip">' + icon('search') + '<span>Ищем: <b>' + esc(f.q) + '</b></span><button type="button" id="qchip-x" aria-label="Сбросить поиск">' + icon('x') + '</button></div>' : '';
     var qx = $('#qchip-x'); if (qx) qx.addEventListener('click', function () { filter.q = ''; var hq = $('#hdr-q'); if (hq) hq.value = ''; updateCatalog(); });
     $$('button[data-cat]', cEl).forEach(function (b) { b.addEventListener('click', function () { filter.cat = b.getAttribute('data-cat'); updateCatalog(); }); });
-    var st = $('[data-saletile]', cEl); if (st) st.addEventListener('click', function () { filter.sale = !filter.sale; updateCatalog(); });
     var pEl = $('#cat-price');
     pEl.innerHTML = Object.keys(PRICE).map(function (k) { return '<button type="button" aria-pressed="' + (f.price === k) + '" data-price="' + k + '">' + PRICE[k][2] + '</button>'; }).join('') + '<span class="sep"></span><button type="button" aria-pressed="' + f.sale + '" data-sale="1">' + icon('percent') + 'Со скидкой</button>';
     $$('[data-price]', pEl).forEach(function (b) { b.addEventListener('click', function () { var k = b.getAttribute('data-price'); filter.price = filter.price === k ? 'all' : k; if (filter.price !== 'all') track('price'); updateCatalog(); }); });
@@ -1525,6 +1539,39 @@
     });
   }
 
+  function openMenu() {
+    if ($('#drawer')) return;
+    var u = acct.user, cats = categories(PRODUCTS).filter(function (c) { return c.key !== 'other'; });
+    var link = function (ic, label, attrs, sub) { return '<a class="dr-i" ' + attrs + '><span class="dr-ic">' + icon(ic) + '</span><span class="dr-t">' + label + (sub ? '<small>' + sub + '</small>' : '') + '</span>' + icon('chevron-right') + '</a>'; };
+    var nSale = PRODUCTS.filter(function (x) { return discount(x) >= 3; }).length;
+    var el = document.createElement('div'); el.id = 'drawer'; el.className = 'drawer';
+    el.innerHTML = '<div class="dr-bg" data-dr-close></div><aside class="dr-p" role="dialog" aria-modal="true" aria-label="Меню"><div class="dr-h"><b>Меню</b><button class="icon-btn" type="button" data-dr-close aria-label="Закрыть">' + icon('x') + '</button></div><div class="dr-b">' +
+      '<div class="dr-g">' + link('home', 'Главная', 'href="#home" data-go="home"') + link('grid', 'Каталог', 'href="#catalog" data-go="catalog" data-reset="1"') + link('box', 'В наличии', 'href="#stock" data-go="stock"') + link('plane', 'Предзаказ из Китая', 'href="#preorder" data-go="preorder"') + link('percent', 'Товары со скидкой', 'href="#catalog" data-go="catalog" data-sale="1"', nSale ? nSale + ' ' + plural(nSale, 'товар', 'товара', 'товаров') : '') + '</div>' +
+      '<div class="dr-s">Категории</div><div class="dr-cats">' + cats.map(function (c) { return '<a class="dr-c' + (c.n ? '' : ' empty') + '" href="#catalog" data-go="catalog" data-cat="' + c.key + '"><img class="lt" src="assets/cat/' + c.key + '.svg" alt=""><img class="dk" src="assets/cat/dark/' + c.key + '.svg" alt=""><span>' + esc(c.label) + '</span></a>'; }).join('') + '</div>' +
+      '<div class="dr-s">Мои покупки</div><div class="dr-g">' + link('heart', 'Избранное', 'href="#favorites" data-go="favorites"') + link('bag', 'Корзина', 'href="#cart" data-go="cart"') + link('user', u ? 'Профиль' : 'Войти', 'href="#account" data-go="account"', u ? esc(u.name || u.login || '') : '') + (API.enabled ? link('receipt', 'Мои заказы', 'href="#orders" data-go="orders"') + link('gift', 'Рулетка', 'href="#roulette" data-go="roulette"') : '') + '</div>' +
+      '<div class="dr-s">Информация</div><div class="dr-g">' + link('info', 'Частые вопросы', 'href="#info" data-go="info"', 'заказ, сроки, доставка, оплата') + link('truck', 'Как работает предзаказ', 'href="' + SHOP.preorderUrl + '" target="_blank" rel="noopener"') + link('pin', 'Магазин и контакты', 'href="#info" data-go="info"', esc(SHOP.address)) + '</div>' +
+      '<div class="dr-s">Оформление</div><div class="dr-th" id="dr-th">' + ['auto', 'light', 'dark'].map(function (k) { return '<button type="button" data-th="' + k + '" aria-pressed="' + (themeMode() === k) + '">' + (k === 'auto' ? 'Авто' : THEME_NAMES[k]) + '</button>'; }).join('') + '</div>' +
+      '<div class="dr-s">Связь</div><div class="dr-g">' + link('send', 'Менеджер в Telegram', 'href="' + SHOP.managerUrl + '" target="_blank" rel="noopener"', '@' + SHOP.manager) + link('megaphone', 'Канал магазина', 'href="' + SHOP.channelUrl + '" target="_blank" rel="noopener"') + link('star', 'Отзывы покупателей', 'href="' + SHOP.reviewsUrl + '" target="_blank" rel="noopener"') + link('play', 'TikTok', 'href="' + SHOP.tiktokUrl + '" target="_blank" rel="noopener"') + '</div>' +
+      '</div></aside>';
+    document.body.appendChild(el); document.documentElement.classList.add('dr-open');
+    requestAnimationFrame(function () { el.classList.add('on'); });
+    function close() { el.classList.remove('on'); document.documentElement.classList.remove('dr-open'); document.removeEventListener('keydown', onKey); setTimeout(function () { el.remove(); }, 260); }
+    function onKey(e) { if (e.key === 'Escape') close(); }
+    document.addEventListener('keydown', onKey);
+    el.addEventListener('click', function (e) {
+      if (e.target.closest('[data-dr-close]')) { close(); return; }
+      var th = e.target.closest('[data-th]');
+      if (th) { setThemeMode(th.getAttribute('data-th')); $$('[data-th]', el).forEach(function (x) { x.setAttribute('aria-pressed', x === th); }); return; }
+      var a = e.target.closest('[data-go]');
+      if (a) {
+        e.preventDefault(); var h = a.getAttribute('data-go');
+        if (h === 'catalog') { filter = newFilter(); if (a.getAttribute('data-cat')) filter.cat = a.getAttribute('data-cat'); if (a.getAttribute('data-sale')) filter.sale = true; }
+        close(); go(h); return;
+      }
+      if (e.target.closest('a[href]')) close();
+    });
+    var first = $('.dr-p button', el); if (first) first.focus();
+  }
   function themeModal() {
     var md = openModal(modalHead('Тема оформления') + '<div class="radios" id="th-opts">' + ['auto', 'light', 'dark'].map(function (k) { return '<button class="radio" type="button" data-th="' + k + '" aria-pressed="' + (themeMode() === k) + '">' + THEME_NAMES[k] + '</button>'; }).join('') + '</div><p class="small" style="margin-top:10px">Тема запоминается на этом устройстве.</p>', { cls: 'sm' });
     $$('[data-th]', md).forEach(function (b) { b.addEventListener('click', function () { setThemeMode(b.getAttribute('data-th')); $$('[data-th]', md).forEach(function (x) { x.setAttribute('aria-pressed', x === b); }); var v = $('#r-theme .val'); if (v) v.textContent = THEME_NAMES[themeMode()]; }); });
@@ -2117,7 +2164,7 @@
     updateCounts(); updateAcctUI(); startClock(); themeIcon(); applyHomeIcon();
     $('#demo-bar').hidden = API.mode !== 'demo';
     $('#demo-reset').addEventListener('click', function () { confirmBox({ title: 'Сбросить демо?', text: 'Удалятся демо-аккаунты, токены и заказы в этом браузере.', actions: [{ label: 'Отмена', cls: 'btn-ghost' }, { label: 'Сбросить', cls: 'btn-danger', run: function () { API.resetDemo(); acct.user = null; updateAcctUI(); route(); toast('Демо сброшено'); } }] }); });
-    var hsl = $('#hdr-sale'); if (hsl) hsl.addEventListener('click', function (e) { e.preventDefault(); filter = newFilter(); filter.sale = true; go('catalog'); });
+    var mb = $('#menu-btn'); if (mb) mb.addEventListener('click', openMenu);
     if (window.matchMedia) { try { matchMedia('(prefers-color-scheme: dark)').addEventListener('change', themeIcon); } catch (e) { /* */ } }
     document.addEventListener('click', function (e) {
       var mg = e.target.closest('a[href]'); if (mg && SHOP.managerUrl && (mg.getAttribute('href') || '').indexOf(SHOP.managerUrl) === 0) track('mgr');
