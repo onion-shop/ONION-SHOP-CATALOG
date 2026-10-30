@@ -2,7 +2,7 @@
 window.ONION_CATALOG = {
  "channel": "ONION_SHOP_OFFICIAL",
  "source": "t.me",
- "updatedAt": "2026-10-30T11:57:32Z",
+ "updatedAt": "2026-10-30T12:19:33Z",
  "products": [
   {
    "title": "Свитер Polo Ralph Lauren",
@@ -347,7 +347,7 @@ window.ONION_CATALOG = {
    "subtitle": "",
    "brand": "homme",
    "category": "outerwear",
-   "categoryLabel": "Куртки",
+   "categoryLabel": "Куртки и пуховики",
    "status": "preorder",
    "price": 6490,
    "oldPrice": null,
