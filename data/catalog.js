@@ -2,7 +2,7 @@
 window.ONION_CATALOG = {
  "channel": "ONION_SHOP_OFFICIAL",
  "source": "t.me",
- "updatedAt": "2026-10-29T21:31:38Z",
+ "updatedAt": "2026-10-30T11:57:32Z",
  "products": [
   {
    "title": "Свитер Polo Ralph Lauren",
@@ -996,8 +996,8 @@ window.ONION_CATALOG = {
    "title": "Сумка MONTBLANC",
    "subtitle": "",
    "brand": "MONTBLANC",
-   "category": "accessories",
-   "categoryLabel": "Аксессуары",
+   "category": "bags",
+   "categoryLabel": "Сумки и рюкзаки",
    "status": "stock",
    "price": 80000,
    "oldPrice": 95000,
