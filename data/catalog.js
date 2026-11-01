@@ -2,7 +2,7 @@
 window.ONION_CATALOG = {
  "channel": "ONION_SHOP_OFFICIAL",
  "source": "t.me",
- "updatedAt": "2026-11-01T22:16:51Z",
+ "updatedAt": "2026-11-01T23:28:22Z",
  "products": [
   {
    "title": "Джинсы Acne Studio",
@@ -747,7 +747,7 @@ window.ONION_CATALOG = {
    "date": "2026-10-25T10:04:18Z"
   },
   {
-   "title": "Свитер Hollister",
+   "title": "Вязаный джемпер Hollister",
    "subtitle": "",
    "brand": "Hollister",
    "category": "hoodies",
