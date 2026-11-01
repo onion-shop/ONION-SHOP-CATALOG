@@ -52,7 +52,7 @@
   function indexProduct(p) {
     BY_ID[p.id] = p; buildSizeTable(p);
     if (CAT_LABELS[p.category]) p.categoryLabel = CAT_LABELS[p.category];
-    (p.photos || []).forEach(function (ph) { if (ph.hash) PHOTO_V[ph.id] = ph.hash; });
+    (p.photos || []).forEach(function (ph) { if (ph.hash) PHOTO_V[ph.id] = ph.hash + (ph.q ? 'q' + ph.q : ''); });
     var raw = Object.assign({}, p.colorPhotos || {}, COLOR_PHOTOS[p.id] || {}), map = {};
     if (AUTO_COLOR_PHOTO && p.colors.length > 1) {
       Object.keys(raw).forEach(function (c) {
@@ -452,6 +452,7 @@
   // ------------------------------------------------------------ карточка товара
   function badge(p) { return p.status === 'preorder' ? '<span class="badge badge-pre">Предзаказ</span>' : p.status === 'sold' ? '<span class="badge badge-sold">Продано</span>' : p.status === 'out' ? '<span class="badge badge-out">Временно нет в наличии</span>' : '<span class="badge badge-stock">В наличии</span>'; }
   function inStockTab(p) { return p.status === 'stock' || p.status === 'out' || p.status === 'sold'; }
+  function dscChip(p) { var d = discount(p); return p.oldPrice && d >= 1 ? '<span class="dsc">−' + d + '%</span>' : ''; }
   function discount(p) { return p.oldPrice ? Math.round((1 - p.price / p.oldPrice) * 100) : 0; }
   function card(p, i) {
     var a = p.photos[0], d = discount(p), id = esc(p.id);
@@ -461,7 +462,7 @@
       '<div class="tags">' + badge(p) + (isPick(p) ? '<span class="badge badge-hit">Хит</span>' : '') + '</div></a>' +
       '<button class="fav" type="button" data-fav="' + id + '" aria-pressed="' + isFav(p.id) + '" aria-label="Избранное: ' + esc(p.title) + '">' + icon('heart') + '</button>' +
       '<a class="body" href="#p-' + id + '"><span class="brand-l">' + esc(p.brand || p.categoryLabel) + '</span><span class="t">' + esc(p.title) + '</span>' + sw +
-      '<div class="prices"><span class="price">' + rub(p.price) + '</span>' + (p.oldPrice ? '<span class="old">' + rub(p.oldPrice) + '</span>' + (d >= 3 ? '<span class="off">−' + d + '%</span>' : '') : '') + '</div></a>' +
+      '<div class="prices"><span class="price">' + rub(p.price) + '</span>' + (p.oldPrice ? '<span class="old">' + rub(p.oldPrice) + '</span>' + dscChip(p) : '') + '</div></a>' +
       (p.status === 'sold' ? '' : '<button class="qcart" type="button" data-quick="' + id + '" aria-label="В корзину: ' + esc(p.title) + '">' + icon('bag') + '</button>') + '</article>';
   }
   function grid(list, cls) { return '<div class="grid' + (cls ? ' ' + cls : '') + '">' + list.map(card).join('') + '</div>'; }
@@ -533,7 +534,7 @@
   function banner(title, sub, href, picks, cls, chips) {
     if (!picks.length) return '';
     return '<a class="bn ' + (cls || '') + '" href="' + href + '"><div class="bn-pics" style="grid-template-columns:repeat(' + picks.length + ',1fr)">' +
-      '<span class="bn-big">' + picks.map(function (p, i) { return '<img class="' + (i ? '' : 'on') + '" src="' + thumb(p.photos[0].id) + '" alt="" loading="' + (i ? 'lazy' : 'eager') + '" decoding="async">'; }).join('') + '</span>' +
+      '<span class="bn-big">' + picks.map(function (p, i) { return '<img class="' + (i ? '' : 'on') + '" src="' + full(p.photos[0].id) + '" alt="" loading="' + (i ? 'lazy' : 'eager') + '" decoding="async">'; }).join('') + '</span>' +
       picks.map(function (p, i) { return '<span class="bn-th' + (i ? '' : ' on') + '"><img src="' + thumb(p.photos[0].id) + '" alt="" loading="lazy" decoding="async"></span>'; }).join('') +
       '</div><div class="bn-txt"><b>' + title + '</b>' + icon('arrow-right') + '</div></a>';
   }
@@ -563,7 +564,7 @@
     return '<section class="hero" aria-label="Рекомендации магазина"><div class="hero-sl">' + slides.map(function (s, i) {
       var p = s.p, d = discount(p);
       return '<a class="hs' + (i ? '' : ' on') + '" href="#p-' + esc(p.id) + '" data-pid="' + esc(p.id) + '"><img src="' + full(p.photos[0].id) + '" alt="" loading="' + (i ? 'lazy' : 'eager') + '" decoding="async">' +
-        '<span class="hs-cap"><span class="hs-tag">' + esc(s.tag) + '</span><b>' + esc(p.title) + '</b><span class="hs-pr"><i>' + rub(p.price) + '</i>' + (p.oldPrice ? '<s>' + rub(p.oldPrice) + '</s>' : '') + (d >= 3 ? '<em>−' + d + '%</em>' : '') + '</span><span class="hs-go">Смотреть' + icon('arrow-right') + '</span></span></a>';
+        '<span class="hs-cap"><span class="hs-tag">' + esc(s.tag) + '</span><b>' + esc(p.title) + '</b><span class="hs-pr"><i>' + rub(p.price) + '</i>' + (p.oldPrice ? '<s>' + rub(p.oldPrice) + '</s>' : '') + dscChip(p) + '</span><span class="hs-go">Смотреть' + icon('arrow-right') + '</span></span></a>';
     }).join('') + '</div><div class="hero-dots">' + slides.map(function (s, i) { return '<button type="button" class="' + (i ? '' : 'on') + '" data-hs="' + i + '" aria-label="Слайд ' + (i + 1) + '"></button>'; }).join('') + '</div></section>';
   }
   function startHero(v) {
@@ -620,6 +621,7 @@
       '<div class="cts">' + tiles + '</div>' +
       heroHtml(slides) +
       '<div class="bns">' + banner('Рекомендации магазина', '', '#catalog', picks.slice(0, 5), 'bn-rec') + banner('Супер эксклюзивные предложения', '', '#stock', hot, 'bn-hot') + banner('Находки из Китая', '', '#preorder', preL, 'bn-cn') + banner('Новинки недели', '', '#catalog', newest, 'bn-new') + '</div>' +
+      (favs.length ? '<div class="sec"><div class="sec-head"><h2>Избранное</h2><a class="btn btn-ghost btn-sm" href="#favorites">Все · ' + favs.length + '</a></div><div class="hscroll">' + favs.map(function (id) { return BY_ID[id]; }).filter(Boolean).slice(0, 10).map(card).join('') + '</div></div>' : '') +
       (rec.length ? '<div class="sec"><div class="sec-head"><h2>Вы смотрели</h2></div><div class="hscroll">' + rec.map(card).join('') + '</div></div>' : '') +
       '<div class="sec"><div class="sec-head"><h2>Новинки</h2><a class="btn btn-ghost btn-sm" href="#catalog">Весь каталог</a></div>' + grid(fresh, 'home-grid') + '</div>' +
       '<div class="sec"><a class="faq-link" href="#info">Частые вопросы' + icon('arrow-right') + '</a></div>';
@@ -859,7 +861,7 @@
       '<button class="icon-btn" type="button" id="share-btn" aria-label="Поделиться">' + icon('share') + '</button>' +
       '<button class="icon-btn fav-big" type="button" data-fav="' + esc(p.id) + '" aria-pressed="' + isFav(p.id) + '" aria-label="В избранное">' + icon('heart') + '</button></div>' +
       '<div>' + (p.brand ? '<div class="brand-top">' + esc(p.brand) + '</div>' : '') + '<h1>' + esc(p.title) + '</h1>' + (p.subtitle ? '<p class="sub">' + esc(cap(p.subtitle)) + '</p>' : '') + '</div>' +
-      '<div class="price-box"><div class="price-row"><span class="price">' + rub(p.price) + '</span>' + (p.oldPrice ? '<span class="old">' + rub(p.oldPrice) + '</span><span class="badge badge-ok">выгода ' + rub(p.oldPrice - p.price) + '</span>' : '') + '</div>' +
+      '<div class="price-box"><div class="price-row"><span class="price">' + rub(p.price) + '</span>' + (p.oldPrice ? '<span class="old">' + rub(p.oldPrice) + '</span>' + dscChip(p) + '<span class="save-t">выгода ' + rub(p.oldPrice - p.price) + '</span>' : '') + '</div>' +
       (API.enabled ? '<span class="tok-hint">' + tk() + 'Токенами можно оплатить до <b>' + rub(maxTokRub) + '</b></span>' : '') + '</div>' +
       etaBlock(p) +
       ((p.facts && p.facts.length) ? '<ul class="facts" aria-label="Главное о товаре">' + p.facts.slice(0, 6).map(function (f) { return '<li><small>' + esc(f[0]) + '</small><b>' + esc(f[1]) + '</b></li>'; }).join('') + '</ul>' : '') +
@@ -1044,10 +1046,10 @@
     var allOn = all.every(function (l) { return l.sel !== false; }), st = lineTotals(selLines());
     var row = function (l, i) {
       var p = BY_ID[l.id], ph = p.photos.find(function (x) { return x.id === l.photo; }) || p.photos[0], d = discount(p), on = l.sel !== false;
-      return '<div class="cl' + (on ? '' : ' off') + '" data-k="' + i + '">' +
+      return '<div class="cl' + (on ? '' : ' unsel') + '" data-k="' + i + '">' +
         '<button type="button" class="cl-chk' + (on ? ' on' : '') + '" data-sel aria-pressed="' + on + '" aria-label="Выбрать товар">' + icon('check') + '</button>' +
         '<a class="cl-ph" href="#p-' + esc(p.id) + '"><img src="' + thumb(ph.id) + '" alt="" loading="lazy"></a>' +
-        '<div class="cl-b"><div class="cl-pr"><b class="' + (p.oldPrice ? 'sale' : '') + '">' + rub(p.price * l.qty) + '</b>' + (p.oldPrice ? '<s>' + rub(p.oldPrice * l.qty) + '</s>' + (d >= 3 ? '<em>−' + d + '%</em>' : '') : '') + '</div>' +
+        '<div class="cl-b"><div class="cl-pr"><b class="' + (p.oldPrice ? 'sale' : '') + '">' + rub(p.price * l.qty) + '</b>' + (p.oldPrice ? '<s>' + rub(p.oldPrice * l.qty) + '</s>' + dscChip(p) : '') + '</div>' +
         '<a class="cl-t" href="#p-' + esc(p.id) + '">' + esc(p.title) + '</a>' +
         ((l.size || l.color) ? '<div class="cl-o">' + esc([l.size, l.color ? cap(l.color) : ''].filter(Boolean).join(', ')) + '</div>' : '') +
         '<div class="cl-m">' + badge(p) + '</div>' +
@@ -1060,7 +1062,8 @@
       '<div class="cl-top"><button type="button" class="cl-all" id="cl-all" aria-pressed="' + allOn + '"><span class="cl-chk' + (allOn ? ' on' : '') + '">' + icon('check') + '</span>Все</button><span class="cl-cnt">Выбрано: ' + selLines().length + '</span><button type="button" class="cl-clear" id="cl-clear" aria-label="Удалить выбранные" ' + (selLines().length ? '' : 'disabled') + '>' + icon('trash') + '</button></div>' +
       '<div class="cl-list">' + all.map(row).join('') + '</div>' +
       (API.enabled && !acct.user && acct.ready ? '<div class="notice notice-info" style="margin-top:12px">' + icon('user') + '<div><b>Заказ оформляется из кабинета.</b> Войдите, чтобы продолжить.</div></div>' : '') +
-      '<div class="cart-bar"><div class="cb-sub">' + (st.old > st.sum ? '<span class="cb-save">Скидка −' + rub(st.old - st.sum) + '</span>' : '<span></span>') + '</div><button class="cb-go" type="button" id="cb-go"' + (st.n ? '' : ' disabled') + '><span>' + (st.n ? 'К оформлению · ' + st.n : 'Выберите товары') + '</span><b>' + (st.n ? rub(st.sum) : '') + '</b></button></div>';
+      '<div class="card panel vip-panel"><label class="vip"><span class="vip-t"><b>' + icon('bolt') + 'Приоритетный заказ · ' + rub(RULES.vipPrice) + '</b><small>Менеджер уделит вашему заказу особое внимание и займётся им в первую очередь</small></span><input type="checkbox" id="cl-vip"' + (form.vip ? ' checked' : '') + '><span class="sw-tg"></span></label></div>' +
+      '<div class="cart-bar"><div class="cb-sub">' + (st.old > st.sum ? '<span class="cb-save">Скидка −' + rub(st.old - st.sum) + '</span>' : '<span></span>') + (form.vip && st.n ? '<span class="cb-vip">⚡ Приоритет +' + rub(RULES.vipPrice) + '</span>' : '') + '</div><button class="cb-go" type="button" id="cb-go"' + (st.n ? '' : ' disabled') + '><span>' + (st.n ? 'К оформлению · ' + st.n : 'Выберите товары') + '</span><b>' + (st.n ? rub(st.sum + (form.vip ? RULES.vipPrice : 0)) : '') + '</b></button></div>';
     var all2 = all;
     $$('.cl', v).forEach(function (rowEl) {
       var l = all2[+rowEl.getAttribute('data-k')];
@@ -1078,6 +1081,7 @@
       var n = selLines().length; if (!n) return;
       confirmBox({ title: 'Удалить выбранные?', text: 'Выбранные товары (' + n + ') будут убраны из корзины.', actions: [{ label: 'Оставить', cls: 'btn-ghost' }, { label: 'Удалить', cls: 'btn-danger', run: function () { cart = cart.filter(function (l) { return l.sel === false || !BY_ID[l.id]; }); saveCart(); renderCart(); } }] });
     });
+    $('#cl-vip', v).addEventListener('change', function () { form.vip = this.checked; saveForm(); renderCartList(v, cartLines(), []); });
     $('#cb-go', v).addEventListener('click', goCheckout);
   }
   function renderCart() {
@@ -1139,7 +1143,6 @@
       (t.stock && t.pre ? '<div class="card panel"><div class="panel-head"><h2><span class="n">' + (++n) + '</span>Как получить заказ</h2></div><div class="f" data-f="together"><div class="radios">' +
         radio('together', 'together', form.together, 'Всё вместе', 'Товар из наличия дождётся предзаказа, и вы получите всё сразу') +
         radio('together', 'separate', form.together, 'Раздельно', 'Сначала получите товары в наличии, предзаказ — когда приедет из Китая') + '</div><span class="err-msg" hidden></span></div></div>' : '') +
-      '<div class="card panel vip-panel"><label class="vip"><span class="vip-t"><b>' + icon('bolt') + 'Приоритетный заказ · ' + rub(RULES.vipPrice) + '</b><small>Менеджер уделит вашему заказу особое внимание и займётся им в первую очередь</small></span><input type="checkbox" id="f-vip"' + (form.vip ? ' checked' : '') + '><span class="sw-tg"></span></label></div>' +
       '<div class="card panel"><div class="panel-head"><h2><span class="n">' + (++n) + '</span>Комментарий</h2></div><div class="f"><label class="sr" for="f-comment">Комментарий к заказу</label><textarea id="f-comment" maxlength="500" placeholder="По желанию">' + esc(form.comment) + '</textarea></div></div>' +
       (API.enabled ? '<div class="card panel" id="tokpanel"><div class="panel-head"><h2><span class="n">' + (++n) + '</span>Токены и промокод</h2>' + (u ? '<span class="tok">' + tk() + num(u.balance) + '</span>' : '') + '</div>' +
         (u ? (t.maxTok > 0 ? '<div class="tokbox"><div class="tokrow"><span>Списать <b id="tok-n">' + num(t.tok) + '</b> <span id="tok-w">' + tokWord(t.tok) + '</span></span><b id="tok-rub">−' + rub(t.tokRub) + '</b></div>' +
@@ -1414,8 +1417,8 @@
   // ------------------------------------------------------------ избранное
   function renderFavorites() {
     var v = $('#v-favorites'), list = favs.map(function (id) { return BY_ID[id]; }).filter(Boolean);
-    v.innerHTML = '<div class="view-head"><div><h1>Избранное</h1></div></div>' +
-      (list.length ? grid(list) : '<div class="empty"><span class="ico">' + icon('heart') + '</span><h3>Пока пусто</h3><a class="btn" href="#catalog">Перейти в каталог</a></div>');
+    v.innerHTML = '<div class="view-head"><div><h1>Избранное</h1><p class="muted">' + (list.length ? list.length + ' ' + plural(list.length, 'товар', 'товара', 'товаров') + ' — сохранено на потом' : 'Сохраняйте понравившееся, чтобы вернуться позже') + '</p></div></div>' +
+      (list.length ? grid(list) : '<div class="empty fav-empty"><span class="ico">' + icon('heart') + '</span><h3>В избранном пока пусто</h3><p>Нажимайте на сердечко у товара, чтобы вернуться к нему позже. Вещи здесь сохранятся, и вы увидите, если цена изменится.</p><a class="btn" href="#catalog">Перейти в каталог</a></div>');
   }
 
   // ------------------------------------------------------------ коды на почту
@@ -2269,7 +2272,8 @@
     PRODUCTS.forEach(function (p) { p.photos.slice(0, 3).forEach(function (f) { add(full(f.id)); }); });
     ['shoes', 'tees', 'hoodies', 'outerwear', 'shirts', 'pants', 'suits', 'dresses', 'bags', 'headwear', 'accessories', 'jewelry', 'watches', 'perfume', 'underwear', 'stock', 'china'].forEach(function (k) { add('assets/cat/' + k + '.svg'); add('assets/cat/dark/' + k + '.svg'); });
     var total = urls.length, idx = 0, cap = Date.now() + MAX, finished = false;
-    var bar = document.getElementById('spl-bar'), txt = document.getElementById('spl-txt');
+    var bar = document.getElementById('spl-bar'), txt = document.getElementById('spl-txt'), phb = document.getElementById('spl-ph');
+    if (phb) phb.innerHTML = shopPicks().concat(PRODUCTS).filter(function (p, i, a) { return a.indexOf(p) === i; }).slice(0, 3).map(function (p) { return '<i style="background-image:url(' + thumb(p.photos[0].id) + ')"></i>'; }).join('');
     function next() {
       if (idx >= urls.length || Date.now() > cap) return;
       var u = urls[idx++], im = new Image();

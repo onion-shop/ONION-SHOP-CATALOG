@@ -1528,3 +1528,43 @@ html.dr-open{overflow:hidden}
 @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .pcard .qcart{color:#06223a} }
 .cat-h1{font-size:clamp(2rem,8vw,2.9rem);line-height:1.04;font-weight:900;letter-spacing:-.02em;margin:2px 0 6px;background:linear-gradient(100deg,var(--ink) 30%,var(--accent) 120%);-webkit-background-clip:text;background-clip:text;color:transparent}
 #v-catalog .view-head .eyebrow{font-size:13px;font-weight:800;letter-spacing:.12em;text-transform:uppercase}
+
+/* v30: единые плашки статуса и скидки, крупная корзина на карточке */
+.pcard .qcart{width:50px;height:50px;border-radius:15px;top:calc(133.333cqw - 60px);right:8px;box-shadow:0 6px 16px rgba(8,40,90,.32)}
+.pcard .qcart .i{width:27px;height:27px}
+.badge-stock,.badge-pre,.badge-out,.badge-sold{display:inline-flex;align-items:center;gap:6px;height:25px;padding:0 10px 0 8px;border-radius:9px;background:rgba(255,255,255,.94);color:#0b1d3a;font-size:12px;font-weight:700;letter-spacing:0;box-shadow:0 2px 8px rgba(8,30,70,.18);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.badge-stock::before,.badge-pre::before,.badge-out::before,.badge-sold::before{content:"";width:8px;height:8px;border-radius:50%;flex:none;background:var(--st-stock)}
+.badge-pre::before{background:var(--st-pre)}
+.badge-out::before{background:#e0a800}
+.badge-sold::before{background:var(--st-sold)}
+.badge-hit{display:inline-flex;align-items:center;height:25px;padding:0 10px;border-radius:9px;background:#0b1d3a;color:#fff;font-size:12px;font-weight:700}
+.pcard .tags .badge{height:25px;font-size:12px;padding:0 10px 0 8px}
+.pcard .tags .badge-hit{padding:0 10px}
+:root[data-theme="dark"] .badge-stock,:root[data-theme="dark"] .badge-pre,:root[data-theme="dark"] .badge-out,:root[data-theme="dark"] .badge-sold{background:rgba(255,255,255,.94);color:#0b1d3a}
+:root[data-theme="dark"] .badge-hit{background:#43c9e3;color:#06223a}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .badge-hit{background:#43c9e3;color:#06223a} }
+.dsc{display:inline-flex;align-items:center;height:22px;padding:0 7px;border-radius:7px;background:var(--red);color:#fff;font-size:12px;font-weight:800;line-height:1;white-space:nowrap}
+.pcard .prices:has(.dsc) .price,.price-row:has(.dsc) .price,.hs-pr:has(.dsc) i{color:var(--red)}
+.hs-pr:has(.dsc) i{color:#fff}
+.hs-pr .dsc{font-size:13px;height:24px}
+.pcard .prices{gap:6px;flex-wrap:wrap;align-items:center}
+.pcard .old,.price-row .old,.hs-pr s,.cl-pr s{color:var(--ink-3);text-decoration:line-through;font-weight:500}
+.hs-pr s{color:rgba(255,255,255,.75)}
+.save-t{font-size:13px;font-weight:700;color:var(--red)}
+/* строка корзины со снятой галочкой (раньше называлась .off и ловила стили скидки) */
+.cl.unsel .cl-ph,.cl.unsel .cl-b{opacity:.55}
+.cl.off{background:inherit}
+/* «Закрыто» в шапке — тоже называлось .off */
+.open-state.off{background:none;padding:0;border-radius:0;height:auto;color:var(--ink-3);font-size:14px;font-weight:700}
+/* приоритет в корзине */
+.cb-vip{background:#fff3d6;color:#7a4b00;font-weight:800;font-size:12.5px;padding:3px 10px;border-radius:999px;margin-left:6px}
+.cb-sub{gap:4px;flex-wrap:wrap}
+.vip-panel{margin-top:12px}
+.fav-empty{padding:44px 20px}
+.fav-empty .ico{width:84px;height:84px;color:var(--heart);background:color-mix(in srgb,var(--heart) 12%,transparent)}
+.fav-empty .ico .i{width:42px;height:42px}
+.fav-empty p{max-width:320px;margin:6px auto 16px;color:var(--ink-3)}
+.cl-a{flex-wrap:nowrap!important;gap:8px}
+.cl-a .qty.sm{flex:none}
+.cl-buy{flex:1 1 auto;min-width:0;padding:0 10px!important}
+.cl-del{flex:none}

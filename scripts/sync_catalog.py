@@ -46,8 +46,9 @@ UPLOADS_DIR = os.path.join(ROOT, "data", "uploads")
 CATALOG_JS = os.path.join(DATA_DIR, "catalog.js")
 OVERRIDES_JSON = os.path.join(DATA_DIR, "overrides.json")
 
-FULL_MAX = 1000  # px по длинной стороне
-THUMB_MAX = 520
+FULL_MAX = 1280  # px по длинной стороне
+THUMB_MAX = 640
+IMG_Q = 2        # версия качества: при смене все фото пересобираются из оригиналов
 ALBUM_GAP = 3          # секунд между фото одного альбома (выгрузка)
 ATTACH_GAP = 30 * 60   # альбом без текста прикрепляется к товару, если вышел не позже чем через 30 мин
 UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
@@ -661,10 +662,10 @@ def save_image(raw: bytes, photo_id: int):
     w, h = im.size
     full = im.copy()
     full.thumbnail((FULL_MAX, FULL_MAX), Image.LANCZOS)
-    full.save(os.path.join(IMG_FULL, f"{photo_id}.jpg"), "JPEG", quality=76, optimize=True, progressive=True)
+    full.save(os.path.join(IMG_FULL, f"{photo_id}.jpg"), "JPEG", quality=90, optimize=True, progressive=True)
     th = im.copy()
     th.thumbnail((THUMB_MAX, THUMB_MAX), Image.LANCZOS)
-    th.save(os.path.join(IMG_THUMB, f"{photo_id}.jpg"), "JPEG", quality=74, optimize=True, progressive=True)
+    th.save(os.path.join(IMG_THUMB, f"{photo_id}.jpg"), "JPEG", quality=86, optimize=True, progressive=True)
     return full.size
 
 
@@ -779,7 +780,7 @@ def main():
                     used.add(photo_id)
                 continue
             h = hashlib.md5(raw).hexdigest()[:12]
-            if old_f and old_f.get("hash") == h:
+            if old_f and old_f.get("hash") == h and old_f.get("q") == IMG_Q:
                 if h in hashes:
                     continue
                 hashes.add(h)
@@ -796,7 +797,7 @@ def main():
             except Exception as e:  # noqa: BLE001
                 print(f"  фото {photo_id} не открылось: {e}", file=sys.stderr)
                 continue
-            files.append({"id": photo_id, "w": w, "ht": hh, "hash": h})
+            files.append({"id": photo_id, "w": w, "ht": hh, "hash": h, "q": IMG_Q})
             used.add(photo_id)
         order, hide = p.pop("_order", []), p.pop("_hide", set())
         if order or hide:
