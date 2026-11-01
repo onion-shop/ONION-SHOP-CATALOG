@@ -1,12 +1,12 @@
 name: Каталог из Telegram
 
-# Раз в час сайт сам читает канал @ONION_SHOP_OFFICIAL,
-# обновляет товары и фото и публикует сайт. Ничего нажимать не нужно.
+# Каждые 15 минут сайт сам читает канал @ONION_SHOP_OFFICIAL: новые посты, правки текста,
+# заменённые фото и проданные товары попадают на сайт. Ничего нажимать не нужно.
 # Обновить прямо сейчас: Actions → «Каталог из Telegram» → Run workflow.
 # Если загрузить в репозиторий ZIP-архивы с сайтом, они распакуются сами.
 on:
   schedule:
-    - cron: "17 * * * *"
+    - cron: "*/15 * * * *"
   workflow_dispatch:
   push:
     branches: [main]
@@ -36,7 +36,7 @@ jobs:
           shopt -s nullglob
           zips=( *.zip )
           if [ ${#zips[@]} -gt 0 ]; then
-            for z in "${zips[@]}"; do unzip -o -q "$z"; done
+            for z in "${zips[@]}"; do unzip -o -q "$z" -x '.github/*' '*__pycache__*'; done
             rm -f -- *.zip "index[1].html" "manifest[1].webmanifest" sync_catalog.cpython-313.pyc
             # файлы, случайно загруженные в корень вместо своих папок
             for f in api.js app.js core.js config.js config.demo.js style.css catalog.js sync.yml sync_catalog.py \
