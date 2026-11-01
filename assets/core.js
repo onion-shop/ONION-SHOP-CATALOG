@@ -7,6 +7,7 @@ var OnionCore = (function () {
 
   // ---------------------------------------------------------------- правила (вариант Б)
   var RULES = {
+    vipPrice: 99,
     tokenRub: 0.3,          // 1 токен = 0,3 ₽ скидки
     maxShare: 0.15,         // токенами можно оплатить не больше 15% суммы заказа
     spinCost: 100,          // прокрут рулетки
@@ -122,17 +123,17 @@ var OnionCore = (function () {
     taskPer: { d: { name: 'Ежедневные', until: 'до конца дня' }, w: { name: 'Еженедельные', until: 'до воскресенья' }, m: { name: 'Ежемесячные', until: 'до конца месяца' } },
     // рулетка: веса из 10 000 (шанс = вес / 100 %). «Пусто» добирает остаток до 10 000 само
     wheel: [
-      { id: 'none', label: 'Пусто', sub: 'в другой раз', w: 2071 },
+      { id: 'none', label: 'Пусто', sub: 'в другой раз', w: 1921 },
       { id: 't25', label: '+25', sub: 'токенов', w: 1500, tokens: 25 },
-      { id: 't50', label: '+50', sub: 'токенов', w: 1700, tokens: 50 },
-      { id: 't100', label: '+100', sub: 'токенов', w: 1050, tokens: 100 },
+      { id: 't50', label: '+50', sub: 'токенов', w: 1750, tokens: 50 },
+      { id: 't100', label: '+100', sub: 'токенов', w: 1100, tokens: 100 },
       { id: 't150', label: '+150', sub: 'токенов', w: 600, tokens: 150 },
       { id: 't200', label: '+200', sub: 'токенов', w: 400, tokens: 200 },
       { id: 't300', label: '+300', sub: 'токенов', w: 200, tokens: 300 },
       { id: 't500', label: '+500', sub: 'токенов', w: 120, tokens: 500 },
       { id: 't1000', label: '+1000', sub: 'токенов', w: 30, tokens: 1000 },
       { id: 'jackpot', label: 'Повезло!', sub: '+2000 токенов', w: 8, tokens: 2000 },
-      { id: 'xp', label: '+50 XP', sub: 'к уровню', w: 650, xp: 50 },
+      { id: 'xp', label: '+50 XP', sub: 'к уровню', w: 700, xp: 50 },
       { id: 'xp100', label: '+100 XP', sub: 'к уровню', w: 380, xp: 100 },
       { id: 'xp150', label: '+150 XP', sub: 'к уровню', w: 220, xp: 150 },
       { id: 'xp300', label: '+300 XP', sub: 'к уровню', w: 90, xp: 300 },
@@ -147,8 +148,8 @@ var OnionCore = (function () {
     ],
     // Платина и Алмаз: «Пусто» реже, призы чаще (сумма весов та же — 10 000)
     wheelBoost: {
-      1: { none: -200, t50: 80, t100: 60, xp: 60 },
-      2: { none: -400, t50: 100, t100: 100, t200: 80, t300: 40, t500: 40, xp100: 40 }
+      1: { none: -300, t50: 100, t100: 80, xp: 60, t150: 40, xp100: 20 },
+      2: { none: -550, t50: 120, t100: 120, t200: 90, t300: 50, t500: 45, xp100: 50, t150: 75 }
     },
     // статусы заказа (меняются в таблице, клиент видит их в «Моих заказах»)
     stagesPre: ['Оформлен', 'Выкуплен', 'В пути', 'На складе', 'Едет к нам', 'Едет к вам', 'Получен'],
@@ -694,6 +695,7 @@ var OnionCore = (function () {
     var d = digits(f.phone); if (d.length < 10 || d.length > 15) return 'Укажите телефон';
     var tgv = cleanTg(f.tg); if (tgv && !validTg(tgv)) return 'Проверьте username в Telegram или оставьте поле пустым';
     if (hasStock) { if (!RECV[f.recv]) return 'Выберите способ получения'; if (f.recv === 'city' && String(f.recvCity || '').trim().length < 2) return 'Укажите город'; }
+    if (hasStock && hasPre && f.together !== 'together' && f.together !== 'separate') return 'Выберите: получить всё вместе или раздельно';
     if (hasPre) {
       if (!SHIP[f.ship]) return 'Выберите способ отправки из Китая';
       if (String(f.city || '').trim().length < 2) return 'Укажите город для предзаказа';
@@ -708,6 +710,7 @@ var OnionCore = (function () {
   function orderText(o) {
     var f = o.f, L = [], hasPre = false, hasStock = false, hasOut = false, cnt = 0;
     L.push('🛍 ЗАКАЗ ONION SHOP · №' + o.no);
+    if (o.f.vip === true) L.push('⚡ ПРИОРИТЕТНЫЙ ЗАКАЗ (+' + RULES.vipPrice + ' ₽, оплачено в заказе) — клиент просит уделить заказу особое внимание');
     if (o.priority) L.push('⭐ ПРИОРИТЕТ: ' + o.priority.toUpperCase() + ' (уровень ' + o.user.levelName + ')');
     L.push('📅 ' + whenText(o.at));
     L.push('');
@@ -738,7 +741,7 @@ var OnionCore = (function () {
     if (o.promo) L.push('🏷 Промокод ' + o.promo + (o.promoNote ? ' (' + o.promoNote + ')' : '') + ': −' + rub(o.promoRub));
     if (o.pack) L.push('🎁 ПРИВИЛЕГИЯ: ' + o.pack + ' — учесть при расчёте упаковки');
     L.push('✅ К ОПЛАТЕ: ' + rub(o.toPay));
-    if (hasPre) L.push('(доставка из Китая уже включена в цену)');
+    if (hasPre) L.push('(стоимость доставки из Китая уже включена в стоимость)');
     if (hasPre && o.f.ship === 'air') L.push('✈️ АВИА: доставка и все связанные расходы — полностью за счёт клиента по авиатарифу (≈40 $/кг, от 10 кг — 36 $/кг). Токены и промокод уменьшают только стоимость товаров, но не доставку и не упаковку.');
     if (hasOut) L.push('⏳ Есть товар, которого сейчас нет в наличии: сообщите клиенту срок поступления или предложите замену до оплаты.');
     L.push('');
@@ -752,6 +755,7 @@ var OnionCore = (function () {
       L.push('✈️ ПРЕДЗАКАЗ: отправка из Китая — ' + SHIP[f.ship] + ', город — ' + String(f.city).trim() + ', получение — ' + PRE_RECV[f.preRecv]);
       L.push('☑️ С условиями предзаказа ознакомлен(а)');
     }
+    if (hasStock && hasPre) L.push(f.together === 'together' ? '📮 ПОЛУЧЕНИЕ ЗАКАЗА: ВСЁ ВМЕСТЕ — товар в наличии дождётся предзаказа, клиент получает всё сразу' : '📮 ПОЛУЧЕНИЕ ЗАКАЗА: РАЗДЕЛЬНО — сначала товары в наличии, предзаказ — по приезду из Китая');
     if (String(f.comment || '').trim()) { L.push(''); L.push('💬 Комментарий: ' + String(f.comment).trim()); }
     return L.join('\n');
   }
@@ -851,13 +855,14 @@ var OnionCore = (function () {
         promo = sp.code; promoRub = Math.round(total * sp.pct / 100);
       }
     }
-    var toPay = Math.max(0, total - tokenRub - promoRub);
+    var vipRub = f.vip === true ? RULES.vipPrice : 0;
+    var toPay = Math.max(0, total - tokenRub - promoRub) + vipRub;
     var seq = db.nextOrderSeq();
     var no = orderNo(db, seq), at = db.now();
     var li = u ? levelOf(u) : null, priority = li && li.priority ? li.priority : '';
     var pk = u ? packInfo(db, u) : null;
     if (pk && pk.available && p.usePack !== false && hasPre) { pack = pk.label + ' (' + pk.level + ')'; u.packMonth = monthKey(at); }
-    var text = orderText({ no: no, at: at, f: f, lines: built.lines, total: total, tokens: tokens, tokenRub: tokenRub, promo: promo, promoRub: promoRub, promoNote: promoNote, pack: pack, priority: priority, toPay: toPay, user: u ? { login: u.login, id: u.id, levelName: li.name } : null });
+    var text = orderText({ no: no, at: at, f: f, lines: built.lines, total: total, tokens: tokens, tokenRub: tokenRub, promo: promo, promoRub: promoRub, promoNote: promoNote, pack: pack, priority: priority, vipRub: vipRub, toPay: toPay, user: u ? { login: u.login, id: u.id, levelName: li.name } : null });
     if (built.unverified) text += '\n\n⚠️ Каталог был недоступен — цены взяты с сайта, проверьте.';
     if (u) {
       if (tokens) log(db, u, -tokens, 'Оплата заказа №' + no);
@@ -884,7 +889,7 @@ var OnionCore = (function () {
     var order = {
       no: no, seq: seq, at: at, userId: u ? u.id : '', login: u ? u.login : '', name: String(f.name).trim(), phone: fmtPhone(f.phone), tg: cleanTg(f.tg) ? '@' + cleanTg(f.tg) : '', status: 'Оформлен',
       items: built.lines.map(function (l) { return { id: l.id, title: l.title, qty: l.qty, price: l.price, size: l.size, color: l.color, photo: l.photo, thumb: l.thumb, status: l.status }; }),
-      count: cnt, total: total, tokens: tokens, tokenRub: tokenRub, promo: promo, promoRub: promoRub, toPay: toPay, priority: priority || (u ? 'Обычный' : ''), pack: pack, level: li ? li.name : '',
+      count: cnt, total: total, tokens: tokens, tokenRub: tokenRub, promo: promo, promoRub: promoRub, vipRub: vipRub, toPay: toPay, priority: f.vip === true ? '⚡ Приоритетный' + (priority ? ' · ' + priority : '') : (priority || (u ? 'Обычный' : '')), pack: pack, level: li ? li.name : '',
       kind: hasPre && hasStock ? 'смешанный' : hasPre ? 'предзаказ' : (hasOut && !built.lines.some(function (l) { return l.status === 'stock'; })) ? 'временно нет' : 'в наличии', comment: String(f.comment || '').trim(), text: text
     };
     db.saveOrder(order);

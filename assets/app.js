@@ -462,7 +462,7 @@
       '<button class="fav" type="button" data-fav="' + id + '" aria-pressed="' + isFav(p.id) + '" aria-label="Избранное: ' + esc(p.title) + '">' + icon('heart') + '</button>' +
       '<a class="body" href="#p-' + id + '"><span class="brand-l">' + esc(p.brand || p.categoryLabel) + '</span><span class="t">' + esc(p.title) + '</span>' + sw +
       '<div class="prices"><span class="price">' + rub(p.price) + '</span>' + (p.oldPrice ? '<span class="old">' + rub(p.oldPrice) + '</span>' + (d >= 3 ? '<span class="off">−' + d + '%</span>' : '') : '') + '</div></a>' +
-      (p.status === 'sold' ? '' : '<button class="qadd" type="button" data-quick="' + id + '">В корзину</button>') + '</article>';
+      (p.status === 'sold' ? '' : '<button class="qcart" type="button" data-quick="' + id + '" aria-label="В корзину: ' + esc(p.title) + '">' + icon('bag') + '</button>') + '</article>';
   }
   function grid(list, cls) { return '<div class="grid' + (cls ? ' ' + cls : '') + '">' + list.map(card).join('') + '</div>'; }
   function countBy(list, fn) { var m = {}; list.forEach(function (p) { var k = fn(p); m[k] = (m[k] || 0) + 1; }); return m; }
@@ -550,12 +550,12 @@
   }
   function etaBlock(p) {
     if (p.status === 'sold') return '';
-    if (p.status === 'preorder') return '<div class="eta">' + icon('truck') + '<div><b>Ориентировочно получите: ' + dateRange(24, 47) + '</b><small>Если оплатить сегодня. Выкуп до 12 часов, проверка на складе и фотоотчёт, доставка из Китая уже в цене.</small></div></div>';
+    if (p.status === 'preorder') return '<div class="eta">' + icon('truck') + '<div><b>Ориентировочно получите: ' + dateRange(24, 47) + '</b><small>Если оплатить сегодня. Выкуп до 12 часов, проверка на складе и фотоотчёт, стоимость доставки из Китая уже включена в стоимость.</small></div></div>';
     if (p.status === 'out') return '<div class="eta">' + icon('clock') + '<div><b>Срок поступления уточнит менеджер</b><small>Нажмите «Сообщить, когда появится» или напишите ему.</small></div></div>';
-    return '<div class="eta">' + icon('truck') + '<div><b>Уже в Москве</b><small>Самовывоз, курьер или Авито Доставка — обычно в течение пары дней.</small></div></div>';
+    return '<div class="eta">' + icon('truck') + '<div><b>Уже в Москве</b><small>Самовывоз, курьер или Авито Доставка — способ выберете при оформлении.</small></div></div>';
   }
   function howStrip() {
-    var st = [['bag', 'Заказ', 'Корзина → менеджер пишет вам'], ['receipt', 'Выкуп до 12 ч', 'Закрепляем вещь за вами'], ['check-circle', 'Проверка', 'Склад в Китае + фотоотчёт'], ['truck', 'Доставка', 'Из Китая уже в цене']];
+    var st = [['bag', 'Заказ', 'Корзина → менеджер пишет вам'], ['receipt', 'Выкуп до 12 ч', 'Закрепляем вещь за вами'], ['check-circle', 'Проверка', 'Склад в Китае + фотоотчёт'], ['truck', 'Доставка', 'Из Китая включена в стоимость']];
     return '<div class="how"><div class="how-h">Как мы работаем</div><div class="how-s">' + st.map(function (x, i) { return '<div class="how-i"><span class="how-n">' + (i + 1) + '</span><span class="how-ic">' + icon(x[0]) + '</span><b>' + x[1] + '</b><small>' + x[2] + '</small></div>'; }).join('') + '</div><a class="how-l" href="#info">Подробнее об этапах' + icon('arrow-right') + '</a></div>';
   }
   function heroHtml(slides) {
@@ -618,7 +618,7 @@
     var v = $('#v-home');
     v.innerHTML =
       '<div class="cts">' + tiles + '</div>' +
-      heroHtml(slides) + howStrip() +
+      heroHtml(slides) +
       '<div class="bns">' + banner('Рекомендации магазина', '', '#catalog', picks.slice(0, 5), 'bn-rec') + banner('Супер эксклюзивные предложения', '', '#stock', hot, 'bn-hot') + banner('Находки из Китая', '', '#preorder', preL, 'bn-cn') + banner('Новинки недели', '', '#catalog', newest, 'bn-new') + '</div>' +
       (rec.length ? '<div class="sec"><div class="sec-head"><h2>Вы смотрели</h2></div><div class="hscroll">' + rec.map(card).join('') + '</div></div>' : '') +
       '<div class="sec"><div class="sec-head"><h2>Новинки</h2><a class="btn btn-ghost btn-sm" href="#catalog">Весь каталог</a></div>' + grid(fresh, 'home-grid') + '</div>' +
@@ -719,7 +719,7 @@
     PRODUCTS.forEach(function (p) { if (p.brand) brands[norm(p.brand)] = p.brand; });
     var bkeys = Object.keys(brands).sort(function (a, b) { return a.localeCompare(b, 'ru'); });
     v.innerHTML =
-      '<div class="view-head"><div><span class="eyebrow">Каталог</span><h1 id="cat-title">Все товары</h1><p class="muted" id="cat-sub"></p></div></div>' +
+      '<div class="view-head"><div><span class="eyebrow">Каталог</span><h1 id="cat-title" class="cat-h1">Все товары</h1><p class="muted" id="cat-sub" hidden></p></div></div>' +
       '<div class="tabs" role="tablist" aria-label="Наличие" id="cat-tabs"></div>' +
       '<div id="cat-qchip"></div>' +
       '<div class="cats" id="cat-cats" aria-label="Категории"></div>' +
@@ -766,7 +766,6 @@
     var rk = function (p) { return p.status === 'sold' ? 2 : p.status === 'out' ? 1 : 0; };
     list.sort(function (a, b) { return rk(a) - rk(b); });
     $('#cat-title').textContent = f.tab === 'stock' ? 'В наличии' : f.tab === 'preorder' ? 'Предзаказ из Китая' : 'Все товары';
-    $('#cat-sub').textContent = f.tab === 'preorder' ? 'Выкупаем у поставщика после заказа. Доставка из Китая уже в цене.' : f.tab === 'stock' ? 'Вещи уже в Москве — отправим сразу.' : 'Одежда, обувь и аксессуары из Telegram-канала магазина.';
     $('#cat-count').textContent = 'Найдено: ' + list.length + ' ' + plural(list.length, 'товар', 'товара', 'товаров');
     $('#cat-reset').hidden = !(f.cat !== 'all' || f.brand !== 'all' || f.q || f.price !== 'all' || f.sale);
     var fzNote = f._fz === 1 ? '<div class="notice notice-info fz-note">' + icon('search') + '<div>Точных совпадений нет — показали похожие на «' + esc(f.q) + '».</div></div>' : f._fz === 2 ? '<div class="notice notice-info fz-note">' + icon('search') + '<div>Исправили раскладку: искали «' + esc(swapLayout(norm(f.q))) + '».</div></div>' : '';
@@ -865,7 +864,7 @@
       etaBlock(p) +
       ((p.facts && p.facts.length) ? '<ul class="facts" aria-label="Главное о товаре">' + p.facts.slice(0, 6).map(function (f) { return '<li><small>' + esc(f[0]) + '</small><b>' + esc(f[1]) + '</b></li>'; }).join('') + '</ul>' : '') +
       (p.status === 'sold' ? '<div class="notice notice-sold">' + icon('alert') + '<div><b>Продано.</b> Этот товар уже купили. Похожие — ниже, а новинки в канале.</div></div>' : p.status === 'preorder'
-        ? '<div class="notice notice-pre">' + icon('plane') + '<div><b>Предзаказ из Китая.</b> Доставка из Китая уже в цене. <a href="#info">Условия</a></div></div>'
+        ? '<div class="notice notice-pre">' + icon('plane') + '<div><b>Предзаказ из Китая.</b> Стоимость доставки из Китая уже включена в стоимость. <a href="#info">Условия</a></div></div>'
         : p.status === 'out' ? '<div class="notice notice-out">' + icon('clock') + '<div><b>Временно нет в наличии.</b> Менеджер уточнит срок поступления.</div></div>' + (API.enabled ? '<button class="btn btn-ghost btn-sm wait-btn" type="button" id="wait-btn"></button>' : '')
         : '') +
       (p.sizes.length ? '<div class="opt" id="opt-size"><div class="opt-head"><b>Размер' + (p.sizes.length > 1 ? ' <span class="req">*</span>' : '') + '</b><span class="val"><span id="size-val">' + (sel.size ? esc(sel.size) : 'не выбран') + '</span>' + '</span></div><div class="choices">' +
@@ -1003,7 +1002,7 @@
   }
 
   // ------------------------------------------------------------ корзина, анкета, токены, промокод
-  var form = Object.assign({ name: '', phone: '', tg: '', recv: '', recvCity: '', recvAddr: '', ship: 'truck', city: '', preRecv: '', comment: '' }, store.get('form', {}));
+  var form = Object.assign({ name: '', phone: '', tg: '', recv: '', recvCity: '', recvAddr: '', ship: 'truck', city: '', preRecv: '', comment: '', together: '', vip: false }, store.get('form', {}));
   var draft0 = store.get('draft', {}) || {};
   var ack = draft0.ack === 'yes' || draft0.ack === 'no' ? draft0.ack : null, tokUse = Math.max(0, +draft0.tokUse || 0), cartPromo = draft0.promo && draft0.promo.code ? draft0.promo : null; // cartPromo: {code, pct, withTokens, personal}
   draftReady = true;
@@ -1029,8 +1028,57 @@
     if (cartPromo && cartPromo.cat) { var pc = (RULES.promoCats || []).filter(function (c) { return c.key === cartPromo.cat; })[0]; pbase = 0; lines.forEach(function (l) { var p = BY_ID[l.id]; if (pc && pc.cats.indexOf(p.category) >= 0) pbase += p.price * l.qty; }); }
     t.promo = cartPromo ? cartPromo.code : ''; t.promoRub = cartPromo ? Math.round(pbase * cartPromo.pct / 100) : 0; t.promoNoBase = !!(cartPromo && cartPromo.cat && !pbase);
     t.pack = u && u.pack && u.pack.available ? u.pack : null; t.packOk = !!(t.pack && t.pre);
-    t.toPay = Math.max(0, t.total - t.tokRub - t.promoRub);
+    t.vipRub = form.vip ? RULES.vipPrice : 0;
+    t.toPay = Math.max(0, t.total - t.tokRub - t.promoRub) + t.vipRub;
     return t;
+  }
+  var cartStep = 'list';
+  function selLines() { return cartLines().filter(function (l) { return l.sel !== false; }); }
+  function lineTotals(ls) { var t = { n: 0, sum: 0, old: 0 }; ls.forEach(function (l) { var q = BY_ID[l.id]; t.n += l.qty; t.sum += q.price * l.qty; t.old += (q.oldPrice || q.price) * l.qty; }); return t; }
+  function goCheckout() {
+    if (!selLines().length) { toast('Отметьте галочкой, что заказать', null, 'warn'); return; }
+    if (API.enabled && !acct.user) { requireAuth('cart'); return; }
+    cartStep = 'checkout'; renderCart(); window.scrollTo(0, 0);
+  }
+  function renderCartList(v, all, gone) {
+    var allOn = all.every(function (l) { return l.sel !== false; }), st = lineTotals(selLines());
+    var row = function (l, i) {
+      var p = BY_ID[l.id], ph = p.photos.find(function (x) { return x.id === l.photo; }) || p.photos[0], d = discount(p), on = l.sel !== false;
+      return '<div class="cl' + (on ? '' : ' off') + '" data-k="' + i + '">' +
+        '<button type="button" class="cl-chk' + (on ? ' on' : '') + '" data-sel aria-pressed="' + on + '" aria-label="Выбрать товар">' + icon('check') + '</button>' +
+        '<a class="cl-ph" href="#p-' + esc(p.id) + '"><img src="' + thumb(ph.id) + '" alt="" loading="lazy"></a>' +
+        '<div class="cl-b"><div class="cl-pr"><b class="' + (p.oldPrice ? 'sale' : '') + '">' + rub(p.price * l.qty) + '</b>' + (p.oldPrice ? '<s>' + rub(p.oldPrice * l.qty) + '</s>' + (d >= 3 ? '<em>−' + d + '%</em>' : '') : '') + '</div>' +
+        '<a class="cl-t" href="#p-' + esc(p.id) + '">' + esc(p.title) + '</a>' +
+        ((l.size || l.color) ? '<div class="cl-o">' + esc([l.size, l.color ? cap(l.color) : ''].filter(Boolean).join(', ')) + '</div>' : '') +
+        '<div class="cl-m">' + badge(p) + '</div>' +
+        (l.note ? '<div class="cl-o">Пожелания: ' + esc(l.note) + '</div>' : '') +
+        '<div class="cl-a"><div class="qty sm"><button type="button" data-q="-1" aria-label="Меньше"' + (l.qty <= 1 ? ' disabled' : '') + '>' + icon('minus') + '</button><output>' + l.qty + '</output><button type="button" data-q="1" aria-label="Больше"' + (l.qty >= 10 ? ' disabled' : '') + '>' + icon('plus') + '</button></div>' +
+        '<button class="cl-buy" type="button" data-buy>Купить</button><button class="cl-del" type="button" data-del aria-label="Убрать из корзины">' + icon('trash') + '</button></div></div></div>';
+    };
+    v.innerHTML = '<div class="view-head"><div><h1>Корзина</h1><p class="muted">' + all.length + ' ' + plural(all.length, 'товар', 'товара', 'товаров') + '</p></div></div>' +
+      (gone.length ? '<div class="notice notice-info" style="margin-bottom:12px">' + icon('alert') + '<div>Проданные товары убраны из корзины: ' + gone.length + '.</div></div>' : '') +
+      '<div class="cl-top"><button type="button" class="cl-all" id="cl-all" aria-pressed="' + allOn + '"><span class="cl-chk' + (allOn ? ' on' : '') + '">' + icon('check') + '</span>Все</button><span class="cl-cnt">Выбрано: ' + selLines().length + '</span><button type="button" class="cl-clear" id="cl-clear" aria-label="Удалить выбранные" ' + (selLines().length ? '' : 'disabled') + '>' + icon('trash') + '</button></div>' +
+      '<div class="cl-list">' + all.map(row).join('') + '</div>' +
+      (API.enabled && !acct.user && acct.ready ? '<div class="notice notice-info" style="margin-top:12px">' + icon('user') + '<div><b>Заказ оформляется из кабинета.</b> Войдите, чтобы продолжить.</div></div>' : '') +
+      '<div class="cart-bar"><div class="cb-sub">' + (st.old > st.sum ? '<span class="cb-save">Скидка −' + rub(st.old - st.sum) + '</span>' : '<span></span>') + '</div><button class="cb-go" type="button" id="cb-go"' + (st.n ? '' : ' disabled') + '><span>' + (st.n ? 'К оформлению · ' + st.n : 'Выберите товары') + '</span><b>' + (st.n ? rub(st.sum) : '') + '</b></button></div>';
+    var all2 = all;
+    $$('.cl', v).forEach(function (rowEl) {
+      var l = all2[+rowEl.getAttribute('data-k')];
+      $('[data-sel]', rowEl).addEventListener('click', function () { l.sel = l.sel === false; saveCart(); renderCartList(v, cartLines(), []); });
+      $$('[data-q]', rowEl).forEach(function (b) { b.addEventListener('click', function () { l.qty = Math.max(1, Math.min(10, l.qty + +b.getAttribute('data-q'))); saveCart(); renderCartList(v, cartLines(), []); }); });
+      $('[data-buy]', rowEl).addEventListener('click', function () { cartLines().forEach(function (x) { x.sel = (x === l); }); saveCart(); goCheckout(); });
+      $('[data-del]', rowEl).addEventListener('click', function () {
+        var idx = cart.indexOf(l); if (idx < 0) return;
+        cart.splice(idx, 1); saveCart(); renderCart();
+        toast('Товар убран из корзины', { label: 'Вернуть', run: function () { cart.splice(idx, 0, l); saveCart(); if (current === 'cart') renderCart(); } });
+      });
+    });
+    $('#cl-all', v).addEventListener('click', function () { var on = !allOn; cartLines().forEach(function (l) { l.sel = on; }); saveCart(); renderCartList(v, cartLines(), []); });
+    $('#cl-clear', v).addEventListener('click', function () {
+      var n = selLines().length; if (!n) return;
+      confirmBox({ title: 'Удалить выбранные?', text: 'Выбранные товары (' + n + ') будут убраны из корзины.', actions: [{ label: 'Оставить', cls: 'btn-ghost' }, { label: 'Удалить', cls: 'btn-danger', run: function () { cart = cart.filter(function (l) { return l.sel === false || !BY_ID[l.id]; }); saveCart(); renderCart(); } }] });
+    });
+    $('#cb-go', v).addEventListener('click', goCheckout);
   }
   function renderCart() {
     var v = $('#v-cart');
@@ -1043,6 +1091,8 @@
         '<div class="empty"><span class="ico">' + icon('bag') + '</span><h3>Здесь появятся выбранные вещи</h3><p>Откройте каталог, выберите размер и цвет и нажмите «В корзину».</p><div class="acts" style="justify-content:center"><a class="btn" href="#catalog">' + icon('grid') + 'Перейти в каталог</a>' + (favs.length ? '<a class="btn btn-ghost" href="#favorites">' + icon('heart') + 'Избранное</a>' : '') + '</div></div>';
       return;
     }
+    if (cartStep !== 'checkout' || !selLines().length) { cartStep = 'list'; renderCartList(v, cartLines(), gone); return; }
+    lines = selLines();
     var u = acct.user;
     if (u) {
       if (!form.name) form.name = u.name; if (!form.phone) form.phone = u.phone; if (!form.tg) form.tg = u.tg;
@@ -1050,8 +1100,7 @@
     }
     var t = totals(lines), n = 0; saveDraft();
     v.innerHTML =
-      '<div class="view-head"><div><h1>Корзина</h1></div></div>' +
-      (gone.length ? '<div class="notice notice-info" style="margin-bottom:12px">' + icon('alert') + '<div>Проданные товары убраны из корзины: ' + gone.length + '.</div></div>' : '') +
+      '<div class="view-head"><div><button class="back-btn" id="to-list" type="button">' + icon('arrow-right') + 'К корзине</button><h1>Оформление заказа</h1><p class="muted">' + t.cnt + ' ' + plural(t.cnt, 'товар', 'товара', 'товаров') + ' · ' + rub(t.total) + '</p></div></div>' +
       (API.enabled && !u && acct.ready ? '<div class="notice notice-info need-acc" style="margin-bottom:12px">' + icon('user') + '<div><b>Заказ оформляется из кабинета.</b><div class="acts" style="margin-top:10px"><button class="btn btn-sm" type="button" id="need-acc">' + icon('user') + 'Войти или создать кабинет</button></div></div></div>' : '') +
       '<form class="checkout" id="checkout" novalidate><div class="col">' +
       '<div class="card panel"><div class="panel-head"><h2><span class="n">' + (++n) + '</span>Товары · ' + t.cnt + ' шт.</h2><button class="link-btn" type="button" id="cart-clear">Очистить</button></div><div class="lines">' +
@@ -1080,13 +1129,17 @@
         '<div class="f" data-f="recvAddr"' + (form.recv === 'courier' ? '' : ' hidden') + '><label for="f-recv-addr">Адрес или район <span class="opt-l">· по желанию</span></label><input class="input" id="f-recv-addr" autocomplete="street-address" placeholder="Уточним с менеджером" value="' + esc(form.recvAddr) + '"></div></div>' : '') +
 
       (t.pre ? '<div class="card panel"><div class="panel-head"><h2><span class="n">' + (++n) + '</span>Предзаказ из Китая</h2><a class="link-btn" href="#info">Подробнее</a></div>' +
-        '<div class="f" data-f="ship"><span class="lbl">Отправка со склада в Китае</span><div class="notice">' + icon('truck') + '<div><b>Фура</b>, 18–32 дня от склада. Доставка из Китая уже в цене.</div></div></div>' +
+        '<div class="f" data-f="ship"><span class="lbl">Отправка со склада в Китае</span><div class="notice">' + icon('truck') + '<div><b>Фура</b>, 18–32 дня от склада. Стоимость доставки из Китая уже включена в стоимость.</div></div></div>' +
         '<div class="f" data-f="city"><label for="f-city">Город, куда привезти</label><input class="input" id="f-city" autocomplete="address-level2" placeholder="Например, Москва" value="' + esc(form.city) + '"><span class="err-msg" hidden></span></div>' +
         '<div class="f" data-f="preRecv"><span class="lbl">Способ получения</span><div class="radios mini">' + radio('preRecv', 'avito', form.preRecv, 'Авито', '') + radio('preRecv', 'cdek', form.preRecv, 'СДЭК', '') + radio('preRecv', 'meet', form.preRecv, 'Встреча', '') + '</div><span class="err-msg" hidden></span></div>' +
         '<div class="f" data-f="ack"><div class="ack" id="ack"><div class="q"><span class="checkbox" id="ack-box" role="img" aria-label="Не подтверждено">' + icon('check') + '</span><div><b>Я прочитал(а) условия предзаказа</b> <a class="small" href="' + SHOP.preorderUrl + '" target="_blank" rel="noopener">Открыть</a></div></div>' +
         '<div class="ack-opts"><button type="button" class="yes" data-ack="yes" aria-pressed="' + (ack === 'yes') + '">Да, ознакомился(-ась)</button><button type="button" class="no" data-ack="no" aria-pressed="' + (ack === 'no') + '">Нет, ещё не успел(а)</button><button type="button" class="cancel" data-ack="cancel">Отказаться от оформления</button></div>' +
         '<div id="ack-hint"' + (ack === 'no' ? '' : ' hidden') + ' style="font-size:14px">Без подтверждения предзаказ не оформить. <a href="' + SHOP.preorderUrl + '" target="_blank" rel="noopener"><b>Открыть условия</b></a></div></div><span class="err-msg" hidden></span></div></div>' : '') +
 
+      (t.stock && t.pre ? '<div class="card panel"><div class="panel-head"><h2><span class="n">' + (++n) + '</span>Как получить заказ</h2></div><div class="f" data-f="together"><div class="radios">' +
+        radio('together', 'together', form.together, 'Всё вместе', 'Товар из наличия дождётся предзаказа, и вы получите всё сразу') +
+        radio('together', 'separate', form.together, 'Раздельно', 'Сначала получите товары в наличии, предзаказ — когда приедет из Китая') + '</div><span class="err-msg" hidden></span></div></div>' : '') +
+      '<div class="card panel vip-panel"><label class="vip"><span class="vip-t"><b>' + icon('bolt') + 'Приоритетный заказ · ' + rub(RULES.vipPrice) + '</b><small>Менеджер уделит вашему заказу особое внимание и займётся им в первую очередь</small></span><input type="checkbox" id="f-vip"' + (form.vip ? ' checked' : '') + '><span class="sw-tg"></span></label></div>' +
       '<div class="card panel"><div class="panel-head"><h2><span class="n">' + (++n) + '</span>Комментарий</h2></div><div class="f"><label class="sr" for="f-comment">Комментарий к заказу</label><textarea id="f-comment" maxlength="500" placeholder="По желанию">' + esc(form.comment) + '</textarea></div></div>' +
       (API.enabled ? '<div class="card panel" id="tokpanel"><div class="panel-head"><h2><span class="n">' + (++n) + '</span>Токены и промокод</h2>' + (u ? '<span class="tok">' + tk() + num(u.balance) + '</span>' : '') + '</div>' +
         (u ? (t.maxTok > 0 ? '<div class="tokbox"><div class="tokrow"><span>Списать <b id="tok-n">' + num(t.tok) + '</b> <span id="tok-w">' + tokWord(t.tok) + '</span></span><b id="tok-rub">−' + rub(t.tokRub) + '</b></div>' +
@@ -1106,6 +1159,7 @@
       (t.old > t.total ? '<div class="sumrow good"><span>Скидки на товары</span><b>учтены · −' + rub(t.old - t.total) + '</b></div>' : '') +
       '<div class="sumrow" id="sum-tok"' + (t.tok ? '' : ' hidden') + '><span>Токены</span><b>−' + rub(t.tokRub) + '</b></div>' +
       '<div class="sumrow good" id="sum-promo"' + (t.promoRub ? '' : ' hidden') + '><span>Промокод <span id="sum-promo-code">' + esc(t.promo) + '</span></span><b>−' + rub(t.promoRub) + '</b></div>' +
+      '<div class="sumrow" id="sum-vip"' + (t.vipRub ? '' : ' hidden') + '><span>Приоритетный заказ</span><b>+' + rub(t.vipRub) + '</b></div>' +
       '<div class="sumtotal"><span>К оплате</span><b id="sum-pay">' + rub(t.toPay) + '</b></div>' +
       (API.enabled && !u ? '<button class="btn btn-block" type="submit" id="submit-btn">' + icon('user') + '<span>Войти, чтобы оформить</span></button>' : '<button class="btn btn-block" type="submit" id="submit-btn">' + icon('check-circle') + '<span>Оформить заказ</span></button>') +
       '</aside></form>';
@@ -1131,6 +1185,7 @@
       var st = $('#sum-tok'); st.hidden = !tt.tok; $('b', st).textContent = '−' + rub(tt.tokRub);
       var sp = $('#sum-promo'); sp.hidden = !tt.promoRub; $('b', sp).textContent = '−' + rub(tt.promoRub); $('#sum-promo-code').textContent = tt.promo;
       saveDraft();
+      var sv = $('#sum-vip'); if (sv) { sv.hidden = !tt.vipRub; $('b', sv).textContent = '+' + rub(tt.vipRub); }
       var pay = $('#sum-pay'); pay.textContent = rub(tt.toPay); bump(pay);
     }
     if (range) {
@@ -1168,6 +1223,8 @@
     var up = $('#use-pack', v); if (up) up.addEventListener('change', function () { usePack = up.checked; saveDraft(); });
     // анкета
     function bind(id, key) { var el = $('#' + id, v); if (!el) return; el.addEventListener('input', function () { form[key] = el.value; saveForm(); clearF(key); }); }
+    var tl = $('#to-list', v); if (tl) tl.addEventListener('click', function () { cartStep = 'list'; renderCart(); window.scrollTo(0, 0); });
+    var vp = $('#f-vip', v); if (vp) vp.addEventListener('change', function () { form.vip = vp.checked; saveForm(); updSum(); });
     bind('f-name', 'name'); bind('f-phone', 'phone'); bind('f-tg', 'tg'); bind('f-recv-city', 'recvCity'); bind('f-recv-addr', 'recvAddr'); bind('f-city', 'city'); bind('f-comment', 'comment');
     var ph = $('#f-phone', v); if (ph) ph.addEventListener('blur', function () { var f = CORE.fmtPhone(ph.value); if (f && CORE.digits(f).length === 11) { ph.value = f; form.phone = f; saveForm(); } });
     var tg = $('#f-tg', v); if (tg) tg.addEventListener('blur', function () { var c = CORE.cleanTg(tg.value); tg.value = c; form.tg = c; saveForm(); });
@@ -1227,6 +1284,7 @@
       var d = CORE.digits(form.phone); if (d.length < 10 || d.length > 15) e.push(['phone', 'Укажите телефон, например +7 900 000-00-00']);
       var t = CORE.cleanTg(form.tg); if (t && !/^[A-Za-z0-9_]{4,32}$/.test(t)) e.push(['tg', 'Username — латиница, цифры и «_», от 4 символов']);
     }
+    if (hasStock && hasPre && !form.together) e.push(['together', 'Выберите: получить всё вместе или раздельно']);
     if (hasStock) { if (!form.recv) e.push(['recv', 'Выберите способ получения']); else if (form.recv === 'city' && form.recvCity.trim().length < 2) e.push(['recvCity', 'Укажите город (можно Москва)']); }
     if (hasPre) {
       form.ship = 'truck';
@@ -1253,8 +1311,8 @@
       if (order.status && !order.stages) { order.stages = CORE.stagesFor(order.kind); order.active = true; }
       localOrders = [order].concat(localOrders.filter(function (o) { return o.no !== order.no; })).slice(0, 50);
       store.set('orders', localOrders);
-      cart = []; ack = null; tokUse = 0; cartPromo = null; usePack = true; saveCart();
-      form.comment = ''; saveForm();
+      cart = cart.filter(function (l) { return lines.indexOf(l) < 0; }); ack = null; tokUse = 0; cartPromo = null; usePack = true; cartStep = 'list'; saveCart();
+      form.comment = ''; form.vip = false; form.together = ''; saveForm();
       renderCart();
       showReceipt(order, { fresh: true });
       confetti(120);
@@ -1577,10 +1635,14 @@
     $$('[data-th]', md).forEach(function (b) { b.addEventListener('click', function () { setThemeMode(b.getAttribute('data-th')); $$('[data-th]', md).forEach(function (x) { x.setAttribute('aria-pressed', x === b); }); var v = $('#r-theme .val'); if (v) v.textContent = THEME_NAMES[themeMode()]; }); });
   }
   // ------------------------------------------------------------ значок на экране «Домой»
-  var HOME_ICONS = [['dark', 'Тёмная'], ['white', 'Белая'], ['halloween', 'Хэллоуин']];
+  var SEASON_ICONS = [['halloween', 'Хэллоуин', [10, 17], [11, 1]], ['newyear', 'Новый год', [11, 21], [1, 14]], ['valentine', 'День Святого Валентина', [1, 31], [2, 15]]];
+  function seasonOn(s) { var d = new Date(Date.now() + 3 * 3600e3), m = d.getUTCMonth() + 1, k = m * 100 + d.getUTCDate(), a = s[2][0] * 100 + s[2][1], b = s[3][0] * 100 + s[3][1]; return a <= b ? k >= a && k <= b : k >= a || k <= b; }
+  var HOME_BASE = [['dark', 'Тёмная'], ['white', 'Белая']];
+  function homeIcons() { return HOME_BASE.concat(SEASON_ICONS.filter(seasonOn).map(function (s) { return [s[0], s[1]]; })); }
   var installEvt = null;
   window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); installEvt = e; });
-  function homeIcon() { var v = store.get('homeIcon', 'dark'); return HOME_ICONS.some(function (x) { return x[0] === v; }) ? v : 'dark'; }
+  var ICON_BG = { white: '#ffffff', halloween: '#1a0a2e', newyear: '#082252', valentine: '#5a1138' };
+  function homeIcon() { var v = store.get('homeIcon', 'dark'); return homeIcons().some(function (x) { return x[0] === v; }) ? v : 'dark'; }
   function applyHomeIcon(id) {
     id = id || homeIcon();
     var base = location.href.split('#')[0].split('?')[0].replace(/[^\/]*$/, '');
@@ -1594,7 +1656,7 @@
     try {
       var mf = {
         name: 'Onion Shop', short_name: 'Onion Shop', lang: 'ru', start_url: base, scope: base, display: 'standalone',
-        background_color: id === 'white' ? '#ffffff' : id === 'halloween' ? '#1a0a2e' : '#050a1d', theme_color: id === 'white' ? '#ffffff' : id === 'halloween' ? '#1a0a2e' : '#050a1d',
+        background_color: ICON_BG[id] || '#050a1d', theme_color: ICON_BG[id] || '#050a1d',
         icons: [{ src: base + 'assets/icons/' + id + '-192.png', sizes: '192x192', type: 'image/png' }, { src: base + 'assets/icons/' + id + '-512.png', sizes: '512x512', type: 'image/png' },
           { src: base + 'assets/icons/' + id + '-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }]
       };
@@ -1617,7 +1679,7 @@
         : ['В Chrome или Edge нажмите значок установки в адресной строке (справа) или меню <b>⋮ → «Установить Onion Shop»</b>.', 'На телефоне откройте сайт и повторите те же шаги там.'];
     var md = openModal(modalHead('Значок на экране «Домой»') +
       '<p class="small" style="margin:0 0 10px">Сайт откроется как приложение — без адресной строки, одним нажатием. Сначала выберите значок, потом добавьте его на экран.</p>' +
-      '<div class="home-icons" role="group" aria-label="Значок">' + HOME_ICONS.map(function (x) {
+      '<div class="home-icons" role="group" aria-label="Значок">' + homeIcons().map(function (x) {
         return '<button type="button" data-hi="' + x[0] + '" aria-pressed="' + (x[0] === cur) + '"><img src="assets/icons/' + x[0] + '-192.png" width="72" height="72" alt="" loading="lazy"><span>' + x[1] + '</span></button>';
       }).join('') + '</div>' +
       '<div class="notice notice-info" style="margin-top:12px">' + icon('info') + '<div>' + (standalone ? 'Вы открыли сайт с экрана «Домой». ' : '') + 'Телефон запоминает значок в момент добавления и сам его не меняет: чтобы на рабочем столе стал другой, <b>удалите старый значок и добавьте сайт заново</b> — он возьмёт тот, что выбран здесь.</div></div>' +
@@ -1628,7 +1690,7 @@
       b.addEventListener('click', function () {
         var id = b.getAttribute('data-hi'); store.set('homeIcon', id); applyHomeIcon(id);
         $$('[data-hi]', md).forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
-        var val = $('#r-home .val'); if (val) val.textContent = (HOME_ICONS.filter(function (x) { return x[0] === id; })[0] || [])[1];
+        var val = $('#r-home .val'); if (val) val.textContent = (homeIcons().filter(function (x) { return x[0] === id; })[0] || [])[1];
       });
     });
     var ib = $('#hi-install', md);
@@ -1760,7 +1822,7 @@
       (API.enabled ? '<button class="rowl" type="button" id="r-tg"><span class="ic">' + icon('send') + '</span><span class="tx">Уведомления в Telegram</span><span class="val">' + (u.tgOn ? 'подключены' : 'не подключены') + '</span>' + icon('chevron-right') + '</button>' : '') +
       '<button class="rowl" type="button" id="r-email"><span class="ic">' + icon('mail') + '</span><span class="tx">Почта</span><span class="val">' + (u.email ? esc(u.email) : 'не указана') + '</span>' + icon('chevron-right') + '</button>' +
       '<button class="rowl" type="button" id="r-pass"><span class="ic">' + icon('key') + '</span><span class="tx">Сменить пароль</span>' + icon('chevron-right') + '</button>' +
-      '<button class="rowl" type="button" id="r-home"><span class="ic">' + icon('phone') + '</span><span class="tx">Добавить на экран «Домой»</span><span class="val">' + esc((HOME_ICONS.filter(function (x) { return x[0] === homeIcon(); })[0] || [])[1]) + '</span>' + icon('chevron-right') + '</button>' +
+      '<button class="rowl" type="button" id="r-home"><span class="ic">' + icon('phone') + '</span><span class="tx">Добавить на экран «Домой»</span><span class="val">' + esc((homeIcons().filter(function (x) { return x[0] === homeIcon(); })[0] || [])[1]) + '</span>' + icon('chevron-right') + '</button>' +
       '<button class="rowl" type="button" id="r-theme"><span class="ic">' + icon(themeMode() === 'dark' ? 'moon' : 'sun') + '</span><span class="tx">Тема оформления</span><span class="val">' + THEME_NAMES[themeMode()] + '</span>' + icon('chevron-right') + '</button>' +
       '<button class="rowl" type="button" id="r-bday"' + (bd ? ' disabled' : '') + '><span class="ic">' + icon('gift') + '</span><span class="tx">День рождения</span><span class="val">' + (bd ? (+bd[1]) + ' ' + MONTHS[+bd[0] - 1] : 'указать · +' + R.birthday) + '</span>' + (bd ? '' : icon('chevron-right')) + '</button>' +
       '<button class="rowl" type="button" id="r-frame"><span class="ic">' + icon('star') + '</span><span class="tx">Рамка аватара</span><span class="val">' + esc((RULES.frames.filter(function (f) { return f.id === u.frame; })[0] || {}).name || '') + '</span>' + icon('chevron-right') + '</button>' +
@@ -1794,6 +1856,7 @@
     b.innerHTML = tk('lg') + '<span>' + num(u.balance) + '</span>';
     var fb = $('#spin-free'); if (fb) { fb.hidden = !u.freeSpins; fb.innerHTML = icon('gift') + 'Крутить бесплатно · ' + u.freeSpins; }
     var pbtn = $('#spin-paid'); if (pbtn) pbtn.disabled = spinning || u.balance < RULES.spinCost;
+    if (fb) fb.disabled = spinning;
   }
   function renderRoulette() {
     var v = $('#v-roulette');
@@ -1805,13 +1868,12 @@
       (u ? '<span class="roul-bal" id="roul-bal"></span>' : '<a class="btn btn-light" href="#account">' + icon('gift') + 'Войти и получить ' + RULES.reward.register + '</a>') + '</div>' +
       '<div class="reel" id="reel"><div class="reel-pin"></div><div class="reel-strip" id="strip">' + tiles.map(tileHtml).join('') + '</div></div>' +
       '<div class="pad roul-acts">' + (u ? '<button class="btn btn-light" type="button" id="spin-paid">' + icon('sparkles') + 'Крутить за ' + RULES.spinCost + ' ' + tokWord(RULES.spinCost) + '</button><button class="btn btn-glass" type="button" id="spin-free" hidden></button>' : '<button class="btn btn-light" type="button" id="spin-guest">' + icon('sparkles') + 'Крутить</button>') + '</div>' +
-      '<div class="pad" id="spin-hist"></div></div>' +
+      '</div>' +
       '<details class="sec card tile fold"><summary class="tile-h"><h3>Призы и шансы</h3>' + icon('chevron-down') + '</summary><div class="chances" style="margin-top:12px">' + RULES.wheel.map(function (w, i) { return '<div class="c-' + w.id + '">' + pz(w.id) + '<span>' + esc(w.id === 'none' ? 'Пусто' : w.label + ' ' + w.sub) + '</span><b>' + pct(WW[i]) + '</b></div>'; }).join('') + '</div></details>';
     updateRoulBalance();
     var g = $('#spin-guest', v); if (g) g.addEventListener('click', function () { requireAuth('roulette'); });
     var pbtn = $('#spin-paid', v); if (pbtn) pbtn.addEventListener('click', function () { spin(false); });
     var fb = $('#spin-free', v); if (fb) fb.addEventListener('click', function () { spin(true); });
-    renderSpinHistory();
   }
   function renderSpinHistory() {
     var h = $('#spin-hist'); if (!h) return;
@@ -1845,7 +1907,6 @@
         strip.children[target].classList.add('win');
         spinning = false;
         setUser(real); updateRoulBalance();
-        spinHistory.unshift(r.prize); renderSpinHistory();
         showPrize(r.prize);
       }, dur + 150);
     });
@@ -1872,12 +1933,12 @@
     var R = RULES.reward, L = RULES.levels;
     var order = [
       faqItem('Как заказать — по шагам', '<ol class="faq-ol"><li><b>Выберите вещь.</b> Откройте карточку, пролистайте фото, посмотрите замеры и характеристики.</li><li><b>Размер и цвет.</b> Нажмите нужный размер — под ним появятся замеры именно этого размера. Цвет выбирайте по фото: на карточке показаны реальные оттенки.</li><li><b>«В корзину».</b> В корзине можно изменить количество, добавить пожелание к каждой вещи (например, «хочу примерить перед покупкой») или убрать лишнее.</li><li><b>Данные для связи.</b> Имя, телефон и Telegram берутся из вашего профиля — он должен быть заполнен, иначе заказ не уйдёт. Это нужно, чтобы менеджер мог вам написать.</li><li><b>Город и способ получения.</b> Для товаров в наличии — самовывоз, Авито Доставка или курьер. Для предзаказа — Авито, СДЭК или личная встреча.</li><li><b>Токены и промокод.</b> Это последний шаг перед оформлением. Скидка пересчитается сразу, итог виден в корзине.</li><li><b>«Оформить заказ».</b> Заказ получит номер, уйдёт менеджеру, а в «Моих заказах» появится его статус. Дальше менеджер пишет вам в Telegram и присылает реквизиты.</li></ol><p class="small">Важно: пока менеджер не подтвердил заказ и не пришла оплата, вещь за вами не закреплена.</p>'),
-      faqItem('Что такое предзаказ и чем он отличается от «В наличии»', '<p><b>В наличии</b> — вещь уже в Москве. Её можно забрать самому или отправить по России через Авито Доставку, обычно в течение пары дней.</p><p><b>Предзаказ</b> — вещь ещё в Китае. Мы выкупаем её у поставщика только после вашего заказа и оплаты, проверяем и привозим. Так цена ниже, а выбор шире, но ждать дольше.</p><p>Доставка из Китая <b>уже входит в цену</b> предзаказа — отдельно за неё платить не нужно.</p><p><a href="' + SHOP.preorderUrl + '" target="_blank" rel="noopener">Подробные условия предзаказа</a></p>'),
+      faqItem('Что такое предзаказ и чем он отличается от «В наличии»', '<p><b>В наличии</b> — вещь уже в Москве. Её можно забрать самому или отправить по России через Авито Доставку, обычно в течение пары дней.</p><p><b>Предзаказ</b> — вещь ещё в Китае. Мы выкупаем её у поставщика только после вашего заказа и оплаты, проверяем и привозим. Так цена ниже, а выбор шире, но ждать дольше.</p><p>Стоимость доставки из Китая <b>уже включена в стоимость</b> предзаказа — отдельно за неё платить не нужно.</p><p><a href="' + SHOP.preorderUrl + '" target="_blank" rel="noopener">Подробные условия предзаказа</a></p>'),
       faqItem('Этапы предзаказа — что происходит с вашей вещью', '<ol class="faq-ol"><li><b>Оформлен.</b> Заказ создан и отправлен менеджеру. Он связывается с вами, уточняет размер, цвет и детали, присылает реквизиты.</li><li><b>Выкуплен (в течение 12 часов после оплаты).</b> Мы оплачиваем вещь у поставщика в Китае и закрепляем её за вами.</li><li><b>В пути до склада.</b> Поставщик отправляет вещь на склад в Китае — обычно до 7 дней, затем 3–5 дней дорога до склада.</li><li><b>На складе в Китае.</b> Вещь приходит, её проверяют на брак и соответствие описанию. На это уходит 1–2 дня. Вам отправляют фотоотчёт — основной бесплатно.</li><li><b>Едет в Россию.</b> После проверки вещь отправляется из Китая. Фурой это 18–32 дня от склада.</li><li><b>Едет к вам.</b> Вещь в России: её передают в выбранный способ получения — СДЭК, Авито Доставка или личная встреча.</li><li><b>Получен.</b> Вы забрали заказ. Если оставите отзыв, это поможет другим покупателям.</li></ol>'),
       faqItem('Сколько ждать предзаказ', '<p>Складывается из этапов: выкуп до 12 часов, поставщик до 7 дней, дорога до склада 3–5 дней, проверка 1–2 дня и доставка 18–32 дня. В сумме обычно <b>от 3,5 до 6,5 недель</b>.</p><p>Быстрее самолётом — это отдельная услуга, её условия и стоимость согласует менеджер. Прямо на сайте самолётом заказать нельзя.</p><p class="small">Сроки примерные: на них влияют праздники в Китае, загрузка перевозчика и погода. Если что-то задерживается, менеджер напишет сам.</p>'),
       faqItem('Размеры и замеры', '<ul><li>Если у вещи несколько размеров, под выбранным размером показываются его замеры: грудь, длина, плечи, рукав — в сантиметрах.</li><li>Замеры — это ширина самой вещи, не обхват тела. Приложите к себе похожую вещь из шкафа и сравните.</li><li>Если сомневаетесь между двумя размерами — напишите менеджеру, он подскажет по вашим параметрам.</li><li>Разница в замерах до 1–2 см допустима: вещи измеряют вручную.</li></ul>'),
       faqItem('Цвета и фото', '<ul><li>Цвета на карточке показаны реальными оттенками (болотный, кремовый, бирюзовый и т. д.).</li><li>Оттенок на экране может немного отличаться от настоящего из-за яркости и настроек телефона.</li><li>Фотографии берутся из нашего канала. Если нужен дополнительный фотоотчёт перед отправкой, он оплачивается по тарифу логиста (15 ¥ за позицию) — основной бесплатный.</li></ul>'),
-      faqItem('Доставка из Китая', '<ul><li>Фура — основной способ: 18–32 дня от склада в Китае.</li><li>Стоимость доставки из Китая уже в цене товара.</li><li>Самолёт — быстрее, но только через менеджера: он рассчитает и согласует.</li><li>Перед отправкой вещь проверяют на складе и фотографируют.</li></ul>'),
+      faqItem('Доставка из Китая', '<ul><li>Фура — основной способ: 18–32 дня от склада в Китае.</li><li>Стоимость доставки из Китая уже включена в стоимость товара.</li><li>Самолёт — быстрее, но только через менеджера: он рассчитает и согласует.</li><li>Перед отправкой вещь проверяют на складе и фотографируют.</li></ul>'),
       faqItem('Получение по России', '<ul><li><b>СДЭК до пункта выдачи</b> — оплачивается отдельно, по тарифу СДЭК.</li><li><b>Авито Доставка</b> — по Москве и в другой город, с минимальной стоимостью.</li><li><b>Личная встреча</b> — в Москве бесплатно, время согласуйте с менеджером.</li><li>Номер отслеживания менеджер пришлёт в Telegram.</li></ul>'),
       faqItem('Получение товаров в наличии', '<ul><li><b>Авито Доставка</b> — по Москве и в другой город, быстрее всего.</li><li><b>Курьер по Москве</b> — не всегда доступен, согласуется с менеджером.</li><li><b>Самовывоз</b> — ' + esc(SHOP.address) + '. Время согласуйте с менеджером.</li></ul>'),
       faqItem('Оплата', '<ul><li>Перевод: Сбербанк, Т-Банк, Альфа-Банк, СБП.</li><li>Наличными — при встрече в Москве.</li><li>На сайте оплаты нет: менеджер подтвердит заказ и пришлёт реквизиты.</li><li>До 15% заказа можно оплатить токенами, 1 токен = 0,3 ₽.</li><li>Предзаказ начинаем выкупать после оплаты — это ускоряет заказ.</li></ul>'),
@@ -1932,9 +1993,9 @@
     }
     var home = !h || h === 'home';
     floatBack._p = /^p-\d+$/.test(h);
-    floatBack.hidden = home;
-    document.body.classList.toggle('has-back', !home && !floatBack._p);
-    floatBack.classList.toggle('show', !home && (!floatBack._p || window.scrollY > 120));
+    floatBack.hidden = !floatBack._p;
+    document.body.classList.remove('has-back');
+    floatBack.classList.toggle('show', floatBack._p && window.scrollY > 120);
   }
   function route() {
     var h = decodeURIComponent(location.hash.replace(/^#/, '')); routed++;
@@ -1959,7 +2020,7 @@
       renderCatalog(); show('catalog'); if (h === 'preorder') track('pre'); else if (h === 'stock') track('stock');
     }
     else if (/^p-\d+$/.test(h)) { renderProduct(h.slice(2)); show('product'); }
-    else if (h === 'cart') { renderCart(); show('cart'); }
+    else if (h === 'cart') { cartStep = 'list'; renderCart(); show('cart'); }
     else if (h === 'orders') { renderOrders(); show('orders'); }
     else if (h === 'favorites') { renderFavorites(); show('favorites'); }
     else if (h === 'account') { renderAccount(); show('account'); flushTrack(); }
@@ -2196,5 +2257,41 @@
     document.addEventListener('visibilitychange', function () { if (document.hidden) flushTrack(); else silentRefresh(); });
     window.addEventListener('focus', silentRefresh);
   }
+  // ------------------------------------------------------------ заставка и предзагрузка
+  function runSplash() {
+    var sp = document.getElementById('splash'); if (!sp) return;
+    try { sessionStorage.setItem('onion.splash', '1'); } catch (e) { /* */ }
+    var MIN = REDUCED ? 1500 : 5500, MAX = 10000, t0 = Date.now(), done = 0, urls = [], seen = {};
+    var add = function (u) { if (u && !seen[u]) { seen[u] = 1; urls.push(u); } };
+    shopPicks().forEach(function (p) { add(full(p.photos[0].id)); });
+    PRODUCTS.forEach(function (p) { add(thumb(p.photos[0].id)); });
+    PRODUCTS.forEach(function (p) { p.photos.forEach(function (f) { add(thumb(f.id)); }); });
+    PRODUCTS.forEach(function (p) { p.photos.slice(0, 3).forEach(function (f) { add(full(f.id)); }); });
+    ['shoes', 'tees', 'hoodies', 'outerwear', 'shirts', 'pants', 'suits', 'dresses', 'bags', 'headwear', 'accessories', 'jewelry', 'watches', 'perfume', 'underwear', 'stock', 'china'].forEach(function (k) { add('assets/cat/' + k + '.svg'); add('assets/cat/dark/' + k + '.svg'); });
+    var total = urls.length, idx = 0, cap = Date.now() + MAX, finished = false;
+    var bar = document.getElementById('spl-bar'), txt = document.getElementById('spl-txt');
+    function next() {
+      if (idx >= urls.length || Date.now() > cap) return;
+      var u = urls[idx++], im = new Image();
+      var fin = function () { done++; next(); };
+      im.onload = fin; im.onerror = fin; im.src = u;
+    }
+    for (var k = 0; k < 6; k++) next();
+    var profileReady = function () { return !API.enabled || !API.getSession() || acct.ready; };
+    var tm = setInterval(function () {
+      var el = Date.now() - t0, real = total ? done / total : 1;
+      var shown = Math.min(1, Math.min(real, el / MIN));
+      if (bar) bar.style.transform = 'scaleX(' + Math.max(.03, shown).toFixed(3) + ')';
+      if (txt) txt.textContent = shown < .35 ? 'Готовим магазин…' : shown < .75 ? 'Загружаем фотографии…' : shown < 1 ? 'Почти готово…' : 'Добро пожаловать!';
+      var ready = (real >= 1 && profileReady()) || el >= MAX;
+      if (!finished && el >= MIN && ready) {
+        finished = true; clearInterval(tm);
+        if (bar) bar.style.transform = 'scaleX(1)';
+        setTimeout(function () { sp.classList.add('out'); setTimeout(function () { if (sp.parentNode) sp.parentNode.removeChild(sp); }, 800); }, 250);
+      }
+    }, 120);
+  }
+  var initOrig = init;
+  init = function () { initOrig(); try { runSplash(); } catch (e) { var s = document.getElementById('splash'); if (s && s.parentNode) s.parentNode.removeChild(s); } };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 })();
