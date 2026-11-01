@@ -1532,17 +1532,12 @@ html.dr-open{overflow:hidden}
 /* v30: единые плашки статуса и скидки, крупная корзина на карточке */
 .pcard .qcart{width:50px;height:50px;border-radius:15px;top:calc(133.333cqw - 60px);right:8px;box-shadow:0 6px 16px rgba(8,40,90,.32)}
 .pcard .qcart .i{width:27px;height:27px}
-.badge-stock,.badge-pre,.badge-out,.badge-sold{display:inline-flex;align-items:center;gap:6px;height:25px;padding:0 10px 0 8px;border-radius:9px;background:rgba(255,255,255,.94);color:#0b1d3a;font-size:12px;font-weight:700;letter-spacing:0;box-shadow:0 2px 8px rgba(8,30,70,.18);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
-.badge-stock::before,.badge-pre::before,.badge-out::before,.badge-sold::before{content:"";width:8px;height:8px;border-radius:50%;flex:none;background:var(--st-stock)}
-.badge-pre::before{background:var(--st-pre)}
-.badge-out::before{background:#e0a800}
-.badge-sold::before{background:var(--st-sold)}
-.badge-hit{display:inline-flex;align-items:center;height:25px;padding:0 10px;border-radius:9px;background:#0b1d3a;color:#fff;font-size:12px;font-weight:700}
-.pcard .tags .badge{height:25px;font-size:12px;padding:0 10px 0 8px}
-.pcard .tags .badge-hit{padding:0 10px}
-:root[data-theme="dark"] .badge-stock,:root[data-theme="dark"] .badge-pre,:root[data-theme="dark"] .badge-out,:root[data-theme="dark"] .badge-sold{background:rgba(255,255,255,.94);color:#0b1d3a}
-:root[data-theme="dark"] .badge-hit{background:#43c9e3;color:#06223a}
-@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .badge-hit{background:#43c9e3;color:#06223a} }
+.badge-stock,.badge-pre,.badge-out,.badge-sold{display:inline-flex;align-items:center;gap:7px;height:26px;padding:0 11px 0 9px;border-radius:9px;background:rgba(9,22,48,.84);color:#fff;font-size:12.5px;font-weight:700;letter-spacing:.005em;box-shadow:0 2px 8px rgba(0,0,0,.28),inset 0 0 0 1px rgba(255,255,255,.14);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.badge-stock::before,.badge-pre::before,.badge-out::before,.badge-sold::before{content:"";width:9px;height:9px;border-radius:50%;flex:none;background:#22c55e;box-shadow:0 0 0 2px rgba(34,197,94,.28)}
+.badge-pre::before{background:#ff9d1c;box-shadow:0 0 0 2px rgba(255,157,28,.3)}
+.badge-out::before{background:#ffd23f;box-shadow:0 0 0 2px rgba(255,210,63,.3)}
+.badge-sold::before{background:#ff4d5e;box-shadow:0 0 0 2px rgba(255,77,94,.3)}
+.pcard .tags .badge{height:26px;font-size:12.5px;padding:0 11px 0 9px}
 .dsc{display:inline-flex;align-items:center;height:22px;padding:0 7px;border-radius:7px;background:var(--red);color:#fff;font-size:12px;font-weight:800;line-height:1;white-space:nowrap}
 .pcard .prices:has(.dsc) .price,.price-row:has(.dsc) .price,.hs-pr:has(.dsc) i{color:var(--red)}
 .hs-pr:has(.dsc) i{color:#fff}
@@ -1568,3 +1563,11 @@ html.dr-open{overflow:hidden}
 .cl-a .qty.sm{flex:none}
 .cl-buy{flex:1 1 auto;min-width:0;padding:0 10px!important}
 .cl-del{flex:none}
+
+/* v31: рулетка */
+.reel{contain:layout paint}
+.reel-strip{backface-visibility:hidden}
+.reel-tile{transition:none}
+.reel-tile.win{transition:transform .3s}
+
+.cat-h1{background:none;-webkit-background-clip:initial;color:inherit}

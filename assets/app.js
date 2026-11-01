@@ -312,12 +312,12 @@
   function confetti(power) {
     if (REDUCED) return;
     var c = document.createElement('canvas'); c.className = 'confetti';
-    var dpr = Math.min(2, window.devicePixelRatio || 1);
+    var dpr = 1;
     c.width = innerWidth * dpr; c.height = innerHeight * dpr;
     document.body.appendChild(c);
     var ctx = c.getContext('2d'); ctx.scale(dpr, dpr);
     var colors = ['#43c9e3', '#1a86c0', '#8fe6f5', '#2f6fe0', '#0f2747', '#ffffff', '#bfe9ff'];
-    var P = [], n = power || 120;
+    var P = [], n = Math.min(power || 120, 110);
     for (var i = 0; i < n; i++) P.push({ x: innerWidth / 2 + (Math.random() - .5) * 120, y: innerHeight * 0.38, vx: (Math.random() - .5) * 14, vy: -Math.random() * 15 - 4, s: 4 + Math.random() * 6, r: Math.random() * 6.28, vr: (Math.random() - .5) * .3, c: colors[i % colors.length], round: Math.random() < .3 });
     var t0 = performance.now();
     (function frame(t) {
@@ -459,7 +459,7 @@
     var sw = p.colors.length > 1 ? '<div class="sw-row">' + p.colors.slice(0, 5).map(function (c) { return '<i class="sw" style="' + swatch(c) + '" title="' + esc(c) + '"></i>'; }).join('') + (p.colors.length > 5 ? '<small>+' + (p.colors.length - 5) + '</small>' : '') + '</div>' : '';
     return '<article class="pcard" data-pid="' + id + '" style="--i:' + (i || 0) + '">' +
       '<a class="ph" href="#p-' + id + '" tabindex="-1" aria-hidden="true"><img class="a" src="' + thumb(a.id) + '" alt="" loading="lazy" decoding="async">' +
-      '<div class="tags">' + badge(p) + (isPick(p) ? '<span class="badge badge-hit">Хит</span>' : '') + '</div></a>' +
+      '<div class="tags">' + badge(p) + '</div></a>' +
       '<button class="fav" type="button" data-fav="' + id + '" aria-pressed="' + isFav(p.id) + '" aria-label="Избранное: ' + esc(p.title) + '">' + icon('heart') + '</button>' +
       '<a class="body" href="#p-' + id + '"><span class="brand-l">' + esc(p.brand || p.categoryLabel) + '</span><span class="t">' + esc(p.title) + '</span>' + sw +
       '<div class="prices"><span class="price">' + rub(p.price) + '</span>' + (p.oldPrice ? '<span class="old">' + rub(p.oldPrice) + '</span>' + dscChip(p) : '') + '</div></a>' +
@@ -609,9 +609,9 @@
     categories(PRODUCTS).forEach(function (c) { if (c.key !== 'other') tiles += catTile('#catalog', c.label, c.key, c.key); });
     var picks = shopPicks(), newest = PRODUCTS.filter(function (p) { return p.status !== 'sold'; }).slice(0, 5);
     var slides = [];
-    picks.forEach(function (p) { slides.push({ p: p, tag: 'Выбор магазина · хит продаж' }); });
-    hot.slice(0, 3).forEach(function (p) { if (picks.indexOf(p) < 0) slides.push({ p: p, tag: 'Супер эксклюзивное предложение' }); });
-    preL.slice(0, 3).forEach(function (p) { if (picks.indexOf(p) < 0) slides.push({ p: p, tag: 'Находка из Китая' }); });
+    picks.forEach(function (p) { slides.push({ p: p, tag: 'Выбор магазина' }); });
+    hot.slice(0, 3).forEach(function (p) { if (picks.indexOf(p) < 0) slides.push({ p: p, tag: 'Выгодное предложение' }); });
+    preL.slice(0, 3).forEach(function (p) { if (picks.indexOf(p) < 0) slides.push({ p: p, tag: 'Из Китая' }); });
     var fresh = PRODUCTS.slice(0, 12);
     var seenB = {}, brands = [];
     PRODUCTS.forEach(function (p) { var b = (p.brand || '').trim(), k = norm(b); if (b && !seenB[k]) { seenB[k] = 1; brands.push(b); } });
@@ -620,7 +620,7 @@
     v.innerHTML =
       '<div class="cts">' + tiles + '</div>' +
       heroHtml(slides) +
-      '<div class="bns">' + banner('Рекомендации магазина', '', '#catalog', picks.slice(0, 5), 'bn-rec') + banner('Супер эксклюзивные предложения', '', '#stock', hot, 'bn-hot') + banner('Находки из Китая', '', '#preorder', preL, 'bn-cn') + banner('Новинки недели', '', '#catalog', newest, 'bn-new') + '</div>' +
+      '<div class="bns">' + banner('Выбор магазина', '', '#catalog', picks.slice(0, 5), 'bn-rec') + banner('Лучшие предложения', '', '#stock', hot, 'bn-hot') + banner('Новинки из Китая', '', '#preorder', preL, 'bn-cn') + banner('Новинки недели', '', '#catalog', newest, 'bn-new') + '</div>' +
       (favs.length ? '<div class="sec"><div class="sec-head"><h2>Избранное</h2><a class="btn btn-ghost btn-sm" href="#favorites">Все · ' + favs.length + '</a></div><div class="hscroll">' + favs.map(function (id) { return BY_ID[id]; }).filter(Boolean).slice(0, 10).map(card).join('') + '</div></div>' : '') +
       (rec.length ? '<div class="sec"><div class="sec-head"><h2>Вы смотрели</h2></div><div class="hscroll">' + rec.map(card).join('') + '</div></div>' : '') +
       '<div class="sec"><div class="sec-head"><h2>Новинки</h2><a class="btn btn-ghost btn-sm" href="#catalog">Весь каталог</a></div>' + grid(fresh, 'home-grid') + '</div>' +
@@ -721,7 +721,7 @@
     PRODUCTS.forEach(function (p) { if (p.brand) brands[norm(p.brand)] = p.brand; });
     var bkeys = Object.keys(brands).sort(function (a, b) { return a.localeCompare(b, 'ru'); });
     v.innerHTML =
-      '<div class="view-head"><div><span class="eyebrow">Каталог</span><h1 id="cat-title" class="cat-h1">Все товары</h1><p class="muted" id="cat-sub" hidden></p></div></div>' +
+      '<div class="view-head"><div><h1 id="cat-title">Все товары</h1><p class="muted" id="cat-sub" hidden></p></div></div>' +
       '<div class="tabs" role="tablist" aria-label="Наличие" id="cat-tabs"></div>' +
       '<div id="cat-qchip"></div>' +
       '<div class="cats" id="cat-cats" aria-label="Категории"></div>' +
@@ -1418,7 +1418,7 @@
   function renderFavorites() {
     var v = $('#v-favorites'), list = favs.map(function (id) { return BY_ID[id]; }).filter(Boolean);
     v.innerHTML = '<div class="view-head"><div><h1>Избранное</h1><p class="muted">' + (list.length ? list.length + ' ' + plural(list.length, 'товар', 'товара', 'товаров') + ' — сохранено на потом' : 'Сохраняйте понравившееся, чтобы вернуться позже') + '</p></div></div>' +
-      (list.length ? grid(list) : '<div class="empty fav-empty"><span class="ico">' + icon('heart') + '</span><h3>В избранном пока пусто</h3><p>Нажимайте на сердечко у товара, чтобы вернуться к нему позже. Вещи здесь сохранятся, и вы увидите, если цена изменится.</p><a class="btn" href="#catalog">Перейти в каталог</a></div>');
+      (list.length ? grid(list) : '<div class="empty fav-empty"><span class="ico">' + icon('heart') + '</span><h3>Пока пусто</h3><a class="btn" href="#catalog">Перейти в каталог</a></div>');
   }
 
   // ------------------------------------------------------------ коды на почту
@@ -1888,26 +1888,43 @@
     if (!free && u.balance < RULES.spinCost) { toast('Нужно ' + RULES.spinCost + ' токенов. Выполните задания или отметьтесь в кабинете', null, 'warn'); return; }
     spinning = true;
     $$('#spin-paid,#spin-free').forEach(function (b) { b.disabled = true; });
-    API.call('spin', { free: free }).then(function (r) {
-      if (!r.ok) { spinning = false; updateRoulBalance(); $$('#spin-paid,#spin-free').forEach(function (b) { b.disabled = false; }); toast(r.error, null, 'warn'); return; }
-      var shown = Object.assign({}, acct.user, { balance: acct.user.balance - (free ? 0 : RULES.spinCost), freeSpins: acct.user.freeSpins - (free ? 1 : 0) });
-      var real = r.user; acct.user = shown; updateRoulBalance(); updateAcctUI();
-      var strip = $('#strip'), reel = $('#reel');
-      if (!strip) { spinning = false; setUser(real); showPrize(r.prize); return; }
-      var target = 46, tiles = [];
-      for (var i = 0; i < 54; i++) tiles.push(randomTile());
-      tiles[target] = RULES.wheel[r.index];
-      strip.style.transition = 'none'; strip.style.transform = 'translateX(0)';
+    var strip = $('#strip'), reel = $('#reel'), target = 44, gap = 10, tw = 0, startX = 0, finalX0 = 0;
+    // лента начинает крутиться сразу, не дожидаясь ответа сервера; потом плавно тормозит на призе
+    if (strip && reel) {
+      var tiles = [];
+      for (var i = 0; i < 52; i++) tiles.push(randomTile());
+      strip.style.transition = 'none'; strip.style.transform = 'translate3d(0,0,0)';
       strip.innerHTML = tiles.map(tileHtml).join('');
       void strip.offsetWidth;
-      var t0 = strip.children[0], tw = t0.getBoundingClientRect().width, gap = 10;
-      var center = reel.clientWidth / 2, jitter = (Math.random() - 0.5) * tw * 0.6;
-      var x = center - (target * (tw + gap) + tw / 2) + jitter;
-      var dur = REDUCED ? 200 : 5600;
-      strip.style.transition = 'transform ' + dur + 'ms cubic-bezier(.08,.62,.12,1)';
-      strip.style.transform = 'translateX(' + x + 'px)';
+      tw = strip.children[0].getBoundingClientRect().width;
+      finalX0 = reel.clientWidth / 2 - (target * (tw + gap) + tw / 2);
+      if (!REDUCED) {
+        strip.style.transition = 'transform ' + Math.round(Math.abs(finalX0) / 1.1) + 'ms linear';
+        strip.style.transform = 'translate3d(' + finalX0 + 'px,0,0)';
+      }
+    }
+    function fail(msg) {
+      spinning = false;
+      if (strip) { strip.style.transition = 'none'; strip.style.transform = 'translate3d(0,0,0)'; }
+      updateRoulBalance(); $$('#spin-paid,#spin-free').forEach(function (b) { b.disabled = false; }); updateRoulBalance(); toast(msg, null, 'warn');
+    }
+    API.call('spin', { free: free }).then(function (r) {
+      if (!r.ok) { fail(r.error); return; }
+      var shown = Object.assign({}, acct.user, { balance: acct.user.balance - (free ? 0 : RULES.spinCost), freeSpins: acct.user.freeSpins - (free ? 1 : 0) });
+      var real = r.user; acct.user = shown; updateRoulBalance(); updateAcctUI();
+      if (!strip || !reel) { spinning = false; setUser(real); showPrize(r.prize); return; }
+      // приз кладём в плитку, которая ещё далеко справа
+      var tile = strip.children[target]; if (tile) tile.outerHTML = tileHtml(RULES.wheel[r.index]);
+      var cur = 0; try { cur = new DOMMatrix(getComputedStyle(strip).transform).m41 || 0; } catch (e) { cur = 0; }
+      var jitter = (Math.random() - 0.5) * tw * 0.6, x = finalX0 + jitter;
+      if (cur < x + tw) cur = x + tw * 3;   // ответ пришёл слишком поздно — не едем назад
+      strip.style.transition = 'none'; strip.style.transform = 'translate3d(' + Math.min(0, cur) + 'px,0,0)';
+      void strip.offsetWidth;
+      var dur = REDUCED ? 200 : 4200;
+      strip.style.transition = 'transform ' + dur + 'ms cubic-bezier(.12,.7,.15,1)';
+      strip.style.transform = 'translate3d(' + x + 'px,0,0)';
       setTimeout(function () {
-        strip.children[target].classList.add('win');
+        if (strip.children[target]) strip.children[target].classList.add('win');
         spinning = false;
         setUser(real); updateRoulBalance();
         showPrize(r.prize);
@@ -2264,7 +2281,7 @@
   function runSplash() {
     var sp = document.getElementById('splash'); if (!sp) return;
     try { sessionStorage.setItem('onion.splash', '1'); } catch (e) { /* */ }
-    var MIN = REDUCED ? 1500 : 5500, MAX = 10000, t0 = Date.now(), done = 0, urls = [], seen = {};
+    var MIN = REDUCED ? 1500 : 4000, MAX = 10000, t0 = Date.now(), done = 0, urls = [], seen = {};
     var add = function (u) { if (u && !seen[u]) { seen[u] = 1; urls.push(u); } };
     shopPicks().forEach(function (p) { add(full(p.photos[0].id)); });
     PRODUCTS.forEach(function (p) { add(thumb(p.photos[0].id)); });
@@ -2273,7 +2290,6 @@
     ['shoes', 'tees', 'hoodies', 'outerwear', 'shirts', 'pants', 'suits', 'dresses', 'bags', 'headwear', 'accessories', 'jewelry', 'watches', 'perfume', 'underwear', 'stock', 'china'].forEach(function (k) { add('assets/cat/' + k + '.svg'); add('assets/cat/dark/' + k + '.svg'); });
     var total = urls.length, idx = 0, cap = Date.now() + MAX, finished = false;
     var bar = document.getElementById('spl-bar'), txt = document.getElementById('spl-txt'), phb = document.getElementById('spl-ph');
-    if (phb) phb.innerHTML = shopPicks().concat(PRODUCTS).filter(function (p, i, a) { return a.indexOf(p) === i; }).slice(0, 3).map(function (p) { return '<i style="background-image:url(' + thumb(p.photos[0].id) + ')"></i>'; }).join('');
     function next() {
       if (idx >= urls.length || Date.now() > cap) return;
       var u = urls[idx++], im = new Image();
