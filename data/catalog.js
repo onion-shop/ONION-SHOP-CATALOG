@@ -2,12 +2,12 @@
 window.ONION_CATALOG = {
  "channel": "ONION_SHOP_OFFICIAL",
  "source": "t.me",
- "updatedAt": "2026-11-01T23:28:22Z",
+ "updatedAt": "2026-11-02T09:16:28Z",
  "products": [
   {
-   "title": "Джинсы Acne Studio",
+   "title": "Джинсы Acne Studios",
    "subtitle": "",
-   "brand": "Acne Studio",
+   "brand": "Acne Studios",
    "category": "pants",
    "categoryLabel": "Штаны",
    "status": "preorder",
