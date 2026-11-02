@@ -2,7 +2,7 @@
 window.ONION_CATALOG = {
  "channel": "ONION_SHOP_OFFICIAL",
  "source": "t.me",
- "updatedAt": "2026-11-02T09:16:28Z",
+ "updatedAt": "2026-11-02T11:24:17Z",
  "products": [
   {
    "title": "Джинсы Acne Studios",
@@ -1310,7 +1310,7 @@ window.ONION_CATALOG = {
    "brand": "Paul&Shark",
    "category": "tees",
    "categoryLabel": "Футболки и поло",
-   "status": "stock",
+   "status": "out",
    "price": 2000,
    "oldPrice": 2599,
    "sizes": [
