@@ -454,12 +454,38 @@
   function inStockTab(p) { return p.status === 'stock' || p.status === 'out' || p.status === 'sold'; }
   function dscChip(p) { var d = discount(p); return p.oldPrice && d >= 1 ? '<span class="dsc">−' + d + '%</span>' : ''; }
   function discount(p) { return p.oldPrice ? Math.round((1 - p.price / p.oldPrice) * 100) : 0; }
+  // листание фото прямо в карточке (как на WB): до 5 снимков, точки под фото
+  function phTrack(p) {
+    var ph = p.photos.slice(0, 5);
+    return '<div class="ph-t">' + ph.map(function (x, k) { return '<img' + (k ? '' : ' class="a"') + ' src="' + thumb(x.id) + '" alt="" loading="' + (k ? 'lazy' : 'lazy') + '" decoding="async" draggable="false">'; }).join('') + '</div>';
+  }
+  function phDots(p) {
+    var n = Math.min(5, p.photos.length); if (n < 2) return '';
+    var h = ''; for (var k = 0; k < n; k++) h += '<i' + (k ? '' : ' class="on"') + '></i>';
+    return '<div class="ph-d" aria-hidden="true">' + h + '</div>';
+  }
+  (function () {
+    function sync(t) {
+      var ph = t.parentNode, d = ph && ph.querySelector('.ph-d'); if (!d) return;
+      var k = Math.round(t.scrollLeft / Math.max(1, t.clientWidth)), dots = d.children;
+      for (var j = 0; j < dots.length; j++) dots[j].classList.toggle('on', j === k);
+    }
+    document.addEventListener('scroll', function (e) { var t = e.target; if (t && t.classList && t.classList.contains('ph-t')) sync(t); }, true);
+    if (window.matchMedia && matchMedia('(hover:hover) and (pointer:fine)').matches) {
+      document.addEventListener('mousemove', function (e) {
+        var ph = e.target.closest && e.target.closest('.pcard .ph'); if (!ph) return;
+        var t = ph.firstElementChild, n = t.children.length; if (n < 2) return;
+        var r = ph.getBoundingClientRect(), k = Math.min(n - 1, Math.max(0, Math.floor((e.clientX - r.left) / r.width * n)));
+        var x = k * t.clientWidth; if (Math.abs(t.scrollLeft - x) > 2) t.scrollLeft = x;
+      }, { passive: true });
+    }
+  })();
   function card(p, i) {
     var a = p.photos[0], d = discount(p), id = esc(p.id);
     var sw = p.colors.length > 1 ? '<div class="sw-row">' + p.colors.slice(0, 5).map(function (c) { return '<i class="sw" style="' + swatch(c) + '" title="' + esc(c) + '"></i>'; }).join('') + (p.colors.length > 5 ? '<small>+' + (p.colors.length - 5) + '</small>' : '') + '</div>' : '';
     return '<article class="pcard" data-pid="' + id + '" style="--i:' + (i || 0) + '">' +
-      '<a class="ph" href="#p-' + id + '" tabindex="-1" aria-hidden="true"><img class="a" src="' + thumb(a.id) + '" alt="" loading="lazy" decoding="async">' +
-      '<div class="tags">' + badge(p) + '</div></a>' +
+      '<a class="ph" href="#p-' + id + '" tabindex="-1" aria-hidden="true">' + phTrack(p) +
+      '<div class="tags">' + badge(p) + '</div>' + phDots(p) + '</a>' +
       '<button class="fav" type="button" data-fav="' + id + '" aria-pressed="' + isFav(p.id) + '" aria-label="Избранное: ' + esc(p.title) + '">' + icon('heart') + '</button>' +
       '<a class="body" href="#p-' + id + '"><span class="brand-l">' + esc(p.brand || p.categoryLabel) + '</span><span class="t">' + esc(p.title) + '</span>' + sw +
       '<div class="prices"><span class="price">' + rub(p.price) + '</span>' + (p.oldPrice ? '<span class="old">' + rub(p.oldPrice) + '</span>' + dscChip(p) : '') + '</div></a>' +
@@ -595,6 +621,28 @@
       }, 3200 + k * 600));
     });
   }
+  // плашка-уведомление на главной (как на WB). Текст считается сам; data/promo.json позволяет задать свой
+  var PROMO = null;
+  function promoHtml() {
+    var P = PROMO || {};
+    if (P.off) return '';
+    var pre = PRODUCTS.filter(function (p) { return p.status === 'preorder'; });
+    var mx = 0; pre.forEach(function (p) { mx = Math.max(mx, discount(p)); });
+    var title = P.text || (mx >= 5 ? 'Товары из Китая со скидками до ' + Math.floor(mx / 5) * 5 + '%' : pre.length ? 'Новинки из Китая уже в каталоге' : '');
+    if (!title) return '';
+    var until = ''; if (P.until && /^\d{4}-\d{2}-\d{2}/.test(P.until)) {
+      var ms = Date.parse(P.until + 'T23:59:59+03:00'); if (ms < Date.now()) return '';
+      until = ', до ' + P.until.slice(8, 10) + '.' + P.until.slice(5, 7) + '.';
+    }
+    return '<a class="promo-strip" href="' + esc(P.link || '#preorder') + '"><span class="pi">' + icon('megaphone') + '</span><span class="pt"><b>' + esc(title) + esc(until) + '</b><small>' + esc(P.sub || 'Самое время оформить заказ') + '</small></span><span class="pa">' + icon('arrow-right') + '</span></a>';
+  }
+  function loadPromo() {
+    try {
+      fetch('data/promo.json?v=' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
+        if (!j) return; PROMO = j; var el = $('#promo-slot'); if (el) el.innerHTML = promoHtml();
+      }).catch(function () {});
+    } catch (e) {}
+  }
   function renderHome() {
     var cats = categories(PRODUCTS).slice(0, 10);
     var rec = recent.map(function (id) { return BY_ID[id]; }).filter(Boolean);
@@ -619,6 +667,7 @@
     var v = $('#v-home');
     v.innerHTML =
       '<div class="cts">' + tiles + '</div>' +
+      '<div id="promo-slot">' + promoHtml() + '</div>' +
       heroHtml(slides) +
       '<div class="bns">' + banner('Выбор магазина', '', '#catalog', picks.slice(0, 5), 'bn-rec') + banner('Лучшие предложения', '', '#stock', hot, 'bn-hot') + banner('Новинки из Китая', '', '#preorder', preL, 'bn-cn') + banner('Новинки недели', '', '#catalog', newest, 'bn-new') + '</div>' +
       (favs.length ? '<div class="sec"><div class="sec-head"><h2>Избранное</h2><a class="btn btn-ghost btn-sm" href="#favorites">Все · ' + favs.length + '</a></div><div class="hscroll">' + favs.map(function (id) { return BY_ID[id]; }).filter(Boolean).slice(0, 10).map(card).join('') + '</div></div>' : '') +
@@ -626,7 +675,7 @@
       '<div class="sec"><div class="sec-head"><h2>Новинки</h2><a class="btn btn-ghost btn-sm" href="#catalog">Весь каталог</a></div>' + grid(fresh, 'home-grid') + '</div>' +
       '<div class="sec"><a class="faq-link" href="#info">Частые вопросы' + icon('arrow-right') + '</a></div>';
     $$('.ct[data-cat]', v).forEach(function (a) { a.addEventListener('click', function () { filter = newFilter(); filter.cat = a.getAttribute('data-cat'); }); });
-    startBanners(v); startHero(v); reveal(v);
+    startBanners(v); startHero(v); reveal(v); loadPromo();
   }
 
   // быстрое добавление из карточки: размер/цвет — в окне выбора
@@ -1888,47 +1937,58 @@
     if (!free && u.balance < RULES.spinCost) { toast('Нужно ' + RULES.spinCost + ' токенов. Выполните задания или отметьтесь в кабинете', null, 'warn'); return; }
     spinning = true;
     $$('#spin-paid,#spin-free').forEach(function (b) { b.disabled = true; });
-    var strip = $('#strip'), reel = $('#reel'), target = 44, gap = 10, tw = 0, startX = 0, finalX0 = 0;
-    // лента начинает крутиться сразу, не дожидаясь ответа сервера; потом плавно тормозит на призе
+    var strip = $('#strip'), reel = $('#reel'), N = 130, gap = 10, tw = 0, step = 0, V = 1.15, off = 0, raf = 0, alive = true, last = 0;
+    function paint() { strip.style.transform = 'translate3d(' + (-off) + 'px,0,0)'; }
+    // фаза 1: лента сразу едет с постоянной скоростью (кадры считаем сами, без CSS-переходов)
     if (strip && reel) {
       var tiles = [];
-      for (var i = 0; i < 52; i++) tiles.push(randomTile());
+      for (var i = 0; i < N; i++) tiles.push(randomTile());
       strip.style.transition = 'none'; strip.style.transform = 'translate3d(0,0,0)';
       strip.innerHTML = tiles.map(tileHtml).join('');
       void strip.offsetWidth;
-      tw = strip.children[0].getBoundingClientRect().width;
-      finalX0 = reel.clientWidth / 2 - (target * (tw + gap) + tw / 2);
+      tw = strip.children[0].getBoundingClientRect().width; step = tw + gap;
       if (!REDUCED) {
-        strip.style.transition = 'transform ' + Math.round(Math.abs(finalX0) / 1.1) + 'ms linear';
-        strip.style.transform = 'translate3d(' + finalX0 + 'px,0,0)';
+        last = performance.now();
+        (function tick(now) {
+          if (!alive) return;
+          var dt = Math.min(48, now - last); last = now;
+          off += V * dt;
+          if (off > (N - 30) * step) off = (N - 30) * step;   // сервер не отвечает слишком долго — не уезжаем за край
+          paint(); raf = requestAnimationFrame(tick);
+        })(last);
       }
     }
     function fail(msg) {
-      spinning = false;
-      if (strip) { strip.style.transition = 'none'; strip.style.transform = 'translate3d(0,0,0)'; }
+      alive = false; cancelAnimationFrame(raf); spinning = false;
+      if (strip) { strip.style.transform = 'translate3d(0,0,0)'; }
       updateRoulBalance(); $$('#spin-paid,#spin-free').forEach(function (b) { b.disabled = false; }); updateRoulBalance(); toast(msg, null, 'warn');
     }
     API.call('spin', { free: free }).then(function (r) {
       if (!r.ok) { fail(r.error); return; }
       var shown = Object.assign({}, acct.user, { balance: acct.user.balance - (free ? 0 : RULES.spinCost), freeSpins: acct.user.freeSpins - (free ? 1 : 0) });
       var real = r.user; acct.user = shown; updateRoulBalance(); updateAcctUI();
-      if (!strip || !reel) { spinning = false; setUser(real); showPrize(r.prize); return; }
-      // приз кладём в плитку, которая ещё далеко справа
-      var tile = strip.children[target]; if (tile) tile.outerHTML = tileHtml(RULES.wheel[r.index]);
-      var cur = 0; try { cur = new DOMMatrix(getComputedStyle(strip).transform).m41 || 0; } catch (e) { cur = 0; }
-      var jitter = (Math.random() - 0.5) * tw * 0.6, x = finalX0 + jitter;
-      if (cur < x + tw) cur = x + tw * 3;   // ответ пришёл слишком поздно — не едем назад
-      strip.style.transition = 'none'; strip.style.transform = 'translate3d(' + Math.min(0, cur) + 'px,0,0)';
-      void strip.offsetWidth;
-      var dur = REDUCED ? 200 : 4200;
-      strip.style.transition = 'transform ' + dur + 'ms cubic-bezier(.12,.7,.15,1)';
-      strip.style.transform = 'translate3d(' + x + 'px,0,0)';
-      setTimeout(function () {
-        if (strip.children[target]) strip.children[target].classList.add('win');
-        spinning = false;
+      if (!strip || !reel) { alive = false; spinning = false; setUser(real); showPrize(r.prize); return; }
+      // фаза 2: призовая плитка лежит впереди, лента плавно тормозит именно на ней
+      // замедление x(t)=x0+L*(1-(1-t/D)^3): начальная скорость = 3L/D совпадает с текущей V — стыка не видно
+      var half = reel.clientWidth / 2, dist0 = 1500;
+      var k = Math.min(N - 6, Math.max(8, Math.round((off + dist0 + half - tw / 2) / step)));
+      var tile = strip.children[k]; if (tile) tile.outerHTML = tileHtml(RULES.wheel[r.index]);
+      var jitter = (Math.random() - 0.5) * tw * 0.55;
+      var x0 = off, x1 = k * step + tw / 2 - half + jitter, L = Math.max(step * 3, x1 - x0);
+      var D = REDUCED ? 200 : Math.max(2600, Math.min(5200, 3 * L / V));
+      var t0 = performance.now();
+      cancelAnimationFrame(raf); alive = false;
+      function fin() {
+        off = x1; paint();
+        if (strip.children[k]) strip.children[k].classList.add('win');
         setUser(real); updateRoulBalance();
-        showPrize(r.prize);
-      }, dur + 150);
+        setTimeout(function () { spinning = false; showPrize(r.prize); }, 350);
+      }
+      (function ease(now) {
+        var t = Math.min(1, (now - t0) / D), q = 1 - t;
+        off = x0 + L * (1 - q * q * q); paint();
+        if (t < 1) requestAnimationFrame(ease); else fin();
+      })(t0);
     });
   }
   function showPrize(p) {
@@ -2281,7 +2341,7 @@
   function runSplash() {
     var sp = document.getElementById('splash'); if (!sp) return;
     try { sessionStorage.setItem('onion.splash', '1'); } catch (e) { /* */ }
-    var MIN = REDUCED ? 1500 : 4000, MAX = 10000, t0 = Date.now(), done = 0, urls = [], seen = {};
+    var MIN = REDUCED ? 1500 : 3600, MAX = 10000, t0 = Date.now(), done = 0, urls = [], seen = {};
     var add = function (u) { if (u && !seen[u]) { seen[u] = 1; urls.push(u); } };
     shopPicks().forEach(function (p) { add(full(p.photos[0].id)); });
     PRODUCTS.forEach(function (p) { add(thumb(p.photos[0].id)); });

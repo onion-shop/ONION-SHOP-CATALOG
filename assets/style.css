@@ -1571,3 +1571,23 @@ html.dr-open{overflow:hidden}
 .reel-tile.win{transition:transform .3s}
 
 .cat-h1{background:none;-webkit-background-clip:initial;color:inherit}
+
+/* v32: листание фото в карточке */
+.pcard .ph .ph-t{position:absolute;inset:0;display:flex;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;scrollbar-width:none;-ms-overflow-style:none;overscroll-behavior-x:contain}
+.pcard .ph .ph-t::-webkit-scrollbar{display:none}
+.pcard .ph .ph-t img{position:static;flex:0 0 100%;width:100%;height:100%;scroll-snap-align:center;scroll-snap-stop:always;object-fit:cover;transform:none!important;-webkit-user-drag:none}
+.pcard .ph-d{position:absolute;left:0;right:0;bottom:7px;display:flex;justify-content:center;gap:4px;pointer-events:none;z-index:2}
+.pcard .ph-d i{width:5px;height:5px;border-radius:50%;background:rgba(255,255,255,.55);box-shadow:0 0 2px rgba(0,0,0,.35);transition:background .15s,width .15s}
+.pcard .ph-d i.on{background:#fff;width:14px;border-radius:3px}
+.pcard .ph .tags{z-index:2}
+/* v32: плашка-уведомление */
+.promo-strip{display:flex;align-items:center;gap:12px;width:100%;margin:10px 0 4px;padding:12px 14px;border-radius:16px;border:0;text-align:left;cursor:pointer;color:#fff;background:linear-gradient(100deg,#1d5fd8,#2b86f0);box-shadow:0 6px 18px rgba(20,80,190,.25);font:inherit}
+.promo-strip .pi{flex:0 0 auto;width:38px;height:38px;border-radius:12px;display:grid;place-items:center;background:rgba(255,255,255,.18)}
+.promo-strip .pi .i{width:21px;height:21px}
+.promo-strip .pt{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.promo-strip .pt b{font-size:14.5px;line-height:1.25}
+.promo-strip .pt small{font-size:12.5px;opacity:.9;line-height:1.3}
+.promo-strip .pa{flex:0 0 auto;width:26px;height:26px}
+.promo-strip .pa .i{width:24px;height:24px}
+.promo-strip:active{filter:brightness(.95)}
+.promo-strip,.promo-strip:hover{text-decoration:none;color:#fff}.promo-strip .pt b,.promo-strip .pt small{text-decoration:none}
