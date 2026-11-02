@@ -45,6 +45,7 @@ IMG_THUMB = os.path.join(ROOT, "img", "thumb")
 UPLOADS_DIR = os.path.join(ROOT, "data", "uploads")
 CATALOG_JS = os.path.join(DATA_DIR, "catalog.js")
 OVERRIDES_JSON = os.path.join(DATA_DIR, "overrides.json")
+REVIEWS_JSON = os.path.join(DATA_DIR, "reviews.json")
 
 FULL_MAX = 1280  # px по длинной стороне
 THUMB_MAX = 640
@@ -669,6 +670,31 @@ def save_image(raw: bytes, photo_id: int):
     return full.size
 
 
+def _rv(r):
+    """Один отзыв: имя, текст и (необязательно) оценка 1–5. Без оценки звёзды на сайте не показываются."""
+    out = {"name": str(r.get("name", "")).strip()[:60], "text": str(r.get("text", "")).strip()[:600]}
+    st = r.get("stars")
+    if isinstance(st, int) and not isinstance(st, bool) and 1 <= st <= 5:
+        out["stars"] = st
+    return out
+
+
+def add_reviews(products):
+    """Отзывы реальных покупателей из data/reviews.json: {id товара: [{name, text, stars}]}.
+    Отдельный файл: правки из admin.html (overrides.json) его не затирают, отзывы складываются."""
+    try:
+        rv = json.load(open(REVIEWS_JSON, encoding="utf-8"))
+    except Exception:  # noqa: BLE001
+        return products
+    for p in products:
+        extra = [_rv(r) for r in rv.get(p["id"], []) if isinstance(r, dict) and str(r.get("text", "")).strip()]
+        if not extra:
+            continue
+        seen = {(r["name"], r["text"]) for r in extra}
+        p["reviews"] = (extra + [r for r in p.get("reviews", []) if (r.get("name", ""), r.get("text", "")) not in seen])[:12]
+    return products
+
+
 def apply_overrides(products):
     """Ручные правки из data/overrides.json (их пишет редактор admin.html): {id: {price, title, hidden, ...}}.
     Правка сильнее текста поста, пока она есть в файле. Удалите её в редакторе — вернётся то, что в канале."""
@@ -698,7 +724,7 @@ def apply_overrides(products):
             if isinstance(o.get(k), list):
                 p[k] = [str(x).strip() for x in o[k] if str(x).strip()]
         if isinstance(o.get("reviews"), list):
-            p["reviews"] = [{"name": str(r.get("name", "")).strip()[:60], "text": str(r.get("text", "")).strip()[:600]} for r in o["reviews"] if isinstance(r, dict) and str(r.get("text", "")).strip()][:12]
+            p["reviews"] = [_rv(r) for r in o["reviews"] if isinstance(r, dict) and str(r.get("text", "")).strip()][:12]
         if o.get("rec"):
             p["rec"] = True
         if isinstance(o.get("extra"), list):
@@ -741,7 +767,7 @@ def main():
     products = build_products(posts, args.channel)
     old = read_existing()
     old_meta = {p["id"]: p for p in (old or {}).get("products", [])}
-    active = apply_overrides([p for p in products if not p["sold"]])
+    active = add_reviews(apply_overrides([p for p in products if not p["sold"]]))
 
     # защита: если страница канала изменила формат и товаров не нашлось — каталог не трогаем
     if old and len(old.get("products", [])) >= 3 and len(active) == 0:
