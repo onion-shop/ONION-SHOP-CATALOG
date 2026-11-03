@@ -16,5 +16,5 @@
 <path d="M35 35 L37 17 L45 26 L49 11 L56 24 L60 7 L64 24 L71 11 L75 26 L83 17 L85 35 Z" fill="url(#m)" stroke="#33446b" stroke-width="1.1" stroke-linejoin="round"/>
 <rect x="35" y="28" width="50" height="7.5" rx="2" fill="url(#m2)" stroke="#33446b" stroke-width="1"/>
 <circle cx="38" cy="17" r="3" fill="url(#m)" stroke="#33446b" stroke-width=".8"/><circle cx="49" cy="11" r="3" fill="url(#m)" stroke="#33446b" stroke-width=".8"/><circle cx="60" cy="7" r="3" fill="url(#m)" stroke="#33446b" stroke-width=".8"/><circle cx="71" cy="11" r="3" fill="url(#m)" stroke="#33446b" stroke-width=".8"/><circle cx="82" cy="17" r="3" fill="url(#m)" stroke="#33446b" stroke-width=".8"/><circle cx="48.0" cy="31.5" r="2.6" fill="url(#gem)" stroke="#33446b" stroke-width=".8"/><circle cx="56.0" cy="31.5" r="2.6" fill="url(#gem)" stroke="#33446b" stroke-width=".8"/><circle cx="64.0" cy="31.5" r="2.6" fill="url(#gem)" stroke="#33446b" stroke-width=".8"/><circle cx="72.0" cy="31.5" r="2.6" fill="url(#gem)" stroke="#33446b" stroke-width=".8"/>
-</g><path d="M97 40.4 Q97.98 45.02 102.6 46 Q97.98 46.98 97 51.6 Q96.02 46.98 91.4 46 Q96.02 45.02 97 40.4 Z" fill="#fff" opacity=".95"/>
+</g>
 </svg>

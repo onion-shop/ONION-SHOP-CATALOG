@@ -94,15 +94,18 @@
     get: function (k, d) { try { var v = localStorage.getItem('onion.shop.' + k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
     set: function (k, v) { try { localStorage.setItem('onion.shop.' + k, JSON.stringify(v)); } catch (e) { /* нет хранилища */ } }
   };
-  var SP_POS = [[0, -.62, 11, 0, 2.6], [.55, -.42, 8, .9, 3.1], [.7, .05, 12, 1.7, 2.8], [.5, .5, 8, .4, 3.4], [.05, .68, 11, 2.1, 2.5], [-.52, .5, 8, 1.2, 3.2], [-.7, .02, 12, .6, 2.9], [-.55, -.45, 8, 1.9, 3.3], [.3, -.72, 6, 1.4, 2.4], [-.28, .74, 6, 2.4, 2.7]];
+  var SP_POS = [[.66, -.5, 11, 0, 5.2], [-.7, .18, 9, 2.4, 5.8], [.5, .62, 8, 4.1, 5.5], [-.45, -.6, 8, 1.2, 6.2]];
   function emblem(key, size, n) {
-    var k = n || SP_POS.length, h = '<span class="emb lv-' + esc(key) + '" style="width:' + size + 'px;height:' + size + 'px"><span class="sp-ring" aria-hidden="true">';
+    var k = n || 3, h = '<span class="emb lv-' + esc(key) + '" style="width:' + size + 'px;height:' + size + 'px"><span class="sp-ring" aria-hidden="true">';
     for (var i = 0; i < k; i++) { var p = SP_POS[i]; h += '<b style="--x:' + Math.round(p[0] * size) + 'px;--y:' + Math.round(p[1] * size) + 'px;--s:' + Math.max(5, Math.round(p[2] * size / 56)) + 'px;--dl:' + p[3] + 's;--d:' + p[4] + 's' + (i % 3 === 1 ? ';--c:var(--lc)' : '') + '"></b>'; }
     return h + '</span>' + lvlImg(key, size) + '</span>';
   }
-  function perkIcon(t) { t = t.toLowerCase(); return /рамк/.test(t) ? 'star' : /промокод|скидк|%/.test(t) ? 'percent' : /прокрут|рулет/.test(t) ? 'sparkles' : /задани/.test(t) ? 'target' : /токен/.test(t) ? 'wallet' : /менеджер|приоритет|поддержк/.test(t) ? 'chat' : /подар/.test(t) ? 'gift' : 'check-circle'; }
-  function perkTiles(list) { return '<div class="perk-grid">' + list.map(function (x) { return '<div class="perk-t"><span class="perk-i">' + icon(perkIcon(x[0] + ' ' + (x[1] || ''))) + '</span><span><b>' + esc(x[0]) + '</b>' + (x[1] ? '<small>' + esc(x[1]) + '</small>' : '') + '</span></div>'; }).join('') + '</div>'; }
-  function lvlImg(key, size, cls) { return '<img class="lvl-img' + (cls ? ' ' + cls : '') + '" src="assets/lvl/' + esc(key) + '.svg?v=3" width="' + size + '" height="' + size + '" alt="" decoding="async">'; }
+  function perkIcon(t) {
+    t = t.toLowerCase();
+    return /упаковк/.test(t) ? 'box' : /рамк/.test(t) ? 'frame' : /промокод/.test(t) ? 'percent' : /серию|серия/.test(t) ? 'flame' : /рулет|прокрут/.test(t) ? 'wheel' : /внимани|приоритет/.test(t) ? 'bolt' : /задани/.test(t) ? 'list' : /токен/.test(t) ? 'token' : 'check-circle';
+  }
+  function perkTiles(list) { return '<div class="perk-grid">' + list.map(function (x) { return '<div class="perk-t"><span class="perk-i">' + icon(perkIcon(x[0])) + '</span><span><b>' + esc(x[0]) + '</b>' + (x[1] ? '<small>' + esc(x[1]) + '</small>' : '') + '</span></div>'; }).join('') + '</div>'; }
+  function lvlImg(key, size, cls) { return '<img class="lvl-img' + (cls ? ' ' + cls : '') + '" src="assets/lvl/' + esc(key) + '.svg?v=4" width="' + size + '" height="' + size + '" alt="" decoding="async">'; }
   function lvlByKey(k) { return RULES.levels.filter(function (l) { return l.key === k; })[0] || RULES.levels[0]; }
   function pctTxt(p) { return String(p).replace('.', ','); }
   function perkItems(list) { return list.map(function (x) { return '<li>' + icon('check') + '<span><b>' + esc(x[0]) + '</b>' + (x[1] ? '<small>' + esc(x[1]) + '</small>' : '') + '</span></li>'; }).join(''); }
@@ -1697,7 +1700,7 @@
   var SEASON_ICONS = [['halloween', 'Хэллоуин', [10, 17], [11, 1]], ['newyear', 'Новый год', [11, 21], [1, 14]], ['valentine', 'День Святого Валентина', [1, 31], [2, 15]]];
   function seasonOn(s) { var d = new Date(Date.now() + 3 * 3600e3), m = d.getUTCMonth() + 1, k = m * 100 + d.getUTCDate(), a = s[2][0] * 100 + s[2][1], b = s[3][0] * 100 + s[3][1]; return a <= b ? k >= a && k <= b : k >= a || k <= b; }
   var HOME_BASE = [['dark', 'Тёмная'], ['white', 'Белая']];
-  function homeIcons() { return HOME_BASE.concat(SEASON_ICONS.filter(seasonOn).map(function (s) { return [s[0], s[1]]; })); }
+  function homeIcons() { return HOME_BASE.concat(SEASON_ICONS.map(function (s) { return [s[0], s[1]]; })); }
   var installEvt = null;
   window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); installEvt = e; });
   var ICON_BG = { white: '#ffffff', halloween: '#1a0a2e', newyear: '#082252', valentine: '#5a1138' };
@@ -1739,7 +1742,7 @@
     var md = openModal(modalHead('Значок на экране «Домой»') +
       '<p class="small" style="margin:0 0 10px">Сайт откроется как приложение — без адресной строки, одним нажатием. Сначала выберите значок, потом добавьте его на экран.</p>' +
       '<div class="home-icons" role="group" aria-label="Значок">' + homeIcons().map(function (x) {
-        return '<button type="button" data-hi="' + x[0] + '" aria-pressed="' + (x[0] === cur) + '"><img src="assets/icons/' + x[0] + '-192.png" width="72" height="72" alt="" loading="lazy"><span>' + x[1] + '</span></button>';
+        return '<button type="button" data-hi="' + x[0] + '" aria-pressed="' + (x[0] === cur) + '"><span class="hi-img"><img src="assets/icons/' + x[0] + '-192.png" width="64" height="64" alt="" loading="lazy"><i>' + icon('check') + '</i></span><span>' + x[1] + '</span></button>';
       }).join('') + '</div>' +
       '<div class="notice notice-info" style="margin-top:12px">' + icon('info') + '<div>' + (standalone ? 'Вы открыли сайт с экрана «Домой». ' : '') + 'Телефон запоминает значок в момент добавления и сам его не меняет: чтобы на рабочем столе стал другой, <b>удалите старый значок и добавьте сайт заново</b> — он возьмёт тот, что выбран здесь.</div></div>' +
       '<ol class="home-steps">' + steps.map(function (t) { return '<li>' + t + '</li>'; }).join('') + '</ol>' +
@@ -1771,21 +1774,31 @@
     $('#m-save', md).addEventListener('click', function () { var val = $('#m-bday', md).value; if (!val) { toast('Выберите дату', null, 'warn'); return; } API.call('profile', { birthday: val.slice(5) }).then(function (r) { if (r.ok) { closeModal(); setUser(r.user); toast('Дата сохранена'); } else toast(r.error, null, 'warn'); }); });
   }
   function framesModal() {
-    var u = acct.user, li = u.level.index;
+    var u = acct.user, li = u.level.index, prev = u.frame;
     function lockText(f) {
-      if (f.src === 'level') return 'Уровень «' + RULES.levels[f.lvl].name + '» и выше';
-      if (f.rare) return 'Только в рулетке';
-      return 'В рулетке или на «Алмазе»';
+      if (f.src === 'level') return 'Откроется на уровне «' + RULES.levels[f.lvl].name + '» и выше';
+      if (f.rare) return 'Редкая: выпадает только в рулетке';
+      return 'Выпадает в рулетке или открыт на «Алмазе»';
     }
+    function own(f) { return u.frames.indexOf(f.id) >= 0; }
+    function fname(id) { return (RULES.frames.filter(function (x) { return x.id === id; })[0] || {}).name || ''; }
     var anims = RULES.frameAnims || [];
-    var md = openModal(modalHead('Рамка аватара') + '<p class="muted">Рамки выпадают в рулетке, а «Серебро», «Золото» и «Алмаз» даёт уровень — пока он у вас есть.</p><div class="frames">' + RULES.frames.map(function (f) {
-      var own = u.frames.indexOf(f.id) >= 0;
-      return '<button type="button" data-frame="' + f.id + '" aria-pressed="' + (u.frame === f.id) + '"' + (own ? '' : ' disabled') + '>' + ava({ name: u.name, avatar: u.avatar, frame: f.id, frameAnim: u.frameAnim }) + '<span>' + esc(f.name) + (own ? '' : ' ' + icon('lock')) + '</span>' + (own ? '' : '<small>' + esc(lockText(f)) + '</small>') + '</button>';
+    var sorted = RULES.frames.filter(own).concat(RULES.frames.filter(function (f) { return !own(f); }));
+    var md = openModal(modalHead('Рамка аватара') + '<div class="fr-prev" id="fr-prev"></div><div class="fr-grid">' + sorted.map(function (f) {
+      return '<button type="button" class="fr-it' + (own(f) ? '' : ' lk') + '" data-frame="' + f.id + '" aria-pressed="false">' + ava({ name: u.name, avatar: u.avatar, frame: f.id, frameAnim: u.frameAnim }, 'md') + (own(f) ? '' : '<i class="fr-lock">' + icon('lock') + '</i>') + '<span>' + esc(f.name) + '</span></button>';
     }).join('') + '</div>' +
       (li >= 4 ? '<div class="f" style="margin-top:14px"><span class="lbl">Анимация рамки «Алмаз»</span><div class="choices" id="anims">' + anims.map(function (a) { return '<button class="choice" type="button" data-anim="' + a[0] + '" aria-pressed="' + ((u.frameAnim || 'shine') === a[0]) + '">' + esc(a[1]) + '</button>'; }).join('') + '</div></div>'
         : '<p class="small" style="margin-top:12px">На уровне «Алмаз» у рамки можно выбрать анимацию.</p>'), { cls: 'sm' });
-    $$('[data-frame]', md).forEach(function (b) { b.addEventListener('click', function () { API.call('profile', { frame: b.getAttribute('data-frame') }).then(function (r) { if (r.ok) { closeModal(); setUser(r.user); toast('Рамка надета'); } else toast(r.error, null, 'warn'); }); }); });
+    function show(id) {
+      prev = id; var f = RULES.frames.filter(function (x) { return x.id === id; })[0] || RULES.frames[0], ok = own(f), wearing = u.frame === f.id;
+      $$('[data-frame]', md).forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-frame') === id)); });
+      $('#fr-prev', md).innerHTML = ava({ name: u.name, avatar: u.avatar, frame: f.id, frameAnim: u.frameAnim }, 'lg') + '<div class="fr-t"><b>' + esc(f.name) + '</b><span class="small">' + (ok ? (wearing ? 'Сейчас надета' : 'Открыта у вас') : esc(lockText(f))) + '</span>' +
+        '<button class="btn btn-sm" type="button" id="fr-wear"' + (ok && !wearing ? '' : ' disabled') + '>' + (wearing ? 'Надета' : ok ? 'Надеть' : 'Пока закрыта') + '</button></div>';
+      var w = $('#fr-wear', md); if (w) w.addEventListener('click', function () { API.call('profile', { frame: f.id }).then(function (r) { if (r.ok) { closeModal(); setUser(r.user); toast('Рамка надета'); } else toast(r.error, null, 'warn'); }); });
+    }
+    $$('[data-frame]', md).forEach(function (b) { b.addEventListener('click', function () { show(b.getAttribute('data-frame')); }); });
     $$('[data-anim]', md).forEach(function (b) { b.addEventListener('click', function () { API.call('profile', { frameAnim: b.getAttribute('data-anim'), frame: 'lvl-diamond' }).then(function (r) { if (r.ok) { closeModal(); setUser(r.user); toast('Анимация выбрана'); } else toast(r.error, null, 'warn'); }); }); });
+    show(prev);
   }
   // все уровни программы лояльности
   function levelsModal() {
@@ -1796,8 +1809,7 @@
     function show(i) {
       sel = i; var l = RULES.levels[i];
       $$('.lm-tab', md).forEach(function (b) { var on = +b.getAttribute('data-i') === i; b.classList.toggle('on', on); b.setAttribute('aria-selected', on ? 'true' : 'false'); });
-      $('#lm-panel', md).innerHTML = '<div class="lh lv-' + l.key + '">' + emblem(l.key, 96) + '<b class="loyal-name">' + esc(l.name) + '</b>' + (i === cur ? '<span class="chip">ваш уровень</span>' : '') +
-        '<span class="small">' + (l.min ? 'от ' + num(l.min) + ' XP за месяц' : 'сразу после регистрации') + '</span></div>' + perkTiles(l.perks);
+      $('#lm-panel', md).innerHTML = '<div class="lh lh-row lv-' + l.key + '">' + emblem(l.key, 60, 3) + '<div class="lh-t"><b class="loyal-name">' + esc(l.name) + (i === cur ? ' <span class="chip">ваш уровень</span>' : '') + '</b><span class="small">' + (l.min ? 'от ' + num(l.min) + ' XP за месяц' : 'сразу после регистрации') + '</span></div></div>' + perkTiles(l.perks);
     }
     $$('.lm-tab', md).forEach(function (b) { b.addEventListener('click', function () { show(+b.getAttribute('data-i')); }); });
     show(sel);
@@ -1852,13 +1864,13 @@
       (u.email ? '' : '<div class="notice notice-warn" style="margin-bottom:12px">' + icon('mail') + '<div><b>Добавьте почту.</b> Без неё не получится восстановить пароль. <button class="link-btn" type="button" id="add-email">Добавить</button></div></div>') +
       '<div class="dash">' +
       '<div class="profile c12"><div class="who"><div class="ava-wrap">' + ava(u, 'lg') + '<button class="ava-cam" type="button" id="ava-cam" aria-label="Изменить фото профиля">' + icon('camera') + '</button></div>' +
-      '<div style="min-width:0"><span class="lvl-pill lv-' + L.key + '">' + emblem(L.key, 26, 5) + esc(L.name) + '</span><h1 style="margin-top:8px">' + esc(u.name) + '</h1>' +
+      '<div style="min-width:0"><span class="lvl-pill lv-' + L.key + '">' + emblem(L.key, 26, 2) + esc(L.name) + '</span><h1 style="margin-top:8px">' + esc(u.name) + '</h1>' +
       '<div class="meta"><span>@' + esc(u.login) + '</span>' + (u.email ? '<span>' + esc(u.email) + '</span>' : '') + '<button class="idb" type="button" data-copy="' + esc(u.code) + '">ID ' + esc(u.code) + icon('copy') + '</button><span>с нами с ' + esc(since) + '</span></div></div></div>' +
       '<div class="ptiles"><div class="ptile"><small>Токены</small><b>' + tk() + num(u.balance) + '</b></div><div class="ptile"><small>Это скидка до</small><b>' + rub(u.balanceRub) + '</b></div><div class="ptile"><small>Серия входов</small><b>' + u.streak + ' ' + plural(u.streak, 'день', 'дня', 'дней') + '</b></div><div class="ptile"><small>Активные заказы</small><b>' + active.length + '</b></div></div>' +
       '<div class="acts"><a class="btn btn-light" href="#roulette">' + icon('sparkles') + 'Рулетка' + (u.freeSpins ? ' · ' + u.freeSpins + ' ' + plural(u.freeSpins, 'бесплатный', 'бесплатных', 'бесплатных') : '') + '</a><a class="btn btn-glass" href="#cart">' + icon('bag') + 'Потратить токены</a></div></div>' +
 
       '<div class="card tile c6 loyal lv-' + L.key + '"><div class="tile-h"><h3>Программа лояльности</h3><button class="link-btn" type="button" id="all-levels">Все уровни</button></div>' +
-      '<div class="lh lv-' + L.key + '">' + emblem(L.key, 104) + '<span class="small">Ваш уровень' + (L.fixed ? ' · закреплён менеджером' : '') + '</span><b class="loyal-name">' + esc(L.name) + '</b><span class="xp-num">' + num(u.xp) + ' XP <span class="small">за месяц</span></span></div>' +
+      '<div class="lh lh-row lv-' + L.key + '">' + emblem(L.key, 68, 3) + '<div class="lh-t"><span class="small">Ваш уровень' + (L.fixed ? ' · закреплён менеджером' : '') + '</span><b class="loyal-name">' + esc(L.name) + '</b><span class="xp-num">' + num(u.xp) + ' XP <span class="small">за месяц</span></span></div></div>' +
       (L.next ? '<div class="xp-bar"><div class="bar"><i data-w="' + pctL + '%"></i></div><div class="xp-meta"><span>' + num(u.xp) + ' / ' + num(L.next.min) + ' XP</span><span>до ' + lvlImg(L.next.key, 18) + '«' + esc(L.next.name) + '» ещё <b>' + num(L.next.left) + ' XP</b></span></div></div>' : '') +
       '<div class="lvl-steps">' + RULES.levels.map(function (l, j) { return '<span class="' + (j <= L.index ? 'on' : '') + (j === L.index ? ' cur' : '') + '">' + lvlImg(l.key, 30) + esc(l.name) + '</span>'; }).join('') + '</div>' +
       '<h4 class="perks-h">Ваши привилегии</h4>' + perkTiles(lvlByKey(L.key).perks) + '</div>' +
