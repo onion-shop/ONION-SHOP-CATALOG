@@ -450,7 +450,7 @@
   }
 
   // ------------------------------------------------------------ карточка товара
-  function badge(p) { return p.status === 'preorder' ? '<span class="badge badge-pre">Предзаказ</span>' : p.status === 'sold' ? '<span class="badge badge-sold">Продано</span>' : p.status === 'out' ? '<span class="badge badge-out">Временно нет в наличии</span>' : '<span class="badge badge-stock">В наличии</span>'; }
+  function badge(p) { return p.status === 'preorder' ? '<span class="badge badge-pre">Предзаказ</span>' : p.status === 'sold' ? '<span class="badge badge-sold">Продано</span>' : p.status === 'out' ? '<span class="badge badge-out">Нет в наличии</span>' : '<span class="badge badge-stock">В наличии</span>'; }
   function inStockTab(p) { return p.status === 'stock' || p.status === 'out' || p.status === 'sold'; }
   function dscChip(p) { var d = discount(p); return p.oldPrice && d >= 1 ? '<span class="dsc">−' + d + '%</span>' : ''; }
   function discount(p) { return p.oldPrice ? Math.round((1 - p.price / p.oldPrice) * 100) : 0; }
@@ -578,7 +578,7 @@
   function etaBlock(p) {
     if (p.status === 'sold') return '';
     if (p.status === 'preorder') return '<div class="eta">' + icon('truck') + '<div><b>Ориентировочно получите: ' + dateRange(24, 47) + '</b><small>Если оплатить сегодня. Выкуп до 12 часов, проверка на складе и фотоотчёт, стоимость доставки из Китая уже включена в стоимость.</small></div></div>';
-    if (p.status === 'out') return '<div class="eta">' + icon('clock') + '<div><b>Срок поступления уточнит менеджер</b><small>Нажмите «Сообщить, когда появится» или напишите ему.</small></div></div>';
+    if (p.status === 'out') return '<div class="oos"><div class="oos-h"><span class="oos-ic">' + icon('hourglass') + '</span><div><b>Сейчас нет в наличии</b><small>Менеджер уточнит срок поступления' + (API.enabled ? ' и напишет вам, как только товар появится.' : '. Напишите ему — подскажет, когда ждать.') + '</small></div></div>' + (API.enabled ? '<button class="oos-btn" type="button" id="wait-btn"></button>' : '') + '</div>';
     return '<div class="eta">' + icon('truck') + '<div><b>Уже в Москве</b><small>Самовывоз, курьер или Авито Доставка — способ выберете при оформлении.</small></div></div>';
   }
   function howStrip() {
@@ -916,7 +916,7 @@
       ((p.facts && p.facts.length) ? '<ul class="facts" aria-label="Главное о товаре">' + p.facts.slice(0, 6).map(function (f) { return '<li><small>' + esc(f[0]) + '</small><b>' + esc(f[1]) + '</b></li>'; }).join('') + '</ul>' : '') +
       (p.status === 'sold' ? '<div class="notice notice-sold">' + icon('alert') + '<div><b>Продано.</b> Этот товар уже купили. Похожие — ниже, а новинки в канале.</div></div>' : p.status === 'preorder'
         ? '<div class="notice notice-pre">' + icon('plane') + '<div><b>Предзаказ из Китая.</b> Стоимость доставки из Китая уже включена в стоимость. <a href="#info">Условия</a></div></div>'
-        : p.status === 'out' ? '<div class="notice notice-out">' + icon('clock') + '<div><b>Временно нет в наличии.</b> Менеджер уточнит срок поступления.</div></div>' + (API.enabled ? '<button class="btn btn-ghost btn-sm wait-btn" type="button" id="wait-btn"></button>' : '')
+        : p.status === 'out' ? ''
         : '') +
       (p.sizes.length ? '<div class="opt" id="opt-size"><div class="opt-head"><b>Размер' + (p.sizes.length > 1 ? ' <span class="req">*</span>' : '') + '</b><span class="val"><span id="size-val">' + (sel.size ? esc(sel.size) : 'не выбран') + '</span>' + '</span></div><div class="choices">' +
         p.sizes.map(function (s) { return '<button class="choice" type="button" data-size="' + esc(s) + '" aria-pressed="' + (sel.size === s) + '">' + esc(s) + '</button>'; }).join('') + '</div>' + (tbl ? '<div class="size-meas" id="size-meas" hidden></div>' : '') + '<span class="msg" hidden>Выберите размер</span></div>' : '') +
@@ -928,8 +928,7 @@
       '<div class="acc">' +
       ((specs.length || p.notes.length) ? '<details><summary>Характеристики' + icon('chevron-down') + '</summary><div class="acc-body">' + (specs.length ? '<dl class="specs">' + specs.map(function (r) { return '<div><dt>' + esc(r[0]) + '</dt><dd>' + esc(r[1]) + '</dd></div>'; }).join('') + '</dl>' : '') + (p.notes.length ? '<div class="notes">' + p.notes.map(function (n) { return '<span>' + icon('check') + esc(n) + '</span>'; }).join('') + '</div>' : '') + '</div></details>' : '') +
       (hasMeas ? '<details id="meas-det"><summary>Замеры изделия' + icon('chevron-down') + '</summary><div class="acc-body">' + (tbl ? measTable(tbl, sel.size) : (p.sizes.length === 1 ? '<p class="small" style="margin:0 0 8px">Размер ' + esc(p.sizes[0]) + '</p>' : '') + '<dl class="specs">' + measures.map(function (r) { return '<div><dt>' + esc(mlab(r[0])) + '</dt><dd>' + esc(r[1]) + '</dd></div>'; }).join('') + '</dl>') + '</div></details>' : '') +
-      ((p.reviews && p.reviews.length) ? '<details class="fold" open><summary>Отзывы покупателей · ' + p.reviews.length + icon('chevron-down') + '</summary><div class="acc-body">' + p.reviews.map(function (r) { return '<blockquote class="fr">' + (r.stars ? '<div class="fr-s">' + stars(r.stars) + '</div>' : '<div class="fr-s fr-n">Оценка не поставлена</div>') + '<p>' + esc(r.text) + '</p>' + (r.name ? '<cite>' + esc(r.name) + '</cite>' : '') + '</blockquote>'; }).join('') + '<a class="small" href="https://t.me/ONION_SHOP_FEEDBACK" target="_blank" rel="noopener">Все отзывы в канале</a></div></details>' : '') +
-      (API.enabled ? '<details id="rev-det"><summary>Отзывы <span class="rev-n" id="rev-n"></span>' + icon('chevron-down') + '</summary><div class="acc-body" id="rev-body"><p class="small">Загружаем…</p></div></details>' : '') +
+      (((p.reviews && p.reviews.length) || API.enabled) ? '<details id="rev-det"><summary>Отзывы <span class="rev-n" id="rev-n">' + ((p.reviews && p.reviews.length) ? '· ' + p.reviews.length : '') + '</span>' + icon('chevron-down') + '</summary><div class="acc-body">' + ((p.reviews && p.reviews.length) ? p.reviews.map(function (r) { return '<div class="rev"><div class="rev-h"><b>' + esc(r.name || 'Покупатель') + '</b>' + (r.stars ? stars(r.stars) : '<span class="small">Оценка не поставлена</span>') + '</div><p>' + esc(r.text) + '</p></div>'; }).join('') : '') + '<div id="rev-body" data-base="' + ((p.reviews && p.reviews.length) || 0) + '">' + (API.enabled ? '<p class="small">Загружаем…</p>' : '') + '</div><a class="small" href="https://t.me/ONION_SHOP_FEEDBACK" target="_blank" rel="noopener">Все отзывы в канале</a></div></details>' : '') +
       '</div>' +
       '<a class="tg-link" href="' + esc(p.link) + '" target="_blank" rel="noopener">' + icon('send') + 'Пост с этим товаром в канале</a>' +
       '</div></div></div>' +
@@ -962,11 +961,11 @@
     $('#zoom-btn', v).addEventListener('click', function () { openLightbox(p, cur); });
     $('#share-btn', v).addEventListener('click', function () { shareProduct(p); });
     var rd = $('#rev-det', v);
-    if (rd) rd.addEventListener('toggle', function () { if (rd.open) loadReviews(p.id, $('#rev-body', v), $('#rev-n', v)); });
+    if (rd && API.enabled) rd.addEventListener('toggle', function () { if (rd.open) loadReviews(p.id, $('#rev-body', v), $('#rev-n', v)); });
     var wb = $('#wait-btn', v);
     if (wb) {
       var isWait = function () { return !!(acct.user && (acct.user.waits || []).some(function (w) { return w.id === p.id; })); };
-      var paintWait = function () { var on = isWait(); wb.classList.toggle('on', on); wb.innerHTML = icon('clock') + (on ? 'Вы ждёте этот товар · отменить' : 'Сообщить, когда появится'); };
+      var paintWait = function () { var on = isWait(); wb.classList.toggle('on', on); wb.innerHTML = on ? '<span class="oos-ok">' + icon('check-circle') + '<span><b>Вы подписаны</b><small>Сообщим, когда появится</small></span></span><span class="oos-x">Отписаться</span>' : icon('bell') + '<span>Сообщить, когда появится</span>'; };
       paintWait();
       wb.addEventListener('click', function () {
         if (!acct.user) { toast('Войдите в кабинет — тогда сообщим, когда товар появится', { label: 'Войти', run: function () { go('account'); } }, 'warn'); return; }
@@ -1899,10 +1898,45 @@
   }
 
   // ------------------------------------------------------------ рулетка
-  var spinning = false, spinHistory = [];
+  var spinning = false, spinHistory = [], wheelDeg = 0;
   var SHORT = { none: 'Пусто', t25: '+25', t50: '+50', t100: '+100', t150: '+150', t200: '+200', t300: '+300', t500: '+500', t1000: '+1000', jackpot: '+2000', xp: '+50 XP', xp100: '+100 XP', xp150: '+150 XP', xp300: '+300 XP', xp500: '+500 XP', xp2000: '+2000 XP', frame: 'Рамка', frame2: 'Редкая рамка', promo: '−3%', promo5: '−5%', re1: '+1 прокрут', re2: '+2 прокрута' };
-  function tileHtml(w) { return '<div class="reel-tile r-' + w.id + '">' + pz(w.id) + '<b>' + esc(SHORT[w.id] || w.label) + '</b></div>'; }
-  function randomTile() { var W = RULES.wheel, tot = 0, r; W.forEach(function (w) { tot += Math.sqrt(w.w); }); r = Math.random() * tot; for (var i = 0; i < W.length; i++) { r -= Math.sqrt(W[i].w); if (r <= 0) return W[i]; } return W[0]; }
+  // 12 секторов колеса; каждый объединяет близкие призы. Какой именно приз выпал — решает сервер, колесо только красиво показывает.
+  var SEGS = [
+    { ids: ['none'], label: 'Пусто', ic: 'none', cls: 'none' },
+    { ids: ['t25'], label: '+25', ic: 't25' },
+    { ids: ['t100'], label: '+100', ic: 't100' },
+    { ids: ['xp', 'xp100', 'xp150', 'xp300', 'xp500', 'xp2000'], label: 'XP', ic: 'xp' },
+    { ids: ['t50'], label: '+50', ic: 't50' },
+    { ids: ['frame', 'frame2'], label: 'Рамка', ic: 'frame' },
+    { ids: ['none'], label: 'Пусто', ic: 'none', cls: 'none' },
+    { ids: ['t150'], label: '+150', ic: 't150' },
+    { ids: ['promo', 'promo5'], label: 'Промо', ic: 'promo' },
+    { ids: ['t200'], label: '+200', ic: 't200' },
+    { ids: ['re1', 're2'], label: 'Ещё раз', ic: 're1' },
+    { ids: ['t300', 't500', 't1000', 'jackpot'], label: 'от +300', ic: 'jackpot', cls: 'big' }
+  ];
+  var SEG_A = 360 / SEGS.length;
+  function segFor(id) { var c = []; SEGS.forEach(function (s, i) { if (s.ids.indexOf(id) >= 0) c.push(i); }); return c.length ? c[Math.floor(Math.random() * c.length)] : 0; }
+  function polar(r, deg) { var a = deg * Math.PI / 180; return (r * Math.sin(a)).toFixed(2) + ' ' + (-r * Math.cos(a)).toFixed(2); }
+  function wheelHtml() {
+    var R = 170, h = '<div class="wheel" id="wheel"><div class="wheel-glow"></div>' +
+      '<svg class="w-spin" id="w-spin" viewBox="-200 -200 400 400" aria-hidden="true"><defs>' +
+      '<linearGradient id="wgA" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#e8f3fa"/></linearGradient>' +
+      '<linearGradient id="wgB" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d4ebf7"/><stop offset="1" stop-color="#b6dcf0"/></linearGradient>' +
+      '<linearGradient id="wgN" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#eef1f6"/><stop offset="1" stop-color="#dde3ec"/></linearGradient>' +
+      '<linearGradient id="wgG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff2b8"/><stop offset="1" stop-color="#ffd24a"/></linearGradient></defs>';
+    SEGS.forEach(function (s, i) {
+      var c = i * SEG_A, fill = s.cls === 'big' ? 'wgG' : s.cls === 'none' ? 'wgN' : (i % 2 ? 'wgB' : 'wgA');
+      h += '<g class="w-seg" data-i="' + i + '"><path d="M0 0 L' + polar(R, c - SEG_A / 2) + ' A' + R + ' ' + R + ' 0 0 1 ' + polar(R, c + SEG_A / 2) + ' Z" fill="url(#' + fill + ')" stroke="#fff" stroke-width="2.2"/>' +
+        '<g transform="rotate(' + c + ')"><use href="#p-' + s.ic + '" x="-21" y="-152" width="42" height="42"/><text transform="translate(0,-52) rotate(-90)" dy=".34em" text-anchor="start" class="w-t' + (s.label.length > 5 ? ' w-s' : '') + '">' + esc(s.label) + '</text></g></g>';
+    });
+    h += '</svg><svg class="w-ring" viewBox="-200 -200 400 400" aria-hidden="true"><defs><radialGradient id="wgR" cx="50%" cy="50%" r="50%"><stop offset=".84" stop-color="#16407a"/><stop offset="1" stop-color="#0b1d3a"/></radialGradient></defs>' +
+      '<circle r="182" fill="none" stroke="#1a4f93" stroke-width="28"/><circle r="193" fill="none" stroke="#0b1d3a" stroke-width="6"/><circle r="196" fill="none" stroke="rgba(255,255,255,.35)" stroke-width="1.5"/><circle r="168" fill="none" stroke="#43c9e3" stroke-width="2"/>';
+    for (var k = 0; k < 24; k++) h += '<circle class="bulb b' + (k % 2) + '" cx="' + polar(182, k * 15).split(' ')[0] + '" cy="' + polar(182, k * 15).split(' ')[1] + '" r="4.6"/>';
+    h += '<circle r="38" fill="#0b1d3a"/><circle r="33" fill="#fff"/><circle r="33" fill="none" stroke="#43c9e3" stroke-width="3"/><use href="#i-token" x="-20" y="-20" width="40" height="40"/></svg>' +
+      '<svg class="w-pin" id="w-pin" viewBox="-20 -6 40 52" aria-hidden="true"><path d="M0 44 C-6 30 -17 24 -17 12 A17 17 0 1 1 17 12 C17 24 6 30 0 44Z" fill="#ff4b63" stroke="#fff" stroke-width="3"/><circle cx="0" cy="12" r="6" fill="#fff"/></svg></div>';
+    return h;
+  }
   function updateRoulBalance() {
     var u = acct.user, b = $('#roul-bal'); if (!b || !u) return;
     b.innerHTML = tk('lg') + '<span>' + num(u.balance) + '</span>';
@@ -1913,15 +1947,15 @@
   function renderRoulette() {
     var v = $('#v-roulette');
     if (!API.enabled) { v.innerHTML = '<div class="empty"><span class="ico">' + icon('gift') + '</span><h3>Рулетка скоро появится</h3><a class="btn" href="#catalog">В каталог</a></div>'; return; }
-    var u = acct.user, tiles = []; for (var i = 0; i < 14; i++) tiles.push(randomTile());
+    var u = acct.user;
     var WW = u && u.wheel && u.wheel.length === RULES.wheel.length ? u.wheel : RULES.wheel.map(function (w) { return w.w; });
-    var win = WHEEL_SUM - WW[0], boosted = WW[0] < RULES.wheel[0].w;
-    v.innerHTML = '<div class="roul"><div class="pad roul-head"><div><span class="eyebrow" style="color:#8fe6f5">Рулетка ONION SHOP</span><h1>Крутите ленту — забирайте призы</h1></div>' +
+    v.innerHTML = '<div class="roul"><div class="pad roul-head"><div><span class="eyebrow" style="color:#8fe6f5">Рулетка ONION SHOP</span><h1>Крутите колесо — забирайте призы</h1></div>' +
       (u ? '<span class="roul-bal" id="roul-bal"></span>' : '<a class="btn btn-light" href="#account">' + icon('gift') + 'Войти и получить ' + RULES.reward.register + '</a>') + '</div>' +
-      '<div class="reel" id="reel"><div class="reel-pin"></div><div class="reel-strip" id="strip">' + tiles.map(tileHtml).join('') + '</div></div>' +
+      '<div class="pad">' + wheelHtml() + '</div>' +
       '<div class="pad roul-acts">' + (u ? '<button class="btn btn-light" type="button" id="spin-paid">' + icon('sparkles') + 'Крутить за ' + RULES.spinCost + ' ' + tokWord(RULES.spinCost) + '</button><button class="btn btn-glass" type="button" id="spin-free" hidden></button>' : '<button class="btn btn-light" type="button" id="spin-guest">' + icon('sparkles') + 'Крутить</button>') + '</div>' +
       '</div>' +
       '<details class="sec card tile fold"><summary class="tile-h"><h3>Призы и шансы</h3>' + icon('chevron-down') + '</summary><div class="chances" style="margin-top:12px">' + RULES.wheel.map(function (w, i) { return '<div class="c-' + w.id + '">' + pz(w.id) + '<span>' + esc(w.id === 'none' ? 'Пусто' : w.label + ' ' + w.sub) + '</span><b>' + pct(WW[i]) + '</b></div>'; }).join('') + '</div></details>';
+    var ws = $('#w-spin', v); if (ws) ws.style.transform = 'rotate(' + wheelDeg + 'deg)';
     updateRoulBalance();
     var g = $('#spin-guest', v); if (g) g.addEventListener('click', function () { requireAuth('roulette'); });
     var pbtn = $('#spin-paid', v); if (pbtn) pbtn.addEventListener('click', function () { spin(false); });
@@ -1937,56 +1971,47 @@
     if (!free && u.balance < RULES.spinCost) { toast('Нужно ' + RULES.spinCost + ' токенов. Выполните задания или отметьтесь в кабинете', null, 'warn'); return; }
     spinning = true;
     $$('#spin-paid,#spin-free').forEach(function (b) { b.disabled = true; });
-    var strip = $('#strip'), reel = $('#reel'), N = 130, gap = 10, tw = 0, step = 0, V = 1.15, off = 0, raf = 0, alive = true, last = 0;
-    function paint() { strip.style.transform = 'translate3d(' + (-off) + 'px,0,0)'; }
-    // фаза 1: лента сразу едет с постоянной скоростью (кадры считаем сами, без CSS-переходов)
-    if (strip && reel) {
-      var tiles = [];
-      for (var i = 0; i < N; i++) tiles.push(randomTile());
-      strip.style.transition = 'none'; strip.style.transform = 'translate3d(0,0,0)';
-      strip.innerHTML = tiles.map(tileHtml).join('');
-      void strip.offsetWidth;
-      tw = strip.children[0].getBoundingClientRect().width; step = tw + gap;
-      if (!REDUCED) {
-        last = performance.now();
-        (function tick(now) {
-          if (!alive) return;
-          var dt = Math.min(48, now - last); last = now;
-          off += V * dt;
-          if (off > (N - 30) * step) off = (N - 30) * step;   // сервер не отвечает слишком долго — не уезжаем за край
-          paint(); raf = requestAnimationFrame(tick);
-        })(last);
-      }
+    var ws = $('#w-spin'), wheel = $('#wheel'), pin = $('#w-pin'), th = wheelDeg, V = 0.5, raf = 0, alive = true, last = 0, lastSeg = Math.floor((-th + SEG_A / 2) / SEG_A), flickT = 0;
+    $$('.w-seg.win', wheel).forEach(function (e) { e.classList.remove('win'); });
+    if (wheel) wheel.classList.add('going');
+    function paint() { wheelDeg = th; ws.style.transform = 'rotate(' + th + 'deg)'; var sg = Math.floor((-th + SEG_A / 2) / SEG_A); if (sg !== lastSeg) { lastSeg = sg; flick(); } }
+    function flick() { if (!pin) return; pin.classList.add('hit'); clearTimeout(flickT); flickT = setTimeout(function () { pin.classList.remove('hit'); }, 70); }
+    // фаза 1: колесо сразу раскручивается (кадры считаем сами, без CSS-переходов)
+    if (ws && wheel && !REDUCED) {
+      last = performance.now();
+      (function tick(now) {
+        if (!alive) return;
+        var dt = Math.min(48, now - last); last = now;
+        th += V * dt; paint(); raf = requestAnimationFrame(tick);
+      })(last);
     }
+    function stop() { alive = false; cancelAnimationFrame(raf); if (wheel) wheel.classList.remove('going'); }
     function fail(msg) {
-      alive = false; cancelAnimationFrame(raf); spinning = false;
-      if (strip) { strip.style.transform = 'translate3d(0,0,0)'; }
+      stop(); spinning = false;
       updateRoulBalance(); $$('#spin-paid,#spin-free').forEach(function (b) { b.disabled = false; }); updateRoulBalance(); toast(msg, null, 'warn');
     }
     API.call('spin', { free: free }).then(function (r) {
       if (!r.ok) { fail(r.error); return; }
       var shown = Object.assign({}, acct.user, { balance: acct.user.balance - (free ? 0 : RULES.spinCost), freeSpins: acct.user.freeSpins - (free ? 1 : 0) });
       var real = r.user; acct.user = shown; updateRoulBalance(); updateAcctUI();
-      if (!strip || !reel) { alive = false; spinning = false; setUser(real); showPrize(r.prize); return; }
-      // фаза 2: призовая плитка лежит впереди, лента плавно тормозит именно на ней
-      // замедление x(t)=x0+L*(1-(1-t/D)^3): начальная скорость = 3L/D совпадает с текущей V — стыка не видно
-      var half = reel.clientWidth / 2, dist0 = 1500;
-      var k = Math.min(N - 6, Math.max(8, Math.round((off + dist0 + half - tw / 2) / step)));
-      var tile = strip.children[k]; if (tile) tile.outerHTML = tileHtml(RULES.wheel[r.index]);
-      var jitter = (Math.random() - 0.5) * tw * 0.55;
-      var x0 = off, x1 = k * step + tw / 2 - half + jitter, L = Math.max(step * 3, x1 - x0);
-      var D = REDUCED ? 200 : Math.max(2600, Math.min(5200, 3 * L / V));
-      var t0 = performance.now();
+      if (!ws || !wheel) { stop(); spinning = false; setUser(real); showPrize(r.prize); return; }
+      // фаза 2: плавное торможение именно на нужном секторе
+      // x(t)=x0+L*(1-(1-t/D)^3): начальная скорость 3L/D равна текущей V — стыка не видно
+      var seg = segFor(RULES.wheel[r.index].id), jitter = (Math.random() - 0.5) * SEG_A * 0.6;
+      var target = -(seg * SEG_A) + jitter, x0 = th, L0 = V * 4400 / 3;
+      var L = L0 + ((((target - (x0 + L0)) % 360) + 360) % 360);
+      var D = REDUCED ? 200 : 3 * L / V, t0 = performance.now();
       cancelAnimationFrame(raf); alive = false;
       function fin() {
-        off = x1; paint();
-        if (strip.children[k]) strip.children[k].classList.add('win');
+        th = x0 + L; paint();
+        if (wheel) wheel.classList.remove('going');
+        var el = $('.w-seg[data-i="' + seg + '"]', wheel); if (el) el.classList.add('win');
         setUser(real); updateRoulBalance();
-        setTimeout(function () { spinning = false; showPrize(r.prize); }, 350);
+        setTimeout(function () { spinning = false; updateRoulBalance(); showPrize(r.prize); }, 650);
       }
       (function ease(now) {
         var t = Math.min(1, (now - t0) / D), q = 1 - t;
-        off = x0 + L * (1 - q * q * q); paint();
+        th = x0 + L * (1 - q * q * q); paint();
         if (t < 1) requestAnimationFrame(ease); else fin();
       })(t0);
     });
@@ -2184,8 +2209,9 @@
   }
   var revCache = {};
   function drawReviews(r, body, n) {
-    if (n) n.textContent = r.count ? '· ' + r.count : '';
-    body.innerHTML = r.count
+    var base = +body.getAttribute('data-base') || 0;
+    if (n) n.textContent = (r.count + base) ? '· ' + (r.count + base) : '';
+    body.innerHTML = (!r.count && base) ? '' : r.count
       ? '<div class="rev-sum">' + stars(r.avg) + '<b>' + String(r.avg).replace('.', ',') + '</b><span class="small">' + r.count + ' ' + plural(r.count, 'отзыв', 'отзыва', 'отзывов') + '</span></div>' +
         r.list.map(function (x) { return '<div class="rev"><div class="rev-h"><b>' + esc(x.name) + '</b>' + stars(x.rating) + '<span class="small">' + esc(x.at) + '</span></div>' + (x.text ? '<p>' + esc(x.text) + '</p>' : '') + '</div>'; }).join('')
       : '<p class="small">Отзывов пока нет. Они появляются после получения заказа — их оставляют покупатели в кабинете.</p>';
