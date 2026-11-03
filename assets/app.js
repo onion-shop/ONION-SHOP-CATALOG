@@ -350,6 +350,7 @@
     if (u && localOrders.length) { localOrders = []; store.set('orders', []); } // старые заказы без входа не должны попадать в новый кабинет
     updateAcctUI();
     showNews(u);
+    if (u && u.bdayToday) setTimeout(bdayGift, 700);
     if (current === 'account') renderAccount();
     else if (current === 'roulette') updateRoulBalance();
     else if (current === 'cart' && !$('#checkout :focus')) renderCart();
@@ -414,7 +415,7 @@
       chip.className = 'acct-chip';
       chip.innerHTML = '<span class="tok">' + tk() + num(u.balance) + '</span>' + ava(u);
       chip.setAttribute('aria-label', 'Кабинет, ' + u.balance + ' ' + tokWord(u.balance));
-      tab.innerHTML = '<span class="ic">' + ava(u) + '</span><span>' + num(u.balance) + '</span>';
+      tab.innerHTML = '<span class="ic">' + ava(u) + '</span><span>Кабинет</span>';
     } else {
       chip.className = 'acct-chip guest';
       chip.innerHTML = icon('user') + '<span>Войти</span>';
@@ -449,6 +450,51 @@
   }
   // тихое обновление пользователя после событий: без перерисовки корзины и ввода
   function setUserLite(u) { acct.user = u; updateAcctUI(); if (current === 'account') renderAccount(); showNews(u); }
+  // ------------------------------------------------------------ подарок на день рождения
+  var bdayBusy = false;
+  function bdayGift() {
+    var u = acct.user; if (bdayBusy || !u || !u.bdayToday || $('#bd-ov')) return;
+    bdayBusy = true;
+    var name = esc(String(u.name || '').split(' ')[0]);
+    var ov = document.createElement('div'); ov.id = 'bd-ov'; ov.className = 'bd-ov';
+    ov.innerHTML = '<div class="bd-s1" id="bd-s1"><h2>С днём рождения, ' + name + '!</h2><p>Для вас подарок. Нажмите на коробку 5 раз, чтобы открыть</p>' +
+      '<button class="bd-box" id="bd-box" type="button" aria-label="Открыть подарок"><span class="bd-lid"><i class="bd-bow"></i></span><span class="bd-body"><i class="bd-rib"></i><img src="assets/logo.png" alt="" width="64" height="64"></span></button>' +
+      '<div class="bd-dots" id="bd-dots"><i></i><i></i><i></i><i></i><i></i></div></div><div class="bd-white" id="bd-white"></div><div class="bd-s2" id="bd-s2" hidden></div>';
+    document.body.appendChild(ov); document.documentElement.style.overflow = 'hidden';
+    var box = $('#bd-box', ov), dots = $$('#bd-dots i', ov), taps = 0, opened = false, res = null;
+    function close() { ov.remove(); document.documentElement.style.overflow = ''; bdayBusy = false; }
+    function festive(g) {
+      var s2 = $('#bd-s2', ov), bal = '', fl = '';
+      var cols = ['#ff6b8b', '#ffc83d', '#43c9e3', '#7a6cff', '#2bd08f', '#ff9d1c'];
+      for (var i = 0; i < 9; i++) bal += '<i class="bd-bal" style="left:' + (4 + i * 11) + '%;background:' + cols[i % cols.length] + ';animation-delay:-' + (i * .7) + 's;animation-duration:' + (6 + (i % 4)) + 's"></i>';
+      for (var j = 0; j < 6; j++) fl += '<i class="bd-fl" style="left:' + (6 + j * 18) + '%;--fc:' + cols[(j + 2) % cols.length] + '"></i>';
+      var items = g.map(function (x) {
+        return x.k === 'tok' ? '<div class="bd-it">' + tk('lg') + '<b>+' + x.n + '</b><span>' + tokWord(x.n) + '</span></div>'
+          : x.k === 'xp' ? '<div class="bd-it">' + rlUse('rl-xp', 44) + '<b>+' + x.n + '</b><span>опыт XP</span></div>'
+          : '<div class="bd-it">' + rlUse('rl-again', 44) + '<b>×' + x.n + '</b><span>' + (x.n === 1 ? 'бесплатный прокрут' : 'бесплатных прокрута') + '</span></div>';
+      }).join('');
+      s2.innerHTML = '<div class="bd-decor">' + bal + fl + '</div><div class="bd-card"><img src="assets/logo.png" alt="" width="56" height="56"><h2>С днём рождения!</h2><p>Команда ONION SHOP дарит вам подарки</p><div class="bd-its">' + items + '</div><button class="btn btn-block" type="button" id="bd-ok">Забрать</button></div>';
+      s2.hidden = false; confetti(160);
+      $('#bd-ok', s2).addEventListener('click', close);
+    }
+    function open() {
+      opened = true; box.disabled = true; box.classList.add('go');
+      API.call('bdayGift').then(function (r) {
+        if (!r.ok) { toast(r.error, null, 'warn'); close(); return; }
+        res = r; setUser(r.user);
+      }).catch(function () { toast('Не удалось открыть подарок, попробуйте позже', null, 'warn'); close(); });
+      setTimeout(function () { ov.classList.add('flash'); }, 650);
+      setTimeout(function () {
+        var t = setInterval(function () { if (res) { clearInterval(t); $('#bd-s1', ov).hidden = true; festive(res.gifts); ov.classList.add('done'); } }, 80);
+      }, 1100);
+    }
+    box.addEventListener('click', function () {
+      if (opened) return;
+      taps++; dots.forEach(function (d, i) { d.classList.toggle('on', i < taps); });
+      box.style.setProperty('--k', taps); box.classList.remove('hit'); void box.offsetWidth; box.classList.add('hit');
+      if (taps >= 5) open();
+    });
+  }
   function doCheckin(btn) {
     if (!acct.user) return requireAuth('account');
     if (btn && btn.disabled !== undefined) btn.disabled = true;
@@ -639,7 +685,7 @@
     if (P.off) return '';
     var pre = PRODUCTS.filter(function (p) { return p.status === 'preorder'; });
     var mx = 0; pre.forEach(function (p) { mx = Math.max(mx, discount(p)); });
-    var title = P.text || (mx >= 5 ? 'Товары из Китая со скидками до ' + Math.floor(mx / 5) * 5 + '%' : pre.length ? 'Новинки из Китая уже в каталоге' : '');
+    var title = P.text || '';
     if (!title) return '';
     var until = ''; if (P.until && /^\d{4}-\d{2}-\d{2}/.test(P.until)) {
       var ms = Date.parse(P.until + 'T23:59:59+03:00'); if (ms < Date.now()) return '';
@@ -1773,14 +1819,14 @@
     $('#m-forgot', md).addEventListener('click', function () { closeModal(); API.call('logout'); API.setSession(''); authTab = 'reset'; setUser(null); });
   }
   function bdayModal() {
-    var md = openModal(modalHead('День рождения') + '<p class="muted">Указывается один раз. В этот день при входе начислим +' + RULES.reward.birthday + ' токенов.</p><div class="f"><label for="m-bday">Дата</label><input class="input" id="m-bday" type="date"></div><button class="btn btn-block" type="button" id="m-save">Сохранить</button>', { cls: 'sm' });
+    var md = openModal(modalHead('День рождения') + '<p class="muted">Указывается один раз. В свой день рождения вы получите подарок.</p><div class="f"><label for="m-bday">Дата</label><input class="input" id="m-bday" type="date"></div><button class="btn btn-block" type="button" id="m-save">Сохранить</button>', { cls: 'sm' });
     $('#m-save', md).addEventListener('click', function () {
       var val = $('#m-bday', md).value; if (!val) { toast('Выберите дату', null, 'warn'); return; }
       var MON = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'], mm = +val.slice(5, 7), dd = +val.slice(8, 10);
       closeModal();
       confirmBox({ title: 'Это точная дата?', text: 'Вы указываете день рождения: ' + dd + ' ' + MON[mm - 1] + '. После сохранения изменить дату нельзя, в том числе через менеджера.', actions: [
         { label: 'Изменить', cls: 'btn-ghost', run: bdayModal },
-        { label: 'Да, это моя дата', cls: '', run: function () { API.call('profile', { birthday: val.slice(5) }).then(function (r) { if (r.ok) { setUser(r.user); toast(r.bdayNow ? 'Дата сохранена. С днём рождения!' : 'Дата сохранена'); } else toast(r.error, null, 'warn'); }); } }] });
+        { label: 'Да, это моя дата', cls: '', run: function () { API.call('profile', { birthday: val.slice(5) }).then(function (r) { if (r.ok) { setUser(r.user); toast('Дата сохранена'); } else toast(r.error, null, 'warn'); }); } }] });
     });
   }
   function framesModal() {
@@ -1895,7 +1941,7 @@
       '<div class="ref-row"><span class="lnk">' + esc(refLink.replace(/^https?:\/\//, '')) + '</span><button class="icon-btn" type="button" data-copy="' + esc(refLink) + '" aria-label="Скопировать ссылку">' + icon('copy') + '</button><button class="icon-btn acc" type="button" id="ref-share" aria-label="Поделиться">' + icon('share') + '</button></div>' +
       '<p class="small">Ваш код: <b>' + esc(u.refCode) + '</b></p></div>' +
 
-      '<div class="card tile c6"><div class="tile-h"><h3>Промокоды</h3>' + (u.promos.length ? '<span class="side">' + u.promos.length + '</span>' : '') + '</div>' + (u.promos.length ? '<div class="pcs">' + u.promos.map(function (p) { return '<div class="pc"><div class="pc-l"><b>−' + pctTxt(p.pct) + '%</b></div><div class="pc-r"><code>' + esc(p.code) + '</code><span class="small">' + promoLine(p) + '</span></div><button class="icon-btn" type="button" data-copy="' + esc(p.code) + '" aria-label="Скопировать код">' + icon('copy') + '</button></div>'; }).join('') + '</div>' : '<div class="pc-empty">' + icon('ticket') + '<span>Пока нет промокодов. Они выпадают в рулетке и приходят с уровнем.</span></div>') + '</div>' +
+      '<div class="card tile c6"><div class="tile-h"><h3>Промокоды</h3>' + (u.promos.length ? '<span class="side">' + u.promos.length + '</span>' : '') + '</div>' + (u.promos.length ? '<div class="pcs">' + u.promos.map(function (p) { return '<div class="pc"><div class="pc-l"><b>−' + pctTxt(p.pct) + '%</b></div><div class="pc-r"><code>' + esc(p.code) + '</code><span class="small">' + promoLine(p) + '</span></div><button class="icon-btn" type="button" data-copy="' + esc(p.code) + '" aria-label="Скопировать код">' + icon('copy') + '</button></div>'; }).join('') + '</div>' : '<div class="pc-empty">' + icon('ticket') + '<span>Пока нет промокодов.</span></div>') + '</div>' +
 
       ((u.waits || []).length ? '<div class="card tile c12"><div class="tile-h"><h3>Жду появления</h3><span class="side">' + u.waits.length + '</span></div><div class="waits">' + u.waits.map(function (w) {
         return '<div class="wait-c' + (w.ready ? ' rdy' : '') + '"><a class="wait-ph" href="#p-' + esc(w.id) + '"><img src="' + thumb(w.id) + '" alt="" loading="lazy" width="64" height="64"></a><div class="wait-i"><a href="#p-' + esc(w.id) + '">' + esc(w.title) + '</a>' + (w.ready ? '<span class="wait-st ok">' + icon('check-circle') + 'Уже можно заказать</span>' : '<span class="wait-st">' + icon('hourglass') + 'Сообщим, когда появится</span>') + '</div><button class="icon-btn" type="button" data-wx="' + esc(w.id) + '" aria-label="Больше не ждать">' + icon('x') + '</button></div>';
@@ -1911,7 +1957,7 @@
       '<button class="rowl" type="button" id="r-pass"><span class="ic">' + icon('key') + '</span><span class="tx">Сменить пароль</span>' + icon('chevron-right') + '</button>' +
       '<button class="rowl" type="button" id="r-home"><span class="ic">' + icon('phone') + '</span><span class="tx">Добавить на экран «Домой»</span><span class="val">' + esc((homeIcons().filter(function (x) { return x[0] === homeIcon(); })[0] || [])[1]) + '</span>' + icon('chevron-right') + '</button>' +
       '<button class="rowl" type="button" id="r-theme"><span class="ic">' + icon(themeMode() === 'dark' ? 'moon' : 'sun') + '</span><span class="tx">Тема оформления</span><span class="val">' + THEME_NAMES[themeMode()] + '</span>' + icon('chevron-right') + '</button>' +
-      '<button class="rowl" type="button" id="r-bday"' + (bd ? ' disabled' : '') + '><span class="ic">' + icon('gift') + '</span><span class="tx">День рождения</span><span class="val">' + (bd ? (+bd[1]) + ' ' + MONTHS[+bd[0] - 1] : 'указать · +' + R.birthday) + '</span>' + (bd ? '' : icon('chevron-right')) + '</button>' +
+      '<button class="rowl" type="button" id="r-bday"' + (bd ? ' disabled' : '') + '><span class="ic">' + icon('gift') + '</span><span class="tx">День рождения</span><span class="val">' + (bd ? (+bd[1]) + ' ' + MONTHS[+bd[0] - 1] : 'указать') + '</span>' + (bd ? '' : icon('chevron-right')) + '</button>' +
       '<button class="rowl" type="button" id="r-frame"><span class="ic">' + icon('star') + '</span><span class="tx">Рамка аватара</span><span class="val">' + esc((RULES.frames.filter(function (f) { return f.id === u.frame; })[0] || {}).name || '') + '</span>' + icon('chevron-right') + '</button>' +
       (u.avatar ? '<button class="rowl" type="button" id="r-noava"><span class="ic">' + icon('camera') + '</span><span class="tx">Убрать фото профиля</span>' + icon('chevron-right') + '</button>' : '') +
       '<button class="rowl" type="button" id="r-logout"><span class="ic">' + icon('logout') + '</span><span class="tx">Выйти</span>' + icon('chevron-right') + '</button>' +
@@ -1955,7 +2001,7 @@
     var c = RL_COL[p.c], h = '', n = p.n;
     if (p.c === 'tok') h = rlBigIc('i-token', 150, 6) + '<div class="rl-num" style="top:160px;font-size:' + (n >= 1000 ? 58 : 66) + 'px">+' + n + '</div><div class="rl-cap" style="top:246px">' + tokWord(n) + '</div>';
     else if (p.c === 'xp') h = rlBigIc('rl-xp', 146, 8) + '<div class="rl-num" style="top:160px;font-size:66px">+' + n + '</div><div class="rl-cap" style="top:246px">опыт XP</div>';
-    else if (p.c === 'pr') h = '<div class="rl-tk" style="left:50%;top:44px;transform:translateX(-50%) rotate(-5deg);width:250px;height:122px;background:linear-gradient(150deg,#fff0a8,#ffb52e 55%,#ff7a1a);box-shadow:0 22px 30px -12px rgba(0,0,0,.6),inset 0 3px 0 rgba(255,255,255,.7),0 7px 0 #a4510b;font-size:54px;color:#6b2e00;text-shadow:0 2px 0 rgba(255,255,255,.6);border-radius:24px">−' + n + '%</div><div class="rl-cap" style="top:206px">промокод на заказ</div>';
+    else if (p.c === 'pr') h = rlBigIc('rl-ticket', 146, 8) + '<div class="rl-num" style="top:160px;font-size:66px">−' + n + '%</div><div class="rl-cap" style="top:246px">скидка по промокоду</div>';
     else if (p.c === 'fr') h = rlBigIc(p.rare ? 'rl-frame2' : 'rl-frame', 170, 10) + '<div class="rl-cap" style="top:214px">' + (pr && pr.frameName ? 'рамка «' + esc(pr.frameName) + '»' : p.rare ? 'редкая рамка для аватара' : 'рамка для аватара') + '</div>';
     else if (p.c === 're') h = rlBigIc('rl-again', 124, 6) + '<div class="rl-num" style="top:138px;font-size:56px">×' + n + '</div><div class="rl-cap" style="top:222px">' + (n === 1 ? 'бесплатный прокрут' : 'бесплатных прокрута') + '</div>';
     else h = rlBigIc('rl-empty', 150, 20) + '<div class="rl-cap" style="top:206px">Пусто, в другой раз</div>';
@@ -1965,7 +2011,7 @@
   function updateRoulBalance() {
     var u = acct.user, b = $('#roul-bal'); if (!b || !u) return;
     b.innerHTML = tk('lg') + '<span>' + num(u.balance) + '</span>';
-    var fb = $('#spin-free'); if (fb) { fb.hidden = !u.freeSpins; fb.textContent = 'Крутить бесплатно · ' + u.freeSpins; fb.disabled = spinning; }
+    var fb = $('#spin-free'); if (fb) { fb.hidden = !u.freeSpins; fb.textContent = 'Крутить бесплатно'; fb.disabled = spinning; }
     var fbd = $('#roul-free'); if (fbd) fbd.textContent = u.freeSpins ? 'Бесплатных прокрутов: ' + u.freeSpins : 'Раз в день бесплатно';
     var pbtn = $('#spin-paid'); if (pbtn) { pbtn.disabled = spinning || u.balance < RULES.spinCost; pbtn.querySelector('span').textContent = spinning ? 'Крутим…' : 'Крутить за ' + RULES.spinCost; }
   }
@@ -1974,21 +2020,18 @@
     clearInterval(rlTimer); rlTimer = null;
     if (!API.enabled) { v.innerHTML = '<div class="empty"><span class="ico">' + icon('gift') + '</span><h3>Рулетка скоро появится</h3><a class="btn" href="#catalog">В каталог</a></div>'; return; }
     var u = acct.user, N = RL_ORD.length, ORD = RL_ORD.map(rlInfo), STEP = 94, R = 6, pool = [], raf = 0, heroIdx = -1, lastC = null, vel = 0;
-    var bok = ''; for (var i = 0; i < 22; i++) { var sz = 6 + Math.random() * 16; bok += '<i style="left:' + (Math.random() * 100) + '%;width:' + sz + 'px;height:' + sz + 'px;animation-duration:' + (7 + Math.random() * 9) + 's;animation-delay:-' + (Math.random() * 12) + 's"></i>'; }
-    v.innerHTML = '<div class="pad roul-head" style="padding:0 0 12px"><div><span class="eyebrow">Рулетка ONION SHOP</span><h1>Крутите и забирайте призы</h1></div></div>' +
-      '<section class="rl-scene" id="rl-scene"><div class="rl-rays"></div><div class="rl-bokeh">' + bok + '</div><div class="rl-lines"></div>' +
+    v.innerHTML = '<div class="pad roul-head" style="padding:0 0 12px"><div><h1>Испытайте удачу</h1></div></div>' +
+      '<section class="rl-scene" id="rl-scene">' +
       '<div class="rl-inner" id="rl-inner"><div class="rl-bar">' + (u ? '<span class="rl-chipb" id="roul-bal"></span><span class="rl-free" id="roul-free"></span>' : '<span class="rl-chipb">' + rlUse('i-token', 26) + '<span>Рулетка</span></span><span class="rl-free">Войдите, чтобы крутить</span>') + '</div>' +
-      '<div class="rl-hero" id="rl-hero"></div><div class="rl-rail" id="rl-rail"><div class="rl-dot"></div><div class="rl-mark" id="rl-mark"></div></div>' +
+      '<div class="rl-hero" id="rl-hero"></div><div class="rl-rail" id="rl-rail"><div class="rl-mark" id="rl-mark"></div></div>' +
       (u ? '<button class="rl-go" id="spin-paid" type="button">' + rlUse('i-token', 28) + '<span>Крутить за ' + RULES.spinCost + '</span></button><button class="rl-go2" id="spin-free" type="button" hidden></button>' : '<button class="rl-go" id="spin-guest" type="button">' + rlUse('i-token', 28) + '<span>Войти и получить ' + RULES.reward.register + '</span></button>') +
-      '<div class="rl-res" id="rl-res" hidden></div></div><div class="rl-fx" id="rl-fx"></div></section>';
-    var scene = $('#rl-scene', v), hero = $('#rl-hero', v), rail = $('#rl-rail', v), mark = $('#rl-mark', v), inner = $('#rl-inner', v), fxBox = $('#rl-fx', v), resBox = $('#rl-res', v);
+      '</div><div class="rl-fx" id="rl-fx"></div></section>';
+    var scene = $('#rl-scene', v), hero = $('#rl-hero', v), rail = $('#rl-rail', v), mark = $('#rl-mark', v), inner = $('#rl-inner', v), fxBox = $('#rl-fx', v);
     function mod(i) { return ((i % N) + N) % N; }
     for (var j = -R; j <= R; j++) { var e = document.createElement('div'); e.className = 'rl-cube'; e.dataset.j = j; rail.insertBefore(e, rail.firstChild); pool.push(e); }
     function setHero(c) {
       heroIdx = c; hero.classList.remove('rl-pop');
-      var old = hero.querySelector('.rl-slide:not(.rl-out)'), t = document.createElement('div'); t.innerHTML = rlArt(ORD[mod(c)]); var sl = t.firstChild;
-      if (old) { old.classList.add('rl-out'); setTimeout(function () { old.remove(); }, 520); }
-      sl.classList.add('rl-in'); hero.appendChild(sl);
+      hero.innerHTML = rlArt(ORD[mod(c)]);
     }
     function layout() {
       var c = Math.round(rlPos);
@@ -2034,10 +2077,7 @@
     }
     function showResult(pr, isBig) {
       var win = pr.id !== 'none';
-      var title = prizeTitle(pr), sub = prizeSub(pr);
-      resBox.hidden = false; resBox.style.animation = 'none'; void resBox.offsetWidth; resBox.style.animation = '';
-      resBox.innerHTML = '<span class="rl-ic">' + (pr.frameId ? ava({ name: acct.user && acct.user.name, avatar: acct.user && acct.user.avatar, frame: pr.frameId }, 'lg') : rlUse(rlSym(rlInfo(pr.id)), 48)) + '</span><div style="min-width:0"><b>' + (win ? (isBig ? 'Поздравляем! ' : '') + esc(title) : 'Пусто') + '</b><span>' + esc(sub) + '</span>' + (pr.frameId ? '<button class="btn btn-sm btn-light" type="button" id="rl-wear" style="margin-top:8px">Надеть рамку</button>' : '') + '</div>';
-      var w = $('#rl-wear', resBox); if (w) w.addEventListener('click', function () { API.call('profile', { frame: pr.frameId }).then(function (r) { if (r.ok) { setUser(r.user); toast('Рамка надета'); w.remove(); } }); });
+      toast(win ? (isBig ? 'Поздравляем! ' : '') + prizeTitle(pr) : 'В этот раз пусто');
     }
     function finish(pr, big, real) {
       spinning = false; scene.classList.remove('rl-spinning'); hero.classList.remove('rl-shake');
@@ -2052,7 +2092,7 @@
       if (spinning || !acct.user) return;
       var u2 = acct.user;
       if (!free && u2.balance < RULES.spinCost) { toast('Нужно ' + RULES.spinCost + ' токенов. Выполните задания или отметьтесь в кабинете', null, 'warn'); return; }
-      spinning = true; clearInterval(rlTimer); cancelAnimationFrame(raf); resBox.hidden = true; updateRoulBalance();
+      spinning = true; clearInterval(rlTimer); cancelAnimationFrame(raf); updateRoulBalance();
       $$('#spin-free').forEach(function (b) { b.disabled = true; });
       scene.classList.add('rl-spinning'); hero.classList.add('rl-shake'); hero.innerHTML = rlMystery();
       var V = 0.022, alive = true, last = performance.now();
@@ -2220,7 +2260,7 @@
   }
 
   // ------------------------------------------------------------ тема
-  var THEME_NAMES = { auto: 'Как на телефоне', light: 'Светлая', dark: 'Тёмная' };
+  var THEME_NAMES = { auto: 'Авто', light: 'Светлая', dark: 'Тёмная' };
   function themeMode() { try { var t = localStorage.getItem('onion.shop.theme'); return t === 'dark' || t === 'light' ? t : 'auto'; } catch (e) { return 'auto'; } }
   function setThemeMode(m) {
     if (m === 'auto') document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme', m);

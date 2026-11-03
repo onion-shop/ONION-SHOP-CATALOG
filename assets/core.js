@@ -421,7 +421,7 @@ var OnionCore = (function () {
       freeSpins: (u.daySpins || 0) + (u.freeSpins || 0), daySpins: u.daySpins || 0, daySpinsMax: u.daySpinsMax || 0, bonusSpins: u.freeSpins || 0,
       promos: activePromos(db, u).map(function (p) { return { code: p.code, pct: p.pct, from: p.from, cat: p.cat || '', catLabel: p.catLabel || '', exp: p.exp || '' }; }),
       frames: framesFor(u), frame: u.frame || 'base', frameAnim: u.frameAnim || 'shine',
-      birthday: u.birthday || '', refCode: u.refCode, refCount: u.refCount || 0,
+      birthday: u.birthday || '', bdayToday: !!(u.birthday && u.birthday === today.slice(5) && u.bdayYear !== String(msk(db.now()).getUTCFullYear())), refCode: u.refCode, refCount: u.refCount || 0,
       createdAt: u.createdAt, orders: orders,
       canDelete: !orders.some(function (o) { return o.active; })
     };
@@ -613,13 +613,28 @@ var OnionCore = (function () {
       if (!/^(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/.test(p.birthday)) return err('Проверьте дату рождения');
       u.birthday = p.birthday;
       var byear = String(msk(db.now()).getUTCFullYear());
-      if (dayKey(db.now()).slice(5) === p.birthday) { // день рождения сегодня: подарок выдаём сразу, дата ничего не отменяет
-        u.bdayYear = byear; bdayNow = true; log(db, u, RULES.reward.birthday, 'С днём рождения!');
-        settle(db, u);
-      } else u.bdayYear = byear; // прошедшие даты задним числом не начисляем
+      if (dayKey(db.now()).slice(5) === p.birthday) bdayNow = true; // день рождения сегодня: подарок доступен сразу (A.bdayGift), bdayYear не трогаем
+      else u.bdayYear = byear; // прошедшие даты задним числом не выдаём
     }
     db.saveUser(u);
     return ok({ user: publicUser(db, u), bdayNow: bdayNow });
+  };
+
+  // подарок на день рождения: один раз в год, только в сам день; суммарно скромнее прежних 550 токенов
+  A.bdayGift = function (db, p) {
+    var u = sessionUser(db, p); if (!u) return err('auth');
+    var today = dayKey(db.now()), year = String(msk(db.now()).getUTCFullYear());
+    if (!u.birthday || u.birthday !== today.slice(5)) return err('Подарок доступен только в день рождения');
+    if (u.bdayYear === year) return err('Подарок в этом году уже получен');
+    u.bdayYear = year;
+    function pick(a) { return a[Math.floor(db.random() * a.length)]; }
+    var tokens = pick([150, 200, 250]), xp = pick([50, 100, 150]), spins = pick([1, 1, 2]);
+    log(db, u, tokens, 'С днём рождения!');
+    addXp(db, u, xp);
+    u.freeSpins = (u.freeSpins || 0) + spins;
+    settle(db, u); db.saveUser(u);
+    if (u.tgChat && db.userNotify) { try { db.userNotify(u, '🎂 С днём рождения, ' + String(u.name || '').split(' ')[0] + '! Ваш подарок уже в кабинете: +' + tokens + ' токенов, +' + xp + ' XP и бесплатные прокруты.'); } catch (e) {} }
+    return ok({ gifts: [{ k: 'tok', n: tokens }, { k: 'xp', n: xp }, { k: 'spin', n: spins }], user: publicUser(db, u) });
   };
 
   A.checkin = function (db, p) {
@@ -634,10 +649,6 @@ var OnionCore = (function () {
     track(db, u, 'checkin'); track(db, u, 'streak', null, u.streak);
     var extra = [];
     if (u.streak % 7 === 0) { var sr = levelOf(u).streak; log(db, u, sr, 'Серия 7 дней (' + levelOf(u).name + ')'); got += sr; extra.push('серия 7 дней +' + sr); }
-    var year = String(msk(now).getUTCFullYear());
-    if (u.birthday && u.birthday === today.slice(5) && u.bdayYear !== year) {
-      u.bdayYear = year; log(db, u, RULES.reward.birthday, 'С днём рождения!'); if (u.tgChat && db.userNotify) { try { db.userNotify(u, '🎂 С днём рождения, ' + String(u.name || '').split(' ')[0] + '! На баланс зачислено ' + RULES.reward.birthday + ' токенов — ими можно оплатить часть заказа.'); } catch (e) { /* */ } } got += RULES.reward.birthday; extra.push('день рождения +' + RULES.reward.birthday);
-    }
     settle(db, u); db.saveUser(u);
     return ok({ got: got, xp: RULES.xpReward.checkin, extra: extra, user: publicUser(db, u) });
   };
