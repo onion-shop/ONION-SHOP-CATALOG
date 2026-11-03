@@ -94,6 +94,10 @@
     get: function (k, d) { try { var v = localStorage.getItem('onion.shop.' + k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
     set: function (k, v) { try { localStorage.setItem('onion.shop.' + k, JSON.stringify(v)); } catch (e) { /* нет хранилища */ } }
   };
+  function emblem(key, size) {
+    var u = 'url(assets/lvl/' + esc(key) + '.svg?v=3)';
+    return '<span class="emb" style="width:' + size + 'px;height:' + size + 'px">' + lvlImg(key, size) + '<i style="-webkit-mask-image:' + u + ';mask-image:' + u + '"></i></span>';
+  }
   function lvlImg(key, size, cls) { return '<img class="lvl-img' + (cls ? ' ' + cls : '') + '" src="assets/lvl/' + esc(key) + '.svg?v=3" width="' + size + '" height="' + size + '" alt="" decoding="async">'; }
   function lvlByKey(k) { return RULES.levels.filter(function (l) { return l.key === k; })[0] || RULES.levels[0]; }
   function pctTxt(p) { return String(p).replace('.', ','); }
@@ -1784,7 +1788,7 @@
     var u = acct.user, cur = u ? u.level.index : -1;
     openModal(modalHead('Программа лояльности') +
       '<div class="lvl-list">' + RULES.levels.map(function (l, i) {
-        return '<section class="lvl-card lv-' + l.key + (i === cur ? ' cur' : '') + '"><header>' + lvlImg(l.key, 56) + '<div><h3>' + esc(l.name) + (i === cur ? ' <span class="chip">ваш уровень</span>' : '') + '</h3><span class="small">' + (l.min ? 'от ' + num(l.min) + ' XP за месяц' : 'сразу после регистрации') + '</span></div></header>' +
+        return '<section class="lvl-card lv-' + l.key + (i === cur ? ' cur' : '') + '"><header>' + emblem(l.key, 56) + '<div><h3>' + esc(l.name) + (i === cur ? ' <span class="chip">ваш уровень</span>' : '') + '</h3><span class="small">' + (l.min ? 'от ' + num(l.min) + ' XP за месяц' : 'сразу после регистрации') + '</span></div></header>' +
           '<ul class="perks">' + perkItems(l.perks) + '</ul></section>';
       }).join('') + '</div>');
   }
@@ -1844,7 +1848,7 @@
       '<div class="acts"><a class="btn btn-light" href="#roulette">' + icon('sparkles') + 'Рулетка' + (u.freeSpins ? ' · ' + u.freeSpins + ' ' + plural(u.freeSpins, 'бесплатный', 'бесплатных', 'бесплатных') : '') + '</a><a class="btn btn-glass" href="#cart">' + icon('bag') + 'Потратить токены</a></div></div>' +
 
       '<div class="card tile c6 loyal lv-' + L.key + '"><div class="tile-h"><h3>Программа лояльности</h3><button class="link-btn" type="button" id="all-levels">Все уровни</button></div>' +
-      '<div class="loyal-top">' + lvlImg(L.key, 72) + '<div><span class="small">Ваш уровень' + (L.fixed ? ' · закреплён менеджером' : '') + '</span><b class="loyal-name">' + esc(L.name) + '</b><span class="xp-num">' + num(u.xp) + ' XP <span class="small">за месяц</span></span></div></div>' +
+      '<div class="loyal-hero"><i class="tw t1"></i><i class="tw t2"></i><i class="tw t3"></i><i class="tw t4"></i><div class="loyal-top">' + emblem(L.key, 88) + '<div><span class="small">Ваш уровень' + (L.fixed ? ' · закреплён менеджером' : '') + '</span><b class="loyal-name">' + esc(L.name) + '</b><span class="xp-num">' + num(u.xp) + ' XP <span class="small">за месяц</span></span></div></div></div>' +
       (L.next ? '<div class="xp-bar"><div class="bar"><i data-w="' + pctL + '%"></i></div><div class="xp-meta"><span>' + num(u.xp) + ' / ' + num(L.next.min) + ' XP</span><span>до ' + lvlImg(L.next.key, 18) + '«' + esc(L.next.name) + '» ещё <b>' + num(L.next.left) + ' XP</b></span></div></div>' : '') +
       '<div class="lvl-steps">' + RULES.levels.map(function (l, j) { return '<span class="' + (j <= L.index ? 'on' : '') + (j === L.index ? ' cur' : '') + '">' + lvlImg(l.key, 30) + esc(l.name) + '</span>'; }).join('') + '</div>' +
       '<h4 class="perks-h">Ваши привилегии</h4><ul class="perks">' + perkItems(lvlByKey(L.key).perks) + '</ul></div>' +
@@ -1897,125 +1901,153 @@
     bindOrders(v, dashOrders);
   }
 
-  // ------------------------------------------------------------ рулетка
-  var spinning = false, spinHistory = [], wheelDeg = 0;
-  var SHORT = { none: 'Пусто', t25: '+25', t50: '+50', t100: '+100', t150: '+150', t200: '+200', t300: '+300', t500: '+500', t1000: '+1000', jackpot: '+2000', xp: '+50 XP', xp100: '+100 XP', xp150: '+150 XP', xp300: '+300 XP', xp500: '+500 XP', xp2000: '+2000 XP', frame: 'Рамка', frame2: 'Редкая рамка', promo: '−3%', promo5: '−5%', re1: '+1 прокрут', re2: '+2 прокрута' };
-  // 12 секторов колеса; каждый объединяет близкие призы. Какой именно приз выпал — решает сервер, колесо только красиво показывает.
-  var SEGS = [
-    { ids: ['none'], label: 'Пусто', ic: 'none', cls: 'none' },
-    { ids: ['t25'], label: '+25', ic: 't25' },
-    { ids: ['t100'], label: '+100', ic: 't100' },
-    { ids: ['xp', 'xp100', 'xp150', 'xp300', 'xp500', 'xp2000'], label: 'XP', ic: 'xp' },
-    { ids: ['t50'], label: '+50', ic: 't50' },
-    { ids: ['frame', 'frame2'], label: 'Рамка', ic: 'frame' },
-    { ids: ['none'], label: 'Пусто', ic: 'none', cls: 'none' },
-    { ids: ['t150'], label: '+150', ic: 't150' },
-    { ids: ['promo', 'promo5'], label: 'Промо', ic: 'promo' },
-    { ids: ['t200'], label: '+200', ic: 't200' },
-    { ids: ['re1', 're2'], label: 'Ещё раз', ic: 're1' },
-    { ids: ['t300', 't500', 't1000', 'jackpot'], label: 'от +300', ic: 'jackpot', cls: 'big' }
-  ];
-  var SEG_A = 360 / SEGS.length;
-  function segFor(id) { var c = []; SEGS.forEach(function (s, i) { if (s.ids.indexOf(id) >= 0) c.push(i); }); return c.length ? c[Math.floor(Math.random() * c.length)] : 0; }
-  function polar(r, deg) { var a = deg * Math.PI / 180; return (r * Math.sin(a)).toFixed(2) + ' ' + (-r * Math.cos(a)).toFixed(2); }
-  function wheelHtml() {
-    var R = 170, h = '<div class="wheel" id="wheel"><div class="wheel-glow"></div>' +
-      '<svg class="w-spin" id="w-spin" viewBox="-200 -200 400 400" aria-hidden="true"><defs>' +
-      '<linearGradient id="wgA" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#e8f3fa"/></linearGradient>' +
-      '<linearGradient id="wgB" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d4ebf7"/><stop offset="1" stop-color="#b6dcf0"/></linearGradient>' +
-      '<linearGradient id="wgN" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#eef1f6"/><stop offset="1" stop-color="#dde3ec"/></linearGradient>' +
-      '<linearGradient id="wgG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff2b8"/><stop offset="1" stop-color="#ffd24a"/></linearGradient></defs>';
-    SEGS.forEach(function (s, i) {
-      var c = i * SEG_A, fill = s.cls === 'big' ? 'wgG' : s.cls === 'none' ? 'wgN' : (i % 2 ? 'wgB' : 'wgA');
-      h += '<g class="w-seg" data-i="' + i + '"><path d="M0 0 L' + polar(R, c - SEG_A / 2) + ' A' + R + ' ' + R + ' 0 0 1 ' + polar(R, c + SEG_A / 2) + ' Z" fill="url(#' + fill + ')" stroke="#fff" stroke-width="2.2"/>' +
-        '<g transform="rotate(' + c + ')"><use href="#p-' + s.ic + '" x="-21" y="-152" width="42" height="42"/><text transform="translate(0,-52) rotate(-90)" dy=".34em" text-anchor="start" class="w-t' + (s.label.length > 5 ? ' w-s' : '') + '">' + esc(s.label) + '</text></g></g>';
-    });
-    h += '</svg><svg class="w-ring" viewBox="-200 -200 400 400" aria-hidden="true"><defs><radialGradient id="wgR" cx="50%" cy="50%" r="50%"><stop offset=".84" stop-color="#16407a"/><stop offset="1" stop-color="#0b1d3a"/></radialGradient></defs>' +
-      '<circle r="182" fill="none" stroke="#1a4f93" stroke-width="28"/><circle r="193" fill="none" stroke="#0b1d3a" stroke-width="6"/><circle r="196" fill="none" stroke="rgba(255,255,255,.35)" stroke-width="1.5"/><circle r="168" fill="none" stroke="#43c9e3" stroke-width="2"/>';
-    for (var k = 0; k < 24; k++) h += '<circle class="bulb b' + (k % 2) + '" cx="' + polar(182, k * 15).split(' ')[0] + '" cy="' + polar(182, k * 15).split(' ')[1] + '" r="4.6"/>';
-    h += '<circle r="38" fill="#0b1d3a"/><circle r="33" fill="#fff"/><circle r="33" fill="none" stroke="#43c9e3" stroke-width="3"/><use href="#i-token" x="-20" y="-20" width="40" height="40"/></svg>' +
-      '<svg class="w-pin" id="w-pin" viewBox="-20 -6 40 52" aria-hidden="true"><path d="M0 44 C-6 30 -17 24 -17 12 A17 17 0 1 1 17 12 C17 24 6 30 0 44Z" fill="#ff4b63" stroke="#fff" stroke-width="3"/><circle cx="0" cy="12" r="6" fill="#fff"/></svg></div>';
-    return h;
+  // ------------------------------------------------------------ рулетка (карусель)
+  var spinning = false, rlTimer = null, rlPos = 0;
+  var RL_ORD = ['t25', 'promo', 't100', 'xp', 'none', 't200', 'frame', 't50', 're1', 'xp100', 't300', 't150', 'xp150', 'promo5', 't500', 're2', 'xp300', 't1000', 'frame2', 'xp500', 'jackpot'];
+  var RL_COL = { tok: ['#8fe8fb', '#1a86c0', '#0b4f7a', 'rgba(67,201,227,.75)'], xp: ['#cfe0ff', '#4a76ec', '#14337f', 'rgba(74,118,236,.75)'], fr: ['#ffd0f0', '#c05bf0', '#6a2fa8', 'rgba(220,110,255,.7)'], pr: ['#ffe9a0', '#ffa81c', '#a05400', 'rgba(255,170,40,.7)'], re: ['#c6ffe3', '#2bd08f', '#0b7f58', 'rgba(43,208,143,.7)'], none: ['#dbe3f0', '#8f9db6', '#5a6781', 'rgba(150,170,205,.5)'] };
+  function rlInfo(id) {
+    var w = RULES.wheel.filter(function (x) { return x.id === id; })[0] || { id: id };
+    var c = w.tokens ? 'tok' : w.xp ? 'xp' : w.frame ? 'fr' : w.promo ? 'pr' : w.spins ? 're' : 'none';
+    return { id: id, c: c, n: w.tokens || w.xp || w.promo || w.spins || 0, rare: w.frame === 'rare' };
   }
+  function rlSym(p) { return p.c === 'tok' ? 'i-token' : p.c === 'xp' ? 'rl-xp' : p.c === 'fr' ? (p.rare ? 'rl-frame2' : 'rl-frame') : p.c === 'pr' ? 'rl-ticket' : p.c === 're' ? 'rl-again' : 'rl-empty'; }
+  function rlUse(id, w, cls) { return '<svg class="rl-ico ' + (cls || '') + '" style="width:' + w + 'px;height:' + w + 'px" aria-hidden="true"><use href="#' + id + '"/></svg>'; }
+  function rlBig(p) { return (p.c === 'tok' && p.n >= 300) || (p.c === 'xp' && p.n >= 300) || (p.c === 'fr' && p.rare) || (p.c === 'pr' && p.n >= 5) || (p.c === 're' && p.n >= 2); }
+  function rlStars() {
+    function sp(x, y, d, s) { return '<div class="rl-spk" style="left:' + x + '%;top:' + y + 'px;animation-delay:' + d + 's;width:' + s + 'px;height:' + s + 'px">' + rlUse('rl-spark', s) + '</div>'; }
+    return sp(10, 40, 0, 22) + sp(84, 36, .7, 26) + sp(88, 170, 1.3, 18) + sp(6, 190, .4, 16);
+  }
+  function rlSlide(c, inner) { return '<div class="rl-slide" style="--c1:' + c[0] + ';--c2:' + c[1] + ';--c3:' + c[2] + ';--g:' + c[3] + '"><div class="rl-art"><div class="rl-aura"></div>' + rlStars() + inner + '</div></div>'; }
+  function rlBigIc(id, sz, top) { return '<div class="rl-big" style="top:' + top + 'px">' + rlUse(id, sz) + '</div>'; }
+  function rlArt(p, pr) {
+    var c = RL_COL[p.c], h = '', n = p.n;
+    if (p.c === 'tok') h = rlBigIc('i-token', 150, 6) + '<div class="rl-num" style="top:160px;font-size:' + (n >= 1000 ? 58 : 66) + 'px">+' + n + '</div><div class="rl-cap" style="top:246px">' + tokWord(n) + '</div>';
+    else if (p.c === 'xp') h = rlBigIc('rl-xp', 146, 8) + '<div class="rl-num" style="top:160px;font-size:66px">+' + n + '</div><div class="rl-cap" style="top:246px">опыт XP</div>';
+    else if (p.c === 'pr') h = '<div class="rl-tk" style="left:50%;top:44px;transform:translateX(-50%) rotate(-5deg);width:250px;height:122px;background:linear-gradient(150deg,#fff0a8,#ffb52e 55%,#ff7a1a);box-shadow:0 22px 30px -12px rgba(0,0,0,.6),inset 0 3px 0 rgba(255,255,255,.7),0 7px 0 #a4510b;font-size:54px;color:#6b2e00;text-shadow:0 2px 0 rgba(255,255,255,.6);border-radius:24px">−' + n + '%</div><div class="rl-cap" style="top:206px">промокод на заказ</div>';
+    else if (p.c === 'fr') h = rlBigIc(p.rare ? 'rl-frame2' : 'rl-frame', 170, 10) + '<div class="rl-cap" style="top:214px">' + (pr && pr.frameName ? 'рамка «' + esc(pr.frameName) + '»' : p.rare ? 'редкая рамка для аватара' : 'рамка для аватара') + '</div>';
+    else if (p.c === 're') h = rlBigIc('rl-again', 124, 6) + '<div class="rl-num" style="top:138px;font-size:56px">×' + n + '</div><div class="rl-cap" style="top:222px">' + (n === 1 ? 'бесплатный прокрут' : 'бесплатных прокрута') + '</div>';
+    else h = rlBigIc('rl-empty', 150, 20) + '<div class="rl-cap" style="top:206px">Пусто, в другой раз</div>';
+    return rlSlide(c, h);
+  }
+  function rlMystery() { return rlSlide(RL_COL.tok, '<div class="rl-num" style="top:62px;font-size:130px">?</div><div class="rl-cap" style="top:226px">Крутим…</div>'); }
   function updateRoulBalance() {
     var u = acct.user, b = $('#roul-bal'); if (!b || !u) return;
     b.innerHTML = tk('lg') + '<span>' + num(u.balance) + '</span>';
-    var fb = $('#spin-free'); if (fb) { fb.hidden = !u.freeSpins; fb.innerHTML = icon('gift') + 'Крутить бесплатно · ' + u.freeSpins; }
-    var pbtn = $('#spin-paid'); if (pbtn) pbtn.disabled = spinning || u.balance < RULES.spinCost;
-    if (fb) fb.disabled = spinning;
+    var fb = $('#spin-free'); if (fb) { fb.hidden = !u.freeSpins; fb.textContent = 'Крутить бесплатно · ' + u.freeSpins; fb.disabled = spinning; }
+    var fbd = $('#roul-free'); if (fbd) fbd.textContent = u.freeSpins ? 'Бесплатных прокрутов: ' + u.freeSpins : 'Раз в день бесплатно';
+    var pbtn = $('#spin-paid'); if (pbtn) { pbtn.disabled = spinning || u.balance < RULES.spinCost; pbtn.querySelector('span').textContent = spinning ? 'Крутим…' : 'Крутить за ' + RULES.spinCost; }
   }
   function renderRoulette() {
     var v = $('#v-roulette');
+    clearInterval(rlTimer); rlTimer = null;
     if (!API.enabled) { v.innerHTML = '<div class="empty"><span class="ico">' + icon('gift') + '</span><h3>Рулетка скоро появится</h3><a class="btn" href="#catalog">В каталог</a></div>'; return; }
-    var u = acct.user;
-    var WW = u && u.wheel && u.wheel.length === RULES.wheel.length ? u.wheel : RULES.wheel.map(function (w) { return w.w; });
-    v.innerHTML = '<div class="roul"><div class="pad roul-head"><div><span class="eyebrow" style="color:#8fe6f5">Рулетка ONION SHOP</span><h1>Крутите колесо — забирайте призы</h1></div>' +
-      (u ? '<span class="roul-bal" id="roul-bal"></span>' : '<a class="btn btn-light" href="#account">' + icon('gift') + 'Войти и получить ' + RULES.reward.register + '</a>') + '</div>' +
-      '<div class="pad">' + wheelHtml() + '</div>' +
-      '<div class="pad roul-acts">' + (u ? '<button class="btn btn-light" type="button" id="spin-paid">' + icon('sparkles') + 'Крутить за ' + RULES.spinCost + ' ' + tokWord(RULES.spinCost) + '</button><button class="btn btn-glass" type="button" id="spin-free" hidden></button>' : '<button class="btn btn-light" type="button" id="spin-guest">' + icon('sparkles') + 'Крутить</button>') + '</div>' +
-      '</div>' +
-      '<details class="sec card tile fold"><summary class="tile-h"><h3>Призы и шансы</h3>' + icon('chevron-down') + '</summary><div class="chances" style="margin-top:12px">' + RULES.wheel.map(function (w, i) { return '<div class="c-' + w.id + '">' + pz(w.id) + '<span>' + esc(w.id === 'none' ? 'Пусто' : w.label + ' ' + w.sub) + '</span><b>' + pct(WW[i]) + '</b></div>'; }).join('') + '</div></details>';
-    var ws = $('#w-spin', v); if (ws) ws.style.transform = 'rotate(' + wheelDeg + 'deg)';
-    updateRoulBalance();
-    var g = $('#spin-guest', v); if (g) g.addEventListener('click', function () { requireAuth('roulette'); });
-    var pbtn = $('#spin-paid', v); if (pbtn) pbtn.addEventListener('click', function () { spin(false); });
-    var fb = $('#spin-free', v); if (fb) fb.addEventListener('click', function () { spin(true); });
-  }
-  function renderSpinHistory() {
-    var h = $('#spin-hist'); if (!h) return;
-    h.innerHTML = spinHistory.length ? '<div class="acts" style="justify-content:center">' + spinHistory.slice(0, 8).map(function (p) { return '<span class="chip" style="background:rgba(255,255,255,.1);color:#fff">' + esc(SHORT[p.id] || p.label) + '</span>'; }).join('') + '</div>' : '';
-  }
-  function spin(free) {
-    if (spinning || !acct.user) return;
-    var u = acct.user;
-    if (!free && u.balance < RULES.spinCost) { toast('Нужно ' + RULES.spinCost + ' токенов. Выполните задания или отметьтесь в кабинете', null, 'warn'); return; }
-    spinning = true;
-    $$('#spin-paid,#spin-free').forEach(function (b) { b.disabled = true; });
-    var ws = $('#w-spin'), wheel = $('#wheel'), pin = $('#w-pin'), th = wheelDeg, V = 0.5, raf = 0, alive = true, last = 0, lastSeg = Math.floor((-th + SEG_A / 2) / SEG_A), flickT = 0;
-    $$('.w-seg.win', wheel).forEach(function (e) { e.classList.remove('win'); });
-    if (wheel) wheel.classList.add('going');
-    function paint() { wheelDeg = th; ws.style.transform = 'rotate(' + th + 'deg)'; var sg = Math.floor((-th + SEG_A / 2) / SEG_A); if (sg !== lastSeg) { lastSeg = sg; flick(); } }
-    function flick() { if (!pin) return; pin.classList.add('hit'); clearTimeout(flickT); flickT = setTimeout(function () { pin.classList.remove('hit'); }, 70); }
-    // фаза 1: колесо сразу раскручивается (кадры считаем сами, без CSS-переходов)
-    if (ws && wheel && !REDUCED) {
-      last = performance.now();
-      (function tick(now) {
-        if (!alive) return;
-        var dt = Math.min(48, now - last); last = now;
-        th += V * dt; paint(); raf = requestAnimationFrame(tick);
-      })(last);
+    var u = acct.user, N = RL_ORD.length, ORD = RL_ORD.map(rlInfo), STEP = 94, R = 6, pool = [], raf = 0, heroIdx = -1, lastC = null, vel = 0;
+    var bok = ''; for (var i = 0; i < 22; i++) { var sz = 6 + Math.random() * 16; bok += '<i style="left:' + (Math.random() * 100) + '%;width:' + sz + 'px;height:' + sz + 'px;animation-duration:' + (7 + Math.random() * 9) + 's;animation-delay:-' + (Math.random() * 12) + 's"></i>'; }
+    v.innerHTML = '<div class="pad roul-head" style="padding:0 0 12px"><div><span class="eyebrow">Рулетка ONION SHOP</span><h1>Крутите и забирайте призы</h1></div></div>' +
+      '<section class="rl-scene" id="rl-scene"><div class="rl-rays"></div><div class="rl-bokeh">' + bok + '</div><div class="rl-lines"></div>' +
+      '<div class="rl-inner" id="rl-inner"><div class="rl-bar">' + (u ? '<span class="rl-chipb" id="roul-bal"></span><span class="rl-free" id="roul-free"></span>' : '<span class="rl-chipb">' + rlUse('i-token', 26) + '<span>Рулетка</span></span><span class="rl-free">Войдите, чтобы крутить</span>') + '</div>' +
+      '<div class="rl-hero" id="rl-hero"></div><div class="rl-rail" id="rl-rail"><div class="rl-dot"></div><div class="rl-mark" id="rl-mark"></div></div>' +
+      (u ? '<button class="rl-go" id="spin-paid" type="button">' + rlUse('i-token', 28) + '<span>Крутить за ' + RULES.spinCost + '</span></button><button class="rl-go2" id="spin-free" type="button" hidden></button>' : '<button class="rl-go" id="spin-guest" type="button">' + rlUse('i-token', 28) + '<span>Войти и получить ' + RULES.reward.register + '</span></button>') +
+      '<div class="rl-res" id="rl-res" hidden></div></div><div class="rl-fx" id="rl-fx"></div></section>';
+    var scene = $('#rl-scene', v), hero = $('#rl-hero', v), rail = $('#rl-rail', v), mark = $('#rl-mark', v), inner = $('#rl-inner', v), fxBox = $('#rl-fx', v), resBox = $('#rl-res', v);
+    function mod(i) { return ((i % N) + N) % N; }
+    for (var j = -R; j <= R; j++) { var e = document.createElement('div'); e.className = 'rl-cube'; e.dataset.j = j; rail.insertBefore(e, rail.firstChild); pool.push(e); }
+    function setHero(c) {
+      heroIdx = c; hero.classList.remove('rl-pop');
+      var old = hero.querySelector('.rl-slide:not(.rl-out)'), t = document.createElement('div'); t.innerHTML = rlArt(ORD[mod(c)]); var sl = t.firstChild;
+      if (old) { old.classList.add('rl-out'); setTimeout(function () { old.remove(); }, 520); }
+      sl.classList.add('rl-in'); hero.appendChild(sl);
     }
-    function stop() { alive = false; cancelAnimationFrame(raf); if (wheel) wheel.classList.remove('going'); }
-    function fail(msg) {
-      stop(); spinning = false;
-      updateRoulBalance(); $$('#spin-paid,#spin-free').forEach(function (b) { b.disabled = false; }); updateRoulBalance(); toast(msg, null, 'warn');
+    function layout() {
+      var c = Math.round(rlPos);
+      pool.forEach(function (e) {
+        var jj = +e.dataset.j, idx = c + jj, d = idx - rlPos, ad = Math.abs(d);
+        if (e.dataset.k !== String(idx)) { e.dataset.k = idx; e.innerHTML = rlUse(rlSym(ORD[mod(idx)]), 60); }
+        e.classList.toggle('rl-c0', ad < .5);
+        var sc = 1.22 - 0.22 * Math.min(1, ad) - Math.min(ad, 3) * .045;
+        e.style.transform = 'translate3d(' + (d * STEP) + 'px,0,0) scale(' + sc + ')';
+        e.style.zIndex = String(100 - Math.round(ad * 10)); e.style.opacity = ad > 4.4 ? '0' : '1';
+      });
+      if (c !== lastC) { if (spinning) { mark.classList.remove('rl-hit'); void mark.offsetWidth; mark.classList.add('rl-hit'); } else if (c !== heroIdx) setHero(c); lastC = c; }
     }
-    API.call('spin', { free: free }).then(function (r) {
-      if (!r.ok) { fail(r.error); return; }
-      var shown = Object.assign({}, acct.user, { balance: acct.user.balance - (free ? 0 : RULES.spinCost), freeSpins: acct.user.freeSpins - (free ? 1 : 0) });
-      var real = r.user; acct.user = shown; updateRoulBalance(); updateAcctUI();
-      if (!ws || !wheel) { stop(); spinning = false; setUser(real); showPrize(r.prize); return; }
-      // фаза 2: плавное торможение именно на нужном секторе
-      // x(t)=x0+L*(1-(1-t/D)^3): начальная скорость 3L/D равна текущей V — стыка не видно
-      var seg = segFor(RULES.wheel[r.index].id), jitter = (Math.random() - 0.5) * SEG_A * 0.6;
-      var target = -(seg * SEG_A) + jitter, x0 = th, L0 = V * 4400 / 3;
-      var L = L0 + ((((target - (x0 + L0)) % 360) + 360) % 360);
-      var D = REDUCED ? 200 : 3 * L / V, t0 = performance.now();
-      cancelAnimationFrame(raf); alive = false;
-      function fin() {
-        th = x0 + L; paint();
-        if (wheel) wheel.classList.remove('going');
-        var el = $('.w-seg[data-i="' + seg + '"]', wheel); if (el) el.classList.add('win');
-        setUser(real); updateRoulBalance();
-        setTimeout(function () { spinning = false; updateRoulBalance(); showPrize(r.prize); }, 650);
+    function animTo(to, dur, ease, done) {
+      var from = rlPos, t0 = performance.now(); cancelAnimationFrame(raf);
+      (function f(now) { var t = Math.min(1, (now - t0) / dur); rlPos = from + (to - from) * ease(t); layout(); if (t < 1) raf = requestAnimationFrame(f); else { rlPos = to; layout(); if (done) done(); } })(t0);
+    }
+    function idleOn() { clearInterval(rlTimer); rlTimer = setInterval(function () { if (!$('#rl-rail')) { clearInterval(rlTimer); return; } if (!spinning && !document.hidden) animTo(Math.round(rlPos) + 1, REDUCED ? 10 : 800, function (t) { return t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; }); }, 3200); }
+    function fxBurst(n) {
+      var cols = ['#43c9e3', '#7fe8ff', '#ffffff', '#ffd451', '#4a76ec', '#ff7ab0'];
+      for (var q = 0; q < n; q++) {
+        var el = document.createElement('i'); el.className = 'rl-p'; el.style.cssText = 'left:50%;top:200px;width:9px;height:14px;border-radius:2px;background:' + cols[q % cols.length]; fxBox.appendChild(el);
+        var a = Math.random() * Math.PI * 2, spd = 120 + Math.random() * 260, dx = Math.cos(a) * spd, dy = Math.sin(a) * spd - 140;
+        el.animate([{ transform: 'translate(0,0) rotate(0)', opacity: 1 }, { transform: 'translate(' + dx + 'px,' + (dy + 420) + 'px) rotate(' + (Math.random() * 900) + 'deg)', opacity: 0 }], { duration: 1500 + Math.random() * 1100, easing: 'cubic-bezier(.15,.7,.3,1)' }).onfinish = (function (x) { return function () { x.remove(); }; })(el);
       }
-      (function ease(now) {
-        var t = Math.min(1, (now - t0) / D), q = 1 - t;
-        th = x0 + L * (1 - q * q * q); paint();
-        if (t < 1) requestAnimationFrame(ease); else fin();
+    }
+    function boomFx() { ['rl-flash', 'rl-ring'].forEach(function (k) { var d = document.createElement('div'); d.className = k; fxBox.appendChild(d); setTimeout(function () { d.remove(); }, 1100); }); }
+    function banner() { var b = document.createElement('div'); b.className = 'rl-cong'; b.textContent = 'ПОЗДРАВЛЯЕМ!'; fxBox.appendChild(b); setTimeout(function () { b.remove(); }, 3200); }
+    function bigSeq(done) {
+      if (REDUCED) { done(); return; }
+      var t0 = performance.now(), D = 1900; scene.classList.add('rl-charge');
+      (function f(now) {
+        var t = Math.min(1, (now - t0) / D), e3 = t * t * t, a = e3 * 12;
+        inner.style.transform = 'scale(' + (1 + .3 * e3) + ') translate(' + ((Math.random() - .5) * a) + 'px,' + ((Math.random() - .5) * a) + 'px)';
+        if (t < 1) requestAnimationFrame(f);
+        else {
+          scene.classList.remove('rl-charge'); inner.style.transform = '';
+          inner.animate([{ transform: 'scale(1.3)' }, { transform: 'scale(.93)', offset: .3 }, { transform: 'scale(1.02)', offset: .6 }, { transform: 'scale(1)' }], { duration: 700, easing: 'ease-out' });
+          scene.animate([{ transform: 'translate(0,0)' }, { transform: 'translate(-7px,5px)' }, { transform: 'translate(6px,-5px)' }, { transform: 'translate(-4px,3px)' }, { transform: 'translate(0,0)' }], { duration: 500 });
+          boomFx(); banner(); done();
+        }
       })(t0);
-    });
+    }
+    function showResult(pr, isBig) {
+      var win = pr.id !== 'none';
+      var title = prizeTitle(pr), sub = prizeSub(pr);
+      resBox.hidden = false; resBox.style.animation = 'none'; void resBox.offsetWidth; resBox.style.animation = '';
+      resBox.innerHTML = '<span class="rl-ic">' + (pr.frameId ? ava({ name: acct.user && acct.user.name, avatar: acct.user && acct.user.avatar, frame: pr.frameId }, 'lg') : rlUse(rlSym(rlInfo(pr.id)), 48)) + '</span><div style="min-width:0"><b>' + (win ? (isBig ? 'Поздравляем! ' : '') + esc(title) : 'Пусто') + '</b><span>' + esc(sub) + '</span>' + (pr.frameId ? '<button class="btn btn-sm btn-light" type="button" id="rl-wear" style="margin-top:8px">Надеть рамку</button>' : '') + '</div>';
+      var w = $('#rl-wear', resBox); if (w) w.addEventListener('click', function () { API.call('profile', { frame: pr.frameId }).then(function (r) { if (r.ok) { setUser(r.user); toast('Рамка надета'); w.remove(); } }); });
+    }
+    function finish(pr, big, real) {
+      spinning = false; scene.classList.remove('rl-spinning'); hero.classList.remove('rl-shake');
+      setUser(real); updateRoulBalance();
+      var info = rlInfo(pr.id); heroIdx = -1;
+      hero.innerHTML = rlArt(info, pr); hero.firstChild.classList.add('rl-in'); hero.firstChild.classList.remove('rl-in'); hero.classList.add('rl-pop');
+      showResult(pr, big);
+      if (info.c !== 'none') fxBurst(big ? 280 : 80);
+      setTimeout(idleOn, big ? 5200 : 4200);
+    }
+    function doSpin(free) {
+      if (spinning || !acct.user) return;
+      var u2 = acct.user;
+      if (!free && u2.balance < RULES.spinCost) { toast('Нужно ' + RULES.spinCost + ' токенов. Выполните задания или отметьтесь в кабинете', null, 'warn'); return; }
+      spinning = true; clearInterval(rlTimer); cancelAnimationFrame(raf); resBox.hidden = true; updateRoulBalance();
+      $$('#spin-free').forEach(function (b) { b.disabled = true; });
+      scene.classList.add('rl-spinning'); hero.classList.add('rl-shake'); hero.innerHTML = rlMystery();
+      var V = 0.022, alive = true, last = performance.now();
+      if (!REDUCED) (function tick(now) { if (!alive) return; var dt = Math.min(48, now - last); last = now; rlPos += V * dt; layout(); raf = requestAnimationFrame(tick); })(last);
+      function fail(msg) { alive = false; cancelAnimationFrame(raf); spinning = false; scene.classList.remove('rl-spinning'); hero.classList.remove('rl-shake'); heroIdx = -1; setHero(Math.round(rlPos)); updateRoulBalance(); toast(msg, null, 'warn'); idleOn(); }
+      API.call('spin', { free: free }).then(function (r) {
+        if (!r.ok) { fail(r.error); return; }
+        var shown = Object.assign({}, acct.user, { balance: acct.user.balance - (free ? 0 : RULES.spinCost), freeSpins: acct.user.freeSpins - (free ? 1 : 0) });
+        var real = r.user; acct.user = shown; updateRoulBalance(); updateAcctUI();
+        alive = false; cancelAnimationFrame(raf);
+        var id = RULES.wheel[r.index].id, oi = RL_ORD.indexOf(id); if (oi < 0) oi = 0;
+        var K = 3.6, x0 = rlPos, tgt = Math.ceil(x0 + 26); tgt += mod(oi - tgt);
+        var L = tgt - x0, D = REDUCED ? 300 : K * L / V;
+        animTo(tgt, D, function (t) { return 1 - Math.pow(1 - t, K); }, function () {
+          scene.classList.remove('rl-spinning'); hero.classList.remove('rl-shake');
+          var big = rlBig(rlInfo(r.prize.id));
+          if (big) bigSeq(function () { finish(r.prize, true, real); }); else finish(r.prize, false, real);
+        });
+      }, function () { fail('Нет связи, попробуйте ещё раз'); });
+    }
+    layout(); updateRoulBalance(); idleOn();
+    var g = $('#spin-guest', v); if (g) g.addEventListener('click', function () { requireAuth('roulette'); });
+    var pbtn = $('#spin-paid', v); if (pbtn) pbtn.addEventListener('click', function () { doSpin(false); });
+    var fb = $('#spin-free', v); if (fb) fb.addEventListener('click', function () { doSpin(true); });
   }
+  function prizeTitle(p) { return p.id === 'none' ? 'Пусто' : p.tokens ? '+' + num(p.tokens) + ' ' + tokWord(p.tokens) : p.code ? 'Промокод −' + p.pct + '%' : p.xp ? '+' + p.xp + ' XP' : p.spins ? '+' + p.spins + ' ' + plural(p.spins, 'прокрут', 'прокрута', 'прокрутов') : p.frameName ? 'Рамка «' + p.frameName + '»' : p.label; }
+  function prizeSub(p) { return p.id === 'none' ? 'В этот раз не повезло, попробуйте ещё.' : p.code ? 'Код ' + p.code + ' уже в кабинете. Выберите его в корзине.' : p.xp ? 'Опыт засчитан в уровень этого месяца.' : p.spins ? 'Бесплатные прокруты добавлены.' : p.frameName ? 'Новая рамка открыта.' : 'Токены уже на балансе.'; }
   function showPrize(p) {
     var win = p.id !== 'none';
     var visual = p.frameId ? ava({ name: acct.user && acct.user.name, avatar: acct.user && acct.user.avatar, frame: p.frameId }, 'lg') : pz(p.id);
