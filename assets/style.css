@@ -1814,3 +1814,18 @@ html.dr-open{overflow:hidden}
 .home-icons button .hi-img i .i{width:13px;height:13px}
 .home-icons button[aria-pressed="true"]{background:var(--accent-soft);box-shadow:inset 0 0 0 2px var(--accent)}
 .home-icons button[aria-pressed="true"] .hi-img i{display:grid}
+
+/* v38 кнопка рулетки в профиле */
+.roul-cta{position:relative;overflow:hidden;display:flex;align-items:center;gap:14px;min-height:68px;padding:10px 14px 10px 10px;border-radius:20px;color:#04223a;text-decoration:none;
+  background:linear-gradient(135deg,#b5f3ff,#43c9e3 55%,#2a9fd6);box-shadow:0 12px 26px -12px rgba(67,201,227,.9),inset 0 2px 0 rgba(255,255,255,.7);transition:transform .15s}
+.roul-cta:active{transform:scale(.98)}
+.roul-cta::after{content:"";position:absolute;top:0;left:-60%;width:36%;height:100%;background:linear-gradient(105deg,transparent,rgba(255,255,255,.65),transparent);transform:skewX(-20deg);animation:rcSweep 4.5s ease-in-out infinite}
+@keyframes rcSweep{0%,60%{left:-60%}100%{left:130%}}
+.rc-ic{flex:none;width:48px;height:48px;border-radius:15px;display:grid;place-items:center;background:#0b1d3a;color:#8fe6f5;box-shadow:0 6px 12px -6px rgba(0,0,0,.5)}
+.rc-ic .i{width:28px;height:28px}
+.rc-t{display:grid;gap:1px;min-width:0;flex:1}
+.rc-t b{font-family:var(--f-d);font-size:18px;font-weight:800;line-height:1.15}
+.rc-t small{font-size:12.5px;font-weight:600;color:rgba(4,34,58,.78)}
+.rc-go{flex:none;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.55)}
+.rc-go .i{width:18px;height:18px}
+@media (prefers-reduced-motion:reduce){.roul-cta::after{animation:none}}
