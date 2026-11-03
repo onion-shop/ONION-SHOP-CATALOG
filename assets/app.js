@@ -94,10 +94,14 @@
     get: function (k, d) { try { var v = localStorage.getItem('onion.shop.' + k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
     set: function (k, v) { try { localStorage.setItem('onion.shop.' + k, JSON.stringify(v)); } catch (e) { /* нет хранилища */ } }
   };
-  function emblem(key, size) {
-    var u = 'url(assets/lvl/' + esc(key) + '.svg?v=3)';
-    return '<span class="emb" style="width:' + size + 'px;height:' + size + 'px">' + lvlImg(key, size) + '<i style="-webkit-mask-image:' + u + ';mask-image:' + u + '"></i></span>';
+  var SP_POS = [[0, -.62, 11, 0, 2.6], [.55, -.42, 8, .9, 3.1], [.7, .05, 12, 1.7, 2.8], [.5, .5, 8, .4, 3.4], [.05, .68, 11, 2.1, 2.5], [-.52, .5, 8, 1.2, 3.2], [-.7, .02, 12, .6, 2.9], [-.55, -.45, 8, 1.9, 3.3], [.3, -.72, 6, 1.4, 2.4], [-.28, .74, 6, 2.4, 2.7]];
+  function emblem(key, size, n) {
+    var k = n || SP_POS.length, h = '<span class="emb lv-' + esc(key) + '" style="width:' + size + 'px;height:' + size + 'px"><span class="sp-ring" aria-hidden="true">';
+    for (var i = 0; i < k; i++) { var p = SP_POS[i]; h += '<b style="--x:' + Math.round(p[0] * size) + 'px;--y:' + Math.round(p[1] * size) + 'px;--s:' + Math.max(5, Math.round(p[2] * size / 56)) + 'px;--dl:' + p[3] + 's;--d:' + p[4] + 's' + (i % 3 === 1 ? ';--c:var(--lc)' : '') + '"></b>'; }
+    return h + '</span>' + lvlImg(key, size) + '</span>';
   }
+  function perkIcon(t) { t = t.toLowerCase(); return /рамк/.test(t) ? 'star' : /промокод|скидк|%/.test(t) ? 'percent' : /прокрут|рулет/.test(t) ? 'sparkles' : /задани/.test(t) ? 'target' : /токен/.test(t) ? 'wallet' : /менеджер|приоритет|поддержк/.test(t) ? 'chat' : /подар/.test(t) ? 'gift' : 'check-circle'; }
+  function perkTiles(list) { return '<div class="perk-grid">' + list.map(function (x) { return '<div class="perk-t"><span class="perk-i">' + icon(perkIcon(x[0] + ' ' + (x[1] || ''))) + '</span><span><b>' + esc(x[0]) + '</b>' + (x[1] ? '<small>' + esc(x[1]) + '</small>' : '') + '</span></div>'; }).join('') + '</div>'; }
   function lvlImg(key, size, cls) { return '<img class="lvl-img' + (cls ? ' ' + cls : '') + '" src="assets/lvl/' + esc(key) + '.svg?v=3" width="' + size + '" height="' + size + '" alt="" decoding="async">'; }
   function lvlByKey(k) { return RULES.levels.filter(function (l) { return l.key === k; })[0] || RULES.levels[0]; }
   function pctTxt(p) { return String(p).replace('.', ','); }
@@ -1785,12 +1789,18 @@
   }
   // все уровни программы лояльности
   function levelsModal() {
-    var u = acct.user, cur = u ? u.level.index : -1;
-    openModal(modalHead('Программа лояльности') +
-      '<div class="lvl-list">' + RULES.levels.map(function (l, i) {
-        return '<section class="lvl-card lv-' + l.key + (i === cur ? ' cur' : '') + '"><header>' + emblem(l.key, 56) + '<div><h3>' + esc(l.name) + (i === cur ? ' <span class="chip">ваш уровень</span>' : '') + '</h3><span class="small">' + (l.min ? 'от ' + num(l.min) + ' XP за месяц' : 'сразу после регистрации') + '</span></div></header>' +
-          '<ul class="perks">' + perkItems(l.perks) + '</ul></section>';
-      }).join('') + '</div>');
+    var u = acct.user, cur = u ? u.level.index : -1, sel = cur < 0 ? 0 : cur;
+    var md = openModal(modalHead('Программа лояльности') + '<div class="lm-tabs" role="tablist">' + RULES.levels.map(function (l, i) {
+      return '<button type="button" role="tab" class="lm-tab lv-' + l.key + '" data-i="' + i + '">' + lvlImg(l.key, 38) + '<span>' + esc(l.name) + '</span></button>';
+    }).join('') + '</div><div class="lm-panel" id="lm-panel"></div>');
+    function show(i) {
+      sel = i; var l = RULES.levels[i];
+      $$('.lm-tab', md).forEach(function (b) { var on = +b.getAttribute('data-i') === i; b.classList.toggle('on', on); b.setAttribute('aria-selected', on ? 'true' : 'false'); });
+      $('#lm-panel', md).innerHTML = '<div class="lh lv-' + l.key + '">' + emblem(l.key, 96) + '<b class="loyal-name">' + esc(l.name) + '</b>' + (i === cur ? '<span class="chip">ваш уровень</span>' : '') +
+        '<span class="small">' + (l.min ? 'от ' + num(l.min) + ' XP за месяц' : 'сразу после регистрации') + '</span></div>' + perkTiles(l.perks);
+    }
+    $$('.lm-tab', md).forEach(function (b) { b.addEventListener('click', function () { show(+b.getAttribute('data-i')); }); });
+    show(sel);
   }
   function deleteModal() {
     var u = acct.user;
@@ -1842,16 +1852,16 @@
       (u.email ? '' : '<div class="notice notice-warn" style="margin-bottom:12px">' + icon('mail') + '<div><b>Добавьте почту.</b> Без неё не получится восстановить пароль. <button class="link-btn" type="button" id="add-email">Добавить</button></div></div>') +
       '<div class="dash">' +
       '<div class="profile c12"><div class="who"><div class="ava-wrap">' + ava(u, 'lg') + '<button class="ava-cam" type="button" id="ava-cam" aria-label="Изменить фото профиля">' + icon('camera') + '</button></div>' +
-      '<div style="min-width:0"><span class="lvl-pill">' + lvlImg(L.key, 22) + esc(L.name) + '</span><h1 style="margin-top:8px">' + esc(u.name) + '</h1>' +
+      '<div style="min-width:0"><span class="lvl-pill lv-' + L.key + '">' + emblem(L.key, 26, 5) + esc(L.name) + '</span><h1 style="margin-top:8px">' + esc(u.name) + '</h1>' +
       '<div class="meta"><span>@' + esc(u.login) + '</span>' + (u.email ? '<span>' + esc(u.email) + '</span>' : '') + '<button class="idb" type="button" data-copy="' + esc(u.code) + '">ID ' + esc(u.code) + icon('copy') + '</button><span>с нами с ' + esc(since) + '</span></div></div></div>' +
       '<div class="ptiles"><div class="ptile"><small>Токены</small><b>' + tk() + num(u.balance) + '</b></div><div class="ptile"><small>Это скидка до</small><b>' + rub(u.balanceRub) + '</b></div><div class="ptile"><small>Серия входов</small><b>' + u.streak + ' ' + plural(u.streak, 'день', 'дня', 'дней') + '</b></div><div class="ptile"><small>Активные заказы</small><b>' + active.length + '</b></div></div>' +
       '<div class="acts"><a class="btn btn-light" href="#roulette">' + icon('sparkles') + 'Рулетка' + (u.freeSpins ? ' · ' + u.freeSpins + ' ' + plural(u.freeSpins, 'бесплатный', 'бесплатных', 'бесплатных') : '') + '</a><a class="btn btn-glass" href="#cart">' + icon('bag') + 'Потратить токены</a></div></div>' +
 
       '<div class="card tile c6 loyal lv-' + L.key + '"><div class="tile-h"><h3>Программа лояльности</h3><button class="link-btn" type="button" id="all-levels">Все уровни</button></div>' +
-      '<div class="loyal-hero"><i class="tw t1"></i><i class="tw t2"></i><i class="tw t3"></i><i class="tw t4"></i><div class="loyal-top">' + emblem(L.key, 88) + '<div><span class="small">Ваш уровень' + (L.fixed ? ' · закреплён менеджером' : '') + '</span><b class="loyal-name">' + esc(L.name) + '</b><span class="xp-num">' + num(u.xp) + ' XP <span class="small">за месяц</span></span></div></div></div>' +
+      '<div class="lh lv-' + L.key + '">' + emblem(L.key, 104) + '<span class="small">Ваш уровень' + (L.fixed ? ' · закреплён менеджером' : '') + '</span><b class="loyal-name">' + esc(L.name) + '</b><span class="xp-num">' + num(u.xp) + ' XP <span class="small">за месяц</span></span></div>' +
       (L.next ? '<div class="xp-bar"><div class="bar"><i data-w="' + pctL + '%"></i></div><div class="xp-meta"><span>' + num(u.xp) + ' / ' + num(L.next.min) + ' XP</span><span>до ' + lvlImg(L.next.key, 18) + '«' + esc(L.next.name) + '» ещё <b>' + num(L.next.left) + ' XP</b></span></div></div>' : '') +
       '<div class="lvl-steps">' + RULES.levels.map(function (l, j) { return '<span class="' + (j <= L.index ? 'on' : '') + (j === L.index ? ' cur' : '') + '">' + lvlImg(l.key, 30) + esc(l.name) + '</span>'; }).join('') + '</div>' +
-      '<h4 class="perks-h">Ваши привилегии</h4><ul class="perks">' + perkItems(lvlByKey(L.key).perks) + '</ul></div>' +
+      '<h4 class="perks-h">Ваши привилегии</h4>' + perkTiles(lvlByKey(L.key).perks) + '</div>' +
 
       '<div class="card tile c6"><div class="tile-h"><h3>Задания</h3><span class="side" id="task-side"></span></div>' +
       '<div class="streak">' + streakDays.join('') + '</div>' +
