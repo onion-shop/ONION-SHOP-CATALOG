@@ -582,7 +582,7 @@ var OnionCore = (function () {
   };
 
   A.profile = function (db, p) {
-    var u = sessionUser(db, p); if (!u) return err('auth');
+    var u = sessionUser(db, p); if (!u) return err('auth'); var bdayNow = false;
     if (p.name != null) { var n = String(p.name).trim(); if (n.length < 2) return err('Укажите имя'); u.name = n; }
     if (p.phone != null) {
       var ph = phoneKey(p.phone); if (ph.length < 10 || ph.length > 15) return err('Проверьте телефон');
@@ -612,10 +612,14 @@ var OnionCore = (function () {
       if (u.birthday) return err('Дату рождения можно указать только один раз');
       if (!/^(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/.test(p.birthday)) return err('Проверьте дату рождения');
       u.birthday = p.birthday;
-      u.bdayYear = String(msk(db.now()).getUTCFullYear()); // в этом году не начисляем задним числом
+      var byear = String(msk(db.now()).getUTCFullYear());
+      if (dayKey(db.now()).slice(5) === p.birthday) { // день рождения сегодня: подарок выдаём сразу, дата ничего не отменяет
+        u.bdayYear = byear; bdayNow = true; log(db, u, RULES.reward.birthday, 'С днём рождения!');
+        settle(db, u);
+      } else u.bdayYear = byear; // прошедшие даты задним числом не начисляем
     }
     db.saveUser(u);
-    return ok({ user: publicUser(db, u) });
+    return ok({ user: publicUser(db, u), bdayNow: bdayNow });
   };
 
   A.checkin = function (db, p) {

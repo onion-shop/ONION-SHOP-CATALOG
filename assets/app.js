@@ -1693,11 +1693,14 @@
     var first = $('.dr-p button', el); if (first) first.focus();
   }
   function themeModal() {
-    var md = openModal(modalHead('Тема оформления') + '<div class="radios" id="th-opts">' + ['auto', 'light', 'dark'].map(function (k) { return '<button class="radio" type="button" data-th="' + k + '" aria-pressed="' + (themeMode() === k) + '">' + THEME_NAMES[k] + '</button>'; }).join('') + '</div><p class="small" style="margin-top:10px">Тема запоминается на этом устройстве.</p>', { cls: 'sm' });
+    var ICO = { auto: 'sun', light: 'sun', dark: 'moon' };
+    var md = openModal(modalHead('Тема оформления') + '<div class="th-grid" id="th-opts">' + ['auto', 'light', 'dark'].map(function (k) {
+      return '<button class="th-card th-' + k + '" type="button" data-th="' + k + '" aria-pressed="' + (themeMode() === k) + '"><span class="th-pv"><i class="th-bar"></i><i class="th-l1"></i><i class="th-l2"></i><i class="th-btn"></i><b class="th-ck">' + icon('check') + '</b></span><span class="th-n">' + THEME_NAMES[k] + '</span></button>';
+    }).join('') + '</div><p class="small" style="margin-top:12px">«Авто» подстраивается под настройки телефона. Выбор запоминается на этом устройстве.</p>', { cls: 'sm' });
     $$('[data-th]', md).forEach(function (b) { b.addEventListener('click', function () { setThemeMode(b.getAttribute('data-th')); $$('[data-th]', md).forEach(function (x) { x.setAttribute('aria-pressed', x === b); }); var v = $('#r-theme .val'); if (v) v.textContent = THEME_NAMES[themeMode()]; }); });
   }
   // ------------------------------------------------------------ значок на экране «Домой»
-  var SEASON_ICONS = [['halloween', 'Хэллоуин', [10, 17], [11, 1]], ['newyear', 'Новый год', [11, 21], [1, 14]], ['valentine', 'День Святого Валентина', [1, 31], [2, 15]]];
+  var SEASON_ICONS = [['halloween', 'Хэллоуин', [10, 17], [11, 1]]];
   function seasonOn(s) { var d = new Date(Date.now() + 3 * 3600e3), m = d.getUTCMonth() + 1, k = m * 100 + d.getUTCDate(), a = s[2][0] * 100 + s[2][1], b = s[3][0] * 100 + s[3][1]; return a <= b ? k >= a && k <= b : k >= a || k <= b; }
   var HOME_BASE = [['dark', 'Тёмная'], ['white', 'Белая']];
   function homeIcons() { return HOME_BASE.concat(SEASON_ICONS.map(function (s) { return [s[0], s[1]]; })); }
@@ -1771,7 +1774,14 @@
   }
   function bdayModal() {
     var md = openModal(modalHead('День рождения') + '<p class="muted">Указывается один раз. В этот день при входе начислим +' + RULES.reward.birthday + ' токенов.</p><div class="f"><label for="m-bday">Дата</label><input class="input" id="m-bday" type="date"></div><button class="btn btn-block" type="button" id="m-save">Сохранить</button>', { cls: 'sm' });
-    $('#m-save', md).addEventListener('click', function () { var val = $('#m-bday', md).value; if (!val) { toast('Выберите дату', null, 'warn'); return; } API.call('profile', { birthday: val.slice(5) }).then(function (r) { if (r.ok) { closeModal(); setUser(r.user); toast('Дата сохранена'); } else toast(r.error, null, 'warn'); }); });
+    $('#m-save', md).addEventListener('click', function () {
+      var val = $('#m-bday', md).value; if (!val) { toast('Выберите дату', null, 'warn'); return; }
+      var MON = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'], mm = +val.slice(5, 7), dd = +val.slice(8, 10);
+      closeModal();
+      confirmBox({ title: 'Это точная дата?', text: 'Вы указываете день рождения: ' + dd + ' ' + MON[mm - 1] + '. После сохранения изменить дату нельзя, в том числе через менеджера.', actions: [
+        { label: 'Изменить', cls: 'btn-ghost', run: bdayModal },
+        { label: 'Да, это моя дата', cls: '', run: function () { API.call('profile', { birthday: val.slice(5) }).then(function (r) { if (r.ok) { setUser(r.user); toast(r.bdayNow ? 'Дата сохранена. С днём рождения!' : 'Дата сохранена'); } else toast(r.error, null, 'warn'); }); } }] });
+    });
   }
   function framesModal() {
     var u = acct.user, li = u.level.index, prev = u.frame;
@@ -1867,7 +1877,7 @@
       '<div style="min-width:0"><h1>' + esc(u.name) + '</h1>' +
       '<div class="meta"><span>@' + esc(u.login) + '</span>' + (u.email ? '<span>' + esc(u.email) + '</span>' : '') + '<button class="idb" type="button" data-copy="' + esc(u.code) + '">ID ' + esc(u.code) + icon('copy') + '</button><span>с нами с ' + esc(since) + '</span></div></div></div>' +
       '<div class="ptiles"><div class="ptile"><small>Токены</small><b>' + tk() + num(u.balance) + '</b></div><div class="ptile"><small>Это скидка до</small><b>' + rub(u.balanceRub) + '</b></div><div class="ptile"><small>Серия входов</small><b>' + u.streak + ' ' + plural(u.streak, 'день', 'дня', 'дней') + '</b></div><div class="ptile"><small>Активные заказы</small><b>' + active.length + '</b></div></div>' +
-      '<div class="acts"><a class="roul-cta" href="#roulette"><span class="rc-ic">' + icon('wheel') + '</span><span class="rc-t"><b>Рулетка</b><small>' + (u.freeSpins ? 'Бесплатно сегодня: ' + u.freeSpins + ' ' + plural(u.freeSpins, 'прокрут', 'прокрута', 'прокрутов') : 'Крутите за токены, призы каждый раз') + '</small></span><span class="rc-go">' + icon('arrow-right') + '</span></a><a class="btn btn-glass" href="#cart">' + icon('bag') + 'Потратить токены</a></div></div>' +
+      '<div class="acts"><a class="btn" href="#roulette">' + icon('gift') + 'Рулетка</a><a class="btn btn-white" href="#cart">' + icon('bag') + 'Потратить токены</a></div></div>' +
 
       '<div class="card tile c6 loyal lv-' + L.key + '"><div class="tile-h"><h3>Программа лояльности</h3><button class="link-btn" type="button" id="all-levels">Все уровни</button></div>' +
       '<div class="lh lh-row lv-' + L.key + '">' + emblem(L.key, 68, 3) + '<div class="lh-t"><span class="small">Ваш уровень' + (L.fixed ? ' · закреплён менеджером' : '') + '</span><b class="loyal-name">' + esc(L.name) + '</b><span class="xp-num">' + num(u.xp) + ' XP <span class="small">за месяц</span></span></div></div>' +
@@ -1885,10 +1895,10 @@
       '<div class="ref-row"><span class="lnk">' + esc(refLink.replace(/^https?:\/\//, '')) + '</span><button class="icon-btn" type="button" data-copy="' + esc(refLink) + '" aria-label="Скопировать ссылку">' + icon('copy') + '</button><button class="icon-btn acc" type="button" id="ref-share" aria-label="Поделиться">' + icon('share') + '</button></div>' +
       '<p class="small">Ваш код: <b>' + esc(u.refCode) + '</b></p></div>' +
 
-      '<div class="card tile c6"><div class="tile-h"><h3>Промокоды</h3></div>' + (u.promos.length ? '<div class="promos">' + u.promos.map(function (p) { return '<span class="ticket"><code>' + esc(p.code) + '</code><span class="pct">−' + pctTxt(p.pct) + '%</span><span class="small">' + promoLine(p) + '</span></span>'; }).join('') + '</div>' : '<p class="small">Пока нет</p>') + '</div>' +
+      '<div class="card tile c6"><div class="tile-h"><h3>Промокоды</h3>' + (u.promos.length ? '<span class="side">' + u.promos.length + '</span>' : '') + '</div>' + (u.promos.length ? '<div class="pcs">' + u.promos.map(function (p) { return '<div class="pc"><div class="pc-l"><b>−' + pctTxt(p.pct) + '%</b></div><div class="pc-r"><code>' + esc(p.code) + '</code><span class="small">' + promoLine(p) + '</span></div><button class="icon-btn" type="button" data-copy="' + esc(p.code) + '" aria-label="Скопировать код">' + icon('copy') + '</button></div>'; }).join('') + '</div>' : '<div class="pc-empty">' + icon('ticket') + '<span>Пока нет промокодов. Они выпадают в рулетке и приходят с уровнем.</span></div>') + '</div>' +
 
       ((u.waits || []).length ? '<div class="card tile c12"><div class="tile-h"><h3>Жду появления</h3><span class="side">' + u.waits.length + '</span></div><div class="waits">' + u.waits.map(function (w) {
-        return '<div class="wait-row"><a href="#p-' + esc(w.id) + '">' + esc(w.title) + '</a>' + (w.ready ? '<span class="badge badge-ok">можно заказать</span>' : '<span class="small">ждём поступления</span>') + '<button class="icon-btn" type="button" data-wx="' + esc(w.id) + '" aria-label="Больше не ждать">' + icon('x') + '</button></div>';
+        return '<div class="wait-c' + (w.ready ? ' rdy' : '') + '"><a class="wait-ph" href="#p-' + esc(w.id) + '"><img src="' + thumb(w.id) + '" alt="" loading="lazy" width="64" height="64"></a><div class="wait-i"><a href="#p-' + esc(w.id) + '">' + esc(w.title) + '</a>' + (w.ready ? '<span class="wait-st ok">' + icon('check-circle') + 'Уже можно заказать</span>' : '<span class="wait-st">' + icon('hourglass') + 'Сообщим, когда появится</span>') + '</div><button class="icon-btn" type="button" data-wx="' + esc(w.id) + '" aria-label="Больше не ждать">' + icon('x') + '</button></div>';
       }).join('') + '</div></div>' : '') +
       '<div class="card tile c12"><div class="tile-h"><h3>Мои заказы</h3><a class="link-btn" href="#orders">Все заказы</a></div>' +
       (dashOrders.length ? '<div class="orders">' + dashOrders.map(orderCard).join('') + '</div>' + (u.orders.filter(isDoneOrder).length ? '<p class="small" style="margin-top:10px"><a href="#orders">История заказов · ' + u.orders.filter(isDoneOrder).length + '</a> — завершённые заказы, их можно повторить</p>' : '') : '<p class="small">Здесь появятся заказы с номерами и статусами. <a href="#catalog">Перейти в каталог</a></p>') + '</div>' +

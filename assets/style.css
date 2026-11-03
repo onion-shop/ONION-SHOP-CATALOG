@@ -1829,3 +1829,45 @@ html.dr-open{overflow:hidden}
 .rc-go{flex:none;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.55)}
 .rc-go .i{width:18px;height:18px}
 @media (prefers-reduced-motion:reduce){.roul-cta::after{animation:none}}
+
+/* v39 кнопки профиля, ожидание, тема, промокоды */
+.btn-white{background:#fff;color:#0b1d3a;box-shadow:0 8px 20px -10px rgba(0,0,0,.4)}
+.waits{display:grid;gap:8px}
+.wait-c{display:flex;align-items:center;gap:12px;padding:10px;border-radius:18px;background:var(--tile);box-shadow:inset 0 0 0 1px var(--line)}
+.wait-c.rdy{background:color-mix(in srgb,var(--ok) 9%,var(--tile));box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--ok) 45%,transparent)}
+.wait-ph{flex:none;width:60px;height:60px;border-radius:14px;overflow:hidden;background:var(--card);box-shadow:0 0 0 1px var(--line)}
+.wait-ph img{width:100%;height:100%;object-fit:cover;display:block}
+.wait-i{display:grid;gap:5px;min-width:0;flex:1}
+.wait-i a{font-weight:700;font-size:14.5px;line-height:1.3;color:var(--ink);text-decoration:none;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.wait-st{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:var(--ink-3)}
+.wait-st .i{width:14px;height:14px}
+.wait-st.ok{color:var(--ok)}
+.wait-c .icon-btn{flex:none;box-shadow:none;background:var(--card)}
+@media (min-width:760px){.waits{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.th-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.th-card{display:grid;gap:8px;justify-items:center;padding:8px 8px 10px;border:0;border-radius:18px;background:var(--tile);color:var(--ink-2);font:inherit;font-size:13px;font-weight:700;cursor:pointer;box-shadow:inset 0 0 0 1px var(--line)}
+.th-card[aria-pressed="true"]{color:var(--ink);box-shadow:inset 0 0 0 2px var(--accent);background:var(--accent-soft)}
+.th-pv{position:relative;display:block;width:100%;aspect-ratio:3/4;border-radius:12px;overflow:hidden;--pb:#eef3fa;--pc:#fff;--pl:#c9d5e6}
+.th-dark .th-pv{--pb:#0a1426;--pc:#13233f;--pl:#2a4068}
+.th-auto .th-pv{background:linear-gradient(105deg,#eef3fa 50%,#0a1426 50%)}
+.th-card:not(.th-auto) .th-pv{background:var(--pb)}
+.th-pv i{position:absolute;display:block;border-radius:5px}
+.th-bar{left:10%;right:10%;top:10%;height:14%;background:linear-gradient(90deg,#43c9e3,#1a86c0)}
+.th-l1{left:10%;right:30%;top:34%;height:8%;background:var(--pl)}
+.th-l2{left:10%;right:18%;top:48%;height:8%;background:var(--pl)}
+.th-btn{left:10%;right:10%;bottom:10%;height:16%;background:#1a86c0}
+.th-auto .th-l1,.th-auto .th-l2{background:linear-gradient(105deg,#c9d5e6 50%,#2a4068 50%)}
+.th-ck{position:absolute;right:6px;top:6px;width:20px;height:20px;border-radius:50%;display:none;place-items:center;background:var(--accent);color:#fff}
+.th-ck .i{width:12px;height:12px}
+.th-card[aria-pressed="true"] .th-ck{display:grid}
+.pcs{display:grid;gap:10px}
+.pc{position:relative;display:flex;align-items:stretch;border-radius:18px;background:var(--tile);box-shadow:inset 0 0 0 1px var(--line);overflow:hidden}
+.pc-l{flex:none;display:grid;place-items:center;width:84px;background:linear-gradient(150deg,#43c9e3,#1a86c0);color:#fff;font-family:var(--f-d);font-size:22px;font-weight:800;position:relative}
+.pc-l::after{content:"";position:absolute;right:-7px;top:0;bottom:0;width:14px;background:radial-gradient(circle at 7px 50%,transparent 0,transparent 0) ;}
+.pc-l::before{content:"";position:absolute;right:-1px;top:0;bottom:0;width:2px;background:repeating-linear-gradient(180deg,var(--tile) 0 5px,transparent 5px 10px);z-index:1}
+.pc-r{flex:1;min-width:0;display:grid;gap:3px;align-content:center;padding:12px 8px 12px 14px}
+.pc-r code{font-family:var(--f-d);font-weight:800;font-size:15px;letter-spacing:.06em;color:var(--ink);overflow-wrap:anywhere}
+.pc-r .small{font-size:12px;color:var(--ink-3)}
+.pc .icon-btn{align-self:center;margin-right:10px;box-shadow:none;background:var(--card)}
+.pc-empty{display:flex;gap:12px;align-items:center;padding:14px;border-radius:16px;background:var(--tile);color:var(--ink-3);font-size:13.5px}
+.pc-empty .i{flex:none;width:26px;height:26px;color:var(--accent)}
