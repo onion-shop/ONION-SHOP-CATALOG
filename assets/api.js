@@ -70,6 +70,8 @@ var OnionAPI = (function () {
     delCode: function (k) { delete DemoDB.codes[k]; },
     mail: function () { return true; },
     deleteUser: function (u) { mem.users = mem.users.filter(function (x) { return x.id !== u.id; }); save(); },
+    ledgerHas: function (key, kind) { return (mem.ledger || []).some(function (e) { return e.key === key && e.kind === kind; }); },
+    ledgerAdd: function (e) { (mem.ledger || (mem.ledger = [])).push(e); save(); },
     deleteSessionsOf: function (id) { mem.sessions = mem.sessions.filter(function (s) { return s.userId !== id; }); save(); },
     botUser: function () { return 'onion_shop_demo_bot'; },
     userNotify: function (u, text) { (mem.tg = mem.tg || []).push({ chat: u.tgChat, text: text }); save(); return true; },

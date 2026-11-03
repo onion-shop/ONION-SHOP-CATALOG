@@ -109,7 +109,7 @@
   function lvlByKey(k) { return RULES.levels.filter(function (l) { return l.key === k; })[0] || RULES.levels[0]; }
   function pctTxt(p) { return String(p).replace('.', ','); }
   function perkItems(list) { return list.map(function (x) { return '<li>' + icon('check') + '<span><b>' + esc(x[0]) + '</b>' + (x[1] ? '<small>' + esc(x[1]) + '</small>' : '') + '</span></li>'; }).join(''); }
-  function promoLine(p) { return (p.cat ? 'только «' + esc(p.catLabel) + '»' : esc(p.from || '')) + (p.exp ? ' · до конца месяца' : ''); }
+  function promoLine(p) { var d = p.until ? new Date(+p.until + 3 * 3600000) : null; return (p.cat ? 'только «' + esc(p.catLabel) + '»' : esc(p.from || '')) + (p.exp ? ' · до конца месяца' : d ? ' · до ' + String(d.getUTCDate()).padStart(2, '0') + '.' + String(d.getUTCMonth() + 1).padStart(2, '0') : ''); }
   function ava(u, cls) {
     var f = esc((u && u.frame) || 'base');
     return '<span class="ava f-' + f + (f === 'lvl-diamond' ? ' an-' + esc((u && u.frameAnim) || 'shine') : '') + (cls ? ' ' + cls : '') + '">' + (u && u.avatar ? '<img src="' + esc(u.avatar) + '" alt="">' : esc(initials(u && u.name))) + '</span>';
@@ -451,49 +451,81 @@
   // тихое обновление пользователя после событий: без перерисовки корзины и ввода
   function setUserLite(u) { acct.user = u; updateAcctUI(); if (current === 'account') renderAccount(); showNews(u); }
   // ------------------------------------------------------------ подарок на день рождения
+  /* Сцена: закрытая коробка → крышка улетает, изнутри свет → «камера» заглядывает внутрь → награды поднимаются карточками.
+     Награды выдаёт сервер (bdayGift) в момент открытия; повторно не выдаются — при обновлении страницы поздравление не появится. */
   var bdayBusy = false;
   function bdayGift() {
-    var u = acct.user; if (bdayBusy || !u || !u.bdayToday || $('#bd-ov')) return;
+    var u = acct.user; if (bdayBusy || !u || !u.bdayToday || $('#gb-ov')) return;
     bdayBusy = true;
-    var name = esc(String(u.name || '').split(' ')[0]);
-    var ov = document.createElement('div'); ov.id = 'bd-ov'; ov.className = 'bd-ov';
-    ov.innerHTML = '<div class="bd-s1" id="bd-s1"><h2>С днём рождения, ' + name + '!</h2><p>Для вас подарок. Нажмите на коробку 5 раз, чтобы открыть</p>' +
-      '<button class="bd-box" id="bd-box" type="button" aria-label="Открыть подарок"><span class="bd-lid"><i class="bd-bow"></i></span><span class="bd-body"><i class="bd-rib"></i><img src="assets/logo.png" alt="" width="64" height="64"></span></button>' +
-      '<div class="bd-dots" id="bd-dots"><i></i><i></i><i></i><i></i><i></i></div></div><div class="bd-white" id="bd-white"></div><div class="bd-s2" id="bd-s2" hidden></div>';
-    document.body.appendChild(ov); document.documentElement.style.overflow = 'hidden';
-    var box = $('#bd-box', ov), dots = $$('#bd-dots i', ov), taps = 0, opened = false, res = null;
-    function close() { ov.remove(); document.documentElement.style.overflow = ''; bdayBusy = false; }
-    function festive(g) {
-      var s2 = $('#bd-s2', ov), bal = '', fl = '';
-      var cols = ['#ff6b8b', '#ffc83d', '#43c9e3', '#7a6cff', '#2bd08f', '#ff9d1c'];
-      for (var i = 0; i < 9; i++) bal += '<i class="bd-bal" style="left:' + (4 + i * 11) + '%;background:' + cols[i % cols.length] + ';animation-delay:-' + (i * .7) + 's;animation-duration:' + (6 + (i % 4)) + 's"></i>';
-      for (var j = 0; j < 6; j++) fl += '<i class="bd-fl" style="left:' + (6 + j * 18) + '%;--fc:' + cols[(j + 2) % cols.length] + '"></i>';
-      var items = g.map(function (x) {
-        return x.k === 'tok' ? '<div class="bd-it">' + tk('lg') + '<b>+' + x.n + '</b><span>' + tokWord(x.n) + '</span></div>'
-          : x.k === 'xp' ? '<div class="bd-it">' + rlUse('rl-xp', 44) + '<b>+' + x.n + '</b><span>опыт XP</span></div>'
-          : '<div class="bd-it">' + rlUse('rl-again', 44) + '<b>×' + x.n + '</b><span>' + (x.n === 1 ? 'бесплатный прокрут' : 'бесплатных прокрута') + '</span></div>';
-      }).join('');
-      s2.innerHTML = '<div class="bd-decor">' + bal + fl + '</div><div class="bd-card"><img src="assets/logo.png" alt="" width="56" height="56"><h2>С днём рождения!</h2><p>Команда ONION SHOP дарит вам подарки</p><div class="bd-its">' + items + '</div><button class="btn btn-block" type="button" id="bd-ok">Забрать</button></div>';
-      s2.hidden = false; confetti(160);
-      $('#bd-ok', s2).addEventListener('click', close);
+    var name = esc(String(u.name || '').trim().split(/\s+/)[0] || '');
+    var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    function faces(pre, list) { return list.map(function (f) { return '<i class="' + pre + ' ' + pre + '-' + f + '"></i>'; }).join(''); }
+    var dust = ''; for (var i = 0; i < 14; i++) dust += '<i style="left:' + (5 + Math.random() * 90) + '%;top:' + (8 + Math.random() * 80) + '%;animation-delay:-' + (Math.random() * 6).toFixed(1) + 's;animation-duration:' + (5 + Math.random() * 5).toFixed(1) + 's"></i>';
+    var spark = ''; for (var j = 0; j < 16; j++) spark += '<i style="--a:' + (j * 22.5 + Math.random() * 10) + 'deg;--d:' + (90 + Math.random() * 90) + 'px;animation-delay:' + (Math.random() * .25).toFixed(2) + 's"></i>';
+    var ov = document.createElement('div'); ov.id = 'gb-ov'; ov.className = 'gb-ov' + (reduce ? ' gb-rm' : '');
+    ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-modal', 'true'); ov.setAttribute('aria-label', 'Подарок на день рождения');
+    ov.innerHTML = '<div class="gb-bg"><i class="gb-spot"></i><div class="gb-dust">' + dust + '</div></div>' +
+      '<button class="gb-x" type="button" aria-label="Закрыть">' + icon('x') + '</button>' +
+      '<div class="gb-head" id="gb-head"><span class="gb-eyebrow">Onion Shop</span><h2>С днём рождения' + (name ? ', ' + name : '') + '!</h2><p>Сегодня мы приготовили для тебя особенный подарок</p></div>' +
+      '<div class="gb-scene" id="gb-scene"><div class="gb-cam" id="gb-cam"><div class="gb-float"><div class="gb-box" id="gb-box">' +
+        '<div class="gb-body">' + faces('gb-f', ['front', 'back', 'left', 'right', 'bottom']) +
+          '<i class="gb-in gb-in-back"></i><i class="gb-in gb-in-left"></i><i class="gb-in gb-in-right"></i><i class="gb-in gb-in-front"></i>' +
+          '<div class="gb-floor"><i class="gb-tissue t1"></i><i class="gb-tissue t2"></i><i class="gb-tissue t3"></i>' +
+            '<span class="gb-item it1">' + tk('gb-ic') + '</span><span class="gb-item it2">' + rlUse('rl-xp', 40) + '</span><span class="gb-item it3">' + rlUse('rl-ticket', 40) + '</span></div>' +
+          '<i class="gb-glow"></i>' +
+          '<span class="gb-seal"><img src="assets/logo.png" alt="" width="64" height="64"></span>' +
+        '</div>' +
+        '<div class="gb-lid" id="gb-lid">' + faces('gb-l', ['top', 'front', 'back', 'left', 'right']) + '</div>' +
+        '<div class="gb-bow" id="gb-bow"><i class="bw-l"></i><i class="bw-r"></i><i class="bw-tl"></i><i class="bw-tr"></i><i class="bw-k"></i></div>' +
+      '</div></div></div><i class="gb-shadow"></i><div class="gb-spark" id="gb-spark">' + spark + '</div></div>' +
+      '<div class="gb-cta" id="gb-cta"><button class="gb-open" type="button" id="gb-open">Открыть подарок</button><small>или нажмите на коробку</small></div>' +
+      '<div class="gb-res" id="gb-res" hidden></div>';
+    document.body.appendChild(ov); document.documentElement.classList.add('gb-lock');
+    requestAnimationFrame(function () { ov.classList.add('in'); });
+    var res = null, failed = null, opened = false, timers = [];
+    function later(fn, ms) { timers.push(setTimeout(fn, reduce ? Math.min(ms, 200) : ms)); }
+    function close() { timers.forEach(clearTimeout); ov.classList.remove('in'); setTimeout(function () { ov.remove(); }, 300); document.documentElement.classList.remove('gb-lock'); bdayBusy = false; document.removeEventListener('keydown', onKey); }
+    function onKey(e) { if (e.key === 'Escape' && (!opened || res || failed)) close(); }
+    document.addEventListener('keydown', onKey);
+    $('.gb-x', ov).addEventListener('click', function () { if (!opened || res || failed) close(); });
+    function until(ms) { var d = new Date(+ms + 3 * 3600000); return String(d.getUTCDate()).padStart(2, '0') + '.' + String(d.getUTCMonth() + 1).padStart(2, '0'); }
+    function showRes() {
+      var box = $('#gb-res', ov);
+      if (failed) {
+        box.innerHTML = '<div class="gb-card gb-err"><b>Не получилось открыть подарок</b><p>' + esc(failed) + '</p><button class="gb-open" type="button" id="gb-done">Закрыть</button></div>';
+      } else {
+        var g = {}; (res.gifts || []).forEach(function (x) { g[x.k] = x; });
+        box.innerHTML = '<div class="gb-res-h"><span class="gb-eyebrow">Подарок получен</span><h2>Всё уже в кабинете</h2></div><div class="gb-cards">' +
+          (g.tok ? '<div class="gb-card c1"><span class="gb-ci">' + tk('gb-ic') + '</span><span class="gb-ct"><small>Токены</small><b>+' + num(g.tok.n) + '</b><em>≈ ' + num(g.tok.rub) + ' ₽ скидки на заказы</em></span></div>' : '') +
+          (g.xp ? '<div class="gb-card c2"><span class="gb-ci">' + rlUse('rl-xp', 46) + '</span><span class="gb-ct"><small>Опыт</small><b>+' + num(g.xp.n) + ' XP</b><em>Уровень «' + esc(res.user.level.name) + '» до конца месяца</em></span></div>' : '') +
+          (g.promo ? '<div class="gb-card c3"><span class="gb-ci">' + rlUse('rl-ticket', 46) + '</span><span class="gb-ct"><small>Промокод −' + String(g.promo.pct).replace('.', ',') + '%</small><b class="gb-code">' + esc(g.promo.code) + '</b><em>Один раз, до ' + until(g.promo.until) + ', можно вместе с токенами</em></span><button class="gb-copy" type="button" data-copy="' + esc(g.promo.code) + '" aria-label="Скопировать промокод">' + icon('copy') + '</button></div>' : '') +
+          '</div><button class="gb-open" type="button" id="gb-done">Забрать подарок</button><a class="gb-link" href="#account" id="gb-acc">Открыть кабинет</a>';
+        var cp = $('.gb-copy', box); if (cp) cp.addEventListener('click', function () { copyText(cp.getAttribute('data-copy'), 'Промокод скопирован'); });
+        var ac = $('#gb-acc', box); if (ac) ac.addEventListener('click', function () { close(); });
+      }
+      box.hidden = false; ov.classList.add('done');
+      $('#gb-done', box).addEventListener('click', close);
+      if (!failed && !reduce) confetti(120);
     }
     function open() {
-      opened = true; box.disabled = true; box.classList.add('go');
+      if (opened) return; opened = true;
+      ov.classList.add('opening');
       API.call('bdayGift').then(function (r) {
-        if (!r.ok) { toast(r.error, null, 'warn'); close(); return; }
+        if (!r.ok) { failed = r.error || 'Попробуйте ещё раз позже'; return; }
         res = r; setUser(r.user);
-      }).catch(function () { toast('Не удалось открыть подарок, попробуйте позже', null, 'warn'); close(); });
-      setTimeout(function () { ov.classList.add('flash'); }, 650);
-      setTimeout(function () {
-        var t = setInterval(function () { if (res) { clearInterval(t); $('#bd-s1', ov).hidden = true; festive(res.gifts); ov.classList.add('done'); } }, 80);
-      }, 1100);
+      }).catch(function () { failed = 'Нет связи с сервером. Подарок не пропадёт — откройте его позже сегодня'; });
+      later(function () { ov.classList.add('untie'); }, 550);
+      later(function () { ov.classList.add('lift'); }, 950);
+      later(function () { ov.classList.add('dive'); }, 1900);
+      var t0 = Date.now();
+      later(function wait() {
+        if (res || failed) { ov.classList.add('rise'); later(showRes, 420); return; }
+        if (Date.now() - t0 > 15000) { failed = 'Сервер долго не отвечает. Подарок не пропадёт — откройте его позже сегодня'; }
+        timers.push(setTimeout(wait, 200));
+      }, 3100);
     }
-    box.addEventListener('click', function () {
-      if (opened) return;
-      taps++; dots.forEach(function (d, i) { d.classList.toggle('on', i < taps); });
-      box.style.setProperty('--k', taps); box.classList.remove('hit'); void box.offsetWidth; box.classList.add('hit');
-      if (taps >= 5) open();
-    });
+    $('#gb-open', ov).addEventListener('click', open);
+    $('#gb-box', ov).addEventListener('click', open);
   }
   function doCheckin(btn) {
     if (!acct.user) return requireAuth('account');
@@ -712,7 +744,8 @@
     };
     var tiles = catTile('#stock', 'В наличии', 'stock') + catTile('#preorder', 'Из Китая', 'china');
     categories(PRODUCTS).forEach(function (c) { if (c.key !== 'other') tiles += catTile('#catalog', c.label, c.key, c.key); });
-    var picks = shopPicks(), newest = PRODUCTS.filter(function (p) { return p.status !== 'sold'; }).slice(0, 5);
+    var picks = shopPicks(), newest = PRODUCTS.filter(function (p) { return p.status === 'stock' && preL.indexOf(p) < 0; }).slice(0, 5);
+    if (newest.length < 3) newest = PRODUCTS.filter(function (p) { return p.status !== 'sold' && preL.indexOf(p) < 0; }).slice(0, 5); // не повторяем «Новинки из Китая»
     var slides = [];
     picks.forEach(function (p) { slides.push({ p: p, tag: 'Выбор магазина' }); });
     hot.slice(0, 3).forEach(function (p) { if (picks.indexOf(p) < 0) slides.push({ p: p, tag: 'Выгодное предложение' }); });
@@ -1226,7 +1259,7 @@
         '<div class="f" data-f="name"><label for="f-name">Имя</label><input class="input" id="f-name" autocomplete="name" value="' + esc(form.name) + '"><span class="err-msg" hidden></span></div>' +
         '<div class="f" data-f="phone"><label for="f-phone">Телефон</label><input class="input" id="f-phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="+7 900 000-00-00" value="' + esc(form.phone) + '"><span class="err-msg" hidden></span></div>' +
         '<div class="f full" data-f="tg"><label for="f-tg">Telegram</label><div class="prefix"><span>@</span><input class="input" id="f-tg" autocomplete="off" autocapitalize="off" value="' + esc(form.tg) + '"></div><span class="err-msg" hidden></span></div></div></div>' : '') +
-      (u && !profileOk(u) ? '<div class="notice notice-warn need-prof" data-f="prof">' + icon('user') + '<div><b>Заполните профиль</b> — имя и телефон берутся из него.</div><a class="btn btn-sm" href="#account">В профиль</a></div>' : '') +
+      (u && !profileOk(u) ? '<div class="notice notice-warn need-prof" data-f="prof">' + icon('user') + '<div><b>Заполните данные в кабинете</b> — имя и телефон берутся из него.</div><a class="btn btn-sm" href="#account">В профиль</a></div>' : '') +
 
       (t.stock ? '<div class="card panel"><div class="panel-head"><h2><span class="n">' + (++n) + '</span>Получение' + (t.pre ? ' · в наличии' : '') + '</h2></div>' +
         '<div class="f" data-f="recv"><span class="lbl sr">Способ получения</span><div class="radios mini">' +
@@ -1386,7 +1419,7 @@
   function validateForm(hasStock, hasPre) {
     var e = [];
     var u0 = acct.user;
-    if (u0) { if (!profileOk(u0)) e.push(['prof', 'Заполните профиль: имя и телефон']); }
+    if (u0) { if (!profileOk(u0)) e.push(['prof', 'Заполните в кабинете имя и телефон']); }
     else {
       if (form.name.trim().length < 2) e.push(['name', 'Укажите имя']);
       var d = CORE.digits(form.phone); if (d.length < 10 || d.length > 15) e.push(['phone', 'Укажите телефон, например +7 900 000-00-00']);
@@ -1559,7 +1592,7 @@
       '<li>' + tk('lg') + '<span><b>Программа лояльности</b>: Бронза → Серебро → Золото → Платина → Алмаз</span></li>' +
       '<li>' + tk('lg') + '<span><b>Рулетка</b>: токены, промокоды, рамки для аватара</span></li>' +
       '<li>' + tk('lg') + '<span><b>Статусы заказов</b> — от выкупа в Китае до получения</span></li>' +
-      '<li>' + tk('lg') + '<span><b>+' + R.referrer + ' токенов</b> за друга по вашей ссылке</span></li>' +
+      '<li>' + tk('lg') + '<span><b>+' + R.referrer + ' токенов</b> за друга, когда он получит первый заказ</span></li>' +
       '</ul><p class="small" style="color:var(--navy-ink-2)">Пароль хранится в зашифрованном виде. Почта нужна, чтобы восстановить пароль.</p></div>';
   }
   function renderAuth(v) {
@@ -1630,7 +1663,7 @@
           busy(btn, false);
           if (!r.ok) { fail(r.error); return; }
           regSent = false; store.set('ref', ''); API.setSession(r.session);
-          confetti(150); reward('Добро пожаловать! +' + r.welcome + ' ' + tokWord(r.welcome) + (API.mode === 'demo' ? ' (и демо-токены для проверки)' : ''));
+          if (r.repeat) toast('Добро пожаловать! Приветственные бонусы на эти данные уже выдавались раньше, поэтому повторно не начисляются'); else { confetti(150); reward('Добро пожаловать! +' + r.welcome + ' ' + tokWord(r.welcome) + (API.mode === 'demo' ? ' (и демо-токены для проверки)' : '')); }
           setUser(r.user); var back = returnTo; returnTo = null; if (back && back !== 'account') go(back);
         });
       } else if (authTab === 'login') {
@@ -1674,7 +1707,7 @@
         }
         URL.revokeObjectURL(url);
         toast('Загружаем фото…');
-        API.call('profile', { avatar: out }).then(function (r) { if (r.ok) { setUser(r.user); toast('Фото профиля обновлено'); } else toast(r.error, null, 'warn'); });
+        API.call('profile', { avatar: out }).then(function (r) { if (r.ok) { setUser(r.user); toast('Фото обновлено'); } else toast(r.error, null, 'warn'); });
       };
       img.onerror = function () { toast('Не получилось открыть фото', null, 'warn'); };
       img.src = url;
@@ -1701,7 +1734,7 @@
       '<div class="f full"><button class="btn" type="submit">Сохранить</button></div></form>', { cls: 'sm' });
     $('#prof-form', md).addEventListener('submit', function (e) {
       e.preventDefault();
-      API.call('profile', { name: $('#p-name', md).value, phone: $('#p-phone', md).value, tg: $('#p-tg', md).value }).then(function (r) { if (r.ok) { closeModal(); setUser(r.user); toast('Профиль сохранён'); } else toast(r.error, null, 'warn'); });
+      API.call('profile', { name: $('#p-name', md).value, phone: $('#p-phone', md).value, tg: $('#p-tg', md).value }).then(function (r) { if (r.ok) { closeModal(); setUser(r.user); toast('Данные сохранены'); } else toast(r.error, null, 'warn'); });
     });
   }
 
@@ -1714,7 +1747,7 @@
     el.innerHTML = '<div class="dr-bg" data-dr-close></div><aside class="dr-p" role="dialog" aria-modal="true" aria-label="Меню"><div class="dr-h"><b>Меню</b><button class="icon-btn" type="button" data-dr-close aria-label="Закрыть">' + icon('x') + '</button></div><div class="dr-b">' +
       '<div class="dr-g">' + link('home', 'Главная', 'href="#home" data-go="home"') + link('grid', 'Каталог', 'href="#catalog" data-go="catalog" data-reset="1"') + link('box', 'В наличии', 'href="#stock" data-go="stock"') + link('plane', 'Предзаказ из Китая', 'href="#preorder" data-go="preorder"') + link('percent', 'Товары со скидкой', 'href="#catalog" data-go="catalog" data-sale="1"', nSale ? nSale + ' ' + plural(nSale, 'товар', 'товара', 'товаров') : '') + '</div>' +
       '<div class="dr-s">Категории</div><div class="dr-cats">' + cats.map(function (c) { return '<a class="dr-c' + (c.n ? '' : ' empty') + '" href="#catalog" data-go="catalog" data-cat="' + c.key + '"><img class="lt" src="assets/cat/' + c.key + '.svg" alt=""><img class="dk" src="assets/cat/dark/' + c.key + '.svg" alt=""><span>' + esc(c.label) + '</span></a>'; }).join('') + '</div>' +
-      '<div class="dr-s">Мои покупки</div><div class="dr-g">' + link('heart', 'Избранное', 'href="#favorites" data-go="favorites"') + link('bag', 'Корзина', 'href="#cart" data-go="cart"') + link('user', u ? 'Профиль' : 'Войти', 'href="#account" data-go="account"', u ? esc(u.name || u.login || '') : '') + (API.enabled ? link('receipt', 'Мои заказы', 'href="#orders" data-go="orders"') + link('gift', 'Рулетка', 'href="#roulette" data-go="roulette"') : '') + '</div>' +
+      '<div class="dr-s">Мои покупки</div><div class="dr-g">' + link('heart', 'Избранное', 'href="#favorites" data-go="favorites"') + link('bag', 'Корзина', 'href="#cart" data-go="cart"') + link('user', u ? 'Кабинет' : 'Войти', 'href="#account" data-go="account"', u ? esc(u.name || u.login || '') : '') + (API.enabled ? link('receipt', 'Мои заказы', 'href="#orders" data-go="orders"') + link('gift', 'Рулетка', 'href="#roulette" data-go="roulette"') : '') + '</div>' +
       '<div class="dr-s">Информация</div><div class="dr-g">' + link('info', 'Частые вопросы', 'href="#info" data-go="info"', 'заказ, сроки, доставка, оплата') + link('truck', 'Как работает предзаказ', 'href="' + SHOP.preorderUrl + '" target="_blank" rel="noopener"') + link('pin', 'Магазин и контакты', 'href="#info" data-go="info"', esc(SHOP.address)) + '</div>' +
       '<div class="dr-s">Оформление</div><div class="dr-th" id="dr-th">' + ['auto', 'light', 'dark'].map(function (k) { return '<button type="button" data-th="' + k + '" aria-pressed="' + (themeMode() === k) + '">' + (k === 'auto' ? 'Авто' : THEME_NAMES[k]) + '</button>'; }).join('') + '</div>' +
       '<div class="dr-s">Связь</div><div class="dr-g">' + link('send', 'Менеджер в Telegram', 'href="' + SHOP.managerUrl + '" target="_blank" rel="noopener"', '@' + SHOP.manager) + link('megaphone', 'Канал магазина', 'href="' + SHOP.channelUrl + '" target="_blank" rel="noopener"') + link('star', 'Отзывы покупателей', 'href="' + SHOP.reviewsUrl + '" target="_blank" rel="noopener"') + link('play', 'TikTok', 'href="' + SHOP.tiktokUrl + '" target="_blank" rel="noopener"') + '</div>' +
@@ -1819,14 +1852,14 @@
     $('#m-forgot', md).addEventListener('click', function () { closeModal(); API.call('logout'); API.setSession(''); authTab = 'reset'; setUser(null); });
   }
   function bdayModal() {
-    var md = openModal(modalHead('День рождения') + '<p class="muted">Указывается один раз. В свой день рождения вы получите подарок.</p><div class="f"><label for="m-bday">Дата</label><input class="input" id="m-bday" type="date"></div><button class="btn btn-block" type="button" id="m-save">Сохранить</button>', { cls: 'sm' });
+    var md = openModal(modalHead('День рождения') + '<p class="muted">Указывается один раз. В день рождения вас ждёт подарок: токены, XP и промокод. Подарок получают аккаунты старше 30 дней.</p><div class="f"><label for="m-bday">Дата</label><input class="input" id="m-bday" type="date"></div><button class="btn btn-block" type="button" id="m-save">Сохранить</button>', { cls: 'sm' });
     $('#m-save', md).addEventListener('click', function () {
       var val = $('#m-bday', md).value; if (!val) { toast('Выберите дату', null, 'warn'); return; }
       var MON = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'], mm = +val.slice(5, 7), dd = +val.slice(8, 10);
       closeModal();
       confirmBox({ title: 'Это точная дата?', text: 'Вы указываете день рождения: ' + dd + ' ' + MON[mm - 1] + '. После сохранения изменить дату нельзя, в том числе через менеджера.', actions: [
         { label: 'Изменить', cls: 'btn-ghost', run: bdayModal },
-        { label: 'Да, это моя дата', cls: '', run: function () { API.call('profile', { birthday: val.slice(5) }).then(function (r) { if (r.ok) { setUser(r.user); toast('Дата сохранена'); } else toast(r.error, null, 'warn'); }); } }] });
+        { label: 'Да, это моя дата', cls: '', run: function () { API.call('profile', { birthday: val.slice(5) }).then(function (r) { if (r.ok) { setUser(r.user); toast(r.bday === 'young' ? 'Дата сохранена. Подарок на день рождения получают аккаунты старше 30 дней' : 'Дата сохранена'); } else toast(r.error, null, 'warn'); }); } }] });
     });
   }
   function framesModal() {
@@ -1877,7 +1910,7 @@
       confirmBox({ title: 'Пока нельзя удалить', text: 'Аккаунт можно удалить, когда нет активных заказов. Сейчас активных: ' + act + '. Дождитесь получения или напишите менеджеру.', actions: [{ label: 'Понятно', cls: 'btn' }] });
       return;
     }
-    var md = openModal(modalHead('Удалить аккаунт?') + '<p class="muted">Удалятся профиль, токены (' + num(u.balance) + '), промокоды и уровень. Восстановить будет нельзя.</p>' +
+    var md = openModal(modalHead('Удалить аккаунт?') + '<p class="muted">Удалятся данные кабинета, токены (' + num(u.balance) + '), промокоды и уровень. Восстановить будет нельзя. При новой регистрации на тот же телефон или почту приветственные бонусы повторно не начисляются.</p>' +
       '<div class="f"><label for="m-pass">Пароль для подтверждения</label><input class="input" id="m-pass" type="password" autocomplete="current-password"></div><div id="m-msg"></div>' +
       '<div class="send-row"><button class="btn btn-ghost" type="button" data-close>Оставить</button><button class="btn btn-danger" type="button" id="m-del">Удалить навсегда</button></div>', { cls: 'sm' });
     $('#m-del', md).addEventListener('click', function () {
@@ -1919,7 +1952,7 @@
     v.innerHTML =
       (u.email ? '' : '<div class="notice notice-warn" style="margin-bottom:12px">' + icon('mail') + '<div><b>Добавьте почту.</b> Без неё не получится восстановить пароль. <button class="link-btn" type="button" id="add-email">Добавить</button></div></div>') +
       '<div class="dash">' +
-      '<div class="profile c12"><div class="who"><div class="ava-wrap">' + ava(u, 'lg') + '<button class="ava-cam" type="button" id="ava-cam" aria-label="Изменить фото профиля">' + icon('camera') + '</button></div>' +
+      '<div class="profile c12"><div class="who"><div class="ava-wrap">' + ava(u, 'lg') + '<button class="ava-cam" type="button" id="ava-cam" aria-label="Изменить фото">' + icon('camera') + '</button></div>' +
       '<div style="min-width:0"><h1>' + esc(u.name) + '</h1>' +
       '<div class="meta"><span>@' + esc(u.login) + '</span>' + (u.email ? '<span>' + esc(u.email) + '</span>' : '') + '<button class="idb" type="button" data-copy="' + esc(u.code) + '">ID ' + esc(u.code) + icon('copy') + '</button><span>с нами с ' + esc(since) + '</span></div></div></div>' +
       '<div class="ptiles"><div class="ptile"><small>Токены</small><b>' + tk() + num(u.balance) + '</b></div><div class="ptile"><small>Это скидка до</small><b>' + rub(u.balanceRub) + '</b></div><div class="ptile"><small>Серия входов</small><b>' + u.streak + ' ' + plural(u.streak, 'день', 'дня', 'дней') + '</b></div><div class="ptile"><small>Активные заказы</small><b>' + active.length + '</b></div></div>' +
@@ -1938,6 +1971,7 @@
 
       '<div class="card tile c6"><div class="tile-h"><h3>Пригласить друга</h3><span class="side">' + u.refCount + ' ' + plural(u.refCount, 'друг', 'друга', 'друзей') + '</span></div>' +
       '<div class="ref-stats"><div><small>Друзей пришло</small><b>' + u.refCount + '</b></div><div><small>Заработано</small><b>' + tk() + num(u.refCount * R.referrer) + '</b></div><div><small>За каждого друга</small><b>+' + R.referrer + '</b></div></div>' +
+      '<p class="small ref-note">Друг получает +' + R.refFriend + ' токенов при регистрации, а вы +' + R.referrer + ', когда он получит первый заказ от ' + num(RULES.refMinOrder) + ' ₽.</p>' +
       '<div class="ref-row"><span class="lnk">' + esc(refLink.replace(/^https?:\/\//, '')) + '</span><button class="icon-btn" type="button" data-copy="' + esc(refLink) + '" aria-label="Скопировать ссылку">' + icon('copy') + '</button><button class="icon-btn acc" type="button" id="ref-share" aria-label="Поделиться">' + icon('share') + '</button></div>' +
       '<p class="small">Ваш код: <b>' + esc(u.refCode) + '</b></p></div>' +
 
@@ -1959,7 +1993,7 @@
       '<button class="rowl" type="button" id="r-theme"><span class="ic">' + icon(themeMode() === 'dark' ? 'moon' : 'sun') + '</span><span class="tx">Тема оформления</span><span class="val">' + THEME_NAMES[themeMode()] + '</span>' + icon('chevron-right') + '</button>' +
       '<button class="rowl" type="button" id="r-bday"' + (bd ? ' disabled' : '') + '><span class="ic">' + icon('gift') + '</span><span class="tx">День рождения</span><span class="val">' + (bd ? (+bd[1]) + ' ' + MONTHS[+bd[0] - 1] : 'указать') + '</span>' + (bd ? '' : icon('chevron-right')) + '</button>' +
       '<button class="rowl" type="button" id="r-frame"><span class="ic">' + icon('star') + '</span><span class="tx">Рамка аватара</span><span class="val">' + esc((RULES.frames.filter(function (f) { return f.id === u.frame; })[0] || {}).name || '') + '</span>' + icon('chevron-right') + '</button>' +
-      (u.avatar ? '<button class="rowl" type="button" id="r-noava"><span class="ic">' + icon('camera') + '</span><span class="tx">Убрать фото профиля</span>' + icon('chevron-right') + '</button>' : '') +
+      (u.avatar ? '<button class="rowl" type="button" id="r-noava"><span class="ic">' + icon('camera') + '</span><span class="tx">Убрать фото</span>' + icon('chevron-right') + '</button>' : '') +
       '<button class="rowl" type="button" id="r-logout"><span class="ic">' + icon('logout') + '</span><span class="tx">Выйти</span>' + icon('chevron-right') + '</button>' +
       '<button class="rowl danger" type="button" id="r-del"><span class="ic">' + icon('trash') + '</span><span class="tx">Удалить аккаунт</span>' + icon('chevron-right') + '</button>' +
       '</div></div></div>';
@@ -2141,7 +2175,7 @@
     track('info');
     var R = RULES.reward, L = RULES.levels;
     var order = [
-      faqItem('Как заказать — по шагам', '<ol class="faq-ol"><li><b>Выберите вещь.</b> Откройте карточку, пролистайте фото, посмотрите замеры и характеристики.</li><li><b>Размер и цвет.</b> Нажмите нужный размер — под ним появятся замеры именно этого размера. Цвет выбирайте по фото: на карточке показаны реальные оттенки.</li><li><b>«В корзину».</b> В корзине можно изменить количество, добавить пожелание к каждой вещи (например, «хочу примерить перед покупкой») или убрать лишнее.</li><li><b>Данные для связи.</b> Имя, телефон и Telegram берутся из вашего профиля — он должен быть заполнен, иначе заказ не уйдёт. Это нужно, чтобы менеджер мог вам написать.</li><li><b>Город и способ получения.</b> Для товаров в наличии — самовывоз, Авито Доставка или курьер. Для предзаказа — Авито, СДЭК или личная встреча.</li><li><b>Токены и промокод.</b> Это последний шаг перед оформлением. Скидка пересчитается сразу, итог виден в корзине.</li><li><b>«Оформить заказ».</b> Заказ получит номер, уйдёт менеджеру, а в «Моих заказах» появится его статус. Дальше менеджер пишет вам в Telegram и присылает реквизиты.</li></ol><p class="small">Важно: пока менеджер не подтвердил заказ и не пришла оплата, вещь за вами не закреплена.</p>'),
+      faqItem('Как заказать — по шагам', '<ol class="faq-ol"><li><b>Выберите вещь.</b> Откройте карточку, пролистайте фото, посмотрите замеры и характеристики.</li><li><b>Размер и цвет.</b> Нажмите нужный размер — под ним появятся замеры именно этого размера. Цвет выбирайте по фото: на карточке показаны реальные оттенки.</li><li><b>«В корзину».</b> В корзине можно изменить количество, добавить пожелание к каждой вещи (например, «хочу примерить перед покупкой») или убрать лишнее.</li><li><b>Данные для связи.</b> Имя, телефон и Telegram берутся из кабинета — заполните их там, иначе заказ не уйдёт. Это нужно, чтобы менеджер мог вам написать.</li><li><b>Город и способ получения.</b> Для товаров в наличии — самовывоз, Авито Доставка или курьер. Для предзаказа — Авито, СДЭК или личная встреча.</li><li><b>Токены и промокод.</b> Это последний шаг перед оформлением. Скидка пересчитается сразу, итог виден в корзине.</li><li><b>«Оформить заказ».</b> Заказ получит номер, уйдёт менеджеру, а в «Моих заказах» появится его статус. Дальше менеджер пишет вам в Telegram и присылает реквизиты.</li></ol><p class="small">Важно: пока менеджер не подтвердил заказ и не пришла оплата, вещь за вами не закреплена.</p>'),
       faqItem('Что такое предзаказ и чем он отличается от «В наличии»', '<p><b>В наличии</b> — вещь уже в Москве. Её можно забрать самому или отправить по России через Авито Доставку, обычно в течение пары дней.</p><p><b>Предзаказ</b> — вещь ещё в Китае. Мы выкупаем её у поставщика только после вашего заказа и оплаты, проверяем и привозим. Так цена ниже, а выбор шире, но ждать дольше.</p><p>Стоимость доставки из Китая <b>уже включена в стоимость</b> предзаказа — отдельно за неё платить не нужно.</p><p><a href="' + SHOP.preorderUrl + '" target="_blank" rel="noopener">Подробные условия предзаказа</a></p>'),
       faqItem('Этапы предзаказа — что происходит с вашей вещью', '<ol class="faq-ol"><li><b>Оформлен.</b> Заказ создан и отправлен менеджеру. Он связывается с вами, уточняет размер, цвет и детали, присылает реквизиты.</li><li><b>Выкуплен (в течение 12 часов после оплаты).</b> Мы оплачиваем вещь у поставщика в Китае и закрепляем её за вами.</li><li><b>В пути до склада.</b> Поставщик отправляет вещь на склад в Китае — обычно до 7 дней, затем 3–5 дней дорога до склада.</li><li><b>На складе в Китае.</b> Вещь приходит, её проверяют на брак и соответствие описанию. На это уходит 1–2 дня. Вам отправляют фотоотчёт — основной бесплатно.</li><li><b>Едет в Россию.</b> После проверки вещь отправляется из Китая. Фурой это 18–32 дня от склада.</li><li><b>Едет к вам.</b> Вещь в России: её передают в выбранный способ получения — СДЭК, Авито Доставка или личная встреча.</li><li><b>Получен.</b> Вы забрали заказ. Если оставите отзыв, это поможет другим покупателям.</li></ol>'),
       faqItem('Сколько ждать предзаказ', '<p>Складывается из этапов: выкуп до 12 часов, поставщик до 7 дней, дорога до склада 3–5 дней, проверка 1–2 дня и доставка 18–32 дня. В сумме обычно <b>от 3,5 до 6,5 недель</b>.</p><p>Быстрее самолётом — это отдельная услуга, её условия и стоимость согласует менеджер. Прямо на сайте самолётом заказать нельзя.</p><p class="small">Сроки примерные: на них влияют праздники в Китае, загрузка перевозчика и погода. Если что-то задерживается, менеджер напишет сам.</p>'),

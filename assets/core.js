@@ -11,7 +11,9 @@ var OnionCore = (function () {
     tokenRub: 0.3,          // 1 токен = 0,3 ₽ скидки
     maxShare: 0.15,         // токенами можно оплатить не больше 15% суммы заказа
     spinCost: 100,          // прокрут рулетки
-    reward: { register: 100, refFriend: 50, referrer: 100, checkin: 1, streak7: 10, task: 1, birthday: 550, review: 5, reviewText: 15 },
+    reward: { register: 100, refFriend: 50, referrer: 100, checkin: 1, streak7: 10, task: 1, birthday: 3334, review: 5, reviewText: 15 },
+    // подарок на день рождения: токены ≈ 1 000 ₽ (по курсу 0,3 ₽), XP, личный промокод; только аккаунтам старше 30 дней
+    birthday: { tokens: 3334, xp: 1500, promoPct: 3.5, promoDays: 30, minAgeDays: 30 },
     refMinOrder: 1000,      // друг засчитывается после первого заказа от 1000 ₽
     refMaxPerMonth: 10,
     sessionDays: 120,
@@ -99,7 +101,7 @@ var OnionCore = (function () {
       { per: 'w', key: 'w_pre', title: 'Оформить предзаказ из Китая', hint: 'Вещь из раздела «Предзаказ»', m: 'ordPre', n: 1, tk: 14, xp: 30 },
       { per: 'w', key: 'w_stock', title: 'Оформить заказ вещи в наличии', hint: 'Вещь из раздела «В наличии»', m: 'ordStock', n: 1, tk: 12, xp: 30 },
       { per: 'w', key: 'w_sum', title: 'Оформить заказы на 5 000 ₽', hint: 'Сумма за неделю', m: 'ordSum', n: 5000, tk: 15, xp: 35 },
-      { per: 'w', key: 'w_ref', title: 'Пригласить друга', hint: 'Друг регистрируется по вашей ссылке и делает заказ', m: 'ref', n: 1, tk: 15, xp: 30 },
+      { per: 'w', key: 'w_ref', title: 'Пригласить друга', hint: 'Друг регистрируется по вашей ссылке и получает первый заказ от 1 000 ₽', m: 'ref', n: 1, tk: 15, xp: 30 },
       { per: 'w', key: 'w_daily', title: 'Выполнить 12 ежедневных заданий', hint: 'Считаются выполненные за неделю', m: 'dDone', n: 12, tk: 10, xp: 23 },
 
       { per: 'm', key: 'm_recv', title: 'Получить заказ', hint: 'Засчитывается, когда заказ получен — статус «Получен»', m: 'recvN', n: 1, tk: 40, xp: 80, grp: 'recv' },
@@ -114,7 +116,7 @@ var OnionCore = (function () {
       { per: 'm', key: 'm_both', title: 'Заказать и из наличия, и из Китая', hint: 'Один заказ из «В наличии» и один предзаказ', m: 'both', n: 1, tk: 40, xp: 70 },
       { per: 'm', key: 'm_days20', title: 'Заходить 20 дней за месяц', hint: 'Отмечайтесь кнопкой «Я зашёл»', m: 'checkin', n: 20, tk: 40, xp: 80 },
       { per: 'm', key: 'm_streak14', title: 'Серия входов 14 дней', hint: 'Без пропусков', m: 'streak', n: 14, tk: 50, xp: 90 },
-      { per: 'm', key: 'm_ref2', title: 'Пригласить 2 друзей', hint: 'Друзья делают заказ по вашей ссылке', m: 'ref', n: 2, tk: 60, xp: 100 },
+      { per: 'm', key: 'm_ref2', title: 'Пригласить 2 друзей', hint: 'Друзья по вашей ссылке получают первый заказ от 1 000 ₽', m: 'ref', n: 2, tk: 60, xp: 100 },
       { per: 'm', key: 'm_spin15', title: 'Крутнуть рулетку 15 раз', hint: 'За месяц', m: 'spin', n: 15, tk: 30, xp: 60 },
       { per: 'm', key: 'm_weekly', title: 'Выполнить 6 еженедельных заданий', hint: 'Считаются выполненные за месяц', m: 'wDone', n: 6, tk: 50, xp: 90 },
       { per: 'm', key: 'm_view100', title: 'Посмотреть 100 товаров', hint: 'За месяц', m: 'view', n: 100, tk: 30, xp: 60 },
@@ -315,7 +317,7 @@ var OnionCore = (function () {
     }).map(function (f) { return f.id; });
   }
   function pctText(p) { return String(p).replace('.', ','); }
-  function activePromos(db, u) { var mk = monthKey(db.now()); return (u.promos || []).filter(function (p) { return !p.used && (!p.exp || p.exp === mk); }); }
+  function activePromos(db, u) { var mk = monthKey(db.now()), now = db.now(); return (u.promos || []).filter(function (p) { return !p.used && (!p.exp || p.exp === mk) && (!p.until || +p.until > now); }); }
   function promoCat(key) { return RULES.promoCats.filter(function (c) { return c.key === key; })[0] || null; }
   function levelInfo(xp) { return levelAt(levelIndex(xp), xp, false); }
   /* Уровень, закреплённый вручную в таблице (колонка «Уровень вручную»): название уровня или пусто/«авто». */
@@ -336,6 +338,42 @@ var OnionCore = (function () {
     var s = prefix || '';
     for (var i = 0; i < (len || 6); i++) s += CODE_ABC.charAt(Math.floor(db.random() * CODE_ABC.length));
     return s;
+  }
+  /* ---------- учёт права на бонусы (без персональных данных) ----------
+     При удалении аккаунта храним только хэши телефона, почты и Telegram: по ним нельзя восстановить данные,
+     но можно понять, что этот человек уже получал приветственные бонусы и подарок на день рождения. */
+  function canonEmail(e) {
+    e = cleanEmail(e); var at = e.lastIndexOf('@'); if (at < 1) return e;
+    var name = e.slice(0, at).replace(/\+.*$/, ''), dom = e.slice(at + 1);
+    if (dom === 'googlemail.com') dom = 'gmail.com';
+    if (dom === 'gmail.com') name = name.replace(/\./g, '');
+    if (/^(ya\.ru|yandex\.(ru|com|by|kz|ua))$/.test(dom)) { dom = 'yandex.ru'; name = name.replace(/\./g, '-'); }
+    return name + '@' + dom;
+  }
+  function idKeys(db, x) {
+    var out = [], ph = phoneKey(x.phoneKey || x.phone || ''), em = canonEmail(x.email || x.emailKey || ''), tg = String(x.tgKey || x.tg || '').replace(/^@/, '').toLowerCase();
+    if (ph.length >= 10) out.push('p:' + ph);
+    if (em.indexOf('@') > 0) out.push('e:' + em);
+    if (tg) out.push('t:' + tg);
+    return out.map(function (k) { return String(db.hash('onion-ledger|' + k)).slice(0, 32); });
+  }
+  function ledgerHas(db, keys, kind) { if (!db.ledgerHas) return false; for (var i = 0; i < keys.length; i++) if (db.ledgerHas(keys[i], kind)) return true; return false; }
+  function ledgerAdd(db, keys, kind, note) { if (!db.ledgerAdd) return; keys.forEach(function (k) { if (!db.ledgerHas || !db.ledgerHas(k, kind)) db.ledgerAdd({ key: k, kind: kind, at: db.now(), note: note || '' }); }); }
+  /* день рождения сегодня? 29 февраля в невисокосный год празднуем 28 февраля */
+  function bdayIsToday(bd, now) {
+    if (!bd) return false;
+    var dk = dayKey(now), md = dk.slice(5), y = +dk.slice(0, 4);
+    if (bd === md) return true;
+    var leap = (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
+    return bd === '02-29' && !leap && md === '02-28';
+  }
+  function bdayState(db, u) {
+    var now = db.now(), year = String(msk(now).getUTCFullYear());
+    if (!bdayIsToday(u.birthday, now)) return '';
+    if (u.bdayYear === year) return 'got';
+    if (now - (+u.createdAt || now) < RULES.birthday.minAgeDays * 86400000) return 'young';
+    if (ledgerHas(db, idKeys(db, u), 'bday' + year)) return 'got';
+    return 'ready';
   }
   function hashPass(db, salt, pass) { var h = salt + ':' + pass; for (var i = 0; i < 200; i++) h = db.hash(h + salt); return h; }
   function log(db, u, delta, reason) {
@@ -419,9 +457,9 @@ var OnionCore = (function () {
       streak: u.lastCheckin === today || u.lastCheckin === dayKey(db.now() - 86400000) ? (u.streak || 0) : 0,
       checkedToday: u.lastCheckin === today,
       freeSpins: (u.daySpins || 0) + (u.freeSpins || 0), daySpins: u.daySpins || 0, daySpinsMax: u.daySpinsMax || 0, bonusSpins: u.freeSpins || 0,
-      promos: activePromos(db, u).map(function (p) { return { code: p.code, pct: p.pct, from: p.from, cat: p.cat || '', catLabel: p.catLabel || '', exp: p.exp || '' }; }),
+      promos: activePromos(db, u).map(function (p) { return { code: p.code, pct: p.pct, from: p.from, cat: p.cat || '', catLabel: p.catLabel || '', exp: p.exp || '', until: +p.until || 0 }; }),
       frames: framesFor(u), frame: u.frame || 'base', frameAnim: u.frameAnim || 'shine',
-      birthday: u.birthday || '', bdayToday: !!(u.birthday && u.birthday === today.slice(5) && u.bdayYear !== String(msk(db.now()).getUTCFullYear())), refCode: u.refCode, refCount: u.refCount || 0,
+      birthday: u.birthday || '', bdayToday: bdayState(db, u) === 'ready', bday: bdayState(db, u), refCode: u.refCode, refCount: u.refCount || 0,
       createdAt: u.createdAt, orders: orders,
       canDelete: !orders.some(function (o) { return o.active; })
     };
@@ -500,8 +538,8 @@ var OnionCore = (function () {
     if (tg && db.findUser('tg', tg.toLowerCase())) return err('Этот Telegram уже привязан к другому аккаунту');
     if (db.findUser('phone', ph)) return err('Этот телефон уже привязан к другому аккаунту');
     var bad = checkCode(db, 'register', email, p.code); if (bad) return bad;
-    var ref = null;
-    if (p.ref) { ref = db.findUser('refCode', String(p.ref).trim().toUpperCase()); }
+    var ref = null, repeat = ledgerHas(db, idKeys(db, { phone: ph, email: email, tg: tg }), 'acct');
+    if (p.ref && !repeat) { ref = db.findUser('refCode', String(p.ref).trim().toUpperCase()); }
     var refCode; do { refCode = genCode(db, '', 6); } while (db.findUser('refCode', refCode));
     var salt = db.token().slice(0, 16);
     var u = {
@@ -512,11 +550,12 @@ var OnionCore = (function () {
     };
     u = db.createUser(u);
     touch(db, u);
-    log(db, u, RULES.reward.register, 'Регистрация');
+    if (repeat) log(db, u, 0, 'Повторная регистрация: приветственные бонусы уже были получены раньше');
+    else log(db, u, RULES.reward.register, 'Регистрация');
     if (ref) log(db, u, RULES.reward.refFriend, 'Бонус по приглашению от ' + ref.login);
     if (db.registerBonus) log(db, u, db.registerBonus, 'Демо-токены для проверки');
     db.saveUser(u);
-    return ok({ session: newSession(db, u), user: publicUser(db, u), welcome: RULES.reward.register + (ref ? RULES.reward.refFriend : 0) });
+    return ok({ session: newSession(db, u), user: publicUser(db, u), welcome: repeat ? 0 : RULES.reward.register + (ref ? RULES.reward.refFriend : 0), repeat: repeat });
   };
 
   A.resetPassword = function (db, p) {
@@ -554,6 +593,8 @@ var OnionCore = (function () {
     var active = (db.listOrders(u.id, 200) || []).filter(function (o) { return RULES.finalStages.indexOf(String(o.status || 'Оформлен')) < 0; });
     if (active.length) return err('Удалить аккаунт можно, когда нет активных заказов. Сейчас активных: ' + active.length);
     db.log({ at: db.now(), userId: u.id, login: u.login, delta: -(u.balance || 0), reason: 'Аккаунт удалён клиентом', balance: 0 });
+    var keys = idKeys(db, u); ledgerAdd(db, keys, 'acct', 'аккаунт удалён');
+    if (u.bdayYear) ledgerAdd(db, keys, 'bday' + u.bdayYear, 'подарок получен до удаления');
     if (db.deleteSessionsOf) db.deleteSessionsOf(u.id);
     db.deleteUser(u);
     return ok({ deleted: true });
@@ -613,28 +654,33 @@ var OnionCore = (function () {
       if (!/^(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/.test(p.birthday)) return err('Проверьте дату рождения');
       u.birthday = p.birthday;
       var byear = String(msk(db.now()).getUTCFullYear());
-      if (dayKey(db.now()).slice(5) === p.birthday) bdayNow = true; // день рождения сегодня: подарок доступен сразу (A.bdayGift), bdayYear не трогаем
+      if (bdayIsToday(p.birthday, db.now())) bdayNow = true; // день рождения сегодня: подарок доступен сразу (A.bdayGift), bdayYear не трогаем
       else u.bdayYear = byear; // прошедшие даты задним числом не выдаём
     }
     db.saveUser(u);
-    return ok({ user: publicUser(db, u), bdayNow: bdayNow });
+    return ok({ user: publicUser(db, u), bdayNow: bdayNow, bday: bdayState(db, u) });
   };
 
-  // подарок на день рождения: один раз в год, только в сам день; суммарно скромнее прежних 550 токенов
+  // подарок на день рождения: один раз в год, только в сам день и только аккаунтам старше 30 дней.
+  // Повторно не выдаётся ни при обновлении страницы, ни после удаления и новой регистрации (учёт по хэшам).
   A.bdayGift = function (db, p) {
     var u = sessionUser(db, p); if (!u) return err('auth');
-    var today = dayKey(db.now()), year = String(msk(db.now()).getUTCFullYear());
-    if (!u.birthday || u.birthday !== today.slice(5)) return err('Подарок доступен только в день рождения');
-    if (u.bdayYear === year) return err('Подарок в этом году уже получен');
+    touch(db, u);
+    var st = bdayState(db, u), B = RULES.birthday, now = db.now(), year = String(msk(now).getUTCFullYear());
+    if (st === 'got') return err('Подарок в этом году уже получен');
+    if (st === 'young') return err('Подарок на день рождения получают аккаунты старше ' + B.minAgeDays + ' дней');
+    if (st !== 'ready') return err('Подарок доступен только в день рождения');
     u.bdayYear = year;
-    function pick(a) { return a[Math.floor(db.random() * a.length)]; }
-    var tokens = pick([150, 200, 250]), xp = pick([50, 100, 150]), spins = pick([1, 1, 2]);
-    log(db, u, tokens, 'С днём рождения!');
-    addXp(db, u, xp);
-    u.freeSpins = (u.freeSpins || 0) + spins;
+    log(db, u, B.tokens, 'Подарок на день рождения');
+    addXp(db, u, B.xp);
+    var code; do { code = genCode(db, 'HAPPYBDAY-', 4); } while ((u.promos || []).some(function (x) { return x.code === code; }));
+    var until = now + B.promoDays * 86400000;
+    u.promos.push({ code: code, pct: B.promoPct, kind: 'bday', from: 'Подарок на день рождения', at: now, exp: '', until: until });
+    log(db, u, 0, 'Промокод ' + code + ' −' + pctText(B.promoPct) + '% на 30 дней (день рождения)');
+    ledgerAdd(db, idKeys(db, u), 'bday' + year, 'подарок выдан');
     settle(db, u); db.saveUser(u);
-    if (u.tgChat && db.userNotify) { try { db.userNotify(u, '🎂 С днём рождения, ' + String(u.name || '').split(' ')[0] + '! Ваш подарок уже в кабинете: +' + tokens + ' токенов, +' + xp + ' XP и бесплатные прокруты.'); } catch (e) {} }
-    return ok({ gifts: [{ k: 'tok', n: tokens }, { k: 'xp', n: xp }, { k: 'spin', n: spins }], user: publicUser(db, u) });
+    if (u.tgChat && db.userNotify) { try { db.userNotify(u, '🎂 С днём рождения, ' + firstName(u.name) + '! Подарок уже в кабинете: ' + B.tokens + ' токенов (≈ ' + tokensToRub(B.tokens) + ' ₽), ' + B.xp + ' XP и промокод ' + code + ' на −' + pctText(B.promoPct) + '%.'); } catch (e) {} }
+    return ok({ gifts: [{ k: 'tok', n: B.tokens, rub: tokensToRub(B.tokens) }, { k: 'xp', n: B.xp }, { k: 'promo', code: code, pct: B.promoPct, until: until }], user: publicUser(db, u) });
   };
 
   A.checkin = function (db, p) {
@@ -837,7 +883,7 @@ var OnionCore = (function () {
     if (!db.allowGuest && !sessionUser(db, p)) return { ok: false, error: 'Чтобы оформить заказ, войдите в кабинет или создайте его', needAccount: true };
     var su = sessionUser(db, p);
     if (su) { // контакты — из профиля; профиль должен быть заполнен
-      if (String(su.name || '').trim().length < 2 || phoneKey(su.phone || '').length < 10) return err('Заполните профиль (имя и телефон) в кабинете перед заказом');
+      if (String(su.name || '').trim().length < 2 || phoneKey(su.phone || '').length < 10) return err('Заполните имя и телефон в кабинете перед заказом');
       f = Object.assign({}, f, { name: su.name, phone: su.phone, tg: su.tg || '' });
     }
     var built = buildLines(db, p.items);
@@ -883,23 +929,8 @@ var OnionCore = (function () {
       if (tokens) log(db, u, -tokens, 'Оплата заказа №' + no);
       // сумма идёт в уровень и в «Потрачено всего» только когда заказ получен (статус «Получен» — см. receive)
       u.ordersCount = (u.ordersCount || 0) + 1;
-      touch(db, u); track(db, u, 'ordN'); if (hasPre) track(db, u, 'ordPre'); if (hasStock || hasOut) track(db, u, 'ordStock'); track(db, u, 'ordSum', null, total);
-      if (u.referredBy && !u.refRewarded && total >= RULES.refMinOrder) {
-        u.refRewarded = true;
-        var ref = db.getUser(u.referredBy);
-        if (ref) {
-          touch(db, ref);
-          var mk = monthKey(at);
-          if (ref.refMonth !== mk) { ref.refMonth = mk; ref.refMonthCount = 0; }
-          if ((ref.refMonthCount || 0) < RULES.refMaxPerMonth) {
-            ref.refMonthCount = (ref.refMonthCount || 0) + 1; ref.refCount = (ref.refCount || 0) + 1;
-            log(db, ref, RULES.reward.referrer, 'Приглашённый друг @' + u.login + ' сделал заказ');
-            track(db, ref, 'ref'); settle(db, ref);
-            db.saveUser(ref);
-          }
-        }
-      }
-      settle(db, u); db.saveUser(u);
+      touch(db, u); var doneBefore = doneSnap(u); track(db, u, 'ordN'); if (hasPre) track(db, u, 'ordPre'); if (hasStock || hasOut) track(db, u, 'ordStock'); track(db, u, 'ordSum', null, total);
+      settle(db, u); var taskRew = orderTaskRewards(u, doneBefore); db.saveUser(u);
     }
     var order = {
       no: no, seq: seq, at: at, userId: u ? u.id : '', login: u ? u.login : '', name: String(f.name).trim(), phone: fmtPhone(f.phone), tg: cleanTg(f.tg) ? '@' + cleanTg(f.tg) : '', status: 'Оформлен',
@@ -907,6 +938,7 @@ var OnionCore = (function () {
       count: cnt, total: total, tokens: tokens, tokenRub: tokenRub, promo: promo, promoRub: promoRub, vipRub: vipRub, toPay: toPay, priority: f.vip === true ? '⚡ Приоритетный' + (priority ? ' · ' + priority : '') : (priority || (u ? 'Обычный' : '')), pack: pack, level: li ? li.name : '',
       kind: hasPre && hasStock ? 'смешанный' : hasPre ? 'предзаказ' : (hasOut && !built.lines.some(function (l) { return l.status === 'stock'; })) ? 'временно нет' : 'в наличии', comment: String(f.comment || '').trim(), text: text
     };
+    if (u && taskRew.length) order.taskRew = JSON.stringify(taskRew);
     db.saveOrder(order);
     if (u && u.tgChat && db.userNotify) { try { db.userNotify(u, '🧾 Заказ ' + no + ' принят. Сумма к оплате: ' + toPay + ' ₽.\nМенеджер скоро свяжется с вами. Статусы заказа будут приходить сюда.', [[{ text: '📦 Подробнее о заказе', callback_data: 'm|' + no }]]); } catch (e) { /* не критично */ } }
     var notified = false;
@@ -918,6 +950,59 @@ var OnionCore = (function () {
      Сумма «К оплате» даёт XP (1 XP за 10 ₽) в уровень месяца и идёт в «Потрачено всего».
      month — месяц, в котором сумму засчитали: при отмене из уровня вычитаем, только если месяц тот же. */
   function isPreKind(k) { return k === 'предзаказ' || k === 'смешанный'; }
+  /* награды за задания «оформить заказ»: запоминаем, какие задания закрыл именно этот заказ, чтобы при отмене списать */
+  var ORDER_METRICS = ['ordN', 'ordPre', 'ordStock', 'ordSum', 'both'];
+  function doneSnap(u) { var o = {}; ['d', 'w', 'm'].forEach(function (per) { var st = u.tasks && u.tasks[per]; o[per] = st ? { k: st.k, done: st.done.slice() } : { k: '', done: [] }; }); return o; }
+  function orderTaskRewards(u, before) {
+    var out = [];
+    ['d', 'w', 'm'].forEach(function (per) {
+      var st = u.tasks[per], b = before[per];
+      st.done.forEach(function (k) {
+        var t = TASK[k]; if (!t || t.auto || ORDER_METRICS.indexOf(t.m) < 0) return;
+        if (b.k === st.k && b.done.indexOf(k) >= 0) return;
+        out.push({ per: per, pk: st.k, k: k, tk: t.tk, xp: t.xp });
+      });
+    });
+    return out;
+  }
+  /* заказ отменён (sign = 1) или отмену сняли (sign = -1): счётчики заданий и награды за них */
+  function orderCanceled(db, u, info, sign) {
+    touch(db, u);
+    var at = +info.at || db.now(), total = Math.max(0, Math.round(+info.total || 0)), kind = String(info.kind || '');
+    var rew = []; try { rew = info.taskRew ? (typeof info.taskRew === 'string' ? JSON.parse(info.taskRew) : info.taskRew) : []; } catch (e) { rew = []; }
+    var hasPre = isPreKind(kind), hasStock = kind !== 'предзаказ';
+    ['d', 'w', 'm'].forEach(function (per) {
+      var st = taskSlot(u, per, db.now()); if (st.k !== periodKey(per, at)) return; // прошедший период не трогаем
+      var d = sign > 0 ? -1 : 1;
+      st.c.ordN = Math.max(0, (st.c.ordN || 0) + d);
+      if (hasPre) st.c.ordPre = Math.max(0, (st.c.ordPre || 0) + d);
+      if (hasStock) st.c.ordStock = Math.max(0, (st.c.ordStock || 0) + d);
+      st.c.ordSum = Math.max(0, (st.c.ordSum || 0) + d * total);
+    });
+    if (sign > 0) {
+      rew.forEach(function (r) {
+        var t = TASK[r.k]; if (!t) return;
+        log(db, u, -Math.abs(+r.tk || 0), 'Заказ ' + (info.no || '') + ' отменён — награда за задание «' + t.title + '» списана');
+        if (monthKey(at) === u.xpMonth) u.xp = Math.max(0, (u.xp || 0) - Math.abs(+r.xp || 0));
+        var st = taskSlot(u, r.per, db.now()); if (st.k === r.pk) st.done = st.done.filter(function (k) { return k !== r.k; });
+      });
+    } else settle(db, u);
+    return u;
+  }
+  /* реферальный бонус: пригласившему — когда первый заказ друга от 1 000 ₽ получен (статус «Получен») */
+  function referralOnReceive(db, u, total, getUser) {
+    if (!u.referredBy || u.refRewarded || (+total || 0) < RULES.refMinOrder) return null;
+    u.refRewarded = true;
+    var ref = (getUser || db.getUser)(u.referredBy); if (!ref) return null;
+    touch(db, ref);
+    var mk = monthKey(db.now());
+    if (ref.refMonth !== mk) { ref.refMonth = mk; ref.refMonthCount = 0; }
+    if ((ref.refMonthCount || 0) >= RULES.refMaxPerMonth) return ref;
+    ref.refMonthCount = (ref.refMonthCount || 0) + 1; ref.refCount = (ref.refCount || 0) + 1;
+    log(db, ref, RULES.reward.referrer, 'Приглашённый друг @' + u.login + ' получил первый заказ');
+    track(db, ref, 'ref'); settle(db, ref);
+    return ref;
+  }
   function receive(db, u, amount, sign, month, info) {
     touch(db, u);
     amount = Math.max(0, Math.round(+amount || 0));
@@ -1029,7 +1114,7 @@ var OnionCore = (function () {
 
   return {
     RULES: RULES, handle: handle, orderText: orderText, buildLines: buildLines, checkFields: checkFields,
-    offlineNo: offlineNo, levelInfo: levelInfo, levelOf: levelOf, fixIndex: fixIndex, receive: receive, adjustTokens: adjustTokens, xpOfRub: xpOfRub, wheelFor: wheelFor, framesFor: framesFor, pctText: pctText, promoBase: promoBase, touch: touch, tokensToRub: tokensToRub, settings: settings, dayKey: dayKey, monthKey: monthKey,
+    offlineNo: offlineNo, levelInfo: levelInfo, levelOf: levelOf, fixIndex: fixIndex, receive: receive, referralOnReceive: referralOnReceive, orderCanceled: orderCanceled, canonEmail: canonEmail, bdayIsToday: bdayIsToday, adjustTokens: adjustTokens, xpOfRub: xpOfRub, wheelFor: wheelFor, framesFor: framesFor, pctText: pctText, promoBase: promoBase, touch: touch, tokensToRub: tokensToRub, settings: settings, dayKey: dayKey, monthKey: monthKey,
     statusMessage: statusMessage, tgBind: tgBind,
     cleanTg: cleanTg, cleanEmail: cleanEmail, phoneKey: phoneKey, fmtPhone: fmtPhone, digits: digits, validEmail: validEmail, taskPick: picksFor, weekKey: weekKey, stagesFor: stagesFor
   };
