@@ -9,7 +9,8 @@ var OnionCore = (function () {
   var RULES = {
     vipPrice: 99,
     tokenRub: 0.3,          // 1 токен = 0,3 ₽ скидки
-    maxShare: 0.15,         // токенами можно оплатить не больше 15% суммы заказа
+    maxShare: 0.12,         // токены и промокод вместе: не больше 12% суммы заказа
+    balanceCap: 10000,      // выше этого баланса задания, вход и посылка дают опыт вместо токенов (2 токена = 1 XP)
     spinCost: 100,          // прокрут посылки
     reward: { register: 100, refFriend: 50, referrer: 100, checkin: 1, streak7: 10, task: 1, birthday: 3334, review: 5, reviewText: 15 },
     // подарок на день рождения: токены ≈ 1 000 ₽ (по курсу 0,3 ₽), XP, личный промокод; только аккаунтам старше 30 дней
@@ -21,7 +22,7 @@ var OnionCore = (function () {
     /* Программа лояльности. Уровень месяца растёт от XP (опыта), обнуляется 1-го числа.
        XP: полученные заказы (1 XP за каждые 10 ₽), ежедневный вход, задания, посылка. */
     xpPerRub: 0.1,
-    xpReward: { checkin: 5 },
+    xpReward: { checkin: 10 },
     levels: [
       { key: 'bronze', name: 'Бронза', alias: ['новичок'], min: 0, tasks: 4, streak: 10, spins: 1, priority: '', perks: [
         ['4 задания в день', 'Токены и XP за каждое. Ещё есть еженедельные и ежемесячные задания'],
@@ -66,62 +67,62 @@ var OnionCore = (function () {
     // задания: d: ежедневные (простые), w, еженедельные (сложнее), m, ежемесячные (самые сложные, заказы считаются по статусу «Получен»)
     // m: что считаем, n, цель, tk, токены, xp, очки уровня, auto, награду уже выдало само действие
     tasks: [
-      { per: 'd', key: 'checkin', title: 'Зайти на сайт', hint: 'Отметьтесь сегодня', m: 'checkin', n: 1, tk: 1, xp: 5, auto: true },
-      { per: 'd', key: 'view3', title: 'Посмотреть 3 товара', hint: 'Откройте три карточки', m: 'view', n: 3, tk: 1, xp: 2 },
-      { per: 'd', key: 'view6', title: 'Посмотреть 6 товаров', hint: 'Откройте шесть разных карточек', m: 'view', n: 6, tk: 2, xp: 3 },
-      { per: 'd', key: 'fav', title: 'Добавить товар в избранное', hint: 'Нажмите ♡ на товаре', m: 'fav', n: 1, tk: 1, xp: 2 },
-      { per: 'd', key: 'fav3', title: 'Добавить 3 товара в избранное', hint: 'Нажмите ♡ на трёх разных товарах', m: 'fav', n: 3, tk: 2, xp: 3 },
-      { per: 'd', key: 'share', title: 'Поделиться товаром', hint: 'Кнопка «Поделиться» в карточке', m: 'share', n: 1, tk: 1, xp: 2 },
-      { per: 'd', key: 'pre', title: 'Открыть раздел «Предзаказ»', hint: 'Загляните, что едет из Китая', m: 'pre', n: 1, tk: 1, xp: 2 },
-      { per: 'd', key: 'stock', title: 'Заглянуть в раздел «В наличии»', hint: 'Вещи, которые уже в Москве', m: 'stock', n: 1, tk: 1, xp: 2 },
-      { per: 'd', key: 'cart', title: 'Положить товар в корзину', hint: 'Любой товар', m: 'cart', n: 1, tk: 1, xp: 2 },
-      { per: 'd', key: 'cart2', title: 'Положить 2 товара в корзину', hint: 'Два разных товара', m: 'cart', n: 2, tk: 2, xp: 3 },
-      { per: 'd', key: 'info', title: 'Прочитать «Как это работает»', hint: 'Раздел «Инфо» в меню', m: 'info', n: 1, tk: 1, xp: 2 },
-      { per: 'd', key: 'sale', title: 'Посмотреть 2 товара со скидкой', hint: 'Карточки с зачёркнутой ценой', m: 'sale', n: 2, tk: 1, xp: 2 },
-      { per: 'd', key: 'brand', title: 'Открыть товары одного бренда', hint: 'Фильтр «Бренд» в каталоге', m: 'brand', n: 1, tk: 1, xp: 2 },
-      { per: 'd', key: 'search', title: 'Найти вещь через поиск', hint: 'Строка поиска вверху сайта', m: 'search', n: 1, tk: 1, xp: 2 },
-      { per: 'd', key: 'price', title: 'Выбрать фильтр по цене', hint: 'Фильтр «Цена» в каталоге', m: 'price', n: 1, tk: 1, xp: 2 },
-      { per: 'd', key: 'zoom', title: 'Рассмотреть фото вблизи', hint: 'Нажмите на фото товара', m: 'zoom', n: 1, tk: 1, xp: 2 },
-      { per: 'd', key: 'measure', title: 'Заглянуть в замеры', hint: 'Раздел «Замеры изделия» в карточке', m: 'measure', n: 1, tk: 1, xp: 2 },
-      { per: 'd', key: 'shoes', title: 'Посмотреть 2 пары обуви', hint: 'Раздел «Обувь»', m: 'viewcat', cats: ['shoes'], n: 2, tk: 1, xp: 2 },
-      { per: 'd', key: 'outer', title: 'Посмотреть 2 куртки или худи', hint: 'Куртки и худи', m: 'viewcat', cats: ['outerwear', 'hoodies'], n: 2, tk: 1, xp: 2 },
-      { per: 'd', key: 'basic', title: 'Посмотреть футболки или штаны', hint: 'Две любые карточки', m: 'viewcat', cats: ['tees', 'pants'], n: 2, tk: 1, xp: 2 },
-      { per: 'd', key: 'acc', title: 'Посмотреть аксессуары', hint: 'Любой аксессуар', m: 'viewcat', cats: ['accessories'], n: 1, tk: 1, xp: 2 },
-      { per: 'd', key: 'spin', title: 'Открыть посылку', hint: 'Бесплатная посылка раз в день', m: 'spin', n: 1, tk: 1, xp: 2 },
+      { per: 'd', key: 'checkin', title: 'Зайти на сайт', hint: 'Отметьтесь сегодня', m: 'checkin', n: 1, tk: 1, xp: 10, auto: true },
+      { per: 'd', key: 'view3', title: 'Посмотреть 3 товара', hint: 'Откройте три карточки', m: 'view', n: 3, tk: 3, xp: 10 },
+      { per: 'd', key: 'view6', title: 'Посмотреть 6 товаров', hint: 'Откройте шесть разных карточек', m: 'view', n: 6, tk: 3, xp: 10 },
+      { per: 'd', key: 'fav', title: 'Добавить товар в избранное', hint: 'Нажмите ♡ на товаре', m: 'fav', n: 1, tk: 3, xp: 10 },
+      { per: 'd', key: 'fav3', title: 'Добавить 3 товара в избранное', hint: 'Нажмите ♡ на трёх разных товарах', m: 'fav', n: 3, tk: 3, xp: 10 },
+      { per: 'd', key: 'share', title: 'Поделиться товаром', hint: 'Кнопка «Поделиться» в карточке', m: 'share', n: 1, tk: 3, xp: 10 },
+      { per: 'd', key: 'pre', title: 'Открыть раздел «Предзаказ»', hint: 'Загляните, что едет из Китая', m: 'pre', n: 1, tk: 3, xp: 10 },
+      { per: 'd', key: 'stock', title: 'Заглянуть в раздел «В наличии»', hint: 'Вещи, которые уже в Москве', m: 'stock', n: 1, tk: 3, xp: 10 },
+      { per: 'd', key: 'cart', title: 'Положить товар в корзину', hint: 'Любой товар', m: 'cart', n: 1, tk: 3, xp: 10 },
+      { per: 'd', key: 'cart2', title: 'Положить 2 товара в корзину', hint: 'Два разных товара', m: 'cart', n: 2, tk: 3, xp: 10 },
+      { per: 'd', key: 'info', title: 'Прочитать «Как это работает»', hint: 'Раздел «Инфо» в меню', m: 'info', n: 1, tk: 3, xp: 10 },
+      { per: 'd', key: 'sale', title: 'Посмотреть 2 товара со скидкой', hint: 'Карточки с зачёркнутой ценой', m: 'sale', n: 2, tk: 3, xp: 10 },
+      { per: 'd', key: 'brand', title: 'Открыть товары одного бренда', hint: 'Фильтр «Бренд» в каталоге', m: 'brand', n: 1, tk: 3, xp: 10 },
+      { per: 'd', key: 'search', title: 'Найти вещь через поиск', hint: 'Строка поиска вверху сайта', m: 'search', n: 1, tk: 3, xp: 10 },
+      { per: 'd', key: 'price', title: 'Выбрать фильтр по цене', hint: 'Фильтр «Цена» в каталоге', m: 'price', n: 1, tk: 3, xp: 10 },
+      { per: 'd', key: 'zoom', title: 'Рассмотреть фото вблизи', hint: 'Нажмите на фото товара', m: 'zoom', n: 1, tk: 3, xp: 10 },
+      { per: 'd', key: 'measure', title: 'Заглянуть в замеры', hint: 'Раздел «Замеры изделия» в карточке', m: 'measure', n: 1, tk: 3, xp: 10 },
+      { per: 'd', key: 'shoes', title: 'Посмотреть 2 пары обуви', hint: 'Раздел «Обувь»', m: 'viewcat', cats: ['shoes'], n: 2, tk: 3, xp: 10 },
+      { per: 'd', key: 'outer', title: 'Посмотреть 2 куртки или худи', hint: 'Куртки и худи', m: 'viewcat', cats: ['outerwear', 'hoodies'], n: 2, tk: 3, xp: 10 },
+      { per: 'd', key: 'basic', title: 'Посмотреть футболки или штаны', hint: 'Две любые карточки', m: 'viewcat', cats: ['tees', 'pants'], n: 2, tk: 3, xp: 10 },
+      { per: 'd', key: 'acc', title: 'Посмотреть аксессуары', hint: 'Любой аксессуар', m: 'viewcat', cats: ['accessories'], n: 1, tk: 3, xp: 10 },
+      { per: 'd', key: 'spin', title: 'Открыть посылку', hint: 'Бесплатная посылка раз в день', m: 'spin', n: 1, tk: 3, xp: 10 },
 
-      { per: 'w', key: 'w_days', title: 'Заходить 5 дней за неделю', hint: 'Отмечайтесь кнопкой «Я зашёл»', m: 'checkin', n: 5, tk: 6, xp: 18 },
-      { per: 'w', key: 'w_view20', title: 'Посмотреть 20 разных товаров', hint: 'За неделю', m: 'view', n: 20, tk: 5, xp: 15 },
-      { per: 'w', key: 'w_fav5', title: 'Добавить 5 товаров в избранное', hint: 'Отложите то, что понравилось', m: 'fav', n: 5, tk: 5, xp: 15 },
-      { per: 'w', key: 'w_cart3', title: 'Положить в корзину 3 товара', hint: 'Три разных товара', m: 'cart', n: 3, tk: 5, xp: 15 },
-      { per: 'w', key: 'w_share3', title: 'Поделиться 3 товарами', hint: 'Отправьте друзьям', m: 'share', n: 3, tk: 6, xp: 15 },
-      { per: 'w', key: 'w_cats', title: 'Посмотреть товары из 4 категорий', hint: 'Обувь, куртки, худи, аксессуары…', m: 'cats', n: 4, tk: 6, xp: 17 },
-      { per: 'w', key: 'w_spin3', title: 'Открыть 3 посылки', hint: 'За неделю', m: 'spin', n: 3, tk: 6, xp: 17 },
-      { per: 'w', key: 'w_mgr', title: 'Написать менеджеру', hint: 'Спросить про вещь или размер, кнопка Telegram', m: 'mgr', n: 1, tk: 8, xp: 23 },
-      { per: 'w', key: 'w_ord', title: 'Оформить заказ', hint: 'Любой заказ: достаточно оформить', m: 'ordN', n: 1, tk: 12, xp: 30 },
-      { per: 'w', key: 'w_ord2', title: 'Оформить 2 заказа', hint: 'Достаточно оформить', m: 'ordN', n: 2, tk: 20, xp: 40 },
-      { per: 'w', key: 'w_pre', title: 'Оформить предзаказ из Китая', hint: 'Вещь из раздела «Предзаказ»', m: 'ordPre', n: 1, tk: 14, xp: 30 },
-      { per: 'w', key: 'w_stock', title: 'Оформить заказ вещи в наличии', hint: 'Вещь из раздела «В наличии»', m: 'ordStock', n: 1, tk: 12, xp: 30 },
-      { per: 'w', key: 'w_sum', title: 'Оформить заказы на 5 000 ₽', hint: 'Сумма за неделю', m: 'ordSum', n: 5000, tk: 15, xp: 35 },
-      { per: 'w', key: 'w_ref', title: 'Пригласить друга', hint: 'Друг регистрируется по вашей ссылке и получает первый заказ от 1 000 ₽', m: 'ref', n: 1, tk: 15, xp: 30 },
-      { per: 'w', key: 'w_daily', title: 'Выполнить 12 ежедневных заданий', hint: 'Считаются выполненные за неделю', m: 'dDone', n: 12, tk: 10, xp: 23 },
+      { per: 'w', key: 'w_days', title: 'Заходить 5 дней за неделю', hint: 'Отмечайтесь кнопкой «Я зашёл»', m: 'checkin', n: 5, tk: 25, xp: 60 },
+      { per: 'w', key: 'w_view20', title: 'Посмотреть 20 разных товаров', hint: 'За неделю', m: 'view', n: 20, tk: 25, xp: 60 },
+      { per: 'w', key: 'w_fav5', title: 'Добавить 5 товаров в избранное', hint: 'Отложите то, что понравилось', m: 'fav', n: 5, tk: 25, xp: 60 },
+      { per: 'w', key: 'w_cart3', title: 'Положить в корзину 3 товара', hint: 'Три разных товара', m: 'cart', n: 3, tk: 25, xp: 60 },
+      { per: 'w', key: 'w_share3', title: 'Поделиться 3 товарами', hint: 'Отправьте друзьям', m: 'share', n: 3, tk: 25, xp: 60 },
+      { per: 'w', key: 'w_cats', title: 'Посмотреть товары из 4 категорий', hint: 'Обувь, куртки, худи, аксессуары…', m: 'cats', n: 4, tk: 25, xp: 60 },
+      { per: 'w', key: 'w_spin3', title: 'Открыть 3 посылки', hint: 'За неделю', m: 'spin', n: 3, tk: 25, xp: 60 },
+      { per: 'w', key: 'w_mgr', title: 'Написать менеджеру', hint: 'Спросить про вещь или размер, кнопка Telegram', m: 'mgr', n: 1, tk: 25, xp: 60 },
+      { per: 'w', key: 'w_ord', title: 'Оформить заказ', hint: 'Любой заказ: достаточно оформить', m: 'ordN', n: 1, tk: 25, xp: 60 },
+      { per: 'w', key: 'w_ord2', title: 'Оформить 2 заказа', hint: 'Достаточно оформить', m: 'ordN', n: 2, tk: 25, xp: 60 },
+      { per: 'w', key: 'w_pre', title: 'Оформить предзаказ из Китая', hint: 'Вещь из раздела «Предзаказ»', m: 'ordPre', n: 1, tk: 25, xp: 60 },
+      { per: 'w', key: 'w_stock', title: 'Оформить заказ вещи в наличии', hint: 'Вещь из раздела «В наличии»', m: 'ordStock', n: 1, tk: 25, xp: 60 },
+      { per: 'w', key: 'w_sum', title: 'Оформить заказы на 5 000 ₽', hint: 'Сумма за неделю', m: 'ordSum', n: 5000, tk: 25, xp: 60 },
+      { per: 'w', key: 'w_ref', title: 'Пригласить друга', hint: 'Друг регистрируется по вашей ссылке и получает первый заказ от 1 000 ₽', m: 'ref', n: 1, tk: 25, xp: 60 },
+      { per: 'w', key: 'w_daily', title: 'Выполнить 12 ежедневных заданий', hint: 'Считаются выполненные за неделю', m: 'dDone', n: 12, tk: 25, xp: 60 },
 
-      { per: 'm', key: 'm_recv', title: 'Получить заказ', hint: 'Засчитывается, когда заказ получен, статус «Получен»', m: 'recvN', n: 1, tk: 40, xp: 80, grp: 'recv' },
-      { per: 'm', key: 'm_recv2', title: 'Получить 2 заказа', hint: 'Статус «Получен»', m: 'recvN', n: 2, tk: 80, xp: 130, grp: 'recv' },
-      { per: 'm', key: 'm_recv3', title: 'Получить 3 заказа', hint: 'Статус «Получен»', m: 'recvN', n: 3, tk: 120, xp: 200, grp: 'recv' },
-      { per: 'm', key: 'm_cn', title: 'Получить заказ из Китая', hint: 'Предзаказ со статусом «Получен»', m: 'recvPre', n: 1, tk: 60, xp: 100, grp: 'recv' },
-      { per: 'm', key: 'm_first', title: 'Первый заказ из Китая', hint: 'Получите свой первый предзаказ, статус «Получен»', m: 'recvPre', n: 1, tk: 100, xp: 150, grp: 'recv', once: 'cn' },
-      { per: 'm', key: 'm_sum10', title: 'Получить заказы на 10 000 ₽', hint: 'Сумма «К оплате», статус «Получен»', m: 'recvSum', n: 10000, tk: 60, xp: 100, grp: 'recv' },
-      { per: 'm', key: 'm_sum25', title: 'Получить заказы на 25 000 ₽', hint: 'Сумма «К оплате», статус «Получен»', m: 'recvSum', n: 25000, tk: 120, xp: 200, grp: 'recv' },
-      { per: 'm', key: 'm_sum50', title: 'Получить заказы на 50 000 ₽', hint: 'Сумма «К оплате», статус «Получен»', m: 'recvSum', n: 50000, tk: 200, xp: 300, grp: 'recv' },
-      { per: 'm', key: 'm_ord3', title: 'Оформить 3 заказа за месяц', hint: 'Достаточно оформить', m: 'ordN', n: 3, tk: 40, xp: 70 },
-      { per: 'm', key: 'm_both', title: 'Заказать и из наличия, и из Китая', hint: 'Один заказ из «В наличии» и один предзаказ', m: 'both', n: 1, tk: 40, xp: 70 },
-      { per: 'm', key: 'm_days20', title: 'Заходить 20 дней за месяц', hint: 'Отмечайтесь кнопкой «Я зашёл»', m: 'checkin', n: 20, tk: 40, xp: 80 },
-      { per: 'm', key: 'm_streak14', title: 'Серия входов 14 дней', hint: 'Без пропусков', m: 'streak', n: 14, tk: 50, xp: 90 },
-      { per: 'm', key: 'm_ref2', title: 'Пригласить 2 друзей', hint: 'Друзья по вашей ссылке получают первый заказ от 1 000 ₽', m: 'ref', n: 2, tk: 60, xp: 100 },
-      { per: 'm', key: 'm_spin15', title: 'Открыть 15 посылок', hint: 'За месяц', m: 'spin', n: 15, tk: 30, xp: 60 },
-      { per: 'm', key: 'm_weekly', title: 'Выполнить 6 еженедельных заданий', hint: 'Считаются выполненные за месяц', m: 'wDone', n: 6, tk: 50, xp: 90 },
-      { per: 'm', key: 'm_view100', title: 'Посмотреть 100 товаров', hint: 'За месяц', m: 'view', n: 100, tk: 30, xp: 60 },
-      { per: 'm', key: 'm_xp', title: 'Набрать 500 XP за месяц', hint: 'Серебро: это уже 500 XP', m: 'xp', n: 500, tk: 30, xp: 40 }
+      { per: 'm', key: 'm_recv', title: 'Получить заказ', hint: 'Засчитывается, когда заказ получен, статус «Получен»', m: 'recvN', n: 1, tk: 40, xp: 180, grp: 'recv' },
+      { per: 'm', key: 'm_recv2', title: 'Получить 2 заказа', hint: 'Статус «Получен»', m: 'recvN', n: 2, tk: 80, xp: 180, grp: 'recv' },
+      { per: 'm', key: 'm_recv3', title: 'Получить 3 заказа', hint: 'Статус «Получен»', m: 'recvN', n: 3, tk: 120, xp: 180, grp: 'recv' },
+      { per: 'm', key: 'm_cn', title: 'Получить заказ из Китая', hint: 'Предзаказ со статусом «Получен»', m: 'recvPre', n: 1, tk: 60, xp: 180, grp: 'recv' },
+      { per: 'm', key: 'm_first', title: 'Первый заказ из Китая', hint: 'Получите свой первый предзаказ, статус «Получен»', m: 'recvPre', n: 1, tk: 100, xp: 180, grp: 'recv', once: 'cn' },
+      { per: 'm', key: 'm_sum10', title: 'Получить заказы на 10 000 ₽', hint: 'Сумма «К оплате», статус «Получен»', m: 'recvSum', n: 10000, tk: 60, xp: 180, grp: 'recv' },
+      { per: 'm', key: 'm_sum25', title: 'Получить заказы на 25 000 ₽', hint: 'Сумма «К оплате», статус «Получен»', m: 'recvSum', n: 25000, tk: 120, xp: 180, grp: 'recv' },
+      { per: 'm', key: 'm_sum50', title: 'Получить заказы на 50 000 ₽', hint: 'Сумма «К оплате», статус «Получен»', m: 'recvSum', n: 50000, tk: 200, xp: 180, grp: 'recv' },
+      { per: 'm', key: 'm_ord3', title: 'Оформить 3 заказа за месяц', hint: 'Достаточно оформить', m: 'ordN', n: 3, tk: 40, xp: 180 },
+      { per: 'm', key: 'm_both', title: 'Заказать и из наличия, и из Китая', hint: 'Один заказ из «В наличии» и один предзаказ', m: 'both', n: 1, tk: 40, xp: 180 },
+      { per: 'm', key: 'm_days20', title: 'Заходить 20 дней за месяц', hint: 'Отмечайтесь кнопкой «Я зашёл»', m: 'checkin', n: 20, tk: 80, xp: 180 },
+      { per: 'm', key: 'm_streak14', title: 'Серия входов 14 дней', hint: 'Без пропусков', m: 'streak', n: 14, tk: 80, xp: 180 },
+      { per: 'm', key: 'm_ref2', title: 'Пригласить 2 друзей', hint: 'Друзья по вашей ссылке получают первый заказ от 1 000 ₽', m: 'ref', n: 2, tk: 80, xp: 180 },
+      { per: 'm', key: 'm_spin15', title: 'Открыть 15 посылок', hint: 'За месяц', m: 'spin', n: 15, tk: 80, xp: 180 },
+      { per: 'm', key: 'm_weekly', title: 'Выполнить 6 еженедельных заданий', hint: 'Считаются выполненные за месяц', m: 'wDone', n: 6, tk: 80, xp: 180 },
+      { per: 'm', key: 'm_view100', title: 'Посмотреть 100 товаров', hint: 'За месяц', m: 'view', n: 100, tk: 80, xp: 180 },
+      { per: 'm', key: 'm_xp', title: 'Дойти до Золота за месяц', hint: 'Набрать 1 500 XP', m: 'xp', n: 1500, tk: 80, xp: 180 }
     ],
     taskPer: { d: { name: 'Ежедневные', until: 'до конца дня' }, w: { name: 'Еженедельные', until: 'до воскресенья' }, m: { name: 'Ежемесячные', until: 'до конца месяца' } },
     // рулетка: веса из 10 000 (шанс = вес / 100 %). «Пусто» добирает остаток до 10 000 само
@@ -148,6 +149,8 @@ var OnionCore = (function () {
       { id: 're1', label: 'Ещё раз', sub: '×1', w: 330, spins: 1 },
       { id: 're2', label: 'Ещё раз', sub: '×2', w: 60, spins: 2 }
     ],
+    // бесплатная посылка (ежедневная и «Ещё раз»): своя таблица, больше опыта и рамок, токенов в среднем около 20 вместо 60
+    wheelFree: { none: 2400, t25: 3000, t50: 1500, t100: 300, t150: 60, t300: 20, xp: 1500, xp100: 500, xp150: 150, xp300: 20, frame: 330, frame2: 25, promo: 50, re1: 145 },
     // Платина и Алмаз: «Пусто» реже, призы чаще (сумма весов та же, 10 000)
     wheelBoost: {
       1: { none: -300, t50: 100, t100: 80, xp: 60, t150: 40, xp100: 20 },
@@ -295,7 +298,7 @@ var OnionCore = (function () {
       picksFor(u, per, now).forEach(function (k) {
         var t = TASK[k]; if (st.done.indexOf(k) >= 0 || taskProgress(t, st, u) < t.n) return;
         st.done.push(k);
-        if (!t.auto) { log(db, u, t.tk, 'Задание (' + RULES.taskPer[per].name.toLowerCase() + '): ' + t.title); addXp(db, u, t.xp); news.push({ k: k, per: per, title: t.title, tk: t.tk, xp: t.xp, at: now }); }
+        if (!t.auto) { earn(db, u, t.tk, 'Задание (' + RULES.taskPer[per].name.toLowerCase() + '): ' + t.title); addXp(db, u, t.xp); news.push({ k: k, per: per, title: t.title, tk: t.tk, xp: t.xp, at: now }); }
         if (news.length > 12) news.shift();
         if (per === 'd') track(db, u, 'dDone'); else if (per === 'w') track(db, u, 'wDone');
       });
@@ -322,9 +325,18 @@ var OnionCore = (function () {
       perks: L.perks.map(function (x) { return x[0]; }), perkList: L.perks, fixed: !!fixed, tasks: L.tasks, streak: L.streak, spins: L.spins, priority: L.priority || '', pack: L.pack || '' };
   }
   function xpOfRub(r) { return Math.floor(Math.max(0, +r || 0) * RULES.xpPerRub); }
-  function wheelFor(li) {
+  function wheelFor(li, free) {
     var b = RULES.wheelBoost[li >= 4 ? 2 : li >= 3 ? 1 : 0] || {};
+    if (free) { var cut = -(b.none || 0); return RULES.wheel.map(function (w) { var v = RULES.wheelFree[w.id] || 0; if (w.id === 'none') v -= cut; if (w.id === 'xp') v += cut; return Math.max(0, v); }); }
     return RULES.wheel.map(function (w) { return Math.max(0, w.w + (b[w.id] || 0)); });
+  }
+  /* токены за активность (вход, задания, посылка): не выше потолка баланса, остаток превращается в опыт */
+  function earn(db, u, n, reason) {
+    n = Math.max(0, Math.round(n || 0));
+    var room = Math.max(0, RULES.balanceCap - (u.balance || 0)), give = Math.min(n, room), over = n - give, xp = Math.floor(over / 2);
+    if (give > 0) log(db, u, give, reason);
+    if (over > 0) { log(db, u, 0, reason + ': баланс на максимуме ' + RULES.balanceCap + ', вместо ' + over + ' токенов +' + xp + ' XP'); addXp(db, u, xp); }
+    return { tok: give, xp: xp };
   }
   function framesFor(u) {
     var li = levelOf(u).index, own = u.frames || [];
@@ -500,7 +512,7 @@ var OnionCore = (function () {
       id: u.id, code: 'OS' + u.id, login: u.login, name: u.name, phone: u.phone, tg: u.tg, email: u.email || '', avatar: u.avatar || '',
       board: boardFor(u, db.now()), taskNews: ((u.tasks && u.tasks.news) || []).slice(),
       balance: u.balance || 0, balanceRub: tokensToRub(u.balance || 0),
-      xp: u.xp || 0, level: levelOf(u), spent: u.spent || 0, ordersCount: u.ordersCount || 0, wheel: wheelFor(levelOf(u).index), pack: packInfo(db, u),
+      xp: u.xp || 0, level: levelOf(u), spent: u.spent || 0, ordersCount: u.ordersCount || 0, wheel: wheelFor(levelOf(u).index), wheelFree: wheelFor(levelOf(u).index, true), balanceCap: RULES.balanceCap, pack: packInfo(db, u),
       streak: u.lastCheckin === today || u.lastCheckin === dayKey(db.now() - 86400000) ? (u.streak || 0) : 0,
       checkedToday: u.lastCheckin === today,
       freeSpins: (u.daySpins || 0) + (u.freeSpins || 0), daySpins: u.daySpins || 0, daySpinsMax: u.daySpinsMax || 0, bonusSpins: u.freeSpins || 0,
@@ -744,12 +756,11 @@ var OnionCore = (function () {
     if (u.lastCheckin === today) return err('Сегодня вы уже отмечались');
     u.streak = u.lastCheckin === yest ? (u.streak || 0) + 1 : 1;
     u.lastCheckin = today;
-    var got = RULES.reward.checkin;
-    log(db, u, got, 'Ежедневный вход');
+    var got = earn(db, u, RULES.reward.checkin, 'Ежедневный вход').tok;
     addXp(db, u, RULES.xpReward.checkin);
     track(db, u, 'checkin'); track(db, u, 'streak', null, u.streak);
     var extra = [];
-    if (u.streak % 7 === 0) { var sr = levelOf(u).streak; log(db, u, sr, 'Серия 7 дней (' + levelOf(u).name + ')'); got += sr; extra.push('серия 7 дней +' + sr); }
+    if (u.streak % 7 === 0) { var sr = levelOf(u).streak; got += earn(db, u, sr, 'Серия 7 дней (' + levelOf(u).name + ')').tok; extra.push('серия 7 дней +' + sr); }
     settle(db, u); db.saveUser(u);
     return ok({ got: got, xp: RULES.xpReward.checkin, extra: extra, user: publicUser(db, u) });
   };
@@ -806,11 +817,11 @@ var OnionCore = (function () {
     var free = !!p.free && ((u.daySpins || 0) + (u.freeSpins || 0)) > 0;
     if (!free && (u.balance || 0) < RULES.spinCost) return err('Не хватает токенов: нужно ' + RULES.spinCost);
     if (free) { if ((u.daySpins || 0) > 0) u.daySpins -= 1; else u.freeSpins -= 1; } else log(db, u, -RULES.spinCost, 'Прокрут посылки');
-    var W = wheelFor(levelOf(u).index), sumW = W.reduce(function (a, w) { return a + w; }, 0);
+    var W = wheelFor(levelOf(u).index, free), sumW = W.reduce(function (a, w) { return a + w; }, 0);
     var total = 0, r = db.random() * sumW, idx = 0;
     for (var i = 0; i < W.length; i++) { total += W[i]; if (r < total) { idx = i; break; } }
     var prize = RULES.wheel[idx], result = { id: prize.id, label: prize.label, sub: prize.sub };
-    if (prize.tokens) { log(db, u, prize.tokens, 'Посылка: ' + prize.label + ' ' + prize.sub); result.tokens = prize.tokens; }
+    if (prize.tokens) { var e1 = earn(db, u, prize.tokens, 'Посылка: ' + prize.label + ' ' + prize.sub); result.tokens = e1.tok; if (e1.xp) { result.capXp = e1.xp; result.cap = RULES.balanceCap; } }
     if (prize.xp) { addXp(db, u, prize.xp); result.xp = prize.xp; }
     if (prize.spins) { u.freeSpins = (u.freeSpins || 0) + prize.spins; result.spins = prize.spins; }
     if (prize.promo) { var code = genCode(db, 'LUCK', 5); u.promos.push({ code: code, pct: prize.promo, from: 'Посылка', at: db.now() }); result.code = code; result.pct = prize.promo; }
@@ -818,10 +829,11 @@ var OnionCore = (function () {
       var left = RULES.frames.filter(function (f) { return f.src === 'wheel' && u.frames.indexOf(f.id) < 0 && (prize.frame !== 'rare' || f.rare); });
       if (!left.length && prize.frame === 'rare') left = RULES.frames.filter(function (f) { return f.src === 'wheel' && u.frames.indexOf(f.id) < 0; });
       if (left.length) { var f = left[Math.floor(db.random() * left.length)]; u.frames.push(f.id); result.frameId = f.id; result.frameName = f.name; }
-      else { log(db, u, 50, 'Посылка: все рамки уже открыты'); result.tokens = 50; result.sub = 'все рамки открыты: +50 токенов'; }
+      else { var e2 = earn(db, u, 50, 'Посылка: все рамки уже открыты'); result.tokens = e2.tok; result.sub = 'все рамки открыты: +50 токенов'; if (e2.xp) { result.capXp = e2.xp; result.cap = RULES.balanceCap; } }
     }
     track(db, u, 'spin'); settle(db, u);
     db.saveUser(u);
+    result.free = free;
     return ok({ prize: result, index: idx, user: publicUser(db, u) });
   };
 
@@ -997,6 +1009,8 @@ var OnionCore = (function () {
         promo = sp.code; promoRub = Math.round(total * sp.pct / 100);
       }
     }
+    // токены и промокод вместе не больше 12% суммы: лишние токены не списываем
+    if (tokens && tokenRub + promoRub > Math.floor(total * RULES.maxShare)) { tokens = Math.max(0, Math.floor((Math.floor(total * RULES.maxShare) - promoRub) / RULES.tokenRub)); tokenRub = tokensToRub(tokens); }
     var vipRub = f.vip === true ? RULES.vipPrice : 0;
     var toPay = Math.max(0, total - tokenRub - promoRub) + vipRub;
     var seq = db.nextOrderSeq();
