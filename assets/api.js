@@ -1,8 +1,8 @@
-/* ONION SHOP — связь сайта с сервером (Google Таблица).
+/* ONION SHOP, связь сайта с сервером (Google Таблица).
    Режимы (assets/config.js):
-     live — указана ссылка apiUrl: аккаунты, токены и заказы хранятся в Google Таблице;
-     demo — для предпросмотра: всё то же самое, но в памяти этого браузера;
-     off  — ссылки нет: кабинет и токены скрыты, заказ оформляется как раньше. */
+     live: указана ссылка apiUrl: аккаунты, токены и заказы хранятся в Google Таблице;
+     demo: для предпросмотра: всё то же самое, но в памяти этого браузера;
+     off : ссылки нет: кабинет и токены скрыты, заказ оформляется как раньше. */
 var OnionAPI = (function () {
   'use strict';
   var cfg = window.ONION_CONFIG || {};
@@ -31,7 +31,7 @@ var OnionAPI = (function () {
   var mem = load() || { users: [], sessions: [], orders: [], log: [], reviews: [], waits: [], tg: [], seq: { user: 1000, order: 0 } };
   function save() { try { localStorage.setItem(DKEY, JSON.stringify(mem)); } catch (e) { /* только в памяти */ } }
   function hashStr(s) {
-    // FNV-1a ×2 — для демо достаточно; на сервере SHA-256
+    // FNV-1a ×2: для демо достаточно; на сервере SHA-256
     var h1 = 0x811c9dc5, h2 = 0x01000193;
     for (var i = 0; i < s.length; i++) { var c = s.charCodeAt(i); h1 ^= c; h1 = Math.imul(h1, 16777619) >>> 0; h2 ^= c + i; h2 = Math.imul(h2, 2246822519) >>> 0; }
     return ('0000000' + h1.toString(16)).slice(-8) + ('0000000' + h2.toString(16)).slice(-8);

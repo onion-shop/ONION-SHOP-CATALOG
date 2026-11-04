@@ -1,7 +1,7 @@
-/* ONION SHOP — витрина.
+/* ONION SHOP, витрина.
    Каталог: data/catalog.js (обновляется сам из Telegram-канала).
    Аккаунты, токены, посылка, промокоды и номера заказов: Google Таблица через assets/api.js
-   (в предпросмотре — демо в браузере). Корзина, избранное и недавние — в браузере. */
+   (в предпросмотре: демо в браузере). Корзина, избранное и недавние, в браузере. */
 (function () {
   'use strict';
 
@@ -25,10 +25,10 @@
   var CATALOG = window.ONION_CATALOG || { products: [] };
   var PRODUCTS = (CATALOG.products || []).slice();
   var BY_ID = {};
-  /* цвет → фото (номер фото в посте, 1 — первое). Источники по старшинству:
-     1) data/colors.js — ручная привязка; 2) номера в самом посте: «Цвета: красный (7), голубой (8)».
+  /* цвет → фото (номер фото в посте, 1, первое). Источники по старшинству:
+     1) data/colors.js: ручная привязка; 2) номера в самом посте: «Цвета: красный (7), голубой (8)».
      Цвета идут в порядке фото. */
-  var AUTO_COLOR_PHOTO = false; // false — цвет сам не выбирает фото (клиент отмечает фото вручную). true — вернуть автоподбор.
+  var AUTO_COLOR_PHOTO = false; // false: цвет сам не выбирает фото (клиент отмечает фото вручную). true: вернуть автоподбор.
   var COLOR_PHOTOS = window.ONION_COLOR_PHOTOS || {};
   var PHOTO_V = {};
   function normColor(c) { return String(c || '').trim().toLowerCase().replace(/ё/g, 'е'); }
@@ -84,7 +84,7 @@
   function cap(s) { s = String(s || ''); return s.charAt(0).toUpperCase() + s.slice(1); }
   function plural(n, a, b, c) { n = Math.abs(n); var m10 = n % 10, m100 = n % 100; return (m10 === 1 && m100 !== 11) ? a : (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) ? b : c; }
   function tokWord(n) { return plural(n, 'токен', 'токена', 'токенов'); }
-  // ?v= — отпечаток фото: если фото в посте заменили, браузер не покажет старое из кеша
+  // ?v=: отпечаток фото: если фото в посте заменили, браузер не покажет старое из кеша
   function thumb(id) { return 'img/thumb/' + id + '.jpg' + (PHOTO_V[id] ? '?v=' + PHOTO_V[id] : ''); }
   function full(id) { return 'img/full/' + id + '.jpg' + (PHOTO_V[id] ? '?v=' + PHOTO_V[id] : ''); }
   function norm(s) { return String(s || '').toLowerCase().replace(/ё/g, 'е'); }
@@ -157,7 +157,7 @@
   }
 
   // ------------------------------------------------------------ цвета
-  // цвет по названию: корни слов → реальный оттенок; «светло-/темно-» меняют яркость, «черно-красный» — два цвета
+  // цвет по названию: корни слов → реальный оттенок; «светло-/темно-» меняют яркость, «черно-красный», два цвета
   var COLOR_HEX = {
     'бел': '#f7f7f5', 'молочн': '#f3ead8', 'кремов': '#f0e4c4', 'айвори': '#f3ecd6', 'экрю': '#eadfc4', 'слоновой': '#f3ecd6',
     'беж': '#d8c3a0', 'песоч': '#d9c59c', 'бежев': '#d8c3a0', 'кэмел': '#c19a6b', 'камел': '#c19a6b', 'табач': '#9c7a4e',
@@ -235,7 +235,7 @@
   function earlyH(ms) { return Math.max(1, Math.ceil(ms / 3600000)); }
   function addToCart(line) {
     var ep = BY_ID[line.id], el = ep ? earlyLock(ep) : 0;
-    if (el) { toast('Новинка откроется для всех через ' + earlyH(el) + ' ч. Первые сутки — ранний доступ для уровня «Золото» и выше', null, 'warn'); return false; }
+    if (el) { toast('Новинка откроется для всех через ' + earlyH(el) + ' ч. Первые сутки: ранний доступ для уровня «Золото» и выше', null, 'warn'); return false; }
     var key = lineKey(line), ex = cart.find(function (l) { return lineKey(l) === key; });
     if (ex) ex.qty = Math.min(10, ex.qty + line.qty); else cart.push(line);
     saveCart();
@@ -393,7 +393,7 @@
       if (!data || !data.products || data.updatedAt === CATALOG.updatedAt || !data.products.length) return;
       CATALOG = data; PRODUCTS = data.products.slice(); BY_ID = {}; PRODUCTS.forEach(indexProduct);
       if (current === 'home') renderHome(); else if (current === 'catalog') updateCatalog();
-    }).catch(function () { /* без сети — оставляем как есть */ });
+    }).catch(function () { /* без сети, оставляем как есть */ });
   }
   function silentRefresh() {
     if (silentBusy || !API.enabled || API.mode !== 'live' || !API.getSession() || document.hidden || API.busy()) return;
@@ -407,7 +407,7 @@
       var typing = document.activeElement && /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName);
       if (typing || $('#modal-root .modal')) { acct.user = r.user; updateAcctUI(); return; }
       acct.user = r.user; updateAcctUI();
-      if (current === 'roulette') updateRoulBalance(); else refreshView(); // посылку не перерисовываем — вдруг крутится
+      if (current === 'roulette') updateRoulBalance(); else refreshView(); // посылку не перерисовываем, вдруг крутится
     }, function () { silentBusy = false; });
   }
   function updateAcctUI() {
@@ -432,8 +432,8 @@
       tab.innerHTML = '<span class="ic">' + icon('user') + '</span><span>Кабинет</span>';
     }
   }
-  function requireAuth(back) { returnTo = back || current; go('account'); toast('Войдите или создайте аккаунт — за регистрацию ' + RULES.reward.register + ' токенов'); }
-  // события для заданий копим и отправляем пачкой раз в несколько секунд (каждое — один раз в день)
+  function requireAuth(back) { returnTo = back || current; go('account'); toast('Войдите или создайте аккаунт, за регистрацию ' + RULES.reward.register + ' токенов'); }
+  // события для заданий копим и отправляем пачкой раз в несколько секунд (каждое: один раз в день)
   var evQ = [], evSent = {}, evTimer = null, newsSeen = {};
   function track(ev, id) {
     if (!acct.user || !API.enabled) return;
@@ -455,13 +455,13 @@
     list.slice(0, 3).forEach(function (n, i) {
       setTimeout(function () { reward('+' + n.tk + ' ' + tokWord(n.tk) + ' и +' + n.xp + ' XP · задание «' + n.title + '»'); if (n.per === 'm') confetti(80); }, i * 900);
     });
-    if (list.length > 3) setTimeout(function () { reward('Ещё выполнено заданий: ' + (list.length - 3) + ' — награды уже начислены'); }, 3 * 900);
+    if (list.length > 3) setTimeout(function () { reward('Ещё выполнено заданий: ' + (list.length - 3) + ', награды уже начислены'); }, 3 * 900);
   }
   // тихое обновление пользователя после событий: без перерисовки корзины и ввода
   function setUserLite(u) { acct.user = u; updateAcctUI(); if (current === 'account') renderAccount(); showNews(u); }
   // ------------------------------------------------------------ подарок на день рождения
   /* Сцена: закрытая коробка → крышка улетает, изнутри свет → «камера» заглядывает внутрь → награды поднимаются карточками.
-     Награды выдаёт сервер (bdayGift) в момент открытия; повторно не выдаются — при обновлении страницы поздравление не появится. */
+     Награды выдаёт сервер (bdayGift) в момент открытия; повторно не выдаются: при обновлении страницы поздравление не появится. */
   var bdayBusy = false;
   function bdayGift() {
     var u = acct.user; if (bdayBusy || !u || !u.bdayToday || $('#gb-ov')) return;
@@ -522,14 +522,14 @@
       API.call('bdayGift').then(function (r) {
         if (!r.ok) { failed = r.error || 'Попробуйте ещё раз позже'; return; }
         res = r; setUser(r.user);
-      }).catch(function () { failed = 'Нет связи с сервером. Подарок не пропадёт — откройте его позже сегодня'; });
+      }).catch(function () { failed = 'Нет связи с сервером. Подарок не пропадёт: откройте его позже сегодня'; });
       later(function () { ov.classList.add('untie'); }, 550);
       later(function () { ov.classList.add('lift'); }, 950);
       later(function () { ov.classList.add('dive'); }, 1900);
       var t0 = Date.now();
       later(function wait() {
         if (res || failed) { ov.classList.add('rise'); later(showRes, 420); return; }
-        if (Date.now() - t0 > 15000) { failed = 'Сервер долго не отвечает. Подарок не пропадёт — откройте его позже сегодня'; }
+        if (Date.now() - t0 > 15000) { failed = 'Сервер долго не отвечает. Подарок не пропадёт: откройте его позже сегодня'; }
         timers.push(setTimeout(wait, 200));
       }, 3100);
     }
@@ -611,13 +611,13 @@
   }
   function paymentCard() {
     return '<div class="card icard"><h3><span class="ic">' + icon('card') + '</span>Оплата</h3><ul><li>Перевод: Сбербанк, Т-Банк, Альфа-Банк, СБП</li><li>Наличными <small>· при встрече в Москве</small></li>' +
-      (API.enabled ? '<li>До 15% заказа — токенами <small>· 1 токен = 0,3 ₽</small></li><li>Промокоды <small>· вводятся при оформлении</small></li>' : '') + '</ul><p class="small">На сайте оплаты нет: менеджер подтвердит заказ и пришлёт реквизиты.</p></div>';
+      (API.enabled ? '<li>До 15% заказа: токенами <small>· 1 токен = 0,3 ₽</small></li><li>Промокоды <small>· вводятся при оформлении</small></li>' : '') + '</ul><p class="small">На сайте оплаты нет: менеджер подтвердит заказ и пришлёт реквизиты.</p></div>';
   }
   function contactsCard() {
     var s = openState();
     return '<div class="card icard"><h3><span class="ic">' + icon('pin') + '</span>Магазин и связь</h3>' +
       '<span class="open-state ' + (s.open ? 'on' : 'off') + '" data-open-state>' + esc(s.text) + '</span>' +
-      '<div class="hours"><div data-today-row="0"><span>Пн–Пт</span><span class="num">08:30–21:00</span></div><div data-today-row="1"><span>Сб–Вс</span><span class="num">10:00–20:00</span></div></div>' +
+      '<div class="hours"><div data-today-row="0"><span>Пн-Пт</span><span class="num">08:30-21:00</span></div><div data-today-row="1"><span>Сб-Вс</span><span class="num">10:00-20:00</span></div></div>' +
       '<div class="contacts">' +
       '<a class="contact" href="' + SHOP.managerUrl + '" target="_blank" rel="noopener"><span class="l">' + icon('send') + '<span><small>Менеджер в Telegram</small><b>@' + SHOP.manager + '</b></span></span>' + icon('arrow-up-right') + '</a>' +
       '<div class="contact"><span class="l">' + icon('phone') + '<span><small>Телефон, WhatsApp</small><b class="num">' + SHOP.phone + '</b></span></span><button class="btn btn-soft btn-sm" type="button" data-copy="' + esc(SHOP.phone) + '" aria-label="Скопировать номер">' + icon('copy') + '</button></div>' +
@@ -631,11 +631,11 @@
       '<a class="contact" href="' + SHOP.tiktokUrl + '" target="_blank" rel="noopener"><span class="l">' + icon('play') + '<span><small>TikTok</small><b>@onion_shop</b></span></span>' + icon('arrow-up-right') + '</a></div></div>';
   }
   function preorderBanner() {
-    return '<div class="banner"><span class="ic">' + icon('plane') + '</span><div><h3>Что такое предзаказ</h3><p>Выкупаем товар у поставщика в Китае после вашего заказа, проверяем на складе и отправляем фурой (самолётом — по согласованию с менеджером).  Доставка из Китая уже включена в цену.</p></div>' +
+    return '<div class="banner"><span class="ic">' + icon('plane') + '</span><div><h3>Что такое предзаказ</h3><p>Выкупаем товар у поставщика в Китае после вашего заказа, проверяем на складе и отправляем фурой (самолётом: по согласованию с менеджером).  Доставка из Китая уже включена в цену.</p></div>' +
       '<a class="btn btn-ghost" href="' + SHOP.preorderUrl + '" target="_blank" rel="noopener">Условия и сроки' + icon('arrow-up-right') + '</a></div>';
   }
   function stepsBlock() {
-    var st = [['Выберите вещь', 'В наличии — отправим сразу. Предзаказ — выкупим в Китае под вас.'], ['Размер и цвет', 'Выберите размер и цвет в карточке товара. Пожелания можно написать в комментарии.'],
+    var st = [['Выберите вещь', 'В наличии: отправим сразу. Предзаказ: выкупим в Китае под вас.'], ['Размер и цвет', 'Выберите размер и цвет в карточке товара. Пожелания можно написать в комментарии.'],
       ['Токены и промокод', API.enabled ? 'Спишите до 15% суммы токенами и введите промокод.' : 'Укажите контакты и способ получения.'],
       ['Номер заказа', 'Заказ сам уходит менеджеру. Статус видно в «Моих заказах».']];
     return '<div class="steps">' + st.map(function (s, i) { return '<div class="step"><span class="n">' + (i + 1) + '</span><h3>' + s[0] + '</h3><p>' + s[1] + '</p></div>'; }).join('') + '</div>';
@@ -676,7 +676,7 @@
   function isPick(p) { return shopPicks().indexOf(p) >= 0; }
   function dateRange(d1, d2) {
     var a = msk(Date.now() + d1 * 864e5), b = msk(Date.now() + d2 * 864e5);
-    return a.mo === b.mo ? a.d + '–' + b.d + ' ' + MONTHS[b.mo - 1] : a.d + ' ' + MONTHS[a.mo - 1] + ' – ' + b.d + ' ' + MONTHS[b.mo - 1];
+    return a.mo === b.mo ? a.d + '-' + b.d + ' ' + MONTHS[b.mo - 1] : a.d + ' ' + MONTHS[a.mo - 1] + ' - ' + b.d + ' ' + MONTHS[b.mo - 1];
   }
   function etaBlock(p) {
     var el = CORE.earlyLeft(p, Date.now());
@@ -686,8 +686,8 @@
   function etaBase(p) {
     if (p.status === 'sold') return '';
     if (p.status === 'preorder') return '<div class="eta">' + icon('truck') + '<div><b>Ориентировочно получите: ' + dateRange(24, 47) + '</b><small>Если оплатить сегодня. Выкуп до 12 часов, проверка на складе и фотоотчёт, стоимость доставки из Китая уже включена в стоимость.</small></div></div>';
-    if (p.status === 'out') return '<div class="oos"><div class="oos-h"><span class="oos-ic">' + icon('hourglass') + '</span><div><b>Сейчас нет в наличии</b><small>Менеджер уточнит срок поступления' + (API.enabled ? ' и напишет вам, как только товар появится.' : '. Напишите ему — подскажет, когда ждать.') + '</small></div></div>' + (API.enabled ? '<button class="oos-btn" type="button" id="wait-btn"></button>' : '') + '</div>';
-    return '<div class="eta">' + icon('truck') + '<div><b>Уже в Москве</b><small>Самовывоз, курьер или Авито Доставка — способ выберете при оформлении.</small></div></div>';
+    if (p.status === 'out') return '<div class="oos"><div class="oos-h"><span class="oos-ic">' + icon('hourglass') + '</span><div><b>Сейчас нет в наличии</b><small>Менеджер уточнит срок поступления' + (API.enabled ? ' и напишет вам, как только товар появится.' : '. Напишите ему: подскажет, когда ждать.') + '</small></div></div>' + (API.enabled ? '<button class="oos-btn" type="button" id="wait-btn"></button>' : '') + '</div>';
+    return '<div class="eta">' + icon('truck') + '<div><b>Уже в Москве</b><small>Самовывоз, курьер или Авито Доставка, способ выберете при оформлении.</small></div></div>';
   }
   function howStrip() {
     var st = [['bag', 'Заказ', 'Корзина → менеджер пишет вам'], ['receipt', 'Выкуп до 12 ч', 'Закрепляем вещь за вами'], ['check-circle', 'Проверка', 'Склад в Китае + фотоотчёт'], ['truck', 'Доставка', 'Из Китая включена в стоимость']];
@@ -787,7 +787,7 @@
     startBanners(v); startHero(v); reveal(v); loadPromo();
   }
 
-  // быстрое добавление из карточки: размер/цвет — в окне выбора
+  // быстрое добавление из карточки: размер/цвет: в окне выбора
   function quickAdd(id) {
     var p = BY_ID[id]; if (!p) return;
     if (p.status === 'sold') { toast('Этот товар уже продан', null, 'warn'); return; }
@@ -813,7 +813,7 @@
   // ------------------------------------------------------------ каталог
   function newFilter() { return { tab: 'all', cat: 'all', brand: 'all', q: '', sort: 'new', price: 'all', sale: false }; }
   var filter = newFilter();
-  var PRICE = { lt2: [0, 2000, 'До 2 000 ₽'], mid: [2000, 5000, '2–5 тыс. ₽'], gt5: [5000, 1e9, 'От 5 000 ₽'] };
+  var PRICE = { lt2: [0, 2000, 'До 2 000 ₽'], mid: [2000, 5000, '2-5 тыс. ₽'], gt5: [5000, 1e9, 'От 5 000 ₽'] };
   function matches(p, f, skip) {
     if (skip !== 'tab' && f.tab !== 'all' && (f.tab === 'stock' ? !inStockTab(p) : p.status !== f.tab)) return false;
     if (skip !== 'cat' && f.cat !== 'all' && p.category !== f.cat) return false;
@@ -928,11 +928,11 @@
     $('#cat-title').textContent = f.tab === 'stock' ? 'В наличии' : f.tab === 'preorder' ? 'Предзаказ из Китая' : 'Все товары';
     $('#cat-count').textContent = 'Найдено: ' + list.length + ' ' + plural(list.length, 'товар', 'товара', 'товаров');
     $('#cat-reset').hidden = !(f.cat !== 'all' || f.brand !== 'all' || f.q || f.price !== 'all' || f.sale);
-    var fzNote = f._fz === 1 ? '<div class="notice notice-info fz-note">' + icon('search') + '<div>Точных совпадений нет — показали похожие на «' + esc(f.q) + '».</div></div>' : f._fz === 2 ? '<div class="notice notice-info fz-note">' + icon('search') + '<div>Исправили раскладку: искали «' + esc(swapLayout(norm(f.q))) + '».</div></div>' : '';
+    var fzNote = f._fz === 1 ? '<div class="notice notice-info fz-note">' + icon('search') + '<div>Точных совпадений нет: показали похожие на «' + esc(f.q) + '».</div></div>' : f._fz === 2 ? '<div class="notice notice-info fz-note">' + icon('search') + '<div>Исправили раскладку: искали «' + esc(swapLayout(norm(f.q))) + '».</div></div>' : '';
     var dym = f.q && !f._fz ? didYouMean(f.q) : '';
     var soon = f.cat !== 'all' && !f.q && !PRODUCTS.some(function (p) { return p.category === f.cat; });
     $('#cat-grid').innerHTML = list.length ? fzNote + grid(list) :
-      '<div class="empty"><span class="ico">' + icon('search') + '</span><h3>' + (soon ? 'Скоро появится' : 'Ничего не нашлось') + '</h3>' + (soon ? '<p>В категории «' + esc(CAT_LABELS[f.cat] || '') + '» пока пусто. Новинки выходят в канале — или напишите менеджеру, привезём под заказ.</p>' : '') + (dym ? '<p>Возможно, вы искали <button class="link-btn" type="button" id="dym-btn">' + esc(dym) + '</button></p>' : '') + '' + (soon ? '' : '<p>Попробуйте другое слово или сбросьте фильтры. Нужной вещи нет — напишите менеджеру, подберём под заказ.</p>') + '<div class="acts" style="justify-content:center"><button class="btn btn-ghost btn-sm" type="button" id="empty-reset">Сбросить фильтры</button><a class="btn btn-sm" href="' + SHOP.managerUrl + '" target="_blank" rel="noopener">' + icon('send') + 'Написать менеджеру</a></div></div>';
+      '<div class="empty"><span class="ico">' + icon('search') + '</span><h3>' + (soon ? 'Скоро появится' : 'Ничего не нашлось') + '</h3>' + (soon ? '<p>В категории «' + esc(CAT_LABELS[f.cat] || '') + '» пока пусто. Новинки выходят в канале, или напишите менеджеру, привезём под заказ.</p>' : '') + (dym ? '<p>Возможно, вы искали <button class="link-btn" type="button" id="dym-btn">' + esc(dym) + '</button></p>' : '') + '' + (soon ? '' : '<p>Попробуйте другое слово или сбросьте фильтры. Нужной вещи нет: напишите менеджеру, подберём под заказ.</p>') + '<div class="acts" style="justify-content:center"><button class="btn btn-ghost btn-sm" type="button" id="empty-reset">Сбросить фильтры</button><a class="btn btn-sm" href="' + SHOP.managerUrl + '" target="_blank" rel="noopener">' + icon('send') + 'Написать менеджеру</a></div></div>';
     reveal($('#cat-grid'));
     var dy = $('#dym-btn'); if (dy) dy.addEventListener('click', function () { filter.q = dym; var hq = $('#hdr-q'); if (hq) hq.value = dym; updateCatalog(); });
     var er = $('#empty-reset'); if (er) er.addEventListener('click', function () { filter = newFilter(); silentHash('catalog'); renderCatalog(); setNav('catalog'); });
@@ -973,7 +973,7 @@
     var url = location.href.split('#')[0].split('?')[0] + '#p-' + p.id;
     var done = function () { track('share', p.id); };
     try {
-      if (navigator.share) { navigator.share({ title: p.title, text: p.title + ' — ' + rub(p.price), url: url }).then(done, function () { /* отменили */ }); return; }
+      if (navigator.share) { navigator.share({ title: p.title, text: p.title + ': ' + rub(p.price), url: url }).then(done, function () { /* отменили */ }); return; }
     } catch (e) { /* нет Web Share */ }
     copyText(url, 'Ссылка на товар скопирована'); done();
   }
@@ -984,7 +984,7 @@
     var sizes = Object.keys(tbl), labels = [];
     sizes.forEach(function (z) { tbl[z].forEach(function (r) { if (labels.indexOf(mlab(r[0])) < 0) labels.push(mlab(r[0])); }); });
     return '<div class="mtbl-wrap"><table class="mtbl"><thead><tr><th></th>' + sizes.map(function (z) { return '<th data-mz="' + esc(z) + '"' + (z === selSize ? ' class="on"' : '') + '>' + esc(z) + '</th>'; }).join('') + '</tr></thead><tbody>' +
-      labels.map(function (l) { return '<tr><th scope="row">' + esc(l) + '</th>' + sizes.map(function (z) { var r = tbl[z].filter(function (x) { return mlab(x[0]) === l; })[0]; return '<td data-mz="' + esc(z) + '"' + (z === selSize ? ' class="on"' : '') + '>' + (r ? esc(String(r[1]).replace(/\s*см$/i, '')) : '—') + '</td>'; }).join('') + '</tr>'; }).join('') + '</tbody></table></div><p class="small">Размеры в сантиметрах. Выберите размер — столбец подсветится.</p>';
+      labels.map(function (l) { return '<tr><th scope="row">' + esc(l) + '</th>' + sizes.map(function (z) { var r = tbl[z].filter(function (x) { return mlab(x[0]) === l; })[0]; return '<td data-mz="' + esc(z) + '"' + (z === selSize ? ' class="on"' : '') + '>' + (r ? esc(String(r[1]).replace(/\s*см$/i, '')) : '·') + '</td>'; }).join('') + '</tr>'; }).join('') + '</tbody></table></div><p class="small">Размеры в сантиметрах. Выберите размер: столбец подсветится.</p>';
   }
   function colorPhotoMap(p) { return !!p.colorPhoto; }
   function renderProduct(id) {
@@ -1023,7 +1023,7 @@
       (API.enabled ? '<span class="tok-hint">' + tk() + 'Токенами можно оплатить до <b>' + rub(maxTokRub) + '</b></span>' : '') + '</div>' +
       etaBlock(p) +
       ((p.facts && p.facts.length) ? '<ul class="facts" aria-label="Главное о товаре">' + p.facts.slice(0, 6).map(function (f) { return '<li><small>' + esc(f[0]) + '</small><b>' + esc(f[1]) + '</b></li>'; }).join('') + '</ul>' : '') +
-      (p.status === 'sold' ? '<div class="notice notice-sold">' + icon('alert') + '<div><b>Продано.</b> Этот товар уже купили. Похожие — ниже, а новинки в канале.</div></div>' : p.status === 'preorder'
+      (p.status === 'sold' ? '<div class="notice notice-sold">' + icon('alert') + '<div><b>Продано.</b> Этот товар уже купили. Похожие: ниже, а новинки в канале.</div></div>' : p.status === 'preorder'
         ? '<div class="notice notice-pre">' + icon('plane') + '<div><b>Предзаказ из Китая.</b> Стоимость доставки из Китая уже включена в стоимость. <a href="#info">Условия</a></div></div>'
         : p.status === 'out' ? ''
         : '') +
@@ -1077,7 +1077,7 @@
       var paintWait = function () { var on = isWait(); wb.classList.toggle('on', on); wb.innerHTML = on ? '<span class="oos-ok">' + icon('check-circle') + '<span><b>Вы подписаны</b><small>Сообщим, когда появится</small></span></span><span class="oos-x">Отписаться</span>' : icon('bell') + '<span>Сообщить, когда появится</span>'; };
       paintWait();
       wb.addEventListener('click', function () {
-        if (!acct.user) { toast('Войдите в кабинет — тогда сообщим, когда товар появится', { label: 'Войти', run: function () { go('account'); } }, 'warn'); return; }
+        if (!acct.user) { toast('Войдите в кабинет: тогда сообщим, когда товар появится', { label: 'Войти', run: function () { go('account'); } }, 'warn'); return; }
         var on = isWait(); busy(wb, true, 'Секунду');
         API.call('waitlist', { productId: p.id, on: !on }).then(function (r) {
           busy(wb, false);
@@ -1085,7 +1085,7 @@
           acct.user = r.user; updateAcctUI(); paintWait();
           if (on) toast('Больше не следим за этим товаром');
           else if (r.user.tgOn) toast('Напишем в Telegram, когда товар появится');
-          else toast('Покажем в кабинете. Чтобы получить сообщение в Telegram — подключите бота', { label: 'Подключить', run: tgModal });
+          else toast('Покажем в кабинете. Чтобы получить сообщение в Telegram, подключите бота', { label: 'Подключить', run: tgModal });
         });
       });
     }
@@ -1278,7 +1278,7 @@
         '<div class="f" data-f="name"><label for="f-name">Имя</label><input class="input" id="f-name" autocomplete="name" value="' + esc(form.name) + '"><span class="err-msg" hidden></span></div>' +
         '<div class="f" data-f="phone"><label for="f-phone">Телефон</label><input class="input" id="f-phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="+7 900 000-00-00" value="' + esc(form.phone) + '"><span class="err-msg" hidden></span></div>' +
         '<div class="f full" data-f="tg"><label for="f-tg">Telegram</label><div class="prefix"><span>@</span><input class="input" id="f-tg" autocomplete="off" autocapitalize="off" value="' + esc(form.tg) + '"></div><span class="err-msg" hidden></span></div></div></div>' : '') +
-      (u && !profileOk(u) ? '<div class="notice notice-warn need-prof" data-f="prof">' + icon('user') + '<div><b>Заполните данные в кабинете</b> — имя и телефон берутся из него.</div><a class="btn btn-sm" href="#account">В профиль</a></div>' : '') +
+      (u && !profileOk(u) ? '<div class="notice notice-warn need-prof" data-f="prof">' + icon('user') + '<div><b>Заполните данные в кабинете</b>: имя и телефон берутся из него.</div><a class="btn btn-sm" href="#account">В профиль</a></div>' : '') +
 
       (t.stock ? '<div class="card panel"><div class="panel-head"><h2><span class="n">' + (++n) + '</span>Получение' + (t.pre ? ' · в наличии' : '') + '</h2></div>' +
         '<div class="f" data-f="recv"><span class="lbl sr">Способ получения</span><div class="radios mini">' +
@@ -1290,7 +1290,7 @@
         '<div class="f" data-f="recvAddr"' + (form.recv === 'courier' ? '' : ' hidden') + '><label for="f-recv-addr">Адрес или район <span class="opt-l">· по желанию</span></label><input class="input" id="f-recv-addr" autocomplete="street-address" placeholder="Уточним с менеджером" value="' + esc(form.recvAddr) + '"></div></div>' : '') +
 
       (t.pre ? '<div class="card panel"><div class="panel-head"><h2><span class="n">' + (++n) + '</span>Предзаказ из Китая</h2><a class="link-btn" href="#info">Подробнее</a></div>' +
-        '<div class="f" data-f="ship"><span class="lbl">Отправка со склада в Китае</span><div class="notice">' + icon('truck') + '<div><b>Фура</b>, 18–32 дня от склада. Стоимость доставки из Китая уже включена в стоимость.</div></div></div>' +
+        '<div class="f" data-f="ship"><span class="lbl">Отправка со склада в Китае</span><div class="notice">' + icon('truck') + '<div><b>Фура</b>, 18-32 дня от склада. Стоимость доставки из Китая уже включена в стоимость.</div></div></div>' +
         '<div class="f" data-f="city"><label for="f-city">Город, куда привезти</label><input class="input" id="f-city" autocomplete="address-level2" placeholder="Например, Москва" value="' + esc(form.city) + '"><span class="err-msg" hidden></span></div>' +
         '<div class="f" data-f="preRecv"><span class="lbl">Способ получения</span><div class="radios mini">' + radio('preRecv', 'avito', form.preRecv, 'Авито', '') + radio('preRecv', 'cdek', form.preRecv, 'СДЭК', '') + radio('preRecv', 'meet', form.preRecv, 'Встреча', '') + '</div><span class="err-msg" hidden></span></div>' +
         '<div class="f" data-f="ack"><div class="ack" id="ack"><div class="q"><span class="checkbox" id="ack-box" role="img" aria-label="Не подтверждено">' + icon('check') + '</span><div><b>Я прочитал(а) условия предзаказа</b> <a class="small" href="' + SHOP.preorderUrl + '" target="_blank" rel="noopener">Открыть</a></div></div>' +
@@ -1299,7 +1299,7 @@
 
       (t.stock && t.pre ? '<div class="card panel"><div class="panel-head"><h2><span class="n">' + (++n) + '</span>Как получить заказ</h2></div><div class="f" data-f="together"><div class="radios">' +
         radio('together', 'together', form.together, 'Всё вместе', 'Товар из наличия дождётся предзаказа, и вы получите всё сразу') +
-        radio('together', 'separate', form.together, 'Раздельно', 'Сначала получите товары в наличии, предзаказ — когда приедет из Китая') + '</div><span class="err-msg" hidden></span></div></div>' : '') +
+        radio('together', 'separate', form.together, 'Раздельно', 'Сначала получите товары в наличии, предзаказ, когда приедет из Китая') + '</div><span class="err-msg" hidden></span></div></div>' : '') +
       '<div class="card panel"><div class="panel-head"><h2><span class="n">' + (++n) + '</span>Комментарий</h2></div><div class="f"><label class="sr" for="f-comment">Комментарий к заказу</label><textarea id="f-comment" maxlength="500" placeholder="По желанию">' + esc(form.comment) + '</textarea></div></div>' +
       (API.enabled ? '<div class="card panel" id="tokpanel"><div class="panel-head"><h2><span class="n">' + (++n) + '</span>Токены и промокод</h2>' + (u ? '<span class="tok">' + tk() + num(u.balance) + '</span>' : '') + '</div>' +
         (u ? (t.maxTok > 0 ? '<div class="tokbox"><div class="tokrow"><span>Списать <b id="tok-n">' + num(t.tok) + '</b> <span id="tok-w">' + tokWord(t.tok) + '</span></span><b id="tok-rub">−' + rub(t.tokRub) + '</b></div>' +
@@ -1307,9 +1307,9 @@
             '<div class="tokrow"><span class="small">максимум ' + num(t.maxTok) + '</span><span class="tokq"><button type="button" data-tq="0">0</button><button type="button" data-tq="1">Максимум</button></span></div></div>'
             : (cartPromo && cartPromo.withTokens === false ? '<p class="small">Промокод ' + esc(cartPromo.code) + ' нельзя совмещать с токенами.</p>' : '')) +
           (u.promos.length ? '<div class="promos">' + u.promos.map(function (pr) { return '<button type="button" class="ticket" data-promo="' + esc(pr.code) + '" aria-pressed="' + (!!cartPromo && cartPromo.code === pr.code) + '"><code>' + esc(pr.code) + '</code><span class="pct">−' + pctTxt(pr.pct) + '%</span>' + (pr.cat ? '<span class="small">на «' + esc(pr.catLabel) + '»</span>' : '') + '</button>'; }).join('') + '</div>' : '')
-          : '<div class="guest-box">' + tk('lg') + '<div><b>Заказ оформляется из кабинета — войдите или создайте его</b></div></div><div class="acts"><button class="btn btn-sm btn-ghost" type="button" id="go-auth">' + icon('user') + 'Войти или создать аккаунт</button></div>') +
-        '<div class="f"><label for="promo-in">Промокод</label><div class="promo-row"><input class="input" id="promo-in" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Например, HALLOWEEN" value="' + esc(cartPromo && !cartPromo.personal ? cartPromo.code : '') + '"><button class="btn btn-dark" type="button" id="promo-btn">' + (cartPromo && !cartPromo.personal ? 'Убрать' : 'Применить') + '</button></div><div id="promo-msg">' + (cartPromo ? (t.promoNoBase ? '<span class="promo-bad">Промокод ' + esc(cartPromo.code) + ' действует только на «' + esc(cartPromo.catLabel) + '» — таких товаров в корзине нет</span>' : '<span class="promo-ok">' + icon('check-circle') + 'Промокод ' + esc(cartPromo.code) + ': −' + pctTxt(cartPromo.pct) + '%' + (cartPromo.cat ? ' на «' + esc(cartPromo.catLabel) + '»' : '') + '</span>') : '') + '</div></div>' +
-        (t.pack ? (t.packOk ? '<label class="pack-row"><input type="checkbox" id="use-pack"' + (usePack ? ' checked' : '') + '><span class="cbx">' + icon('check') + '</span><span><b>' + esc(t.pack.label) + ' — применить к этому заказу</b><small>' + esc(t.pack.note) + '. Менеджер учтёт при расчёте упаковки.</small></span></label>'
+          : '<div class="guest-box">' + tk('lg') + '<div><b>Заказ оформляется из кабинета, войдите или создайте его</b></div></div><div class="acts"><button class="btn btn-sm btn-ghost" type="button" id="go-auth">' + icon('user') + 'Войти или создать аккаунт</button></div>') +
+        '<div class="f"><label for="promo-in">Промокод</label><div class="promo-row"><input class="input" id="promo-in" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Например, HALLOWEEN" value="' + esc(cartPromo && !cartPromo.personal ? cartPromo.code : '') + '"><button class="btn btn-dark" type="button" id="promo-btn">' + (cartPromo && !cartPromo.personal ? 'Убрать' : 'Применить') + '</button></div><div id="promo-msg">' + (cartPromo ? (t.promoNoBase ? '<span class="promo-bad">Промокод ' + esc(cartPromo.code) + ' действует только на «' + esc(cartPromo.catLabel) + '»: таких товаров в корзине нет</span>' : '<span class="promo-ok">' + icon('check-circle') + 'Промокод ' + esc(cartPromo.code) + ': −' + pctTxt(cartPromo.pct) + '%' + (cartPromo.cat ? ' на «' + esc(cartPromo.catLabel) + '»' : '') + '</span>') : '') + '</div></div>' +
+        (t.pack ? (t.packOk ? '<label class="pack-row"><input type="checkbox" id="use-pack"' + (usePack ? ' checked' : '') + '><span class="cbx">' + icon('check') + '</span><span><b>' + esc(t.pack.label) + ', применить к этому заказу</b><small>' + esc(t.pack.note) + '. Менеджер учтёт при расчёте упаковки.</small></span></label>'
           : '<p class="small pack-note">' + icon('info') + esc(t.pack.label) + ' (привилегия ' + esc(t.pack.level) + ') действует только для заказа с предзаказом из Китая.</p>') : '') +
         '</div>' : '') +
       '</div>' +
@@ -1407,7 +1407,7 @@
           var a = b.getAttribute('data-ack');
           if (a !== 'cancel') { setAck(a); return; }
           confirmBox({
-            title: 'Отказаться от оформления?', text: 'Можно убрать из корзины товары по предзаказу или вернуться к покупкам — корзина сохранится.',
+            title: 'Отказаться от оформления?', text: 'Можно убрать из корзины товары по предзаказу или вернуться к покупкам, корзина сохранится.',
             actions: [t.stock ? { label: 'Убрать предзаказ', cls: 'btn-ghost', run: function () { cart = cart.filter(function (l) { return !BY_ID[l.id] || BY_ID[l.id].status !== 'preorder'; }); ack = null; saveCart(); renderCart(); toast('Товары по предзаказу убраны из корзины'); } }
               : { label: 'Очистить корзину', cls: 'btn-ghost', run: function () { cart = []; ack = null; saveCart(); renderCart(); } },
             { label: 'Вернуться в каталог', cls: 'btn-danger', run: function () { ack = null; go('catalog'); } }]
@@ -1442,7 +1442,7 @@
     else {
       if (form.name.trim().length < 2) e.push(['name', 'Укажите имя']);
       var d = CORE.digits(form.phone); if (d.length < 10 || d.length > 15) e.push(['phone', 'Укажите телефон, например +7 900 000-00-00']);
-      var t = CORE.cleanTg(form.tg); if (t && !/^[A-Za-z0-9_]{4,32}$/.test(t)) e.push(['tg', 'Username — латиница, цифры и «_», от 4 символов']);
+      var t = CORE.cleanTg(form.tg); if (t && !/^[A-Za-z0-9_]{4,32}$/.test(t)) e.push(['tg', 'Username: латиница, цифры и «_», от 4 символов']);
     }
     if (hasStock && hasPre && !form.together) e.push(['together', 'Выберите: получить всё вместе или раздельно']);
     if (hasStock) { if (!form.recv) e.push(['recv', 'Выберите способ получения']); else if (form.recv === 'city' && form.recvCity.trim().length < 2) e.push(['recvCity', 'Укажите город (можно Москва)']); }
@@ -1484,7 +1484,7 @@
       busy(btn, false);
       if (r.needAccount) { toast(r.error, null, 'warn'); API.setSession(''); setUser(null); requireAuth('cart'); return; }
       if (r.needPhone) { phoneModal(); return; }
-      if (r.network) { confirmBox({ title: 'Сервер не отвечает', text: 'Проверьте интернет и нажмите «Оформить» ещё раз. Корзина сохранена. Если не получается — напишите менеджеру.', actions: [{ label: 'Хорошо', cls: 'btn' }, { label: 'Написать менеджеру', cls: 'btn-ghost', run: function () { window.open(SHOP.managerUrl, '_blank', 'noopener'); } }] }); return; }
+      if (r.network) { confirmBox({ title: 'Сервер не отвечает', text: 'Проверьте интернет и нажмите «Оформить» ещё раз. Корзина сохранена. Если не получается: напишите менеджеру.', actions: [{ label: 'Хорошо', cls: 'btn' }, { label: 'Написать менеджеру', cls: 'btn-ghost', run: function () { window.open(SHOP.managerUrl, '_blank', 'noopener'); } }] }); return; }
       toast(r.error || 'Не получилось оформить заказ', null, 'warn');
       if (/промокод/i.test(r.error || '')) { cartPromo = null; renderCart(); }
     });
@@ -1504,7 +1504,7 @@
   function timeline(o) {
     var stages = o.stages || [], at = stages.indexOf(o.status);
     if (!stages.length) return '';
-    if (o.status === 'Отменён') return '<div class="notice notice-warn">' + icon('alert') + '<div>Заказ отменён. Вопросы — менеджеру <a href="' + SHOP.managerUrl + '" target="_blank" rel="noopener">@' + SHOP.manager + '</a>.</div></div>';
+    if (o.status === 'Отменён') return '<div class="notice notice-warn">' + icon('alert') + '<div>Заказ отменён. Вопросы: менеджеру <a href="' + SHOP.managerUrl + '" target="_blank" rel="noopener">@' + SHOP.manager + '</a>.</div></div>';
     var notes = RULES.stageNotes || {};
     return '<ol class="timeline">' + stages.map(function (s, i) {
       var cls = i < at || (i === at && i === stages.length - 1) ? 'done' : i === at ? 'now' : '';
@@ -1537,7 +1537,7 @@
   // ------------------------------------------------------------ мои заказы
   function allOrders() {
     var list = [];
-    // вошли в кабинет — история только с сервера; заказы, сохранённые в этом браузере раньше, показываем лишь без входа
+    // вошли в кабинет, история только с сервера; заказы, сохранённые в этом браузере раньше, показываем лишь без входа
     if (acct.user) return acct.user.orders.slice();
     localOrders.forEach(function (o) { list.push(o); });
     return list;
@@ -1567,7 +1567,7 @@
     var act = [], hist = [];
     list.forEach(function (o, i) { (isDoneOrder(o) ? hist : act).push(orderCard(o, i)); });
     v.innerHTML = head +
-      (act.length ? '<h2 class="sec-h">Активные · ' + act.length + '</h2><div class="orders">' + act.join('') + '</div>' : '<div class="notice notice-info" style="margin-bottom:12px">' + icon('check-circle') + '<div>Активных заказов нет. Завершённые лежат в «Истории заказов» ниже — любой можно повторить в один клик.</div></div>') +
+      (act.length ? '<h2 class="sec-h">Активные · ' + act.length + '</h2><div class="orders">' + act.join('') + '</div>' : '<div class="notice notice-info" style="margin-bottom:12px">' + icon('check-circle') + '<div>Активных заказов нет. Завершённые лежат в «Истории заказов» ниже, любой можно повторить в один клик.</div></div>') +
       (hist.length ? '<details class="hist"' + (act.length ? '' : ' open') + '><summary>' + icon('receipt') + '<span>История заказов</span><b>' + hist.length + '</b>' + icon('chevron-down') + '</summary><div class="orders">' + hist.join('') + '</div></details>' : '');
     bindOrders(v, list);
   }
@@ -1576,8 +1576,8 @@
   // ------------------------------------------------------------ избранное
   function renderFavorites() {
     var v = $('#v-favorites'), list = favs.map(function (id) { return BY_ID[id]; }).filter(Boolean);
-    v.innerHTML = '<div class="view-head"><div><h1>Избранное</h1><p class="muted">' + (list.length ? list.length + ' ' + plural(list.length, 'товар', 'товара', 'товаров') + ' — сохранено на потом' : 'Сохраняйте понравившееся, чтобы вернуться позже') + '</p></div></div>' +
-      (list.length && acct.user ? '<div class="fav-watch">' + icon('bell') + '<span>' + (acct.user.tgOn ? 'Сообщим в Telegram, если вещь из избранного подешевеет' : 'Подключите Telegram в кабинете — сообщим, если вещь из избранного подешевеет') + '</span></div>' : '') +
+    v.innerHTML = '<div class="view-head"><div><h1>Избранное</h1><p class="muted">' + (list.length ? list.length + ' ' + plural(list.length, 'товар', 'товара', 'товаров') + ', сохранено на потом' : 'Сохраняйте понравившееся, чтобы вернуться позже') + '</p></div></div>' +
+      (list.length && acct.user ? '<div class="fav-watch">' + icon('bell') + '<span>' + (acct.user.tgOn ? 'Сообщим в Telegram, если вещь из избранного подешевеет' : 'Подключите Telegram в кабинете, сообщим, если вещь из избранного подешевеет') + '</span></div>' : '') +
       (list.length ? grid(list) : '<div class="empty fav-empty"><span class="ico">' + icon('heart') + '</span><h3>Пока пусто</h3><a class="btn" href="#catalog">Перейти в каталог</a></div>');
   }
 
@@ -1613,7 +1613,7 @@
     if (!fresh.length) return;
     store.set('achvSeen:' + u.id, u.achv);
     var a = RULES.achv.filter(function (x) { return x.id === fresh[0]; })[0];
-    if (a) setTimeout(function () { reward('Новое достижение: «' + a.name + '»' + (a.frame ? ' — и новая рамка для аватара' : '')); }, 1200);
+    if (a) setTimeout(function () { reward('Новое достижение: «' + a.name + '»' + (a.frame ? ', и новая рамка для аватара' : '')); }, 1200);
   }
   function renderAccount() {
     var v = $('#v-account');
@@ -1630,7 +1630,7 @@
       '<li>' + tk('lg') + '<span><b>Задания дня</b> по 1 токену и до ' + RULES.levels[4].streak + ' за 7 дней подряд</span></li>' +
       '<li>' + tk('lg') + '<span><b>Программа лояльности</b>: Бронза → Серебро → Золото → Платина → Алмаз</span></li>' +
       '<li>' + tk('lg') + '<span><b>Посылка</b>: токены, промокоды, рамки для аватара</span></li>' +
-      '<li>' + tk('lg') + '<span><b>Статусы заказов</b> — от выкупа в Китае до получения</span></li>' +
+      '<li>' + tk('lg') + '<span><b>Статусы заказов</b>: от выкупа в Китае до получения</span></li>' +
       '<li>' + tk('lg') + '<span><b>+' + R.referrer + ' токенов</b> за друга, когда он получит первый заказ</span></li>' +
       '</ul><p class="small" style="color:var(--navy-ink-2)">Пароль хранится в зашифрованном виде. Почта нужна, чтобы восстановить пароль.</p></div>';
   }
@@ -1675,7 +1675,7 @@
     function regPayload() { return { name: val('a-name'), login: val('a-login'), email: val('a-email'), phone: val('a-phone'), tg: val('a-tg'), password: $('#a-pass', v).value, ref: val('a-ref'), code: val('a-code') }; }
     function preCheck(p) {
       if (p.name.length < 2) return 'Укажите имя';
-      if (!/^[a-z0-9_.]{3,20}$/i.test(p.login)) return 'Логин: от 3 до 20 символов — латиница, цифры, точка или «_»';
+      if (!/^[a-z0-9_.]{3,20}$/i.test(p.login)) return 'Логин: от 3 до 20 символов, латиница, цифры, точка или «_»';
       if (!CORE.validEmail(p.email.toLowerCase())) return 'Укажите почту, например name@mail.ru';
       var d = CORE.digits(p.phone); if (d.length < 10 || d.length > 15) return 'Укажите телефон';
       if (p.password.length < 6) return 'Пароль: не короче 6 символов';
@@ -1702,7 +1702,7 @@
           busy(btn, false);
           if (!r.ok) { fail(r.error); return; }
           regSent = false; store.set('ref', ''); API.setSession(r.session);
-          if (r.repeat) toast('Добро пожаловать! Приветственные бонусы на эти данные уже выдавались раньше, поэтому повторно не начисляются'); else toast('Аккаунт создан! Подтвердите телефон в Telegram — и получите +' + r.pending + ' ' + tokWord(r.pending));
+          if (r.repeat) toast('Добро пожаловать! Приветственные бонусы на эти данные уже выдавались раньше, поэтому повторно не начисляются'); else toast('Аккаунт создан! Подтвердите телефон в Telegram, и получите +' + r.pending + ' ' + tokWord(r.pending));
           setTimeout(phoneModal, 900);
           setUser(r.user); var back = returnTo; returnTo = null; if (back && back !== 'account') go(back);
         });
@@ -1857,16 +1857,16 @@
     var standalone = (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone;
     var cur = homeIcon();
     var steps = ios
-      ? ['Откройте сайт в <b>Safari</b> (в других браузерах на iPhone кнопки нет).', 'Нажмите <b>«Поделиться»</b> — квадрат со стрелкой внизу экрана.', 'Прокрутите список и выберите <b>«На экран «Домой»»</b>.', 'Название оставьте <b>Onion Shop</b> и нажмите <b>«Добавить»</b>.']
+      ? ['Откройте сайт в <b>Safari</b> (в других браузерах на iPhone кнопки нет).', 'Нажмите <b>«Поделиться»</b>: квадрат со стрелкой внизу экрана.', 'Прокрутите список и выберите <b>«На экран «Домой»»</b>.', 'Название оставьте <b>Onion Shop</b> и нажмите <b>«Добавить»</b>.']
       : /Android/.test(ua)
-        ? ['Откройте сайт в <b>Chrome</b>.', 'Нажмите <b>⋮</b> (меню) в правом верхнем углу.', 'Выберите <b>«Установить приложение»</b> или <b>«Добавить на главный экран»</b>.', 'Подтвердите — значок <b>Onion Shop</b> появится среди приложений.']
+        ? ['Откройте сайт в <b>Chrome</b>.', 'Нажмите <b>⋮</b> (меню) в правом верхнем углу.', 'Выберите <b>«Установить приложение»</b> или <b>«Добавить на главный экран»</b>.', 'Подтвердите: значок <b>Onion Shop</b> появится среди приложений.']
         : ['В Chrome или Edge нажмите значок установки в адресной строке (справа) или меню <b>⋮ → «Установить Onion Shop»</b>.', 'На телефоне откройте сайт и повторите те же шаги там.'];
     var md = openModal(modalHead('Значок на экране «Домой»') +
-      '<p class="small" style="margin:0 0 10px">Сайт откроется как приложение — без адресной строки, одним нажатием. Сначала выберите значок, потом добавьте его на экран.</p>' +
+      '<p class="small" style="margin:0 0 10px">Сайт откроется как приложение, без адресной строки, одним нажатием. Сначала выберите значок, потом добавьте его на экран.</p>' +
       '<div class="home-icons" role="group" aria-label="Значок">' + homeIcons().map(function (x) {
         return '<button type="button" data-hi="' + x[0] + '" aria-pressed="' + (x[0] === cur) + '"><span class="hi-img"><img src="assets/icons/' + x[0] + '-192.png" width="64" height="64" alt="" loading="lazy"><i>' + icon('check') + '</i></span><span>' + x[1] + '</span></button>';
       }).join('') + '</div>' +
-      '<div class="notice notice-info" style="margin-top:12px">' + icon('info') + '<div>' + (standalone ? 'Вы открыли сайт с экрана «Домой». ' : '') + 'Телефон запоминает значок в момент добавления и сам его не меняет: чтобы на рабочем столе стал другой, <b>удалите старый значок и добавьте сайт заново</b> — он возьмёт тот, что выбран здесь.</div></div>' +
+      '<div class="notice notice-info" style="margin-top:12px">' + icon('info') + '<div>' + (standalone ? 'Вы открыли сайт с экрана «Домой». ' : '') + 'Телефон запоминает значок в момент добавления и сам его не меняет: чтобы на рабочем столе стал другой, <b>удалите старый значок и добавьте сайт заново</b>: он возьмёт тот, что выбран здесь.</div></div>' +
       '<ol class="home-steps">' + steps.map(function (t) { return '<li>' + t + '</li>'; }).join('') + '</ol>' +
       (installEvt ? '<button class="btn btn-block" type="button" id="hi-install">' + icon('plus') + '<span>Установить приложение</span></button>' : '') +
       '<p class="small" style="margin:10px 0 0">Название на экране: <b>Onion Shop</b>. Значок можно поменять в любой момент.</p>', { cls: 'sm' });
@@ -1991,7 +1991,7 @@
     var dashOrders = active.length ? active.slice(0, 3) : u.orders.slice(0, 1);
     var bd = u.birthday ? u.birthday.split('-') : null;
     v.innerHTML =
-      (u.phoneOk ? '' : '<div class="ph-cta"><span class="ph-ic">' + icon('phone') + '</span><div><b>Подтвердите телефон</b><small>10 секунд в Telegram. После этого — приветственные токены, бонусы за друзей и подарок на день рождения.</small></div><button class="btn" type="button" id="ph-go">Подтвердить</button></div>') +
+      (u.phoneOk ? '' : '<div class="ph-cta"><span class="ph-ic">' + icon('phone') + '</span><div><b>Подтвердите телефон</b><small>10 секунд в Telegram. После этого: приветственные токены, бонусы за друзей и подарок на день рождения.</small></div><button class="btn" type="button" id="ph-go">Подтвердить</button></div>') +
       (u.email ? '' : '<div class="notice notice-warn" style="margin-bottom:12px">' + icon('mail') + '<div><b>Добавьте почту.</b> Без неё не получится восстановить пароль. <button class="link-btn" type="button" id="add-email">Добавить</button></div></div>') +
       '<div class="dash">' +
       '<div class="profile c12"><div class="who"><div class="ava-wrap">' + ava(u, 'lg') + '<button class="ava-cam" type="button" id="ava-cam" aria-label="Изменить фото">' + icon('camera') + '</button></div>' +
@@ -2024,7 +2024,7 @@
       }).join('') + '</div></div>' : '') +
       achvTile(u) +
       '<div class="card tile c12"><div class="tile-h"><h3>Мои заказы</h3><a class="link-btn" href="#orders">Все заказы</a></div>' +
-      (dashOrders.length ? '<div class="orders">' + dashOrders.map(orderCard).join('') + '</div>' + (u.orders.filter(isDoneOrder).length ? '<p class="small" style="margin-top:10px"><a href="#orders">История заказов · ' + u.orders.filter(isDoneOrder).length + '</a> — завершённые заказы, их можно повторить</p>' : '') : '<p class="small">Здесь появятся заказы с номерами и статусами. <a href="#catalog">Перейти в каталог</a></p>') + '</div>' +
+      (dashOrders.length ? '<div class="orders">' + dashOrders.map(orderCard).join('') + '</div>' + (u.orders.filter(isDoneOrder).length ? '<p class="small" style="margin-top:10px"><a href="#orders">История заказов · ' + u.orders.filter(isDoneOrder).length + '</a>: завершённые заказы, их можно повторить</p>' : '') : '<p class="small">Здесь появятся заказы с номерами и статусами. <a href="#catalog">Перейти в каталог</a></p>') + '</div>' +
 
       '<div class="card tile c12" style="padding-block:6px"><div class="rows">' +
       '<button class="rowl" type="button" id="r-prof"><span class="ic">' + icon('user') + '</span><span class="tx">Имя, телефон и Telegram</span><span class="val">' + esc(u.phone) + '</span>' + icon('chevron-right') + '</button>' +
@@ -2048,7 +2048,7 @@
     on('r-logout', function () { API.call('logout'); API.setSession(''); setUser(null); toast('Вы вышли из аккаунта'); });
     on('checkin-btn', function () { doCheckin($('#checkin-btn', v)); });
     on('ref-share', function () {
-      var text = 'Заходи в ONION SHOP — по моей ссылке +' + R.refFriend + ' токенов при регистрации';
+      var text = 'Заходи в ONION SHOP, по моей ссылке +' + R.refFriend + ' токенов при регистрации';
       try { if (navigator.share) { navigator.share({ title: 'ONION SHOP', text: text, url: refLink }).catch(function () { /* отменили */ }); return; } } catch (e) { /* */ }
       copyText(refLink, 'Ссылка-приглашение скопирована');
     });
@@ -2093,8 +2093,9 @@
     var pbtn = $('#spin-paid'); if (pbtn) { pbtn.disabled = spinning || u.balance < RULES.spinCost; pbtn.querySelector('span').textContent = spinning ? 'Сканируем…' : 'Открыть за ' + RULES.spinCost; }
   }
   /* ------------------------------------------------------------ «Посылка на рентгене»
-     Одна кнопка: посылка из Китая едет в сканер таможни, рентген показывает, что внутри, — штамп «ПРОВЕРЕНО».
+     Одна кнопка: посылка из Китая едет в сканер таможни, рентген показывает, что внутри,, штамп «ПРОВЕРЕНО».
      Приз и списание токенов определяет сервер (тот же action 'spin', те же шансы и цена). */
+  var pxStop = null;
   function pxIcon(info, pr) {
     if (pr && pr.frameId) return '<span class="px-ava">' + ava({ name: acct.user && acct.user.name, avatar: acct.user && acct.user.avatar, frame: pr.frameId }, 'lg') + '</span>';
     return rlUse(rlSym(info), 92);
@@ -2108,23 +2109,188 @@
     if (info.c === 're') return ['+' + n, n === 1 ? 'посылка бесплатно' : 'посылки бесплатно'];
     return ['Пусто', 'в этот раз посылка пустая'];
   }
+  /* ---- ангар: фон и «живые» декорации. Люди и техника появляются в случайном порядке,
+     с разной скоростью, остановками и занятиями, поэтому сцена не повторяется. */
+  var HG_BG = '<svg class="hg-bg" viewBox="0 0 400 130" preserveAspectRatio="xMidYMax slice" aria-hidden="true">' +
+    '<defs><linearGradient id="hgw" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2b3957"/><stop offset="1" stop-color="#3d4d6c"/></linearGradient>' +
+    '<linearGradient id="hgd" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e6f3ff"/><stop offset="1" stop-color="#9cc9ee"/></linearGradient>' +
+    '<linearGradient id="hgs" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#bfe0ff" stop-opacity=".55"/><stop offset="1" stop-color="#bfe0ff" stop-opacity="0"/></linearGradient></defs>' +
+    '<rect width="400" height="130" fill="url(#hgw)"/>' +
+    '<g stroke="#0b1530" stroke-opacity=".28" stroke-width="1.2"><path d="M0 22H400"/><path d="M0 12L50 22L100 12L150 22L200 12L250 22L300 12L350 22L400 12"/><path d="M0 12H400"/></g>' +
+    '<g fill="#0b1530" fill-opacity=".14"><rect x="20" y="26" width="3" height="104"/><rect x="92" y="26" width="3" height="104"/><rect x="164" y="26" width="3" height="104"/><rect x="236" y="26" width="3" height="104"/><rect x="308" y="26" width="3" height="104"/><rect x="380" y="26" width="3" height="104"/></g>' +
+    '<g><rect x="34" y="30" width="46" height="14" rx="2" fill="url(#hgd)"/><rect x="132" y="30" width="46" height="14" rx="2" fill="url(#hgd)"/><rect x="222" y="30" width="46" height="14" rx="2" fill="url(#hgd)"/>' +
+    '<path d="M34 44L80 44L96 130L18 130Z" fill="url(#hgs)" opacity=".5"/><path d="M222 44L268 44L284 130L206 130Z" fill="url(#hgs)" opacity=".4"/></g>' +
+    '<g><rect x="296" y="46" width="80" height="84" rx="3" fill="url(#hgd)"/><g fill="#8794ad"><rect x="296" y="46" width="80" height="6"/><rect x="296" y="55" width="80" height="6"/><rect x="296" y="64" width="80" height="6"/></g><rect x="292" y="42" width="88" height="5" fill="#243050"/></g>' +
+    '<g><rect x="8" y="62" width="64" height="3" fill="#7e8ba6"/><rect x="8" y="88" width="64" height="3" fill="#7e8ba6"/><rect x="8" y="114" width="64" height="3" fill="#7e8ba6"/><rect x="8" y="62" width="3" height="68" fill="#7e8ba6"/><rect x="69" y="62" width="3" height="68" fill="#7e8ba6"/>' +
+    '<rect x="14" y="74" width="18" height="14" fill="#c99358"/><rect x="34" y="70" width="14" height="18" fill="#b4814a"/><rect x="50" y="76" width="16" height="12" fill="#d3a46b"/><rect x="14" y="100" width="22" height="14" fill="#b4814a"/><rect x="38" y="96" width="12" height="18" fill="#c99358"/><rect x="52" y="102" width="14" height="12" fill="#d3a46b"/></g>' +
+    '<g transform="translate(150 48)"><rect width="100" height="14" rx="2" fill="#f2c230"/><g fill="#1b2236"><path d="M0 0h8l-8 14zM14 0h8L8 14H0zM28 0h8L22 14h-8zM42 0h8L36 14h-8zM56 0h8L50 14h-8zM70 0h8L64 14h-8zM84 0h8L78 14h-8zM98 0h2v14h-8z" opacity=".16"/></g><text x="50" y="10.4" text-anchor="middle" font-family="ui-monospace,monospace" font-size="8.4" font-weight="800" fill="#1b2236" letter-spacing=".6">ЗОНА ДОСМОТРА</text></g>' +
+    '</svg>';
+  var HG_LAMPS = '<i class="hg-lamp" style="left:14%"></i><i class="hg-lamp" style="left:50%"></i><i class="hg-lamp" style="left:86%"></i>';
+  function hgRand(a, b) { return a + Math.random() * (b - a); }
+  function hgPick(a) { return a[Math.floor(Math.random() * a.length)]; }
+  var HG_VEST = ['#ff8a2a', '#ffd23a', '#79d97a', '#ff6b6b', '#58b8ff'], HG_HELM = ['#ffffff', '#ffd23a', '#2d7cff', '#ff8a2a'], HG_SKIN = ['#e9b996', '#c98f66', '#8d5a3b', '#f2cfae'];
+  function hgWorkerSvg(vest, helm, skin, hold) {
+    var h = hold === 'box' ? '<rect x="14.5" y="17" width="11" height="9" rx="1" fill="#c99358"/><rect x="14.5" y="20" width="11" height="2" fill="#ecd0a6"/>' : hold === 'tab' ? '<rect x="15" y="17" width="7" height="9" rx="1" fill="#1d2740" stroke="#9fd0ff" stroke-width=".8"/>' : '';
+    return '<svg viewBox="0 0 28 46" width="28" height="46" aria-hidden="true">' +
+      '<g class="hw-l hw-l1"><rect x="8" y="28" width="4.6" height="16" rx="1.8" fill="#263253"/><rect x="7.2" y="42" width="7" height="3.2" rx="1.4" fill="#0f1830"/></g>' +
+      '<g class="hw-l hw-l2"><rect x="14" y="28" width="4.6" height="16" rx="1.8" fill="#34426a"/><rect x="13.4" y="42" width="7" height="3.2" rx="1.4" fill="#0f1830"/></g>' +
+      '<g class="hw-a hw-a2"><rect x="17.2" y="14" width="3.6" height="13" rx="1.8" fill="' + vest + '"/></g>' +
+      '<rect x="6" y="12" width="15" height="18" rx="4.5" fill="' + vest + '"/><rect x="6" y="19.5" width="15" height="2.4" fill="#f4f9ff" opacity=".85"/>' +
+      '<rect x="11.6" y="9" width="4.2" height="4" fill="' + skin + '"/><circle cx="13.6" cy="7.6" r="5" fill="' + skin + '"/>' +
+      '<path d="M8.2 7.4a5.4 5.4 0 0 1 10.8 0z" fill="' + helm + '"/><rect x="7.4" y="6.8" width="12.4" height="1.9" rx=".9" fill="' + helm + '"/>' +
+      '<g class="hw-a hw-a1"><rect x="5" y="14" width="3.6" height="13" rx="1.8" fill="' + vest + '" opacity=".82"/></g>' + h + '</svg>';
+  }
+  function hgCartSvg() {
+    var bx = '', n = 1 + Math.floor(Math.random() * 3), i;
+    for (i = 0; i < n; i++) bx += '<rect x="' + (6 + i * 11) + '" y="' + (6 + (i % 2) * 2) + '" width="' + (9 + Math.floor(Math.random() * 4)) + '" height="' + (11 - (i % 2) * 2) + '" rx="1" fill="' + hgPick(['#c99358', '#b4814a', '#d3a46b']) + '"/>';
+    return '<svg class="hg-cart" viewBox="0 0 44 30" width="44" height="30" aria-hidden="true">' + bx + '<rect x="3" y="17" width="38" height="4" rx="1.5" fill="#8794ad"/><path d="M3 17V5" stroke="#8794ad" stroke-width="2.2" stroke-linecap="round"/><circle cx="10" cy="25" r="3.6" fill="#1b2236"/><circle cx="34" cy="25" r="3.6" fill="#1b2236"/></svg>';
+  }
+  function hgForkSvg(load) {
+    var ld = '';
+    if (load) ld = '<rect x="62" y="31" width="20" height="3" fill="#b78650"/><rect x="63" y="19" width="17" height="12" rx="1" fill="#c99358"/><rect x="63" y="25" width="17" height="2.4" fill="#ecd0a6"/>' + (Math.random() < .5 ? '<rect x="66" y="9" width="12" height="10" rx="1" fill="#b4814a"/>' : '');
+    return '<svg viewBox="0 0 88 58" width="88" height="58" aria-hidden="true">' +
+      '<rect x="56" y="4" width="4" height="46" fill="#3b4767"/><g class="fk-fork"><rect x="58" y="34" width="26" height="3.4" fill="#9aa7bd"/><rect x="58" y="22" width="3" height="15" fill="#9aa7bd"/>' + ld + '</g>' +
+      '<rect x="3" y="22" width="16" height="24" rx="4" fill="#d9860b"/><rect x="8" y="26" width="46" height="20" rx="4.5" fill="#f6a21a"/>' +
+      '<path d="M22 26V9H46V26" fill="none" stroke="#26324a" stroke-width="2.4"/><rect x="20" y="6" width="28" height="4" rx="1.5" fill="#26324a"/>' +
+      '<circle cx="34" cy="17" r="3.6" fill="#e9b996"/><path d="M30.2 16.6a3.8 3.8 0 0 1 7.6 0z" fill="#ffd23a"/><rect x="30" y="20" width="8" height="7" rx="2" fill="#ff8a2a"/>' +
+      '<circle cx="35" cy="3.4" r="2.6" class="fk-beacon" fill="#ff7a00"/>' +
+      '<circle cx="22" cy="49" r="7.4" fill="#151c2f"/><circle cx="22" cy="49" r="3" fill="#8794ad"/><circle cx="50" cy="50" r="5.6" fill="#151c2f"/><circle cx="50" cy="50" r="2.2" fill="#8794ad"/></svg>';
+  }
+  function hgVanSvg() {
+    return '<svg viewBox="0 0 116 58" width="116" height="58" aria-hidden="true">' +
+      '<rect x="3" y="6" width="80" height="38" rx="6" fill="#eef3fb"/><rect x="3" y="28" width="80" height="6" fill="' + hgPick(['#2d7cff', '#ff8a2a', '#2fb67a']) + '"/>' +
+      '<path d="M83 14H100Q108 14 112 26L113 44H83Z" fill="#dfe7f3"/><path d="M90 18H100Q105 18 108 26H90Z" fill="#8fd0ff"/><rect x="2" y="42" width="112" height="4" rx="2" fill="#7e8ba6"/>' +
+      '<circle cx="28" cy="49" r="7.6" fill="#151c2f"/><circle cx="28" cy="49" r="3" fill="#8794ad"/><circle cx="92" cy="49" r="7.6" fill="#151c2f"/><circle cx="92" cy="49" r="3" fill="#8794ad"/></svg>';
+  }
+  /* сцена: box, belt, tunnel, actors */
+  function pxHangar(root) {
+    var layer = $('#hg-actors', root), box = $('#px-hangar', root), alive = 0, last = '', stopped = false;
+    function W() { return box.clientWidth || 340; }
+    function ok() { return !stopped && document.body.contains(layer); }
+    function wait(ms) { return new Promise(function (res) { setTimeout(res, ms); }); }
+    function mk(html, cls, yb, w) {
+      var el = document.createElement('div'); el.className = 'hg-a ' + (cls || ''); el.style.bottom = yb + 'px'; el.style.zIndex = String(100 - Math.round(yb)); el.style.width = w + 'px';
+      el.innerHTML = '<div class="hg-in">' + html + '</div>'; layer.appendChild(el); alive++; return el;
+    }
+    function done(el) { if (el.parentNode) el.parentNode.removeChild(el); alive--; }
+    function face(el, dir) { el.firstChild.classList.toggle('rev', dir < 0); }
+    function go(el, x0, x1, speed) {
+      return new Promise(function (res) {
+        if (!ok()) { res(); return; }
+        face(el, x1 >= x0 ? 1 : -1);
+        var an = el.animate([{ transform: 'translateX(' + x0 + 'px)' }, { transform: 'translateX(' + x1 + 'px)' }], { duration: Math.max(60, Math.abs(x1 - x0) / speed * 1000), easing: 'linear', fill: 'forwards' });
+        an.onfinish = function () { res(); }; an.oncancel = function () { res(); };
+      });
+    }
+    function worker(opt) {
+      opt = opt || {};
+      var w = W(), kind = opt.kind || hgPick(['walk', 'walk', 'box', 'box', 'cart', 'check', 'wave']), dir = opt.dir || (Math.random() < .5 ? 1 : -1);
+      var vest = hgPick(HG_VEST), helm = hgPick(HG_HELM), skin = hgPick(HG_SKIN), yb = opt.yb || hgRand(40, 62);
+      var hold = kind === 'box' ? 'box' : kind === 'check' ? 'tab' : '';
+      var el = mk('<span class="hg-ppl' + (kind === 'box' ? ' hw-carry' : '') + '">' + hgWorkerSvg(vest, helm, skin, hold) + '</span>' + (kind === 'cart' ? hgCartSvg() : ''), 'hg-w', yb, kind === 'cart' ? 74 : 28);
+      var ppl = el.querySelector('.hg-ppl'); ppl.style.setProperty('--st', hgRand(.5, .85).toFixed(2) + 's');
+      var speed = kind === 'cart' ? hgRand(20, 30) : hgRand(26, 50), x0 = opt.x0 != null ? opt.x0 : (dir > 0 ? -90 : w + 20), far = dir > 0 ? w + 20 : -90;
+      var p1 = opt.stopAt != null ? opt.stopAt : hgRand(.18, .82) * w, chain = go(el, x0, p1, speed);
+      chain.then(function () {
+        if (!ok()) return;
+        var act = opt.act || (kind === 'check' ? 'look' : kind === 'wave' ? 'wave' : Math.random() < .4 ? hgPick(['look', 'look', 'back']) : '');
+        el.classList.remove('hw-wave');
+        if (!act) return go(el, p1, far, speed);
+        ppl.classList.add('hw-stand');
+        if (act === 'wave') ppl.classList.add('hw-wave');
+        var t = hgRand(1400, 3600);
+        return wait(t).then(function () {
+          ppl.classList.remove('hw-stand', 'hw-wave');
+          if (act === 'back') return go(el, p1, dir > 0 ? -90 : w + 20, speed);
+          return go(el, p1, far, speed);
+        });
+      }).then(function () { done(el); });
+      return el;
+    }
+    function fork() {
+      var w = W(), dir = Math.random() < .5 ? 1 : -1, load = Math.random() < .65, yb = hgRand(30, 42), el = mk(hgForkSvg(load), 'hg-f', yb, 88);
+      var x0 = dir > 0 ? -110 : w + 30, far = dir > 0 ? w + 30 : -110, speed = hgRand(46, 78), p1 = hgRand(.25, .75) * w, stopIt = Math.random() < .6;
+      var mast = el.querySelector('.fk-fork');
+      go(el, x0, stopIt ? p1 : far, speed).then(function () {
+        if (!stopIt || !ok()) return;
+        var up = Math.random() < .5; mast.style.transition = 'transform .9s ease-in-out'; mast.style.transform = 'translateY(' + (up ? -16 : -5) + 'px)';
+        return wait(hgRand(1500, 2600)).then(function () { mast.style.transform = 'translateY(0)'; return wait(900); }).then(function () { return go(el, p1, Math.random() < .25 ? x0 : far, speed); });
+      }).then(function () { done(el); });
+    }
+    function van() {
+      var w = W(), dir = Math.random() < .5 ? 1 : -1, el = mk(hgVanSvg(), 'hg-v', hgRand(64, 70), 116);
+      var x0 = dir > 0 ? -140 : w + 30, far = dir > 0 ? w + 30 : -140, speed = hgRand(58, 92), p1 = hgRand(.3, .7) * w, stopIt = Math.random() < .7;
+      go(el, x0, stopIt ? p1 : far, speed).then(function () {
+        if (!stopIt || !ok()) return;
+        if (Math.random() < .6) worker({ x0: p1 + 40, dir: -dir, kind: 'box', stopAt: p1 + 40 + (dir > 0 ? -1 : 1) * 60 });
+        return wait(hgRand(2200, 4200)).then(function () { return go(el, p1, far, speed); });
+      }).then(function () { done(el); });
+    }
+    function pair() {
+      var w = W(), mid = hgRand(.35, .65) * w, a = worker({ dir: 1, x0: -90, stopAt: mid - 18, act: 'look', kind: 'walk', yb: hgRand(46, 56) }), b = worker({ dir: -1, x0: w + 20, stopAt: mid + 18, act: 'wave', kind: 'walk', yb: hgRand(46, 56) });
+      return [a, b];
+    }
+    function next() {
+      if (!ok()) return;
+      if (alive < 4 && !document.hidden && layer.offsetParent) {
+        var kinds = ['w', 'w', 'w', 'w', 'f', 'f', 'v', 'p'].filter(function (k) { return k !== last || k === 'w'; }), k = hgPick(kinds); last = k;
+        if (k === 'f') fork(); else if (k === 'v') van(); else if (k === 'p') pair(); else worker();
+      }
+      setTimeout(next, hgRand(1100, 2800));
+    }
+    function lamps() {
+      if (!ok()) return;
+      var ls = box.querySelectorAll('.hg-lamp'), l = ls[Math.floor(Math.random() * ls.length)];
+      if (l) { l.classList.add('flick'); setTimeout(function () { l.classList.remove('flick'); }, hgRand(160, 420)); }
+      setTimeout(lamps, hgRand(2500, 7000));
+    }
+    if (REDUCED) { worker({ x0: .3 * W(), stopAt: .3 * W(), act: 'look' }); return function () { stopped = true; }; }
+    worker({ dir: 1, x0: hgRand(.1, .35) * W(), kind: 'box' }); worker({ dir: -1, x0: hgRand(.6, .9) * W(), kind: 'walk', yb: hgRand(48, 62) });
+    setTimeout(next, 900); setTimeout(lamps, 2000);
+    return function () { stopped = true; };
+  }
   function renderRoulette() {
     var v = $('#v-roulette');
     clearInterval(rlTimer); rlTimer = null;
+    if (pxStop) { pxStop(); pxStop = null; }
     if (!API.enabled) { v.innerHTML = '<div class="empty"><span class="ico">' + icon('gift') + '</span><h3>Посылка скоро появится</h3><a class="btn" href="#catalog">В каталог</a></div>'; return; }
     var u = acct.user, busyNow = false, idleI = 0, IDLE = ['t100', 'xp100', 'promo', 'frame', 're1', 't500'];
-    v.innerHTML = '<div class="pad roul-head" style="padding:0 0 10px"><div><h1>Посылка из Китая</h1></div></div>' +
+    var CAP0 = '<b>Что внутри?</b><span>Посылка проходит рентген, и вы сразу видите приз</span>';
+    v.innerHTML = '<div class="pad roul-head" style="padding:0 0 10px"><div><h1>Посылка с сюрпризом</h1></div></div>' +
       '<section class="px" id="px">' +
       '<div class="rl-bar">' + (u ? '<span class="rl-chipb" id="roul-bal"></span><span class="rl-free" id="roul-free"></span>' : '<span class="rl-chipb">' + rlUse('i-token', 26) + '<span>Посылка</span></span><span class="rl-free">Войдите, чтобы открыть</span>') + '</div>' +
       '<div class="px-station">' +
         '<div class="px-mon" id="px-mon"><div class="px-mon-h"><span>РЕНТГЕН</span><span id="px-st">ГОТОВ</span></div>' +
           '<div class="px-screen" id="px-screen"><i class="px-grid"></i><div class="px-box"><i class="px-tape"></i><div class="px-item" id="px-item"></div></div><i class="px-beam"></i><b class="px-stamp" id="px-stamp">ПРОВЕРЕНО</b></div></div>' +
-        '<div class="px-belt"><div class="px-tunnel"><i></i></div><div class="px-parcel" id="px-parcel"><i class="px-ptape"></i><span class="px-lbl"><b>CN → MSK</b><i></i></span><img src="assets/logo.png" alt="" width="22" height="22"></div><div class="px-rollers"></div></div>' +
+        '<div class="px-hangar" id="px-hangar">' + HG_BG + HG_LAMPS + '<div class="hg-floor"></div><div class="hg-actors" id="hg-actors"></div>' +
+          '<div class="px-belt" id="px-belt"><div class="px-tunnel"><b class="px-beacon"></b><i></i></div><div class="px-parcel" id="px-parcel"><i class="px-ptape"></i><span class="px-lbl"><i></i></span><img src="assets/logo.png" alt="" width="22" height="22"></div><div class="px-rollers"></div></div>' +
+        '</div>' +
       '</div>' +
-      '<div class="px-cap" id="px-cap" aria-live="polite"><b>Что внутри?</b><span>Посылка проходит рентген — и вы сразу видите приз</span></div>' +
+      '<div class="px-cap" id="px-cap" aria-live="polite">' + CAP0 + '</div>' +
       (u ? '<button class="rl-go" id="spin-paid" type="button">' + rlUse('i-token', 24) + '<span>Открыть за ' + RULES.spinCost + '</span></button><button class="rl-go2" id="spin-free" type="button" hidden></button>' : '<button class="rl-go" id="spin-guest" type="button">' + icon('user') + '<span>Войти и получить ' + RULES.reward.register + ' ' + tokWord(RULES.reward.register) + '</span></button>') +
       '</section>';
-    var px = $('#px', v), item = $('#px-item', v), cap = $('#px-cap', v), st = $('#px-st', v), stamp = $('#px-stamp', v);
+    var px = $('#px', v), item = $('#px-item', v), cap = $('#px-cap', v), st = $('#px-st', v), stamp = $('#px-stamp', v), parcel = $('#px-parcel', v), belt = $('#px-belt', v), pxAn = null;
+    pxStop = pxHangar(v);
+    /* положения коробки на ленте, px от левого края */
+    function bw() { return belt.clientWidth || 340; }
+    function xWait() { return 12; }
+    function xMid() { return Math.round(bw() / 2 - parcel.offsetWidth / 2); }
+    function xIn() { return -parcel.offsetWidth - 20; }
+    function xOut() { return bw() + 24; }
+    function put(x) { if (pxAn) { pxAn.cancel(); pxAn = null; } parcel.style.transform = 'translateX(' + x + 'px)'; parcel.style.visibility = 'visible'; }
+    function curX() { var m = /translateX\((-?[\d.]+)px\)/.exec(parcel.style.transform || ''); var r = parcel.getBoundingClientRect(), b = belt.getBoundingClientRect(); return r.width ? Math.round(r.left - b.left) : (m ? +m[1] : 0); }
+    function run(on) { belt.classList.toggle('run', !!on); }
+    function slide(x1, ms, ease) {
+      return new Promise(function (res) {
+        var x0 = curX(); run(true);
+        if (REDUCED) { put(x1); run(false); res(); return; }
+        if (pxAn) pxAn.cancel();
+        pxAn = parcel.animate([{ transform: 'translateX(' + x0 + 'px)' }, { transform: 'translateX(' + x1 + 'px)' }], { duration: ms, easing: ease || 'linear', fill: 'forwards' });
+        var an = pxAn; an.onfinish = function () { if (pxAn === an) { parcel.style.transform = 'translateX(' + x1 + 'px)'; an.cancel(); pxAn = null; } run(false); res(); };
+        an.oncancel = function () { res(); };
+      });
+    }
+    function arrive() { put(xIn()); return slide(xWait(), 800, 'cubic-bezier(.25,.55,.4,1)'); }
     function idleShow() { var info = rlInfo(IDLE[idleI++ % IDLE.length]); item.className = 'px-item ghost'; item.innerHTML = pxIcon(info); }
     function idleOn() { clearInterval(rlTimer); idleShow(); rlTimer = setInterval(function () { if (!$('#px')) { clearInterval(rlTimer); return; } if (!busyNow && !document.hidden) idleShow(); }, 2600); }
     function setState(s, t) { px.setAttribute('data-s', s); st.textContent = t; }
@@ -2139,29 +2305,48 @@
         setState('done', 'ГОТОВ');
         setUser(real); updateRoulBalance();
         if (big) { px.classList.add('px-flash'); setTimeout(function () { px.classList.remove('px-flash'); }, 900); confetti(160); }
-        if (r.prize.frameId) toast('Рамка «' + (r.prize.frameName || '') + '» — в кабинете → «Рамка аватара»');
+        if (r.prize.frameId) toast('Рамка «' + (r.prize.frameName || '') + '» в кабинете, раздел «Рамка аватара»');
         else if (r.prize.code) toast('Промокод ' + r.prize.code + ' уже в кабинете');
-        busyNow = false; updateRoulBalance();
-        setTimeout(function () { if (!busyNow && $('#px')) { stamp.className = 'px-stamp'; idleOn(); } }, 5200);
-      }, REDUCED ? 50 : 650);
+        /* проверенная коробка едет дальше и уходит за край, следом слева выезжает новая */
+        slide(xOut(), 950, 'cubic-bezier(.45,0,.85,.55)').then(function () {
+          if (!$('#px')) return;
+          parcel.style.visibility = 'hidden';
+          return new Promise(function (res) { setTimeout(res, REDUCED ? 0 : 450); });
+        }).then(function () {
+          if (!$('#px')) return;
+          return arrive();
+        }).then(function () {
+          if (!$('#px')) return;
+          busyNow = false; spinning = false; updateRoulBalance();
+          setTimeout(function () { if (!busyNow && $('#px')) { stamp.className = 'px-stamp'; idleOn(); } }, 2800);
+        });
+      }, REDUCED ? 50 : 280);
+    }
+    function fail(msg) {
+      slide(xWait(), 500, 'ease-out').then(function () { busyNow = false; spinning = false; setState('idle', 'ГОТОВ'); cap.innerHTML = CAP0; updateRoulBalance(); idleOn(); });
+      toast(msg, null, 'warn');
     }
     function doOpen(free) {
       if (busyNow || !acct.user) return;
       if (!free && acct.user.balance < RULES.spinCost) { toast('Нужно ' + RULES.spinCost + ' токенов. Выполните задания или отметьтесь в кабинете', null, 'warn'); return; }
       busyNow = true; clearInterval(rlTimer); spinning = true; updateRoulBalance();
       stamp.className = 'px-stamp'; item.className = 'px-item'; item.innerHTML = '';
-      cap.innerHTML = '<b>Сканируем…</b><span>Посылка проходит рентген</span>';
+      cap.innerHTML = '<b>Сканируем…</b><span>Посылка едет в рентген</span>';
       setState('in', 'ПРИЁМ');
-      var t0 = Date.now(), MIN = REDUCED ? 100 : 1700;
-      setTimeout(function () { if (busyNow) setState('scan', 'СКАН'); }, REDUCED ? 0 : 650);
+      var res = null, scanned = false, scanAt = 0, shown = false, SCAN = REDUCED ? 80 : 600;
+      function tryShow() {
+        if (shown || !scanned || !res) return; shown = true;
+        setTimeout(function () { spinning = false; reveal(res.r, res.real); }, Math.max(0, SCAN - (Date.now() - scanAt)));
+      }
+      slide(xMid(), 900, 'cubic-bezier(.2,.5,.4,1)').then(function () { if (!busyNow) return; setState('scan', 'СКАН'); scanned = true; scanAt = Date.now(); tryShow(); });
       API.call('spin', { free: free }).then(function (r) {
-        if (!r.ok) { busyNow = false; spinning = false; setState('idle', 'ГОТОВ'); cap.innerHTML = '<b>Что внутри?</b><span>Посылка проходит рентген — и вы сразу видите приз</span>'; updateRoulBalance(); toast(r.error, null, 'warn'); idleOn(); return; }
-        var shown = Object.assign({}, acct.user, { balance: acct.user.balance - (free ? 0 : RULES.spinCost), freeSpins: acct.user.freeSpins - (free ? 1 : 0) });
-        var real = r.user; acct.user = shown; updateRoulBalance(); updateAcctUI();
-        setTimeout(function () { spinning = false; reveal(r, real); }, Math.max(0, MIN - (Date.now() - t0)));
-      }, function () { busyNow = false; spinning = false; setState('idle', 'ГОТОВ'); updateRoulBalance(); toast('Нет связи, попробуйте ещё раз', null, 'warn'); idleOn(); });
+        if (!r.ok) { shown = true; fail(r.error); return; }
+        var sh = Object.assign({}, acct.user, { balance: acct.user.balance - (free ? 0 : RULES.spinCost), freeSpins: acct.user.freeSpins - (free ? 1 : 0) });
+        var real = r.user; acct.user = sh; updateRoulBalance(); updateAcctUI();
+        res = { r: r, real: real }; tryShow();
+      }, function () { shown = true; fail('Нет связи, попробуйте ещё раз'); });
     }
-    setState('idle', 'ГОТОВ'); updateRoulBalance(); idleOn();
+    setState('idle', 'ГОТОВ'); updateRoulBalance(); idleOn(); put(xWait());
     var g = $('#spin-guest', v); if (g) g.addEventListener('click', function () { requireAuth('roulette'); });
     var pbtn = $('#spin-paid', v); if (pbtn) pbtn.addEventListener('click', function () { doOpen(false); });
     var fb = $('#spin-free', v); if (fb) fb.addEventListener('click', function () { doOpen(true); });
@@ -2172,7 +2357,7 @@
     var win = p.id !== 'none';
     var visual = p.frameId ? ava({ name: acct.user && acct.user.name, avatar: acct.user && acct.user.avatar, frame: p.frameId }, 'lg') : pz(p.id);
     var title = p.id === 'none' ? 'Пусто' : p.tokens ? '+' + num(p.tokens) + ' ' + tokWord(p.tokens) : p.code ? 'Промокод −' + p.pct + '%' : p.xp ? '+' + p.xp + ' XP' : p.spins ? '+' + p.spins + ' ' + plural(p.spins, 'посылка', 'посылки', 'посылок') : p.frameName ? 'Рамка «' + p.frameName + '»' : p.label;
-    var sub = p.id === 'none' ? 'В этот раз не повезло. Следующая посылка может принести джекпот.' : p.code ? 'Код ' + p.code + ' уже в кабинете. Выберите его в корзине.' : p.xp ? 'Опыт засчитан в уровень этого месяца.' : p.spins ? 'Бесплатные посылки добавлены.' : p.frameName ? 'Новая рамка открыта — наденьте её в кабинете.' : p.id === 'jackpot' ? 'Джекпот! Токены уже на балансе.' : 'Токены уже на балансе.';
+    var sub = p.id === 'none' ? 'В этот раз не повезло. Следующая посылка может принести джекпот.' : p.code ? 'Код ' + p.code + ' уже в кабинете. Выберите его в корзине.' : p.xp ? 'Опыт засчитан в уровень этого месяца.' : p.spins ? 'Бесплатные посылки добавлены.' : p.frameName ? 'Новая рамка открыта: наденьте её в кабинете.' : p.id === 'jackpot' ? 'Джекпот! Токены уже на балансе.' : 'Токены уже на балансе.';
     var md = openModal('<div class="prize-pop"><div class="burst">' + visual + '</div><span class="eyebrow">' + (win ? 'Ваш приз' : 'Результат') + '</span><h2>' + esc(title) + '</h2><p class="muted">' + esc(sub) + '</p>' +
       '<div class="send-row" style="width:100%">' + (p.spins ? '<button class="btn" type="button" id="again-free">' + icon('sparkles') + 'Крутить бесплатно</button>' : '<button class="btn" type="button" id="again">' + icon('sparkles') + 'Ещё раз</button>') +
       (p.frameId ? '<button class="btn btn-ghost" type="button" id="wear">Надеть рамку</button>' : '<button class="btn btn-ghost" type="button" data-close>Закрыть</button>') + '</div></div>', { cls: 'sm' });
@@ -2189,27 +2374,27 @@
     track('info');
     var R = RULES.reward, L = RULES.levels;
     var order = [
-      faqItem('Как заказать — по шагам', '<ol class="faq-ol"><li><b>Выберите вещь.</b> Откройте карточку, пролистайте фото, посмотрите замеры и характеристики.</li><li><b>Размер и цвет.</b> Нажмите нужный размер — под ним появятся замеры именно этого размера. Цвет выбирайте по фото: на карточке показаны реальные оттенки.</li><li><b>«В корзину».</b> В корзине можно изменить количество, добавить пожелание к каждой вещи (например, «хочу примерить перед покупкой») или убрать лишнее.</li><li><b>Данные для связи.</b> Имя, телефон и Telegram берутся из кабинета — заполните их там, иначе заказ не уйдёт. Это нужно, чтобы менеджер мог вам написать.</li><li><b>Город и способ получения.</b> Для товаров в наличии — самовывоз, Авито Доставка или курьер. Для предзаказа — Авито, СДЭК или личная встреча.</li><li><b>Токены и промокод.</b> Это последний шаг перед оформлением. Скидка пересчитается сразу, итог виден в корзине.</li><li><b>«Оформить заказ».</b> Заказ получит номер, уйдёт менеджеру, а в «Моих заказах» появится его статус. Дальше менеджер пишет вам в Telegram и присылает реквизиты.</li></ol><p class="small">Важно: пока менеджер не подтвердил заказ и не пришла оплата, вещь за вами не закреплена.</p>'),
-      faqItem('Что такое предзаказ и чем он отличается от «В наличии»', '<p><b>В наличии</b> — вещь уже в Москве. Её можно забрать самому или отправить по России через Авито Доставку, обычно в течение пары дней.</p><p><b>Предзаказ</b> — вещь ещё в Китае. Мы выкупаем её у поставщика только после вашего заказа и оплаты, проверяем и привозим. Так цена ниже, а выбор шире, но ждать дольше.</p><p>Стоимость доставки из Китая <b>уже включена в стоимость</b> предзаказа — отдельно за неё платить не нужно.</p><p><a href="' + SHOP.preorderUrl + '" target="_blank" rel="noopener">Подробные условия предзаказа</a></p>'),
-      faqItem('Этапы предзаказа — что происходит с вашей вещью', '<ol class="faq-ol"><li><b>Оформлен.</b> Заказ создан и отправлен менеджеру. Он связывается с вами, уточняет размер, цвет и детали, присылает реквизиты.</li><li><b>Выкуплен (в течение 12 часов после оплаты).</b> Мы оплачиваем вещь у поставщика в Китае и закрепляем её за вами.</li><li><b>В пути до склада.</b> Поставщик отправляет вещь на склад в Китае — обычно до 7 дней, затем 3–5 дней дорога до склада.</li><li><b>На складе в Китае.</b> Вещь приходит, её проверяют на брак и соответствие описанию. На это уходит 1–2 дня. Вам отправляют фотоотчёт — основной бесплатно.</li><li><b>Едет в Россию.</b> После проверки вещь отправляется из Китая. Фурой это 18–32 дня от склада.</li><li><b>Едет к вам.</b> Вещь в России: её передают в выбранный способ получения — СДЭК, Авито Доставка или личная встреча.</li><li><b>Получен.</b> Вы забрали заказ. Если оставите отзыв, это поможет другим покупателям.</li></ol>'),
-      faqItem('Сколько ждать предзаказ', '<p>Складывается из этапов: выкуп до 12 часов, поставщик до 7 дней, дорога до склада 3–5 дней, проверка 1–2 дня и доставка 18–32 дня. В сумме обычно <b>от 3,5 до 6,5 недель</b>.</p><p>Быстрее самолётом — это отдельная услуга, её условия и стоимость согласует менеджер. Прямо на сайте самолётом заказать нельзя.</p><p class="small">Сроки примерные: на них влияют праздники в Китае, загрузка перевозчика и погода. Если что-то задерживается, менеджер напишет сам.</p>'),
-      faqItem('Размеры и замеры', '<ul><li>Если у вещи несколько размеров, под выбранным размером показываются его замеры: грудь, длина, плечи, рукав — в сантиметрах.</li><li>Замеры — это ширина самой вещи, не обхват тела. Приложите к себе похожую вещь из шкафа и сравните.</li><li>Если сомневаетесь между двумя размерами — напишите менеджеру, он подскажет по вашим параметрам.</li><li>Разница в замерах до 1–2 см допустима: вещи измеряют вручную.</li></ul>'),
-      faqItem('Цвета и фото', '<ul><li>Цвета на карточке показаны реальными оттенками (болотный, кремовый, бирюзовый и т. д.).</li><li>Оттенок на экране может немного отличаться от настоящего из-за яркости и настроек телефона.</li><li>Фотографии берутся из нашего канала. Если нужен дополнительный фотоотчёт перед отправкой, он оплачивается по тарифу логиста (15 ¥ за позицию) — основной бесплатный.</li></ul>'),
-      faqItem('Доставка из Китая', '<ul><li>Фура — основной способ: 18–32 дня от склада в Китае.</li><li>Стоимость доставки из Китая уже включена в стоимость товара.</li><li>Самолёт — быстрее, но только через менеджера: он рассчитает и согласует.</li><li>Перед отправкой вещь проверяют на складе и фотографируют.</li></ul>'),
-      faqItem('Получение по России', '<ul><li><b>СДЭК до пункта выдачи</b> — оплачивается отдельно, по тарифу СДЭК.</li><li><b>Авито Доставка</b> — по Москве и в другой город, с минимальной стоимостью.</li><li><b>Личная встреча</b> — в Москве бесплатно, время согласуйте с менеджером.</li><li>Номер отслеживания менеджер пришлёт в Telegram.</li></ul>'),
-      faqItem('Получение товаров в наличии', '<ul><li><b>Авито Доставка</b> — по Москве и в другой город, быстрее всего.</li><li><b>Курьер по Москве</b> — не всегда доступен, согласуется с менеджером.</li><li><b>Самовывоз</b> — ' + esc(SHOP.address) + '. Время согласуйте с менеджером.</li></ul>'),
-      faqItem('Оплата', '<ul><li>Перевод: Сбербанк, Т-Банк, Альфа-Банк, СБП.</li><li>Наличными — при встрече в Москве.</li><li>На сайте оплаты нет: менеджер подтвердит заказ и пришлёт реквизиты.</li><li>До 15% заказа можно оплатить токенами, 1 токен = 0,3 ₽.</li><li>Предзаказ начинаем выкупать после оплаты — это ускоряет заказ.</li></ul>'),
-      faqItem('Статусы заказа', '<ul><li><b>Оформлен</b> — заказ создан, ждёт подтверждения менеджера.</li><li><b>Выкуплен</b> — вещь оплачена у поставщика.</li><li><b>В пути</b> — едет на склад в Китае.</li><li><b>На складе</b> — прошла проверку, готовится к отправке.</li><li><b>Едет к нам</b> — международная доставка.</li><li><b>Едет к вам</b> — в России, передана в доставку.</li><li><b>Получен</b> — заказ у вас.</li><li><b>Отменён</b> — заказ остановлен, подробности пришлёт менеджер.</li></ul><p class="small">Статус меняет менеджер, в кабинете он обновляется сам.</p>'),
+      faqItem('Как заказать: по шагам', '<ol class="faq-ol"><li><b>Выберите вещь.</b> Откройте карточку, пролистайте фото, посмотрите замеры и характеристики.</li><li><b>Размер и цвет.</b> Нажмите нужный размер: под ним появятся замеры именно этого размера. Цвет выбирайте по фото: на карточке показаны реальные оттенки.</li><li><b>«В корзину».</b> В корзине можно изменить количество, добавить пожелание к каждой вещи (например, «хочу примерить перед покупкой») или убрать лишнее.</li><li><b>Данные для связи.</b> Имя, телефон и Telegram берутся из кабинета, заполните их там, иначе заказ не уйдёт. Это нужно, чтобы менеджер мог вам написать.</li><li><b>Город и способ получения.</b> Для товаров в наличии, самовывоз, Авито Доставка или курьер. Для предзаказа: Авито, СДЭК или личная встреча.</li><li><b>Токены и промокод.</b> Это последний шаг перед оформлением. Скидка пересчитается сразу, итог виден в корзине.</li><li><b>«Оформить заказ».</b> Заказ получит номер, уйдёт менеджеру, а в «Моих заказах» появится его статус. Дальше менеджер пишет вам в Telegram и присылает реквизиты.</li></ol><p class="small">Важно: пока менеджер не подтвердил заказ и не пришла оплата, вещь за вами не закреплена.</p>'),
+      faqItem('Что такое предзаказ и чем он отличается от «В наличии»', '<p><b>В наличии</b>: вещь уже в Москве. Её можно забрать самому или отправить по России через Авито Доставку, обычно в течение пары дней.</p><p><b>Предзаказ</b>: вещь ещё в Китае. Мы выкупаем её у поставщика только после вашего заказа и оплаты, проверяем и привозим. Так цена ниже, а выбор шире, но ждать дольше.</p><p>Стоимость доставки из Китая <b>уже включена в стоимость</b> предзаказа: отдельно за неё платить не нужно.</p><p><a href="' + SHOP.preorderUrl + '" target="_blank" rel="noopener">Подробные условия предзаказа</a></p>'),
+      faqItem('Этапы предзаказа: что происходит с вашей вещью', '<ol class="faq-ol"><li><b>Оформлен.</b> Заказ создан и отправлен менеджеру. Он связывается с вами, уточняет размер, цвет и детали, присылает реквизиты.</li><li><b>Выкуплен (в течение 12 часов после оплаты).</b> Мы оплачиваем вещь у поставщика в Китае и закрепляем её за вами.</li><li><b>В пути до склада.</b> Поставщик отправляет вещь на склад в Китае, обычно до 7 дней, затем 3-5 дней дорога до склада.</li><li><b>На складе в Китае.</b> Вещь приходит, её проверяют на брак и соответствие описанию. На это уходит 1-2 дня. Вам отправляют фотоотчёт: основной бесплатно.</li><li><b>Едет в Россию.</b> После проверки вещь отправляется из Китая. Фурой это 18-32 дня от склада.</li><li><b>Едет к вам.</b> Вещь в России: её передают в выбранный способ получения. СДЭК, Авито Доставка или личная встреча.</li><li><b>Получен.</b> Вы забрали заказ. Если оставите отзыв, это поможет другим покупателям.</li></ol>'),
+      faqItem('Сколько ждать предзаказ', '<p>Складывается из этапов: выкуп до 12 часов, поставщик до 7 дней, дорога до склада 3-5 дней, проверка 1-2 дня и доставка 18-32 дня. В сумме обычно <b>от 3,5 до 6,5 недель</b>.</p><p>Быстрее самолётом: это отдельная услуга, её условия и стоимость согласует менеджер. Прямо на сайте самолётом заказать нельзя.</p><p class="small">Сроки примерные: на них влияют праздники в Китае, загрузка перевозчика и погода. Если что-то задерживается, менеджер напишет сам.</p>'),
+      faqItem('Размеры и замеры', '<ul><li>Если у вещи несколько размеров, под выбранным размером показываются его замеры: грудь, длина, плечи, рукав, в сантиметрах.</li><li>Замеры: это ширина самой вещи, не обхват тела. Приложите к себе похожую вещь из шкафа и сравните.</li><li>Если сомневаетесь между двумя размерами, напишите менеджеру, он подскажет по вашим параметрам.</li><li>Разница в замерах до 1-2 см допустима: вещи измеряют вручную.</li></ul>'),
+      faqItem('Цвета и фото', '<ul><li>Цвета на карточке показаны реальными оттенками (болотный, кремовый, бирюзовый и т. д.).</li><li>Оттенок на экране может немного отличаться от настоящего из-за яркости и настроек телефона.</li><li>Фотографии берутся из нашего канала. Если нужен дополнительный фотоотчёт перед отправкой, он оплачивается по тарифу логиста (15 ¥ за позицию), основной бесплатный.</li></ul>'),
+      faqItem('Доставка из Китая', '<ul><li>Фура, основной способ, занимает 18-32 дня от склада в Китае.</li><li>Стоимость доставки из Китая уже включена в стоимость товара.</li><li>Самолётом быстрее, но только через менеджера, он рассчитает и согласует.</li><li>Перед отправкой вещь проверяют на складе и фотографируют.</li></ul>'),
+      faqItem('Получение по России', '<ul><li><b>СДЭК до пункта выдачи</b>: оплачивается отдельно, по тарифу СДЭК.</li><li><b>Авито Доставка</b>: по Москве и в другой город, с минимальной стоимостью.</li><li><b>Личная встреча</b>: в Москве бесплатно, время согласуйте с менеджером.</li><li>Номер отслеживания менеджер пришлёт в Telegram.</li></ul>'),
+      faqItem('Получение товаров в наличии', '<ul><li><b>Авито Доставка</b>: по Москве и в другой город, быстрее всего.</li><li><b>Курьер по Москве</b>: не всегда доступен, согласуется с менеджером.</li><li><b>Самовывоз</b>: ' + esc(SHOP.address) + '. Время согласуйте с менеджером.</li></ul>'),
+      faqItem('Оплата', '<ul><li>Перевод: Сбербанк, Т-Банк, Альфа-Банк, СБП.</li><li>Наличными: при встрече в Москве.</li><li>На сайте оплаты нет: менеджер подтвердит заказ и пришлёт реквизиты.</li><li>До 15% заказа можно оплатить токенами, 1 токен = 0,3 ₽.</li><li>Предзаказ начинаем выкупать после оплаты, это ускоряет заказ.</li></ul>'),
+      faqItem('Статусы заказа', '<ul><li><b>Оформлен</b>: заказ создан, ждёт подтверждения менеджера.</li><li><b>Выкуплен</b>: вещь оплачена у поставщика.</li><li><b>В пути</b>: едет на склад в Китае.</li><li><b>На складе</b>: прошла проверку, готовится к отправке.</li><li><b>Едет к нам</b>: международная доставка.</li><li><b>Едет к вам</b>: в России, передана в доставку.</li><li><b>Получен</b>: заказ у вас.</li><li><b>Отменён</b>: заказ остановлен, подробности пришлёт менеджер.</li></ul><p class="small">Статус меняет менеджер, в кабинете он обновляется сам.</p>'),
       faqItem('Что не зависит от магазина', '<ul><li>Задержки у поставщика, на складе или у перевозчика, праздники и погода.</li><li>Состояние вещи, которое видно только при проверке: если найдём брак, сразу напишем вам и предложим решение.</li><li>Работа пунктов выдачи и сроки СДЭК или Авито после передачи посылки.</li></ul>'),
-      faqItem('Если что-то пошло не так', '<p>Напишите менеджеру в Telegram — он отвечает в рабочее время (Пн–Пт 08:30–21:00, Сб–Вс 10:00–20:00). Бот-помощник отвечает с задержкой около минуты — это нормально, просто подождите.</p><p><a class="btn btn-sm" href="' + SHOP.managerUrl + '" target="_blank" rel="noopener">Написать менеджеру</a></p>')
+      faqItem('Если что-то пошло не так', '<p>Напишите менеджеру в Telegram, он отвечает в рабочее время (Пн-Пт 08:30-21:00, Сб-Вс 10:00-20:00). Бот-помощник отвечает с задержкой около минуты, это нормально, просто подождите.</p><p><a class="btn btn-sm" href="' + SHOP.managerUrl + '" target="_blank" rel="noopener">Написать менеджеру</a></p>')
     ];
     var bonus = API.enabled ? [
-      faqItem('Где взять токены', '<ul><li>+' + R.register + ' за регистрацию</li><li>+' + R.checkin + ' за вход каждый день и от ' + L[0].streak + ' до ' + L[4].streak + ' за 7 дней подряд — зависит от уровня</li><li>Задания дня — по 1 токену, с уровнем их больше</li><li>Посылка</li><li>+' + R.referrer + ' за друга и +' + R.birthday + ' в день рождения</li></ul><p>Токены не сгорают и не передаются другим людям.</p>'),
-      faqItem('Промокоды', '<p>Личные промокоды выпадают в посылке, с уровня «Золото» — −1,5% каждый месяц, на «Алмазе» — ещё 3 по −2,5%. Они появляются в кабинете, а в корзине выбираются последним шагом. Каждый действует на один заказ.</p><p>Промокоды магазина вводятся вручную в поле «Промокод» в корзине.</p>'),
-      faqItem('Как зарабатывается XP', '<ul><li>Полученный заказ — 1 XP за каждые 10 ₽ (когда статус «Получен»)</li><li>Ежедневный вход — +' + RULES.xpReward.checkin + ' XP</li><li>Задания: ежедневные +2–3 XP, еженедельные +12–40 XP, ежемесячные +40–300 XP</li><li>Посылка — приз +50 XP</li></ul>'),
-      faqItem('Как работают уровни', '<p>Уровень растёт от XP — опыта за месяц. 1-го числа XP обнуляется, и уровень начинается заново с Бронзы.</p><button class="btn btn-ghost btn-sm" type="button" id="info-levels">Привилегии уровней</button>'),
-      faqItem('Задания: когда обновляются', '<ul><li>Ежедневные — в 00:00 по Москве. Простые: токены и XP, чем выше уровень, тем их больше.</li><li>Еженедельные — в понедельник. «Оформить заказ» засчитывается сразу при оформлении.</li><li>Ежемесячные — 1-го числа. Заказы засчитываются, когда статус «Получен».</li></ul>'),
-      faqItem('Посылка: как это работает', '<ul><li>1 бесплатная посылка каждый день на любом уровне, на «Алмазе» — 3. Не копятся: обновляются в 00:00 по Москве.</li><li>Дальше посылка стоит ' + RULES.spinCost + ' токенов. «Ещё раз» даёт бесплатные посылки — они не сгорают.</li><li>На «Платине» и «Алмазе» «Пусто» выпадает реже.</li><li>Токены из посылки сразу на балансе, промокод выбирается в корзине, XP идут в уровень месяца.</li></ul>')
+      faqItem('Где взять токены', '<ul><li>+' + R.register + ' за регистрацию</li><li>+' + R.checkin + ' за вход каждый день и от ' + L[0].streak + ' до ' + L[4].streak + ' за 7 дней подряд, зависит от уровня</li><li>Задания дня: по 1 токену, с уровнем их больше</li><li>Посылка</li><li>+' + R.referrer + ' за друга и +' + R.birthday + ' в день рождения</li></ul><p>Токены не сгорают и не передаются другим людям.</p>'),
+      faqItem('Промокоды', '<p>Личные промокоды выпадают в посылке, с уровня «Золото», −1,5% каждый месяц, на «Алмазе», ещё 3 по −2,5%. Они появляются в кабинете, а в корзине выбираются последним шагом. Каждый действует на один заказ.</p><p>Промокоды магазина вводятся вручную в поле «Промокод» в корзине.</p>'),
+      faqItem('Как зарабатывается XP', '<ul><li>Полученный заказ: 1 XP за каждые 10 ₽ (когда статус «Получен»)</li><li>Ежедневный вход: +' + RULES.xpReward.checkin + ' XP</li><li>Задания: ежедневные +2-3 XP, еженедельные +12-40 XP, ежемесячные +40-300 XP</li><li>Посылка: приз +50 XP</li></ul>'),
+      faqItem('Как работают уровни', '<p>Уровень растёт от XP, опыта за месяц. 1-го числа XP обнуляется, и уровень начинается заново с Бронзы.</p><button class="btn btn-ghost btn-sm" type="button" id="info-levels">Привилегии уровней</button>'),
+      faqItem('Задания: когда обновляются', '<ul><li>Ежедневные: в 00:00 по Москве. Простые: токены и XP, чем выше уровень, тем их больше.</li><li>Еженедельные: в понедельник. «Оформить заказ» засчитывается сразу при оформлении.</li><li>Ежемесячные: 1-го числа. Заказы засчитываются, когда статус «Получен».</li></ul>'),
+      faqItem('Посылка: как это работает', '<ul><li>1 бесплатная посылка каждый день на любом уровне, на «Алмазе», 3. Не копятся: обновляются в 00:00 по Москве.</li><li>Дальше посылка стоит ' + RULES.spinCost + ' токенов. «Ещё раз» даёт бесплатные посылки, они не сгорают.</li><li>На «Платине» и «Алмазе» «Пусто» выпадает реже.</li><li>Токены из посылки сразу на балансе, промокод выбирается в корзине, XP идут в уровень месяца.</li></ul>')
     ] : [];
     var shop = [faqItem('Магазин и связь', contactsCard()), faqItem('Мы в соцсетях', socialCard())];
     $('#v-info').innerHTML = '<div class="view-head"><div><h1>Частые вопросы</h1></div></div>' +
@@ -2334,7 +2519,7 @@
   }
   function reviewModal(o) {
     var R = RULES.reward, items = (o.items || []).filter(function (it) { return (o.reviewed || []).indexOf(it.id) < 0; });
-    var md = openModal(modalHead('Отзыв о заказе') + '<p class="small">За оценку — +' + R.review + ' токенов, за оценку с отзывом от 20 символов — +' + R.reviewText + '. Отзыв увидят другие покупатели на странице товара.</p><div class="rv-list">' +
+    var md = openModal(modalHead('Отзыв о заказе') + '<p class="small">За оценку: +' + R.review + ' токенов, за оценку с отзывом от 20 символов, +' + R.reviewText + '. Отзыв увидят другие покупатели на странице товара.</p><div class="rv-list">' +
       items.map(function (it) {
         var id = it.photo || it.thumb;
         return '<div class="rv" data-id="' + esc(it.id) + '"><div class="rv-h">' + (id ? '<img src="' + thumb(id) + '" alt="">' : '') + '<b>' + esc(it.title) + '</b></div>' +
@@ -2366,7 +2551,7 @@
     body.innerHTML = (!r.count && base) ? '' : r.count
       ? '<div class="rev-sum">' + stars(r.avg) + '<b>' + String(r.avg).replace('.', ',') + '</b><span class="small">' + r.count + ' ' + plural(r.count, 'отзыв', 'отзыва', 'отзывов') + '</span></div>' +
         r.list.map(function (x) { return '<div class="rev"><div class="rev-h"><b>' + esc(x.name) + '</b>' + stars(x.rating) + '<span class="small">' + esc(x.at) + '</span></div>' + (x.text ? '<p>' + esc(x.text) + '</p>' : '') + '</div>'; }).join('')
-      : '<p class="small">Отзывов пока нет. Они появляются после получения заказа — их оставляют покупатели в кабинете.</p>';
+      : '<p class="small">Отзывов пока нет. Они появляются после получения заказа, их оставляют покупатели в кабинете.</p>';
   }
   function loadReviews(pid, body, n) {
     if (revCache[pid]) { drawReviews(revCache[pid], body, n); return; }
@@ -2391,7 +2576,7 @@
         if (!r.ok || !r.bot) { out.innerHTML = '<div class="form-err">' + esc(r.error || 'Бот магазина ещё настраивается. Напишите менеджеру @OnionShop_Support') + '</div>'; return; }
         on.hidden = true;
         out.innerHTML = '<ol class="tg-steps"><li class="now"><i>1</i><span>Откройте бота и нажмите «Старт»<a class="btn" target="_blank" rel="noopener" href="https://t.me/' + esc(r.bot) + '?start=' + esc(r.code) + '">' + icon('send') + 'Открыть @' + esc(r.bot) + '</a></span></li>' +
-          '<li><i>2</i><span>Нажмите в боте «📱 Поделиться номером»</span></li><li><i>3</i><span>Вернитесь сюда — подтвердится само <em class="tg-wait"><span class="spinner"></span>ждём бота…</em></span></li></ol>' +
+          '<li><i>2</i><span>Нажмите в боте «📱 Поделиться номером»</span></li><li><i>3</i><span>Вернитесь сюда: подтвердится само <em class="tg-wait"><span class="spinner"></span>ждём бота…</em></span></li></ol>' +
           '<p class="small">Бот отвечает с задержкой до минуты. Код действует час.</p>';
         (function poll() {
           if (!document.body.contains(md) || ++polls > 60) return;
@@ -2412,12 +2597,12 @@
       if (u.tgOn) {
         b.innerHTML = hero('check-circle', 'Telegram подключён', (u.tgName ? esc(u.tgName) + ' · ' : '') + 'уведомления включены', 'ok') +
           '<ul class="tg-perks">' + perks.map(function (x) { return '<li><span class="ic">' + icon(x[0]) + '</span><span><b>' + x[1] + '</b><small>' + x[2] + '</small></span></li>'; }).join('') + '</ul>' +
-          '<h4 class="tg-sub">Сообщать о новинках</h4><div class="choices" id="tg-cats"></div><p class="small">Отметьте категории — бот напишет, когда в них появится новый товар.</p>' +
+          '<h4 class="tg-sub">Сообщать о новинках</h4><div class="choices" id="tg-cats"></div><p class="small">Отметьте категории: бот напишет, когда в них появится новый товар.</p>' +
           '<button class="btn btn-ghost" type="button" id="tg-off">Отключить уведомления</button>';
         drawTgCats($('#tg-cats', b));
         $('#tg-off', b).addEventListener('click', function () { API.call('tgUnlink').then(function (r) { if (r.ok) { setUser(r.user); draw(); toast('Уведомления отключены'); } }); });
       } else {
-        b.innerHTML = hero('send', 'Заказы — в Telegram', 'Подключите бота ONION SHOP — и не нужно заходить на сайт, чтобы узнать, где ваш заказ.') +
+        b.innerHTML = hero('send', 'Заказы: в Telegram', 'Подключите бота ONION SHOP, и не нужно заходить на сайт, чтобы узнать, где ваш заказ.') +
           '<ul class="tg-perks">' + perks.map(function (x) { return '<li><span class="ic">' + icon(x[0]) + '</span><span><b>' + x[1] + '</b><small>' + x[2] + '</small></span></li>'; }).join('') + '</ul>' +
           '<button class="btn" type="button" id="tg-on">' + icon('send') + 'Подключить Telegram</button><div id="tg-out"></div>';
         $('#tg-on', b).addEventListener('click', function () {
@@ -2425,11 +2610,11 @@
           API.call('tgLink').then(function (r) {
             busy(btn, false); var out = $('#tg-out', b);
             if (!r.ok) { out.innerHTML = '<div class="form-err">' + esc(r.error) + '</div>'; return; }
-            if (!r.bot) { out.innerHTML = '<div class="notice notice-info">' + icon('info') + '<div>Уведомления в Telegram скоро заработают — бот магазина ещё настраивается. Пока статус заказа виден в «Моих заказах», а менеджер пишет вам лично.</div></div><a class="btn btn-ghost" style="margin-top:10px" target="_blank" rel="noopener" href="' + SHOP.managerUrl + '">Написать менеджеру</a>'; return; }
+            if (!r.bot) { out.innerHTML = '<div class="notice notice-info">' + icon('info') + '<div>Уведомления в Telegram скоро заработают, бот магазина ещё настраивается. Пока статус заказа виден в «Моих заказах», а менеджер пишет вам лично.</div></div><a class="btn btn-ghost" style="margin-top:10px" target="_blank" rel="noopener" href="' + SHOP.managerUrl + '">Написать менеджеру</a>'; return; }
             btn.hidden = true; var pk = $('.tg-perks', b); if (pk) pk.hidden = true; var hp = $('.tg-hero p', b); if (hp) hp.hidden = true;
             out.innerHTML = '<ol class="tg-steps"><li class="done"><i>' + icon('check') + '</i><span>Код создан</span></li>' +
               '<li class="now"><i>2</i><span>Откройте бота и нажмите «Старт»<a class="btn" target="_blank" rel="noopener" href="https://t.me/' + esc(r.bot) + '?start=' + esc(r.code) + '">' + icon('send') + 'Открыть @' + esc(r.bot) + '</a></span></li>' +
-              '<li><i>3</i><span>Вернитесь сюда — подключится само <em class="tg-wait"><span class="spinner"></span>ждём бота…</em></span></li></ol>' +
+              '<li><i>3</i><span>Вернитесь сюда: подключится само <em class="tg-wait"><span class="spinner"></span>ждём бота…</em></span></li></ol>' +
               '<p class="small">Код действует час. Если Telegram не открылся, откройте бота вручную и отправьте ему: <b>/start ' + esc(r.code) + '</b></p>';
             (function poll() {
               if (!document.body.contains(md) || !$('#tg-body', md) || ++polls > 45) return;
@@ -2468,9 +2653,9 @@
       ? '<label for="fit-foot"><b>Длина стопы, см</b></label><input class="input" id="fit-foot" type="number" inputmode="decimal" min="18" max="34" step="0.1" placeholder="например, 26,5" value="' + (saved.foot || '') + '">'
       : letters ? '<div class="fit-grid"><div><label for="fit-h"><b>Рост, см</b></label><input class="input" id="fit-h" type="number" inputmode="numeric" min="130" max="215" placeholder="170" value="' + (saved.h || '') + '"></div><div><label for="fit-w"><b>Вес, кг</b></label><input class="input" id="fit-w" type="number" inputmode="numeric" min="30" max="200" placeholder="65" value="' + (saved.w || '') + '"></div></div>' +
         '<label for="fit-s"><b>Как носите</b></label><select class="select" id="fit-s"><option value="0">По фигуре</option><option value="1"' + (saved.s === '1' ? ' selected' : '') + '>Свободно</option></select>'
-      : '<p>У этого товара нестандартная сетка размеров (' + p.sizes.map(esc).join(', ') + '). Сверьтесь с замерами изделия или спросите менеджера — подскажем.</p>';
+      : '<p>У этого товара нестандартная сетка размеров (' + p.sizes.map(esc).join(', ') + '). Сверьтесь с замерами изделия или спросите менеджера, подскажем.</p>';
     var md = openModal(modalHead('Подобрать размер') + '<div class="fit">' + form + (shoe || letters ? '<button class="btn" type="button" id="fit-go" style="margin-top:12px">Подобрать</button><div id="fit-out" aria-live="polite"></div>' : '') +
-      '<p class="small" style="margin-top:12px">Это ориентир по общей сетке. Сверьте с замерами изделия (кнопка «Замеры»), а если сомневаетесь — спросите менеджера.</p></div>', { cls: 'sm' });
+      '<p class="small" style="margin-top:12px">Это ориентир по общей сетке. Сверьте с замерами изделия (кнопка «Замеры»), а если сомневаетесь, спросите менеджера.</p></div>', { cls: 'sm' });
     var go1 = $('#fit-go', md); if (!go1) return;
     go1.addEventListener('click', function () {
       var out = $('#fit-out', md), want, label;
@@ -2492,7 +2677,7 @@
         draw(p.sizes[bestI], normSize(p.sizes[bestI]) === SIZE_SCALE[idx], SIZE_SCALE[idx]);
       }
       function draw(size, exact, calc) {
-        out.innerHTML = '<div class="fit-res"><small>' + (exact ? 'Вам подойдёт' : 'Ближайший в наличии') + '</small><b>' + esc(size) + '</b>' + (exact ? '' : '<span class="small">по расчёту — ' + esc(calc) + ', такого нет</span>') + '<button class="btn btn-sm" type="button" id="fit-pick">Выбрать ' + esc(size) + '</button></div>';
+        out.innerHTML = '<div class="fit-res"><small>' + (exact ? 'Вам подойдёт' : 'Ближайший в наличии') + '</small><b>' + esc(size) + '</b>' + (exact ? '' : '<span class="small">по расчёту: ' + esc(calc) + ', такого нет</span>') + '<button class="btn btn-sm" type="button" id="fit-pick">Выбрать ' + esc(size) + '</button></div>';
         $('#fit-pick', out).addEventListener('click', function () { closeModal(); apply(size); });
       }
     });
@@ -2500,7 +2685,7 @@
   // нет связи: плашка сверху
   function netBar(show) {
     var el = $('#net-bar');
-    if (!el) { el = document.createElement('div'); el.id = 'net-bar'; el.className = 'net-bar'; el.setAttribute('role', 'status'); el.hidden = true; el.innerHTML = '<span>Нет связи — каталог открыт, но войти и оформить заказ пока нельзя.</span><button type="button">Повторить</button>'; document.body.insertBefore(el, document.body.firstChild); $('button', el).addEventListener('click', function () { refreshMe().then(function () { refreshView(); }); }); }
+    if (!el) { el = document.createElement('div'); el.id = 'net-bar'; el.className = 'net-bar'; el.setAttribute('role', 'status'); el.hidden = true; el.innerHTML = '<span>Нет связи: каталог открыт, но войти и оформить заказ пока нельзя.</span><button type="button">Повторить</button>'; document.body.insertBefore(el, document.body.firstChild); $('button', el).addEventListener('click', function () { refreshMe().then(function () { refreshView(); }); }); }
     el.hidden = !show;
   }
 

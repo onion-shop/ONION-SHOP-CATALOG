@@ -1,7 +1,7 @@
-/* ONION SHOP — правила магазина (один файл для сайта и для Google Таблицы).
+/* ONION SHOP, правила магазина (один файл для сайта и для Google Таблицы).
    Здесь: токены, уровни, задания, посылка, партнёрка, номера заказов и текст заказа.
    На сервере (Google Apps Script) этот же код работает с таблицей,
-   на сайте в демо-режиме — с памятью браузера. */
+   на сайте в демо-режиме, с памятью браузера. */
 var OnionCore = (function () {
   'use strict';
 
@@ -13,7 +13,7 @@ var OnionCore = (function () {
     spinCost: 100,          // прокрут посылки
     reward: { register: 100, refFriend: 50, referrer: 100, checkin: 1, streak7: 10, task: 1, birthday: 3334, review: 5, reviewText: 15 },
     // подарок на день рождения: токены ≈ 1 000 ₽ (по курсу 0,3 ₽), XP, личный промокод; только аккаунтам старше 30 дней
-    early: { hours: 24, level: 2 }, // новинки первые сутки — только для Золота и выше
+    early: { hours: 24, level: 2 }, // новинки первые сутки, только для Золота и выше
     birthday: { tokens: 3334, xp: 1500, promoPct: 3.5, promoDays: 30, minAgeDays: 30 },
     refMinOrder: 1000,      // друг засчитывается после первого заказа от 1000 ₽
     refMaxPerMonth: 10,
@@ -30,20 +30,20 @@ var OnionCore = (function () {
       { key: 'silver', name: 'Серебро', alias: ['модник'], min: 500, tasks: 5, streak: 12, spins: 1, priority: '', perks: [
         ['5 заданий в день', '+1 задание к обычным четырём'],
         ['12 токенов за серию 7 дней', 'Вместо 10 на Бронзе'],
-        ['Рамка «Серебро» для аватара', 'Есть, пока у вас Серебро или выше. 1-го числа уровень обнуляется — и рамка тоже'],
+        ['Рамка «Серебро» для аватара', 'Есть, пока у вас Серебро или выше. 1-го числа уровень обнуляется, и рамка тоже'],
         ['1 бесплатная посылка каждый день', '']] },
       { key: 'gold', name: 'Золото', alias: ['профи'], min: 1500, tasks: 6, streak: 15, spins: 1, priority: 'Повышенный', perks: [
         ['6 заданий в день', '4 обычных + 2 дополнительных'],
         ['15 токенов за серию 7 дней', ''],
         ['Больше внимания к заказам', 'Менеджер видит ваш заказ с пометкой «Приоритет»'],
         ['Рамка «Золото» для аватара', 'Пока у вас Золото или выше'],
-        ['Промокод −1,5% раз в месяц', 'На одну категорию — какую, решает случай: обувь, одежда, куртки или аксессуары. Действует до конца месяца'],
+        ['Промокод −1,5% раз в месяц', 'На одну категорию, какую именно, решает случай: обувь, одежда, куртки или аксессуары. Действует до конца месяца'],
         ['1 бесплатная посылка каждый день', '']] },
       { key: 'platinum', name: 'Платина', alias: ['эксперт'], min: 4000, tasks: 6, streak: 17, spins: 1, priority: 'Высокий', boost: 1, pack: 'pre10', perks: [
         ['Ещё больше внимания к заказам', 'Высокий приоритет у менеджера'],
         ['17 токенов за серию 7 дней', ''],
-        ['Промокод −1,5% — на любой товар', 'Раз в месяц, без ограничения по категории'],
-        ['Шансы в посылке немного выше', 'Пусто выпадает реже — призы чаще'],
+        ['Промокод −1,5%, на любой товар', 'Раз в месяц, без ограничения по категории'],
+        ['Шансы в посылке немного выше', 'Пусто выпадает реже: призы чаще'],
         ['−10% на упаковку для предзаказа', 'Только для заказа по предзаказу из Китая, 1 раз в месяц. Отмечается в корзине'],
         ['6 заданий в день, рамки «Серебро» и «Золото»', ''],
         ['1 бесплатная посылка каждый день', '']] },
@@ -63,8 +63,8 @@ var OnionCore = (function () {
       { key: 'outer', label: 'Куртки', cats: ['outerwear'] },
       { key: 'acc', label: 'Аксессуары', cats: ['accessories'] }
     ],
-    // задания: d — ежедневные (простые), w — еженедельные (сложнее), m — ежемесячные (самые сложные, заказы считаются по статусу «Получен»)
-    // m — что считаем, n — цель, tk — токены, xp — очки уровня, auto — награду уже выдало само действие
+    // задания: d: ежедневные (простые), w, еженедельные (сложнее), m, ежемесячные (самые сложные, заказы считаются по статусу «Получен»)
+    // m: что считаем, n, цель, tk, токены, xp, очки уровня, auto, награду уже выдало само действие
     tasks: [
       { per: 'd', key: 'checkin', title: 'Зайти на сайт', hint: 'Отметьтесь сегодня', m: 'checkin', n: 1, tk: 1, xp: 5, auto: true },
       { per: 'd', key: 'view3', title: 'Посмотреть 3 товара', hint: 'Откройте три карточки', m: 'view', n: 3, tk: 1, xp: 2 },
@@ -96,8 +96,8 @@ var OnionCore = (function () {
       { per: 'w', key: 'w_share3', title: 'Поделиться 3 товарами', hint: 'Отправьте друзьям', m: 'share', n: 3, tk: 6, xp: 15 },
       { per: 'w', key: 'w_cats', title: 'Посмотреть товары из 4 категорий', hint: 'Обувь, куртки, худи, аксессуары…', m: 'cats', n: 4, tk: 6, xp: 17 },
       { per: 'w', key: 'w_spin3', title: 'Открыть 3 посылки', hint: 'За неделю', m: 'spin', n: 3, tk: 6, xp: 17 },
-      { per: 'w', key: 'w_mgr', title: 'Написать менеджеру', hint: 'Спросить про вещь или размер — кнопка Telegram', m: 'mgr', n: 1, tk: 8, xp: 23 },
-      { per: 'w', key: 'w_ord', title: 'Оформить заказ', hint: 'Любой заказ — достаточно оформить', m: 'ordN', n: 1, tk: 12, xp: 30 },
+      { per: 'w', key: 'w_mgr', title: 'Написать менеджеру', hint: 'Спросить про вещь или размер, кнопка Telegram', m: 'mgr', n: 1, tk: 8, xp: 23 },
+      { per: 'w', key: 'w_ord', title: 'Оформить заказ', hint: 'Любой заказ: достаточно оформить', m: 'ordN', n: 1, tk: 12, xp: 30 },
       { per: 'w', key: 'w_ord2', title: 'Оформить 2 заказа', hint: 'Достаточно оформить', m: 'ordN', n: 2, tk: 20, xp: 40 },
       { per: 'w', key: 'w_pre', title: 'Оформить предзаказ из Китая', hint: 'Вещь из раздела «Предзаказ»', m: 'ordPre', n: 1, tk: 14, xp: 30 },
       { per: 'w', key: 'w_stock', title: 'Оформить заказ вещи в наличии', hint: 'Вещь из раздела «В наличии»', m: 'ordStock', n: 1, tk: 12, xp: 30 },
@@ -105,11 +105,11 @@ var OnionCore = (function () {
       { per: 'w', key: 'w_ref', title: 'Пригласить друга', hint: 'Друг регистрируется по вашей ссылке и получает первый заказ от 1 000 ₽', m: 'ref', n: 1, tk: 15, xp: 30 },
       { per: 'w', key: 'w_daily', title: 'Выполнить 12 ежедневных заданий', hint: 'Считаются выполненные за неделю', m: 'dDone', n: 12, tk: 10, xp: 23 },
 
-      { per: 'm', key: 'm_recv', title: 'Получить заказ', hint: 'Засчитывается, когда заказ получен — статус «Получен»', m: 'recvN', n: 1, tk: 40, xp: 80, grp: 'recv' },
+      { per: 'm', key: 'm_recv', title: 'Получить заказ', hint: 'Засчитывается, когда заказ получен, статус «Получен»', m: 'recvN', n: 1, tk: 40, xp: 80, grp: 'recv' },
       { per: 'm', key: 'm_recv2', title: 'Получить 2 заказа', hint: 'Статус «Получен»', m: 'recvN', n: 2, tk: 80, xp: 130, grp: 'recv' },
       { per: 'm', key: 'm_recv3', title: 'Получить 3 заказа', hint: 'Статус «Получен»', m: 'recvN', n: 3, tk: 120, xp: 200, grp: 'recv' },
       { per: 'm', key: 'm_cn', title: 'Получить заказ из Китая', hint: 'Предзаказ со статусом «Получен»', m: 'recvPre', n: 1, tk: 60, xp: 100, grp: 'recv' },
-      { per: 'm', key: 'm_first', title: 'Первый заказ из Китая', hint: 'Получите свой первый предзаказ — статус «Получен»', m: 'recvPre', n: 1, tk: 100, xp: 150, grp: 'recv', once: 'cn' },
+      { per: 'm', key: 'm_first', title: 'Первый заказ из Китая', hint: 'Получите свой первый предзаказ, статус «Получен»', m: 'recvPre', n: 1, tk: 100, xp: 150, grp: 'recv', once: 'cn' },
       { per: 'm', key: 'm_sum10', title: 'Получить заказы на 10 000 ₽', hint: 'Сумма «К оплате», статус «Получен»', m: 'recvSum', n: 10000, tk: 60, xp: 100, grp: 'recv' },
       { per: 'm', key: 'm_sum25', title: 'Получить заказы на 25 000 ₽', hint: 'Сумма «К оплате», статус «Получен»', m: 'recvSum', n: 25000, tk: 120, xp: 200, grp: 'recv' },
       { per: 'm', key: 'm_sum50', title: 'Получить заказы на 50 000 ₽', hint: 'Сумма «К оплате», статус «Получен»', m: 'recvSum', n: 50000, tk: 200, xp: 300, grp: 'recv' },
@@ -121,7 +121,7 @@ var OnionCore = (function () {
       { per: 'm', key: 'm_spin15', title: 'Открыть 15 посылок', hint: 'За месяц', m: 'spin', n: 15, tk: 30, xp: 60 },
       { per: 'm', key: 'm_weekly', title: 'Выполнить 6 еженедельных заданий', hint: 'Считаются выполненные за месяц', m: 'wDone', n: 6, tk: 50, xp: 90 },
       { per: 'm', key: 'm_view100', title: 'Посмотреть 100 товаров', hint: 'За месяц', m: 'view', n: 100, tk: 30, xp: 60 },
-      { per: 'm', key: 'm_xp', title: 'Набрать 500 XP за месяц', hint: 'Серебро — это уже 500 XP', m: 'xp', n: 500, tk: 30, xp: 40 }
+      { per: 'm', key: 'm_xp', title: 'Набрать 500 XP за месяц', hint: 'Серебро: это уже 500 XP', m: 'xp', n: 500, tk: 30, xp: 40 }
     ],
     taskPer: { d: { name: 'Ежедневные', until: 'до конца дня' }, w: { name: 'Еженедельные', until: 'до воскресенья' }, m: { name: 'Ежемесячные', until: 'до конца месяца' } },
     // рулетка: веса из 10 000 (шанс = вес / 100 %). «Пусто» добирает остаток до 10 000 само
@@ -148,7 +148,7 @@ var OnionCore = (function () {
       { id: 're1', label: 'Ещё раз', sub: '×1', w: 330, spins: 1 },
       { id: 're2', label: 'Ещё раз', sub: '×2', w: 60, spins: 2 }
     ],
-    // Платина и Алмаз: «Пусто» реже, призы чаще (сумма весов та же — 10 000)
+    // Платина и Алмаз: «Пусто» реже, призы чаще (сумма весов та же, 10 000)
     wheelBoost: {
       1: { none: -300, t50: 100, t100: 80, xp: 60, t150: 40, xp100: 20 },
       2: { none: -550, t50: 120, t100: 120, t200: 90, t300: 50, t500: 45, xp100: 50, t150: 75 }
@@ -159,7 +159,7 @@ var OnionCore = (function () {
     stageNotes: { 'Оформлен': 'Заказ принят менеджером', 'Выкуплен': 'Оплачен поставщику', 'В пути': 'Поставщик везёт на склад в Китае', 'На складе': 'Проверка и фотоотчёт на складе', 'Едет к нам': 'Из Китая в Москву', 'Едет к вам': 'Передан в доставку', 'Получен': 'Заказ у вас', 'Отменён': 'Заказ отменён' },
     finalStages: ['Получен', 'Отменён'],
     codeTtlMin: 15,
-    // src: wheel — выпадает в рулетке (rare — только в рулетке, даже для Алмаза); level — даётся уровнем
+    // src: wheel: выпадает в рулетке (rare: только в рулетке, даже для Алмаза); level: даётся уровнем
     frames: [
       { id: 'base', name: 'Обычная' },
       { id: 'neon', name: 'Неон', src: 'wheel' },
@@ -246,7 +246,7 @@ var OnionCore = (function () {
     var L = RULES.levels[li];
     return per === 'd' ? L.tasks : per === 'w' ? Math.max(2, L.tasks - 2) : 2 + (li >= 2 ? 1 : 0) + (li >= 4 ? 1 : 0);
   }
-  // порядок заданий на период: у каждого клиента свой, каждый день/неделю/месяц новый; прошлые — в конец
+  // порядок заданий на период: у каждого клиента свой, каждый день/неделю/месяц новый; прошлые: в конец
   function taskOrder(u, per, key) {
     var pool = RULES.tasks.filter(function (t) { return t.per === per && t.key !== 'checkin'; }).map(function (t) { return t.key; });
     var skip = shuffled(pool, u.id + '|' + per + '|' + prevKeyOf(per, key)).slice(0, per === 'd' ? 6 : per === 'w' ? 4 : 3);
@@ -407,7 +407,7 @@ var OnionCore = (function () {
   function adjustTokens(db, u, delta, reason) { touch(db, u); log(db, u, Math.round(+delta || 0), reason); return u; }
   function orderNo(db, seq) { return 'OS-' + String(msk(db.now()).getUTCFullYear()).slice(2) + '-' + pad(seq, 5); }
 
-  // месяц сменился — XP обнуляется; задания — каждый день новые; бонусы уровня
+  // месяц сменился: XP обнуляется; задания: каждый день новые; бонусы уровня
   function touch(db, u) {
     var now = db.now(), mk = monthKey(now);
     if (u.xpMonth !== mk) { u.xpMonth = mk; u.xp = 0; }
@@ -421,7 +421,7 @@ var OnionCore = (function () {
   function addXp(db, u, n) { u.xp = (u.xp || 0) + Math.max(0, Math.round(n || 0)); grantPerks(db, u); }
   function grantPerks(db, u) {
     var L = levelOf(u), li = L.index, now = db.now(), mk = monthKey(now), dk = dayKey(now);
-    // бесплатные прокруты дня: не копятся; при повышении уровня в тот же день — доливаем разницу
+    // бесплатные прокруты дня: не копятся; при повышении уровня в тот же день, доливаем разницу
     if (u.spinDay !== dk) { u.spinDay = dk; u.daySpins = L.spins; u.daySpinsMax = L.spins; }
     else if (L.spins > (u.daySpinsMax || 0)) { u.daySpins = (u.daySpins || 0) + L.spins - (u.daySpinsMax || 0); u.daySpinsMax = L.spins; }
     // Золото: −1,5% на случайную категорию; Платина и выше: −1,5% на любой товар (раз в месяц)
@@ -556,7 +556,7 @@ var OnionCore = (function () {
     var sent = { ok: true, sent: true, email: email };
     if (purpose === 'reset' && !u) { db.putCode('limit:' + email, { next: db.now() + 60000 }, 60); return sent; } // не выдаём, есть ли такая почта
     var hk = 'cnt:codes:' + hourKey(db), n0 = db.getCode ? ((db.getCode(hk) || {}).n || 0) : 0;
-    if (n0 >= LIMITS.codesPerHour) { if (n0 === LIMITS.codesPerHour) { bump(db, hk, 3700); flag(db, 3, 'codes', 'Запросов кодов за час больше ' + LIMITS.codesPerHour + ' — новые коды на паузе до конца часа'); } return err('Сейчас слишком много запросов. Попробуйте через час или напишите менеджеру @OnionShop_Support'); }
+    if (n0 >= LIMITS.codesPerHour) { if (n0 === LIMITS.codesPerHour) { bump(db, hk, 3700); flag(db, 3, 'codes', 'Запросов кодов за час больше ' + LIMITS.codesPerHour + ', новые коды на паузе до конца часа'); } return err('Сейчас слишком много запросов. Попробуйте через час или напишите менеджеру @OnionShop_Support'); }
     bump(db, hk, 3700);
     var code = makeCode(db), salt = db.token().slice(0, 12);
     db.putCode(codeKey(purpose, email), { hash: db.hash(salt + ':' + code), salt: salt, exp: db.now() + RULES.codeTtlMin * 60000, tries: 0 }, RULES.codeTtlMin * 60);
@@ -571,7 +571,7 @@ var OnionCore = (function () {
   A.register = function (db, p) {
     var login = cleanLogin(p.login), pass = String(p.password || ''), name = String(p.name || '').trim();
     var tg = cleanTg(p.tg), ph = phoneKey(p.phone), email = cleanEmail(p.email);
-    if (!/^[a-z0-9_.]{3,20}$/.test(login)) return err('Логин: от 3 до 20 символов — латиница, цифры, точка или «_»');
+    if (!/^[a-z0-9_.]{3,20}$/.test(login)) return err('Логин: от 3 до 20 символов, латиница, цифры, точка или «_»');
     if (pass.length < 6) return err('Пароль: не короче 6 символов');
     if (name.length < 2) return err('Укажите имя');
     if (!validEmail(email)) return err('Укажите почту, например name@mail.ru');
@@ -598,7 +598,7 @@ var OnionCore = (function () {
     // телефон подтверждается через Telegram-бота; до этого приветственные бонусы ждут, заказ недоступен
     u.phoneOk = false; u.bonusDone = repeat ? 'repeat' : '';
     if (repeat) { log(db, u, 0, 'Повторная регистрация: приветственные бонусы уже были получены раньше'); flag(db, 1, 'repeat', 'Повторная регистрация после удаления: @' + login); }
-    var rn = bump(db, 'cnt:regs:' + hourKey(db), 3700); if (rn === LIMITS.regsPerHour + 1) flag(db, 2, 'regs', 'Больше ' + LIMITS.regsPerHour + ' регистраций за час — проверьте новых клиентов');
+    var rn = bump(db, 'cnt:regs:' + hourKey(db), 3700); if (rn === LIMITS.regsPerHour + 1) flag(db, 2, 'regs', 'Больше ' + LIMITS.regsPerHour + ' регистраций за час: проверьте новых клиентов');
     else log(db, u, 0, 'Регистрация: бонусы начислятся после подтверждения телефона');
     if (db.registerBonus) log(db, u, db.registerBonus, 'Демо-токены для проверки');
     db.saveUser(u);
@@ -663,7 +663,7 @@ var OnionCore = (function () {
 
   A.me = function (db, p) {
     var u = sessionUser(db, p); if (!u) return err('auth');
-    // «скользящий» вход: пока клиент заходит на сайт, сессия продлевается (не чаще раза в неделю) — заново вводить пароль не придётся
+    // «скользящий» вход: пока клиент заходит на сайт, сессия продлевается (не чаще раза в неделю), заново вводить пароль не придётся
     try { var ss = db.getSession(p.session), full = RULES.sessionDays * 86400000; if (ss && db.renewSession && ss.exp - db.now() < full - 7 * 86400000) db.renewSession(p.session, db.now() + full); } catch (e) { /* не критично */ }
     db.saveUser(u);
     return ok({ user: publicUser(db, u), settings: settings() });
@@ -748,7 +748,7 @@ var OnionCore = (function () {
     return ok({ got: got, xp: RULES.xpReward.checkin, extra: extra, user: publicUser(db, u) });
   };
 
-  // события сайта (просмотры, избранное и т. п.) — пачкой, клиент отправляет раз в несколько секунд
+  // события сайта (просмотры, избранное и т. п.): пачкой, клиент отправляет раз в несколько секунд
   A.track = function (db, p) {
     var u = sessionUser(db, p); if (!u) return err('auth');
     touch(db, u);
@@ -840,14 +840,14 @@ var OnionCore = (function () {
   function orderText(o) {
     var f = o.f, L = [], hasPre = false, hasStock = false, hasOut = false, cnt = 0;
     L.push('🛍 ЗАКАЗ ONION SHOP · №' + o.no);
-    if (o.f.vip === true) L.push('⚡ ПРИОРИТЕТНЫЙ ЗАКАЗ (+' + RULES.vipPrice + ' ₽, оплачено в заказе) — клиент просит уделить заказу особое внимание');
+    if (o.f.vip === true) L.push('⚡ ПРИОРИТЕТНЫЙ ЗАКАЗ (+' + RULES.vipPrice + ' ₽, оплачено в заказе), клиент просит уделить заказу особое внимание');
     if (o.priority) L.push('⭐ ПРИОРИТЕТ: ' + o.priority.toUpperCase() + ' (уровень ' + o.user.levelName + ')');
     L.push('📅 ' + whenText(o.at));
     L.push('');
     L.push('👤 ПОКУПАТЕЛЬ');
     L.push('Имя: ' + String(f.name).trim());
     L.push('Телефон: ' + fmtPhone(f.phone));
-    L.push(cleanTg(f.tg) ? 'Telegram: @' + cleanTg(f.tg) : 'Telegram: нет username — связаться по телефону');
+    L.push(cleanTg(f.tg) ? 'Telegram: @' + cleanTg(f.tg) : 'Telegram: нет username, связаться по телефону');
     if (o.user) L.push('Аккаунт: ' + o.user.login + ' · ID OS' + o.user.id + ' · уровень «' + o.user.levelName + '»');
     L.push('');
     L.push('📦 ТОВАРЫ');
@@ -855,7 +855,7 @@ var OnionCore = (function () {
       if (l.status === 'preorder') hasPre = true; else hasStock = true;
       cnt += l.qty;
       if (l.status === 'out') hasOut = true;
-      L.push((i + 1) + '. ' + l.title + (l.status === 'preorder' ? ' — ПРЕДЗАКАЗ' : l.status === 'out' ? ' — ⏳ ВРЕМЕННО НЕТ В НАЛИЧИИ (уточнить срок поступления)' : ' — в наличии'));
+      L.push((i + 1) + '. ' + l.title + (l.status === 'preorder' ? ', ПРЕДЗАКАЗ' : l.status === 'out' ? ', ⏳ ВРЕМЕННО НЕТ В НАЛИЧИИ (уточнить срок поступления)' : ', в наличии'));
       var opt = [];
       if (l.size) opt.push('Размер: ' + l.size);
       if (l.color) opt.push('Цвет: ' + l.color);
@@ -869,10 +869,10 @@ var OnionCore = (function () {
     L.push('💰 Сумма: ' + rub(o.total) + ' · ' + cnt + ' шт');
     if (o.tokens) L.push('🪙 Списано токенов: ' + o.tokens + ' (−' + rub(o.tokenRub) + ')');
     if (o.promo) L.push('🏷 Промокод ' + o.promo + (o.promoNote ? ' (' + o.promoNote + ')' : '') + ': −' + rub(o.promoRub));
-    if (o.pack) L.push('🎁 ПРИВИЛЕГИЯ: ' + o.pack + ' — учесть при расчёте упаковки');
+    if (o.pack) L.push('🎁 ПРИВИЛЕГИЯ: ' + o.pack + ', учесть при расчёте упаковки');
     L.push('✅ К ОПЛАТЕ: ' + rub(o.toPay));
     if (hasPre) L.push('(стоимость доставки из Китая уже включена в стоимость)');
-    if (hasPre && o.f.ship === 'air') L.push('✈️ АВИА: доставка и все связанные расходы — полностью за счёт клиента по авиатарифу (≈40 $/кг, от 10 кг — 36 $/кг). Токены и промокод уменьшают только стоимость товаров, но не доставку и не упаковку.');
+    if (hasPre && o.f.ship === 'air') L.push('✈️ АВИА: доставка и все связанные расходы, полностью за счёт клиента по авиатарифу (≈40 $/кг, от 10 кг, 36 $/кг). Токены и промокод уменьшают только стоимость товаров, но не доставку и не упаковку.');
     if (hasOut) L.push('⏳ Есть товар, которого сейчас нет в наличии: сообщите клиенту срок поступления или предложите замену до оплаты.');
     L.push('');
     if (hasStock) {
@@ -882,10 +882,10 @@ var OnionCore = (function () {
       L.push(r);
     }
     if (hasPre) {
-      L.push('✈️ ПРЕДЗАКАЗ: отправка из Китая — ' + SHIP[f.ship] + ', город — ' + String(f.city).trim() + ', получение — ' + PRE_RECV[f.preRecv]);
+      L.push('✈️ ПРЕДЗАКАЗ, отправка из Китая: ' + SHIP[f.ship] + ', город, ' + String(f.city).trim() + ', получение, ' + PRE_RECV[f.preRecv]);
       L.push('☑️ С условиями предзаказа ознакомлен(а)');
     }
-    if (hasStock && hasPre) L.push(f.together === 'together' ? '📮 ПОЛУЧЕНИЕ ЗАКАЗА: ВСЁ ВМЕСТЕ — товар в наличии дождётся предзаказа, клиент получает всё сразу' : '📮 ПОЛУЧЕНИЕ ЗАКАЗА: РАЗДЕЛЬНО — сначала товары в наличии, предзаказ — по приезду из Китая');
+    if (hasStock && hasPre) L.push(f.together === 'together' ? '📮 ПОЛУЧЕНИЕ ЗАКАЗА: ВСЁ ВМЕСТЕ: товар в наличии дождётся предзаказа, клиент получает всё сразу' : '📮 ПОЛУЧЕНИЕ ЗАКАЗА: РАЗДЕЛЬНО: сначала товары в наличии, предзаказ, по приезду из Китая');
     if (String(f.comment || '').trim()) { L.push(''); L.push('💬 Комментарий: ' + String(f.comment).trim()); }
     return L.join('\n');
   }
@@ -948,10 +948,10 @@ var OnionCore = (function () {
 
   A.order = function (db, p) {
     var f = p.form || {};
-    // заказ — только из кабинета: без входа в аккаунт оформить нельзя (db.allowGuest — только для автотестов)
+    // заказ: только из кабинета: без входа в аккаунт оформить нельзя (db.allowGuest: только для автотестов)
     if (!db.allowGuest && !sessionUser(db, p)) return { ok: false, error: 'Чтобы оформить заказ, войдите в кабинет или создайте его', needAccount: true };
     var su = sessionUser(db, p);
-    if (su) { // контакты — из профиля; профиль должен быть заполнен
+    if (su) { // контакты, из профиля; профиль должен быть заполнен
       if (String(su.name || '').trim().length < 2 || phoneKey(su.phone || '').length < 10) return err('Заполните имя и телефон в кабинете перед заказом');
       f = Object.assign({}, f, { name: su.name, phone: su.phone, tg: su.tg || '' });
     }
@@ -970,8 +970,8 @@ var OnionCore = (function () {
     var total = 0, cnt = 0;
     built.lines.forEach(function (l) { total += l.price * l.qty; cnt += l.qty; });
     var u = sessionUser(db, p), tokens = 0, tokenRub = 0, promo = '', promoRub = 0, promoNote = '', pack = '';
-    // каталог не загрузился — цены пришли с сайта; скидки токенами и промокодами в таком заказе не даём, менеджер посчитает сам
-    if (built.unverified && ((parseInt(p.useTokens, 10) || 0) > 0 || String(p.promo || '').trim())) return err('Каталог сейчас обновляется — токены и промокод временно недоступны. Оформите заказ без них или попробуйте через минуту');
+    // каталог не загрузился, цены пришли с сайта; скидки токенами и промокодами в таком заказе не даём, менеджер посчитает сам
+    if (built.unverified && ((parseInt(p.useTokens, 10) || 0) > 0 || String(p.promo || '').trim())) return err('Каталог сейчас обновляется: токены и промокод временно недоступны. Оформите заказ без них или попробуйте через минуту');
     if (u) {
       var maxTok = Math.min(u.balance || 0, Math.floor(total * RULES.maxShare / RULES.tokenRub));
       tokens = Math.max(0, Math.min(maxTok, parseInt(p.useTokens, 10) || 0));
@@ -982,7 +982,7 @@ var OnionCore = (function () {
       var pr = u ? activePromos(db, u).filter(function (x) { return x.code === promoCode; })[0] : null;
       if (pr) {
         var base = promoBase(built.lines, pr.cat);
-        if (!base) return err('Промокод ' + pr.code + ' действует только на категорию «' + pr.catLabel + '» — в корзине таких товаров нет');
+        if (!base) return err('Промокод ' + pr.code + ' действует только на категорию «' + pr.catLabel + '»: в корзине таких товаров нет');
         promo = pr.code; promoRub = Math.round(base * pr.pct / 100); promoNote = pr.cat ? '−' + pctText(pr.pct) + '% на «' + pr.catLabel + '»' : '';
         pr.used = true; pr.usedAt = db.now();
       } else {
@@ -999,10 +999,10 @@ var OnionCore = (function () {
     var pk = u ? packInfo(db, u) : null;
     if (pk && pk.available && p.usePack !== false && hasPre) { pack = pk.label + ' (' + pk.level + ')'; u.packMonth = monthKey(at); }
     var text = orderText({ no: no, at: at, f: f, lines: built.lines, total: total, tokens: tokens, tokenRub: tokenRub, promo: promo, promoRub: promoRub, promoNote: promoNote, pack: pack, priority: priority, vipRub: vipRub, toPay: toPay, user: u ? { login: u.login, id: u.id, levelName: li.name } : null });
-    if (built.unverified) text += '\n\n⚠️ Каталог был недоступен — цены взяты с сайта, проверьте.';
+    if (built.unverified) text += '\n\n⚠️ Каталог был недоступен, цены взяты с сайта, проверьте.';
     if (u) {
       if (tokens) log(db, u, -tokens, 'Оплата заказа №' + no);
-      // сумма идёт в уровень и в «Потрачено всего» только когда заказ получен (статус «Получен» — см. receive)
+      // сумма идёт в уровень и в «Потрачено всего» только когда заказ получен (статус «Получен»: см. receive)
       u.ordersCount = (u.ordersCount || 0) + 1;
       touch(db, u); var doneBefore = doneSnap(u); track(db, u, 'ordN'); if (hasPre) track(db, u, 'ordPre'); if (hasStock || hasOut) track(db, u, 'ordStock'); track(db, u, 'ordSum', null, total);
       settle(db, u); var taskRew = orderTaskRewards(u, doneBefore); db.saveUser(u);
@@ -1023,7 +1023,7 @@ var OnionCore = (function () {
 
   /* Заказ получен (sign = 1) или статус «Получен» сняли (sign = -1).
      Сумма «К оплате» даёт XP (1 XP за 10 ₽) в уровень месяца и идёт в «Потрачено всего».
-     month — месяц, в котором сумму засчитали: при отмене из уровня вычитаем, только если месяц тот же. */
+     month: месяц, в котором сумму засчитали: при отмене из уровня вычитаем, только если месяц тот же. */
   function isPreKind(k) { return k === 'предзаказ' || k === 'смешанный'; }
   /* награды за задания «оформить заказ»: запоминаем, какие задания закрыл именно этот заказ, чтобы при отмене списать */
   var ORDER_METRICS = ['ordN', 'ordPre', 'ordStock', 'ordSum', 'both'];
@@ -1057,14 +1057,14 @@ var OnionCore = (function () {
     if (sign > 0) {
       rew.forEach(function (r) {
         var t = TASK[r.k]; if (!t) return;
-        log(db, u, -Math.abs(+r.tk || 0), 'Заказ ' + (info.no || '') + ' отменён — награда за задание «' + t.title + '» списана');
+        log(db, u, -Math.abs(+r.tk || 0), 'Заказ ' + (info.no || '') + ' отменён: награда за задание «' + t.title + '» списана');
         if (monthKey(at) === u.xpMonth) u.xp = Math.max(0, (u.xp || 0) - Math.abs(+r.xp || 0));
         var st = taskSlot(u, r.per, db.now()); if (st.k === r.pk) st.done = st.done.filter(function (k) { return k !== r.k; });
       });
     } else settle(db, u);
     return u;
   }
-  /* реферальный бонус: пригласившему — когда первый заказ друга от 1 000 ₽ получен (статус «Получен») */
+  /* реферальный бонус: пригласившему: когда первый заказ друга от 1 000 ₽ получен (статус «Получен») */
   function referralOnReceive(db, u, total, getUser) {
     if (!u.referredBy || u.refRewarded || (+total || 0) < RULES.refMinOrder) return null;
     u.refRewarded = true;
@@ -1115,7 +1115,7 @@ var OnionCore = (function () {
   }
   function phoneConfirm(db, u, contact, fromId) {
     if (!u) return { ok: false, msg: 'Сначала подключите бота к кабинету на сайте' };
-    if (!contact || String(contact.user_id || '') !== String(fromId || '')) return { ok: false, msg: 'Отправьте свой номер кнопкой «📱 Поделиться номером» — чужой контакт не подойдёт' };
+    if (!contact || String(contact.user_id || '') !== String(fromId || '')) return { ok: false, msg: 'Отправьте свой номер кнопкой «📱 Поделиться номером», чужой контакт не подойдёт' };
     var ph = phoneKey(contact.phone_number);
     if (ph.length < 10 || ph.length > 15) return { ok: false, msg: 'Не удалось прочитать номер' };
     var other = db.findUser('phone', ph);
@@ -1140,7 +1140,7 @@ var OnionCore = (function () {
   function statusMessage(no, status) {
     var note = RULES.stageNotes[status] || '';
     var t = (STATUS_EMO[status] || '🔔') + ' Заказ ' + no + ': ' + status + (note ? '\n' + note : '');
-    if (status === 'Получен') t += '\nОставьте отзыв на сайте — получите токены.';
+    if (status === 'Получен') t += '\nОставьте отзыв на сайте, получите токены.';
     if (status === 'Отменён') t += '\nТокены, если вы их тратили, вернутся на баланс.';
     return t;
   }
