@@ -1,8 +1,8 @@
 /* ONION SHOP, связь сайта с сервером (Google Таблица).
    Режимы (assets/config.js):
-     live: указана ссылка apiUrl: аккаунты, токены и заказы хранятся в Google Таблице;
+     live: указана ссылка apiUrl: аккаунты, ониксы и заказы хранятся в Google Таблице;
      demo: для предпросмотра: всё то же самое, но в памяти этого браузера;
-     off : ссылки нет: кабинет и токены скрыты, заказ оформляется как раньше. */
+     off : ссылки нет: кабинет и ониксы скрыты, заказ оформляется как раньше. */
 var OnionAPI = (function () {
   'use strict';
   var cfg = window.ONION_CONFIG || {};
@@ -22,7 +22,7 @@ var OnionAPI = (function () {
     writeCookie(s || '');
     if (s) { try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) { } }
   }
-  // уже вошедшие клиенты: дублируем токен в cookie при загрузке
+  // уже вошедшие клиенты: дублируем токен сессии в cookie при загрузке
   try { var cur = localStorage.getItem(SKEY); if (cur && !readCookie()) writeCookie(cur); } catch (e) { }
 
   // ------------------------------------------------ демо-база в браузере
@@ -82,7 +82,7 @@ var OnionAPI = (function () {
     waitsOf: function (uid) { return (mem.waits || []).filter(function (w) { return w.userId === uid; }); },
     waitAdd: function (w) { (mem.waits = mem.waits || []).push(w); save(); },
     waitRemove: function (uid, pid) { mem.waits = (mem.waits || []).filter(function (w) { return !(w.userId === uid && w.productId === pid); }); save(); },
-    shopPromo: function (code) { return code === 'HALLOWEEN' ? { code: code, pct: 10, active: true, withTokens: true, once: true, limit: 0, until: Date.parse('2026-10-31T23:59:59+03:00') } : null; },
+    shopPromo: function (code) { return null; },
     promoUses: function (code) {
       var r = { total: 0, users: [], phones: [] };
       mem.orders.forEach(function (o) { if (o.promo === code) { r.total++; if (o.userId) r.users.push(o.userId); var d = String(o.phone || '').replace(/\D/g, ''); if (d.length === 11) d = d.slice(1); if (d) r.phones.push(d); } });

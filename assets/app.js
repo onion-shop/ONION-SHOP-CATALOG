@@ -364,6 +364,7 @@
     if (current === 'account') renderAccount();
     else if (current === 'roulette') updateRoulBalance();
     else if (current === 'cart' && !$('#checkout :focus')) renderCart();
+    if (u && location.hash.slice(1) === 'byer' && typeof openByer === 'function') openByer();
   }
   var checkinHinted = false;
   function refreshMe() {
@@ -1311,7 +1312,7 @@
             : (cartPromo && cartPromo.withTokens === false ? '<p class="small">Промокод ' + esc(cartPromo.code) + ' нельзя совмещать с ониксами.</p>' : '')) +
           (u.promos.length ? '<div class="promos">' + u.promos.map(function (pr) { return '<button type="button" class="ticket" data-promo="' + esc(pr.code) + '" aria-pressed="' + (!!cartPromo && cartPromo.code === pr.code) + '"><code>' + esc(pr.code) + '</code><span class="pct">−' + pctTxt(pr.pct) + '%</span>' + (pr.cat ? '<span class="small">на «' + esc(pr.catLabel) + '»</span>' : '') + '</button>'; }).join('') + '</div>' : '')
           : '<div class="guest-box">' + tk('lg') + '<div><b>Заказ оформляется из кабинета, войдите или создайте его</b></div></div><div class="acts"><button class="btn btn-sm btn-ghost" type="button" id="go-auth">' + icon('user') + 'Войти или создать аккаунт</button></div>') +
-        '<div class="f"><label for="promo-in">Промокод</label><div class="promo-row"><input class="input" id="promo-in" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Например, HALLOWEEN" value="' + esc(cartPromo && !cartPromo.personal ? cartPromo.code : '') + '"><button class="btn btn-dark" type="button" id="promo-btn">' + (cartPromo && !cartPromo.personal ? 'Убрать' : 'Применить') + '</button></div><div id="promo-msg">' + (cartPromo ? (t.promoNoBase ? '<span class="promo-bad">Промокод ' + esc(cartPromo.code) + ' действует только на «' + esc(cartPromo.catLabel) + '»: таких товаров в корзине нет</span>' : '<span class="promo-ok">' + icon('check-circle') + 'Промокод ' + esc(cartPromo.code) + ': −' + pctTxt(cartPromo.pct) + '%' + (cartPromo.cat ? ' на «' + esc(cartPromo.catLabel) + '»' : '') + '</span>') : '') + '</div></div>' +
+        '<div class="f"><label for="promo-in">Промокод</label><div class="promo-row"><input class="input" id="promo-in" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Введите промокод" value="' + esc(cartPromo && !cartPromo.personal ? cartPromo.code : '') + '"><button class="btn btn-dark" type="button" id="promo-btn">' + (cartPromo && !cartPromo.personal ? 'Убрать' : 'Применить') + '</button></div><div id="promo-msg">' + (cartPromo ? (t.promoNoBase ? '<span class="promo-bad">Промокод ' + esc(cartPromo.code) + ' действует только на «' + esc(cartPromo.catLabel) + '»: таких товаров в корзине нет</span>' : '<span class="promo-ok">' + icon('check-circle') + 'Промокод ' + esc(cartPromo.code) + ': −' + pctTxt(cartPromo.pct) + '%' + (cartPromo.cat ? ' на «' + esc(cartPromo.catLabel) + '»' : '') + '</span>') : '') + '</div></div>' +
         (t.pack ? (t.packOk ? '<label class="pack-row"><input type="checkbox" id="use-pack"' + (usePack ? ' checked' : '') + '><span class="cbx">' + icon('check') + '</span><span><b>' + esc(t.pack.label) + ', применить к этому заказу</b><small>' + esc(t.pack.note) + '. Менеджер учтёт при расчёте упаковки.</small></span></label>'
           : '<p class="small pack-note">' + icon('info') + esc(t.pack.label) + ' (привилегия ' + esc(t.pack.level) + ') действует только для заказа с предзаказом из Китая.</p>') : '') +
         '</div>' : '') +
@@ -1606,7 +1607,7 @@
     var have = u.achv || [], n = have.length;
     return '<div class="card tile c12"><div class="tile-h"><h3>Достижения</h3><span class="side">' + n + ' из ' + RULES.achv.length + '</span></div><div class="achv">' +
       RULES.achv.map(function (a) { var on = have.indexOf(a.id) >= 0; var fr = a.frame ? (RULES.frames.filter(function (f) { return f.id === a.frame; })[0] || {}).name : '';
-        return '<div class="ach' + (on ? ' on' : '') + '" title="' + esc(a.d) + '"><span class="ach-i">' + icon(on ? a.ic : 'lock') + '</span><b>' + esc(a.name) + '</b><small>' + esc(a.d) + (fr ? ' · рамка «' + esc(fr) + '»' : '') + '</small></div>'; }).join('') + '</div></div>';
+        return '<div class="ach' + (on ? ' on' : '') + '" title="' + esc(a.d) + '"><span class="ach-i">' + icon(on ? a.ic : 'lock') + '</span><b>' + esc(a.name) + '</b><small>' + esc(a.d) + '</small>' + (fr ? '<i class="ach-fr" title="Рамка «' + esc(fr) + '»">+ рамка</i>' : '') + '</div>'; }).join('') + '</div></div>';
   }
   function achvNews(u) {
     if (!u || !u.achv) return;
@@ -1822,13 +1823,13 @@
     $$('[data-th]', md).forEach(function (b) { b.addEventListener('click', function () { setThemeMode(b.getAttribute('data-th')); $$('[data-th]', md).forEach(function (x) { x.setAttribute('aria-pressed', x === b); }); var v = $('#r-theme .val'); if (v) v.textContent = THEME_NAMES[themeMode()]; }); });
   }
   // ------------------------------------------------------------ значок на экране «Домой»
-  var SEASON_ICONS = [['halloween', 'Хэллоуин', [10, 17], [11, 1]]];
+  var SEASON_ICONS = []; // сезонные значки (id, название, [месяц, день] начала, конца); сейчас нет
   function seasonOn(s) { var d = new Date(Date.now() + 3 * 3600e3), m = d.getUTCMonth() + 1, k = m * 100 + d.getUTCDate(), a = s[2][0] * 100 + s[2][1], b = s[3][0] * 100 + s[3][1]; return a <= b ? k >= a && k <= b : k >= a || k <= b; }
   var HOME_BASE = [['dark', 'Тёмная'], ['white', 'Белая']];
   function homeIcons() { return HOME_BASE.concat(SEASON_ICONS.map(function (s) { return [s[0], s[1]]; })); }
   var installEvt = null;
   window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); installEvt = e; });
-  var ICON_BG = { white: '#ffffff', halloween: '#1a0a2e', newyear: '#082252', valentine: '#5a1138' };
+  var ICON_BG = { white: '#ffffff', newyear: '#082252', valentine: '#5a1138' };
   function homeIcon() { var v = store.get('homeIcon', 'dark'); return homeIcons().some(function (x) { return x[0] === v; }) ? v : 'dark'; }
   function applyHomeIcon(id) {
     id = id || homeIcon();
@@ -1908,10 +1909,11 @@
   function framesModal() {
     var u = acct.user, li = u.level.index, prev = u.frame;
     function lockText(f) {
-      if (f.src === 'level') return 'Откроется на уровне «' + RULES.levels[f.lvl].name + '» и выше';
+      if (f.src === 'level') return 'Только со статусом «' + RULES.levels[f.lvl].name + '»';
+      if (f.src === 'byr') return 'Открывается в игре «Байер»';
       if (f.src === 'ach') { var aa = RULES.achv.filter(function (x) { return x.id === f.ach; })[0]; return 'Достижение «' + (aa ? aa.name : '') + '»: ' + (aa ? aa.d.toLowerCase() : ''); }
-      if (f.rare) return 'Редкая: выпадает только в посылке';
-      return 'Выпадает в посылке или открыт на «Алмазе»';
+      if (f.rare) return 'Редкая, выпадает в посылке';
+      return 'Выпадает в посылке';
     }
     function own(f) { return u.frames.indexOf(f.id) >= 0; }
     function fname(id) { return (RULES.frames.filter(function (x) { return x.id === id; })[0] || {}).name || ''; }
@@ -1921,7 +1923,7 @@
       return '<button type="button" class="fr-it' + (own(f) ? '' : ' lk') + '" data-frame="' + f.id + '" aria-pressed="false">' + ava({ name: u.name, avatar: u.avatar, frame: f.id, frameAnim: u.frameAnim }, 'md') + (own(f) ? '' : '<i class="fr-lock">' + icon('lock') + '</i>') + '<span>' + esc(f.name) + '</span></button>';
     }).join('') + '</div>' +
       (li >= 4 ? '<div class="f" style="margin-top:14px"><span class="lbl">Анимация рамки «Алмаз»</span><div class="choices" id="anims">' + anims.map(function (a) { return '<button class="choice" type="button" data-anim="' + a[0] + '" aria-pressed="' + ((u.frameAnim || 'shine') === a[0]) + '">' + esc(a[1]) + '</button>'; }).join('') + '</div></div>'
-        : '<p class="small" style="margin-top:12px">На уровне «Алмаз» у рамки можно выбрать анимацию.</p>'), { cls: 'sm' });
+        : '<p class="small" style="margin-top:12px">Анимацию можно выбрать со статусом «Алмаз».</p>'), { cls: 'sm' });
     function show(id) {
       prev = id; var f = RULES.frames.filter(function (x) { return x.id === id; })[0] || RULES.frames[0], ok = own(f), wearing = u.frame === f.id;
       $$('[data-frame]', md).forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-frame') === id)); });
@@ -2096,150 +2098,50 @@
     var pbtn = $('#spin-paid'); if (pbtn) { pbtn.disabled = spinning || u.balance < RULES.spinCost; pbtn.querySelector('span').textContent = spinning ? 'Сканируем…' : 'Открыть за ' + RULES.spinCost; }
   }
   /* ------------------------------------------------------------ «Игры» и «Байер»
-     Экран выбора и сама игра. Все правила и случайность на сервере (actions byr*), здесь только показ и кнопки. */
-  var byTimer = null, by = null, byAt = 0;
-  function mon(n) { return num(n) + ' мон.'; }
+     Экран выбора игры. Сама игра «Байер» (3D) подгружается по требованию: assets/g3d.js и assets/byer.js.
+     Все правила, случайность и награды на сервере (actions byr*). */
+  var byerGame = null, byerBusy = false;
   function renderGames() {
     var v = $('#v-games'), u = acct.user;
-    if (!API.enabled) { v.innerHTML = '<div class="empty"><span class="ico">' + icon('gift') + '</span><h3>Игры скоро появятся</h3><a class="btn" href="#catalog">В каталог</a></div>'; return; }
-    v.innerHTML = '<div class="pad roul-head" style="padding:0 0 10px"><div><h1>Игры</h1></div></div>' +
+    v.innerHTML = '<div class="pad roul-head" style="padding:0 0 10px"><div><h1>Игры</h1><p class="roul-sub">Играйте и получайте ониксы, опыт и рамки</p></div></div>' +
       '<div class="gm-bar">' + (u ? '<span class="rl-chipb">' + tk('lg') + '<span>' + num(u.balance) + '</span></span>' : '<span class="rl-free">Войдите, чтобы играть и получать призы</span>') + '</div>' +
       '<div class="gm-grid">' +
       '<a class="gm-card gm-p" href="#roulette"><span class="gm-ic">' + icon('gift', 'lg') + '</span><h2>Посылка с сюрпризом</h2><p>Рентген показывает приз: ониксы, промокод, опыт или рамка для аватара.</p><span class="gm-tag" id="gm-free">' + (u ? (u.freeSpins ? 'Бесплатных посылок: ' + u.freeSpins : 'Раз в день бесплатно') : 'Раз в день бесплатно') + '</span></a>' +
-      '<a class="gm-card gm-b" href="#byer"><span class="gm-ic">' + icon('bag', 'lg') + '</span><h2>Байер</h2><p>Свой магазин: закупайте вещи в Китае, ставьте цены, выполняйте заказы клиентов и растите до шоурума.</p><span class="gm-tag" id="gm-by">' + (u ? 'Загружаем…' : 'Нужен вход') + '</span></a>' +
+      '<a class="gm-card gm-b" href="#byer"><span class="gm-ic gm-3d"><svg viewBox="0 0 24 24"><path d="M3.5 8.5L12 4l8.5 4.5v7L12 20l-8.5-4.5zM12 12v8M3.5 8.5L12 12l8.5-3.5"/></svg></span><h2>Байер</h2><p>3D игра: бегайте по кварталу, носите посылки клиентам, прокачивайте мастерскую и растите до шоурума.</p><span class="gm-tag" id="gm-by">' + (u ? 'Загружаем…' : 'Нужен вход') + '</span></a>' +
       '</div>';
-    if (u) API.call('byrState').then(function (r) {
-      var t = $('#gm-by'); if (!t || !r.ok) { if (t) t.textContent = 'Играть'; return; }
-      var b = r.byr; t.textContent = b.stage.name + ' · смен: ' + b.charges + ' из ' + b.chargeMax;
+    if (u && API.enabled) API.call('byrState').then(function (r) {
+      var t = $('#gm-by'); if (!t) return; if (!r.ok) { t.textContent = 'Играть'; return; }
+      var b = r.byr; t.textContent = b.stageName + ', смен: ' + b.charges + ' из ' + b.chargeMax;
     }, function () { var t = $('#gm-by'); if (t) t.textContent = 'Играть'; });
   }
-  function renderByer() {
-    var v = $('#v-byer'), u = acct.user;
-    clearInterval(byTimer); byTimer = null; by = null;
-    if (!API.enabled) { v.innerHTML = '<div class="empty"><span class="ico">' + icon('gift') + '</span><h3>Игра скоро появится</h3><a class="btn" href="#catalog">В каталог</a></div>'; return; }
-    if (!u) { v.innerHTML = '<div class="pad roul-head" style="padding:0 0 10px"><div><h1>Байер</h1></div></div><div class="card panel by-note"><p>Игра хранит ваш магазин в кабинете. Войдите, чтобы начать.</p><button class="btn" type="button" id="by-login">' + icon('user') + 'Войти</button></div>'; $('#by-login', v).addEventListener('click', function () { requireAuth('byer'); }); return; }
-    v.innerHTML = '<div class="pad roul-head" style="padding:0 0 10px"><div><h1>Байер</h1></div><a class="btn btn-ghost btn-sm" href="#games">Все игры</a></div><div id="by-root" class="by"><div class="by-load">Открываем магазин…</div></div>';
-    var root = $('#by-root', v), sel = 0, pr = 'mid', chk = false, brd = false, bItem = '', bShip = 'truck', bQty = 5, msg = null, busy = false;
-    function g(path, payload) { return API.call(path, payload || {}); }
-    function setBy(b) { by = b; byAt = Date.now(); if (!bItem) bItem = b.stage.items[0]; if (b.stage.items.indexOf(bItem) < 0) bItem = b.stage.items[0]; if (bShip === 'air' && !b.stage.air) bShip = 'truck'; }
-    function stockOf(id) { var r = by.stock.filter(function (x) { return x.id === id; })[0]; return r ? r.q : 0; }
-    function nm(id) { return by.cat.items[id].name; }
-    function stars(n) { var s = ''; for (var i = 1; i <= 5; i++) s += '<i class="' + (n >= i - 0.25 ? 'on' : n >= i - 0.75 ? 'half' : '') + '">' + icon('star') + '</i>'; return '<span class="by-stars" aria-label="Рейтинг ' + n + '">' + s + '</span>'; }
-    function chText() {
-      var ms = Math.max(0, by.nextMs - (Date.now() - byAt)), m = Math.ceil(ms / 60000);
-      return by.charges >= by.chargeMax ? 'смены полные' : 'следующая через ' + (m >= 60 ? Math.floor(m / 60) + ' ч ' + (m % 60) + ' мин' : m + ' мин');
-    }
-    function head() {
-      var dots = ''; for (var i = 0; i < by.chargeMax; i++) dots += '<i class="' + (i < by.charges ? 'on' : '') + '"></i>';
-      return '<div class="by-chips"><div class="by-chip"><small>Касса</small><b>' + mon(by.cash) + '</b></div><div class="by-chip"><small>Рейтинг</small><b>' + stars(by.rating) + '</b></div>' +
-        '<div class="by-chip"><small>' + esc(by.stage.name) + '</small><b>Этап ' + by.stage.n + '</b></div><div class="by-chip"><small>Смены</small><b><span class="by-dots">' + dots + '</span></b><em id="by-ch">' + chText() + '</em></div></div>';
-    }
-    function priceOf(item, k) { return Math.round(by.cat.items[item].mkt * by.cat.price[k] / 10) * 10; }
-    function ordHtml(o) {
-      var sold = o.st === 1, st = o.st;
-      var tag = st === 1 ? '<span class="by-st ok">продано</span>' : st === -1 ? '<span class="by-st no">отказ</span>' : st === -2 ? '<span class="by-st no">брак</span>' : st === -3 ? '<span class="by-st">пропущен</span>' : '';
-      var on = o.id === sel && st === 0;
-      var h = '<div class="by-ord' + (on ? ' on' : '') + (st ? ' done' : '') + '"><button class="by-oh" type="button" data-o="' + o.id + '"' + (st ? ' disabled' : '') + '><span class="by-ci c-' + o.cust + '">' + esc(by.cat.cust[o.cust].name.charAt(0)) + '</span><span class="by-ot"><b>' + esc(nm(o.item)) + '</b><small>' + esc(by.cat.cust[o.cust].name) + ' клиент' + (o.urgent ? ' · <u>срочный ×1,5</u>' : '') + '</small></span>' + tag + '</button>';
-      if (on) {
-        var has = stockOf(o.item), need = chk ? 2 : 1, left = by.shift.t;
-        h += '<div class="by-ctl"><div class="by-seg" role="radiogroup" aria-label="Цена">' + ['low', 'mid', 'high'].map(function (k) { return '<button type="button" role="radio" aria-checked="' + (pr === k) + '" data-p="' + k + '"><small>' + ({ low: 'Низкая', mid: 'Средняя', high: 'Высокая' })[k] + '</small><b>' + num(priceOf(o.item, k)) + '</b></button>'; }).join('') + '</div>' +
-          '<label class="by-opt"><input type="checkbox" id="by-chk"' + (chk ? ' checked' : '') + '><span>Проверить перед отправкой <small>+1 к времени, без брака</small></span></label>' +
-          (by.stage.brand ? '<label class="by-opt"><input type="checkbox" id="by-brd"' + (brd ? ' checked' : '') + '><span>Фирменная упаковка <small>−' + by.cat.brandCost + ' мон., отзыв выше</small></span></label>' : '') +
-          (has ? '' : '<p class="by-warn">' + esc(nm(o.item)) + ' нет на складе. Закажите ниже: фура едет дольше, самолёт быстрее.</p>') +
-          '<div class="by-acts"><button class="btn" type="button" id="by-sell"' + (!has || left < need || busy ? ' disabled' : '') + '>' + icon('check-circle') + 'Продать <small>(время: ' + need + ')</small></button><button class="btn btn-ghost" type="button" id="by-skip"' + (busy ? ' disabled' : '') + '>Пропустить</button></div></div>';
-      }
-      return h + '</div>';
-    }
-    function shiftHtml() {
-      var s = by.shift, t = '';
-      for (var i = 0; i < by.cat.time; i++) t += '<i class="' + (i < s.t ? 'on' : '') + '"></i>';
-      return '<section class="card panel by-shift"><div class="panel-head"><h2>Смена идёт</h2><span class="by-time" title="Осталось времени">' + icon('hourglass') + '<span class="by-tb">' + t + '</span></span></div>' +
-        '<p class="small">Выручка смены: <b>' + mon(s.rev) + '</b> · продано: ' + s.sold + '. Продажа тратит 1 время, проверка ещё 1. Смена закончится, когда выйдет время или закрыты все заказы.</p>' +
-        (msg ? '<div class="by-msg ' + msg.k + '">' + esc(msg.t) + '</div>' : '') +
-        '<div class="by-ords">' + s.orders.map(ordHtml).join('') + '</div>' +
-        '<div class="by-end"><button class="btn btn-ghost btn-sm" type="button" id="by-fin"' + (busy ? ' disabled' : '') + '>Закончить смену</button></div></section>';
-    }
-    function startHtml() {
-      return '<section class="card panel by-start"><div class="panel-head"><h2>Новая смена</h2></div>' +
-        '<p>5 клиентов, 6 единиц времени. Первый заказ срочный: платит в 1,5 раза больше и даёт опыт. Смен до ' + by.chargeMax + ' в запасе, новая появляется каждые 4 часа.</p>' +
-        (msg ? '<div class="by-msg ' + msg.k + '">' + esc(msg.t) + '</div>' : '') +
-        '<button class="btn btn-block" type="button" id="by-start"' + (by.charges < 1 || busy ? ' disabled' : '') + '>' + icon('play') + (by.charges < 1 ? 'Смен нет, ' + chText() : 'Начать смену') + '</button></section>';
-    }
-    function stockHtml() {
-      var rows = by.stock.map(function (x) { return '<li><span>' + esc(nm(x.id)) + '</span><b>' + x.q + ' шт.</b><small>себестоимость ' + x.c + '</small></li>'; }).join('');
-      var inb = by.inbound.map(function (x) { return '<li><span>' + esc(by.cat.ship[x.ship].name) + ': ' + x.q + ' × ' + esc(nm(x.item)) + '</span><small>через ' + x.left + ' ' + plural(x.left, 'смену', 'смены', 'смен') + '</small></li>'; }).join('');
-      return '<section class="card panel"><div class="panel-head"><h2>Склад</h2><span class="small">' + by.used + ' из ' + by.stage.cap + '</span></div><ul class="by-list">' + (rows || '<li class="muted"><span>Пусто</span></li>') + '</ul>' +
-        (inb ? '<div class="by-sub">В пути</div><ul class="by-list">' + inb + '</ul>' : '') + '<p class="small">Аренда за смену: ' + mon(by.stage.rent) + '</p></section>';
-    }
-    function buyHtml() {
-      var it = by.cat.items[bItem], sp = by.cat.ship[bShip], k = by.cat.batch[bQty], unit = Math.round(it.buy * sp.k * k), cost = unit * bQty;
-      var items = by.stage.items.map(function (id) { return '<button type="button" data-bi="' + id + '" aria-pressed="' + (bItem === id) + '">' + esc(nm(id)) + '</button>'; }).join('');
-      var ships = ['truck', 'air'].map(function (id) { var s = by.cat.ship[id], lock = id === 'air' && !by.stage.air; return '<button type="button" data-bs="' + id + '" aria-pressed="' + (bShip === id) + '"' + (lock ? ' disabled' : '') + '>' + esc(s.name) + '<small>' + (lock ? 'откроется на этапе 2' : s.shifts + ' ' + plural(s.shifts, 'смена', 'смены', 'смен')) + '</small></button>'; }).join('');
-      var qs = [1, 5, 10].map(function (q) { return '<button type="button" data-bq="' + q + '" aria-pressed="' + (bQty === q) + '">' + q + ' шт.<small>' + (by.cat.batch[q] < 1 ? '−' + Math.round((1 - by.cat.batch[q]) * 100) + '%' : 'без скидки') + '</small></button>'; }).join('');
-      return '<section class="card panel"><div class="panel-head"><h2>Закупка в Китае</h2></div><div class="by-pick">' + items + '</div><div class="by-pick">' + ships + '</div><div class="by-pick">' + qs + '</div>' +
-        '<p class="small">За штуку ' + mon(unit) + ', всего <b>' + mon(cost) + '</b>; фура дешевле на 30%, но едет 3 смены. Партия дешевле за штуку, но занимает место.</p>' +
-        '<button class="btn btn-block" type="button" id="by-buy"' + (by.cash < cost || by.used + bQty > by.stage.cap || busy ? ' disabled' : '') + '>' + icon('truck') + 'Заказать</button></section>';
-    }
-    function weekHtml() {
-      var w = by.week, m = by.month, nx = by.stage.next, pct = nx ? Math.min(100, Math.round(by.lp / nx.need * 100)) : 100;
-      return '<section class="card panel"><div class="panel-head"><h2>Награды</h2></div>' +
-        '<div class="by-row"><span>Сундук недели</span><b>' + Math.min(w.shifts, w.need) + ' из ' + w.need + ' смен</b></div>' +
-        '<p class="small">Откройте после ' + w.need + ' смен за неделю. Ониксов внутри зависит от рейтинга: от 20 до 60, сейчас ' + w.chest + '.</p>' +
-        '<button class="btn btn-block' + (w.ready ? '' : ' btn-ghost') + '" type="button" id="by-chest"' + (w.ready && !busy ? '' : ' disabled') + '>' + tk() + (w.claimed ? 'Сундук уже открыт' : w.ready ? 'Открыть сундук: ' + w.chest : 'Ещё ' + Math.max(0, w.need - w.shifts) + ' ' + plural(Math.max(0, w.need - w.shifts), 'смена', 'смены', 'смен')) + '</button>' +
-        (nx ? '<div class="by-row"><span>До этапа «' + esc(nx.name) + '»</span><b>' + num(by.lp) + ' из ' + num(nx.need) + '</b></div><div class="by-bar"><i style="width:' + pct + '%"></i></div><p class="small">Считается прибыль со смен. На новом этапе открываются кроссовки, самолёт, фирменная упаковка, склад на 20 и рамка «Витрина» для аватара.</p>' : '<p class="small">Все этапы этой версии пройдены. Дальше появятся новые.</p>') +
-        '<p class="small by-cap">Из игры в этом месяце: ' + num(m.tok) + ' из ' + num(m.tokMax) + ' ониксов, ' + num(m.xp) + ' из ' + num(m.xpMax) + ' XP. Касса игровая, в ониксы и рубли не обменивается.</p></section>';
-    }
-    function rulesHtml() {
-      return '<details class="by-how card"><summary>Как играть</summary><ol><li>Закажите вещи в Китае: фура дешевле, самолёт быстрее.</li><li>Начните смену и выберите заказ клиента.</li><li>Поставьте цену: чем выше, тем меньше шанс, что клиент согласится. Экономный клиент платит меньше, щедрый больше.</li><li>Проверка занимает время, но защищает от брака. Фирменная упаковка поднимает отзыв.</li><li>В конце смены вы получаете опыт для уровня на сайте. Раз в неделю открывается сундук с ониксами.</li></ol></details>';
-    }
-    function draw() {
-      root.innerHTML = head() + (by.shift ? shiftHtml() : startHtml()) + '<div class="by-two">' + stockHtml() + buyHtml() + '</div>' + weekHtml() + rulesHtml();
-      bind();
-    }
-    function run(path, payload, done) {
-      if (busy) return; busy = true; draw();
-      g(path, payload).then(function (r) {
-        busy = false;
-        if (!r.ok) { msg = { k: 'bad', t: r.error || 'Не получилось' }; toast(msg.t, null, 'warn'); if (r.byr) setBy(r.byr); draw(); return; }
-        if (r.byr) setBy(r.byr);
-        if (r.user) setUserLite(r.user);
-        try { done(r); } catch (e) { }
-        draw();
-      }, function () { busy = false; msg = { k: 'bad', t: 'Нет связи, попробуйте ещё раз' }; draw(); });
-    }
-    function summary(s) {
-      var rows = [['Выручка', '+' + num(s.rev)], ['Закупочная цена проданного', '−' + num(Math.round(s.cogs))], ['Упаковка', '−' + num(s.pack)], ['Аренда', '−' + num(s.rent)]];
-      var h = openModal(modalHead('Итог смены') + '<div class="by-sum">' + rows.map(function (r) { return '<div class="by-row"><span>' + r[0] + '</span><b>' + r[1] + '</b></div>'; }).join('') +
-        '<div class="by-row tot"><span>Прибыль</span><b class="' + (s.profit < 0 ? 'neg' : 'pos') + '">' + (s.profit >= 0 ? '+' : '') + num(Math.round(s.profit)) + '</b></div>' +
-        '<p class="small">Продано: ' + s.sold + (s.defects ? ', брак: ' + s.defects : '') + (s.skipped ? ', пропущено: ' + s.skipped : '') + '. Рейтинг магазина: ' + s.rating + '.</p>' +
-        '<div class="by-gain">' + (s.xp ? '<span>+' + s.xp + ' XP' + (s.contract ? ' (с заказом-контрактом)' : '') + '</span>' : '<span>Опыт за месяц из игры на максимуме</span>') + '</div>' +
-        (s.stageUp ? '<div class="by-up"><b>Новый этап: ' + esc(s.stageUp.name) + '</b><span>Открыты кроссовки, самолёт, фирменная упаковка и склад на 20.' + (s.stageUp.frame ? ' Рамка «' + esc(s.stageUp.frame) + '» уже в профиле.' : '') + '</span></div>' : '') +
-        '<button class="btn btn-block" type="button" data-close>Хорошо</button></div>', { cls: 'sm' });
-      if (s.xp) reward('+' + s.xp + ' XP за смену');
-    }
-    function bind() {
-      var by1 = function (sl, fn, all) { $$(sl, root).forEach(function (el) { el.addEventListener('click', function () { fn(el); }); }); };
-      by1('[data-o]', function (el) { var id = +el.getAttribute('data-o'); sel = sel === id ? 0 : id; draw(); });
-      by1('[data-p]', function (el) { pr = el.getAttribute('data-p'); draw(); });
-      by1('[data-bi]', function (el) { bItem = el.getAttribute('data-bi'); draw(); });
-      by1('[data-bs]', function (el) { bShip = el.getAttribute('data-bs'); draw(); });
-      by1('[data-bq]', function (el) { bQty = +el.getAttribute('data-bq'); draw(); });
-      var c1 = $('#by-chk', root); if (c1) c1.addEventListener('change', function () { chk = c1.checked; draw(); });
-      var c2 = $('#by-brd', root); if (c2) c2.addEventListener('change', function () { brd = c2.checked; draw(); });
-      var st = $('#by-start', root); if (st) st.addEventListener('click', function () { msg = null; sel = 0; run('byrStart', {}, function () { var o = by.shift && by.shift.orders[0]; sel = o ? o.id : 0; }); });
-      var sl = $('#by-sell', root); if (sl) sl.addEventListener('click', function () {
-        var oid = sel; run('byrSell', { order: oid, price: pr, check: chk, brand: brd }, function (r) { msg = { k: r.outcome === 'ok' ? 'ok' : 'bad', t: r.msg }; sel = 0; if (r.summary) { msg = null; summary(r.summary); } else { var nx = by.shift.orders.filter(function (o) { return o.st === 0; })[0]; sel = nx ? nx.id : 0; } });
-      });
-      var sk = $('#by-skip', root); if (sk) sk.addEventListener('click', function () { var oid = sel; run('byrSkip', { order: oid }, function (r) { msg = { k: 'bad', t: 'Заказ пропущен, рейтинг чуть просел' }; sel = 0; if (r.summary) { msg = null; summary(r.summary); } else { var nx = by.shift.orders.filter(function (o) { return o.st === 0; })[0]; sel = nx ? nx.id : 0; } }); });
-      var fn = $('#by-fin', root); if (fn) fn.addEventListener('click', function () { run('byrEnd', {}, function (r) { sel = 0; msg = null; if (r.summary) summary(r.summary); }); });
-      var bb = $('#by-buy', root); if (bb) bb.addEventListener('click', function () { run('byrBuy', { item: bItem, ship: bShip, qty: bQty }, function (r) { toast('Заказано: ' + bQty + ' × ' + nm(bItem) + ', списано ' + mon(r.cost)); }); });
-      var ch = $('#by-chest', root); if (ch) ch.addEventListener('click', function () { run('byrChest', {}, function (r) { reward('Сундук недели: +' + r.got + ' ' + tokWord(r.got) + (r.capped ? ' (месячный потолок игры)' : '')); }); });
-    }
-    g('byrState').then(function (r) {
-      if (!r.ok) { root.innerHTML = '<div class="by-load">' + esc(r.error || 'Не удалось открыть игру') + '</div>'; return; }
-      setBy(r.byr); draw();
-      byTimer = setInterval(function () { if (current !== 'byer') { clearInterval(byTimer); byTimer = null; return; } var e = $('#by-ch'); if (e && by) e.textContent = chText(); }, 20000);
-    }, function () { root.innerHTML = '<div class="by-load">Нет связи, обновите страницу</div>'; });
+  function loadJs(src) {
+    return new Promise(function (res, rej) {
+      var s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = function () { rej(new Error('load')); }; document.head.appendChild(s);
+    });
+  }
+  function openByer() {
+    var u = acct.user;
+    if (byerGame || byerBusy) return;
+    if (!API.enabled) { toast('Игра скоро появится', null, 'warn'); silentHash('games'); return; }
+    if (!u) { if (!acct.ready) return; requireAuth('byer'); return; }
+    byerBusy = true;
+    var me = document.querySelector('script[src*="assets/app.js"]'), q = me && /\?v=[^"&]+/.exec(me.getAttribute('src') || ''), v = q ? q[0] : '';
+    toast('Открываем игру…');
+    Promise.all([loadJs('assets/g3d.js' + v), 0]).then(function () { return loadJs('assets/byer.js' + v); })
+      .then(function () { return API.call('byrState'); })
+      .then(function (r) {
+        byerBusy = false;
+        if (!r.ok) { toast(r.error || 'Не удалось открыть игру', null, 'warn'); silentHash('games'); return; }
+        var g = window.Byer.open({
+          state: r.byr,
+          call: function (a, p) { return API.call(a, p); },
+          onUser: function (nu) { setUserLite(nu); },
+          toast: function (m, kind) { if (kind === 'warn') toast(m, null, 'warn'); else reward(m); },
+          onClose: function () { byerGame = null; if (location.hash.slice(1) === 'byer') { silentHash('games'); } renderGames(); setNav('games'); }
+        });
+        if (g.fail) { toast(g.fail, null, 'warn'); silentHash('games'); return; }
+        byerGame = g;
+      }, function () { byerBusy = false; toast('Нет связи, попробуйте ещё раз', null, 'warn'); silentHash('games'); });
   }
 
   /* ------------------------------------------------------------ «Посылка на рентгене»
@@ -2561,7 +2463,7 @@
       faqItem('Как зарабатывается XP', '<ul><li>Полученный заказ: 1 XP за каждые 10 ₽ (когда статус «Получен»)</li><li>Ежедневный вход: +' + RULES.xpReward.checkin + ' XP</li><li>Задания: ежедневные +10 XP, еженедельные +60 XP, ежемесячные +180 XP</li><li>Посылка: приз +50 XP</li></ul>'),
       faqItem('Как работают уровни', '<p>Уровень растёт от XP, опыта за месяц. 1-го числа XP обнуляется, и уровень начинается заново с Бронзы.</p><button class="btn btn-ghost btn-sm" type="button" id="info-levels">Привилегии уровней</button>'),
       faqItem('Задания: когда обновляются', '<ul><li>Ежедневные: в 00:00 по Москве. Простые: ониксы и XP, чем выше уровень, тем их больше.</li><li>Еженедельные: в понедельник. «Оформить заказ» засчитывается сразу при оформлении.</li><li>Ежемесячные: 1-го числа. Заказы засчитываются, когда статус «Получен».</li></ul>'),
-      faqItem('Посылка: как это работает', '<ul><li>1 бесплатная посылка каждый день на любом уровне, на «Алмазе», 3. Не копятся: обновляются в 00:00 по Москве.</li><li>Дальше посылка стоит ' + RULES.spinCost + ' ониксов. «Ещё раз» даёт бесплатные посылки, они не сгорают.</li><li>На «Платине» и «Алмазе» «Пусто» выпадает реже.</li><li>У бесплатной посылки своя таблица призов: больше опыта и рамок, меньше ониксов. Платная посылка за ' + RULES.spinCost + ' ониксов чаще даёт крупные ониксы.</li><li>Ониксы из посылки сразу на балансе, промокод выбирается в корзине, XP идут в уровень месяца.</li></ul>')
+      faqItem('Посылка: как это работает', '<ul><li>1 бесплатная посылка каждый день на любом уровне, на «Алмазе», 3. Не копятся: обновляются в 00:00 по Москве.</li><li>Дальше посылка стоит ' + RULES.spinCost + ' ониксов. «Ещё раз» даёт бесплатные посылки, они не сгорают.</li><li>На «Платине» и «Алмазе» «Пусто» выпадает реже.</li><li>Призы и шансы у бесплатной и платной посылки одинаковые.</li><li>Ониксы из посылки сразу на балансе, промокод выбирается в корзине, XP идут в уровень месяца.</li></ul>')
     ] : [];
     var shop = [faqItem('Магазин и связь', contactsCard()), faqItem('Мы в соцсетях', socialCard())];
     $('#v-info').innerHTML = '<div class="view-head"><div><h1>Частые вопросы</h1></div></div>' +
@@ -2610,6 +2512,7 @@
     var h = decodeURIComponent(location.hash.replace(/^#/, '')); routed++;
     if (skipHash !== null && h === skipHash) { skipHash = null; return; }
     skipHash = null;
+    if (byerGame && h !== 'byer') byerGame.close();
     var m = h.match(/^ref=([A-Za-z0-9]{4,12})$/);
     if (m) {
       store.set('ref', m[1].toUpperCase());
@@ -2635,7 +2538,7 @@
     else if (h === 'account') { renderAccount(); show('account'); flushTrack(); }
     else if (h === 'roulette') { renderRoulette(); show('roulette'); }
     else if (h === 'games') { renderGames(); show('games'); }
-    else if (h === 'byer') { renderByer(); show('byer'); }
+    else if (h === 'byer') { renderGames(); show('games'); openByer(); }
     else if (h === 'info') { renderInfo(); show('info'); }
     else { renderHome(); show('home'); }
     setNav(h); updFloatBack(h);
@@ -2656,7 +2559,7 @@
     else if (current === 'account') renderAccount();
     else if (current === 'roulette') renderRoulette();
     else if (current === 'games') renderGames();
-    else if (current === 'byer') renderByer();
+    else if (current === 'byer') { /* игра в своём окне */ }
     else if (current === 'cart') renderCart();
     else if (current === 'orders') renderOrders();
     if (acct.user && current === 'catalog') { if (filter.tab === 'preorder') track('pre'); else if (filter.tab === 'stock') track('stock'); }
