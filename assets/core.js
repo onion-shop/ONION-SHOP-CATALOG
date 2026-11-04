@@ -79,10 +79,10 @@ var OnionCore = (function () {
       { per: 'd', key: 'info', title: 'Прочитать «Как это работает»', hint: 'Раздел «Инфо» в меню', m: 'info', n: 1, tk: 1, xp: 2 },
       { per: 'd', key: 'sale', title: 'Посмотреть 2 товара со скидкой', hint: 'Карточки с зачёркнутой ценой', m: 'sale', n: 2, tk: 1, xp: 2 },
       { per: 'd', key: 'brand', title: 'Открыть товары одного бренда', hint: 'Фильтр «Бренд» в каталоге', m: 'brand', n: 1, tk: 1, xp: 2 },
-      { per: 'd', key: 'search', title: 'Найти вещь через поиск', hint: 'Строка поиска в каталоге', m: 'search', n: 1, tk: 1, xp: 2 },
+      { per: 'd', key: 'search', title: 'Найти вещь через поиск', hint: 'Строка поиска вверху сайта', m: 'search', n: 1, tk: 1, xp: 2 },
       { per: 'd', key: 'price', title: 'Выбрать фильтр по цене', hint: 'Фильтр «Цена» в каталоге', m: 'price', n: 1, tk: 1, xp: 2 },
       { per: 'd', key: 'zoom', title: 'Рассмотреть фото вблизи', hint: 'Нажмите на фото товара', m: 'zoom', n: 1, tk: 1, xp: 2 },
-      { per: 'd', key: 'measure', title: 'Заглянуть в замеры', hint: 'Кнопка «Замеры» в карточке', m: 'measure', n: 1, tk: 1, xp: 2 },
+      { per: 'd', key: 'measure', title: 'Заглянуть в замеры', hint: 'Раздел «Замеры изделия» в карточке', m: 'measure', n: 1, tk: 1, xp: 2 },
       { per: 'd', key: 'shoes', title: 'Посмотреть 2 пары обуви', hint: 'Раздел «Обувь»', m: 'viewcat', cats: ['shoes'], n: 2, tk: 1, xp: 2 },
       { per: 'd', key: 'outer', title: 'Посмотреть 2 куртки или худи', hint: 'Куртки и худи', m: 'viewcat', cats: ['outerwear', 'hoodies'], n: 2, tk: 1, xp: 2 },
       { per: 'd', key: 'basic', title: 'Посмотреть футболки или штаны', hint: 'Две любые карточки', m: 'viewcat', cats: ['tees', 'pants'], n: 2, tk: 1, xp: 2 },
@@ -167,36 +167,36 @@ var OnionCore = (function () {
       { id: 'ice', name: 'Лёд', src: 'wheel' },
       { id: 'cosmos', name: 'Космос', src: 'wheel', rare: true },
       { id: 'flame', name: 'Пламя', src: 'wheel', rare: true },
-      { id: 'mint', name: 'Мята', src: 'wheel' },
+      { id: 'mint', name: 'Мятный леденец', src: 'wheel' },
       { id: 'rose', name: 'Роза', src: 'wheel' },
       { id: 'violet', name: 'Фиалка', src: 'wheel' },
-      { id: 'amber', name: 'Янтарь', src: 'wheel' },
+      { id: 'amber', name: 'Янтарные бусы', src: 'wheel' },
       { id: 'coral', name: 'Коралл', src: 'wheel' },
-      { id: 'lime', name: 'Лайм', src: 'wheel' },
-      { id: 'sky', name: 'Небо', src: 'wheel' },
+      { id: 'lime', name: 'Долька лайма', src: 'wheel' },
+      { id: 'sky', name: 'Облака', src: 'wheel' },
       { id: 'aurora', name: 'Аврора', src: 'wheel', rare: true },
       { id: 'sunset', name: 'Закат', src: 'wheel', rare: true },
       { id: 'rainbow', name: 'Радуга', src: 'wheel', rare: true },
-      { id: 'ach-china', name: 'Шёлковый путь', src: 'ach', ach: 'china' },
-      { id: 'ach-loyal', name: 'Постоянный', src: 'ach', ach: 'five' },
-      { id: 'ach-critic', name: 'Обозреватель', src: 'ach', ach: 'review5' },
-      { id: 'ach-friend', name: 'Друзья', src: 'ach', ach: 'friend' },
+      { id: 'ach-china', name: 'Маршрут', src: 'ach', ach: 'china' },
+      { id: 'ach-loyal', name: 'Лавры', src: 'ach', ach: 'five' },
+      { id: 'ach-critic', name: 'Пять звёзд', src: 'ach', ach: 'review5' },
+      { id: 'ach-friend', name: 'Сцепка', src: 'ach', ach: 'friend' },
       { id: 'lvl-silver', name: 'Серебро', src: 'level', lvl: 1 },
       { id: 'lvl-gold', name: 'Золото', src: 'level', lvl: 2 },
       { id: 'lvl-diamond', name: 'Алмаз', src: 'level', lvl: 4 }
     ],
     // достижения: только значки и рамки, без токенов; однажды полученные не пропадают
     achv: [
-      { id: 'first', name: 'Первый заказ', d: 'Получить первый заказ', ic: 'bag' },
-      { id: 'china', name: 'Шёлковый путь', d: 'Получить первый заказ из Китая', ic: 'plane', frame: 'ach-china' },
-      { id: 'five', name: 'Постоянный клиент', d: 'Получить 5 заказов', ic: 'trophy', frame: 'ach-loyal' },
-      { id: 'ten', name: 'Свой человек', d: 'Получить 10 заказов', ic: 'crown' },
-      { id: 'review', name: 'Критик', d: 'Оставить первый отзыв', ic: 'chat' },
-      { id: 'review5', name: 'Обозреватель', d: 'Оставить 5 отзывов', ic: 'star', frame: 'ach-critic' },
-      { id: 'friend', name: 'Душа компании', d: 'Друг получил первый заказ по вашей ссылке', ic: 'users', frame: 'ach-friend' },
-      { id: 'gold', name: 'Золотой месяц', d: 'Дойти до уровня «Золото»', ic: 'crown' },
-      { id: 'streak', name: 'Неделя подряд', d: 'Отмечаться в кабинете 7 дней подряд', ic: 'flame' },
-      { id: 'bday', name: 'Именинник', d: 'Открыть подарок на день рождения', ic: 'gift' }
+      { id: 'first', name: 'Первая распаковка', d: 'Получить первый заказ', ic: 'bag' },
+      { id: 'china', name: 'Дальний рейс', d: 'Получить первый заказ из Китая', ic: 'plane', frame: 'ach-china' },
+      { id: 'five', name: 'Пять образов', d: 'Получить 5 заказов', ic: 'trophy', frame: 'ach-loyal' },
+      { id: 'ten', name: 'Капсульный гардероб', d: 'Получить 10 заказов', ic: 'crown' },
+      { id: 'review', name: 'Первое мнение', d: 'Оставить первый отзыв', ic: 'chat' },
+      { id: 'review5', name: 'Голос сообщества', d: 'Оставить 5 отзывов', ic: 'star', frame: 'ach-critic' },
+      { id: 'friend', name: 'В хорошей компании', d: 'Друг получил первый заказ по вашей ссылке', ic: 'users', frame: 'ach-friend' },
+      { id: 'gold', name: 'Золотой статус', d: 'Дойти до уровня «Золото»', ic: 'crown' },
+      { id: 'streak', name: 'Семь дней в ритме', d: 'Отмечаться в кабинете 7 дней подряд', ic: 'flame' },
+      { id: 'bday', name: 'Свой праздник', d: 'Открыть подарок на день рождения', ic: 'gift' }
     ],
     frameAnims: [['shine', 'Блеск'], ['pulse', 'Пульс'], ['orbit', 'Орбита'], ['none', 'Без анимации']]
   };
@@ -469,14 +469,20 @@ var OnionCore = (function () {
     var have = Array.isArray(u.achv) ? u.achv.slice() : [], add = [];
     var recv = Math.max(+u.recvTotal || 0, (orders || []).filter(function (o) { return o.status === 'Получен'; }).length);
     var pre = Math.max(+u.cnRecv || 0, (orders || []).filter(function (o) { return o.status === 'Получен' && (o.kind === 'предзаказ' || o.kind === 'смешанный'); }).length);
-    var cond = { first: recv >= 1, china: pre >= 1, five: recv >= 5, ten: recv >= 10, review: reviews >= 1, review5: reviews >= 5, friend: (u.refCount || 0) >= 1, gold: levelOf(u).index >= 2 && !u.levelFix, streak: (u.streak || 0) >= 7, bday: !!u.bdayYear };
+    var cond = { first: recv >= 1, china: pre >= 1, five: recv >= 5, ten: recv >= 10, review: reviews >= 1, review5: reviews >= 5, friend: (u.refCount || 0) >= 1, gold: levelOf(u).index >= 2 && !u.levelFix, streak: (u.streak || 0) >= 7, bday: !!u.bdayOpen };
+    // «Именинник» раньше выдавался по полю bdayYear, которое ставится и при вводе даты (чтобы не выдавать подарок задним числом).
+    // Оставляем значок только тем, у кого подарок действительно выдан: запись в учёте бонусов за этот год.
+    if (have.indexOf('bday') >= 0 && !u.bdayOpen) {
+      if (u.bdayYear && ledgerHas(db, idKeys(db, u), 'bday' + u.bdayYear)) u.bdayOpen = 1;
+      else { have = have.filter(function (x) { return x !== 'bday'; }); u.achv = have; add.push('-bday'); }
+    }
     RULES.achv.forEach(function (a) {
       if (have.indexOf(a.id) >= 0 || !cond[a.id]) return;
       have.push(a.id); add.push(a.id);
       if (a.frame) { u.frames = u.frames || ['base']; if (u.frames.indexOf(a.frame) < 0) u.frames.push(a.frame); }
     });
     if (add.length) u.achv = have;
-    return add;
+    return add; // элемент '-bday' означает «значок снят», нужен только чтобы сохранить пользователя
   }
   function photoLinks(v) { return String(v || '').split(/[\s,;]+/).filter(function (x) { return /^https?:\/\/[^\s"'<>]{4,400}$/i.test(x); }).slice(0, 6); }
   function publicUser(db, u) {
@@ -719,7 +725,7 @@ var OnionCore = (function () {
     if (st === 'got') return err('Подарок в этом году уже получен');
     if (st === 'young') return err('Подарок на день рождения получают аккаунты старше ' + B.minAgeDays + ' дней');
     if (st !== 'ready') return err('Подарок доступен только в день рождения');
-    u.bdayYear = year;
+    u.bdayYear = year; u.bdayOpen = 1;
     log(db, u, B.tokens, 'Подарок на день рождения');
     addXp(db, u, B.xp);
     var code; do { code = genCode(db, 'HAPPYBDAY-', 4); } while ((u.promos || []).some(function (x) { return x.code === code; }));

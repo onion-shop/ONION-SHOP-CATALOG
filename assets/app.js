@@ -68,6 +68,9 @@
     }
   }
   PRODUCTS.forEach(indexProduct);
+  // сезонный логотип: класс html.halloween ставит index.html по дате (15 октября - 15 ноября)
+  var LOGO = document.documentElement.classList.contains('halloween') ? 'assets/logo-halloween.png' : 'assets/logo.png';
+  if (LOGO !== 'assets/logo.png') Array.prototype.forEach.call(document.querySelectorAll('img[src="assets/logo.png"]'), function (im) { im.src = LOGO; });
   var REDUCED = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
   var WHEEL_SUM = RULES.wheel.reduce(function (a, w) { return a + w.w; }, 0);
 
@@ -112,7 +115,7 @@
   function promoLine(p) { var d = p.until ? new Date(+p.until + 3 * 3600000) : null; return (p.cat ? 'только «' + esc(p.catLabel) + '»' : esc(p.from || '')) + (p.exp ? ' · до конца месяца' : d ? ' · до ' + String(d.getUTCDate()).padStart(2, '0') + '.' + String(d.getUTCMonth() + 1).padStart(2, '0') : ''); }
   function ava(u, cls) {
     var f = esc((u && u.frame) || 'base');
-    return '<span class="ava f-' + f + (f === 'lvl-diamond' ? ' an-' + esc((u && u.frameAnim) || 'shine') : '') + (cls ? ' ' + cls : '') + '">' + (u && u.avatar ? '<img src="' + esc(u.avatar) + '" alt="">' : esc(initials(u && u.name))) + '</span>';
+    return '<span class="ava f-' + f + (f !== 'base' ? ' fx' : '') + (f === 'lvl-diamond' ? ' an-' + esc((u && u.frameAnim) || 'shine') : '') + (cls ? ' ' + cls : '') + '">' + (u && u.avatar ? '<img src="' + esc(u.avatar) + '" alt="">' : esc(initials(u && u.name))) + '</span>';
   }
 
   // ------------------------------------------------------------ время (Москва)
@@ -482,7 +485,7 @@
           '<div class="gb-floor"><i class="gb-tissue t1"></i><i class="gb-tissue t2"></i><i class="gb-tissue t3"></i>' +
             '<span class="gb-item it1">' + tk('gb-ic') + '</span><span class="gb-item it2">' + rlUse('rl-xp', 40) + '</span><span class="gb-item it3">' + rlUse('rl-ticket', 40) + '</span></div>' +
           '<i class="gb-glow"></i>' +
-          '<span class="gb-seal"><img src="assets/logo.png" alt="" width="64" height="64"></span>' +
+          '<span class="gb-seal"><img src="' + LOGO + '" alt="" width="64" height="64"></span>' +
         '</div>' +
         '<div class="gb-lid" id="gb-lid">' + faces('gb-l', ['top', 'front', 'back', 'left', 'right']) + '</div>' +
         '<div class="gb-bow" id="gb-bow"><i class="bw-l"></i><i class="bw-r"></i><i class="bw-tl"></i><i class="bw-tr"></i><i class="bw-k"></i></div>' +
@@ -763,8 +766,7 @@
     };
     var tiles = catTile('#stock', 'В наличии', 'stock') + catTile('#preorder', 'Из Китая', 'china');
     categories(PRODUCTS).forEach(function (c) { if (c.key !== 'other') tiles += catTile('#catalog', c.label, c.key, c.key); });
-    var picks = shopPicks(), newest = PRODUCTS.filter(function (p) { return p.status === 'stock' && preL.indexOf(p) < 0; }).slice(0, 5);
-    if (newest.length < 3) newest = PRODUCTS.filter(function (p) { return p.status !== 'sold' && preL.indexOf(p) < 0; }).slice(0, 5); // не повторяем «Новинки из Китая»
+    var picks = shopPicks();
     var slides = [];
     picks.forEach(function (p) { slides.push({ p: p, tag: 'Выбор магазина' }); });
     hot.slice(0, 3).forEach(function (p) { if (picks.indexOf(p) < 0) slides.push({ p: p, tag: 'Выгодное предложение' }); });
@@ -778,7 +780,7 @@
       '<div class="cts">' + tiles + '</div>' +
       '<div id="promo-slot">' + promoHtml() + '</div>' +
       heroHtml(slides) +
-      '<div class="bns">' + banner('Выбор магазина', '', '#catalog', picks.slice(0, 5), 'bn-rec') + banner('Лучшие предложения', '', '#stock', hot, 'bn-hot') + banner('Новинки из Китая', '', '#preorder', preL, 'bn-cn') + banner('Новинки недели', '', '#catalog', newest, 'bn-new') + '</div>' +
+      '<div class="bns">' + banner('Выбор магазина', '', '#catalog', picks.slice(0, 5), 'bn-rec') + banner('Лучшие предложения', '', '#stock', hot, 'bn-hot') + banner('Новинки из Китая', '', '#preorder', preL, 'bn-cn') + '</div>' +
       (favs.length ? '<div class="sec"><div class="sec-head"><h2>Избранное</h2><a class="btn btn-ghost btn-sm" href="#favorites">Все · ' + favs.length + '</a></div><div class="hscroll">' + favs.map(function (id) { return BY_ID[id]; }).filter(Boolean).slice(0, 10).map(card).join('') + '</div></div>' : '') +
       (rec.length ? '<div class="sec"><div class="sec-head"><h2>Вы смотрели</h2></div><div class="hscroll">' + rec.map(card).join('') + '</div></div>' : '') +
       '<div class="sec"><div class="sec-head"><h2>Новинки</h2><a class="btn btn-ghost btn-sm" href="#catalog">Весь каталог</a></div>' + grid(fresh, 'home-grid') + '</div>' +
@@ -1069,6 +1071,7 @@
     $('#back-btn', v).addEventListener('click', function () { if (routed > 1) history.back(); else go('catalog'); });
     $('#zoom-btn', v).addEventListener('click', function () { openLightbox(p, cur); });
     $('#share-btn', v).addEventListener('click', function () { shareProduct(p); });
+    var md0 = $('#meas-det', v); if (md0) md0.addEventListener('toggle', function () { if (md0.open) track('measure'); });
     var rd = $('#rev-det', v);
     if (rd && API.enabled) rd.addEventListener('toggle', function () { if (rd.open) loadReviews(p.id, $('#rev-body', v), $('#rev-n', v)); });
     var wb = $('#wait-btn', v);
@@ -1515,7 +1518,7 @@
     var thumbs = (o.items || []).map(function (it) { var id = it.photo || it.thumb; return id ? '<img src="' + thumb(id) + '" alt="" loading="lazy">' : ''; }).join('');
     var status = o.offline ? '<div class="rc-status todo">' + icon('send') + '<span>Сервер недоступен: напишите менеджеру номер заказа.</span></div>'
       : '<div class="rc-status ok">' + icon('check-circle') + '<span>Заказ у менеджера. Он свяжется с вами в Telegram или по телефону.</span></div>';
-    return '<div class="receipt"><div class="rc-top"><div class="rc-brand"><img src="assets/logo.png" alt="">ONION SHOP<span>' + icon('check') + 'оформлен</span></div>' +
+    return '<div class="receipt"><div class="rc-top"><div class="rc-brand"><img src="' + LOGO + '" alt="">ONION SHOP<span>' + icon('check') + 'оформлен</span></div>' +
       '<span class="rc-label">Номер заказа</span><div class="rc-no"><b>' + esc(o.no) + '</b><button type="button" data-copy="' + esc(o.no) + '">' + icon('copy') + 'Номер</button></div><span class="rc-date">' + esc(fmtAt(o.at)) + '</span></div>' +
       '<div class="rc-perf"><i></i><i></i></div>' + (thumbs ? '<div class="rc-thumbs">' + thumbs + '</div>' : '') +
       '<div class="rc-body"><div class="rc-row"><span>Товары · ' + (o.count || 0) + ' шт.</span><b>' + rub(o.total || 0) + '</b></div>' +
@@ -2154,52 +2157,61 @@
       '<path d="M22 26V9H46V26" fill="none" stroke="#26324a" stroke-width="2.4"/><rect x="20" y="6" width="28" height="4" rx="1.5" fill="#26324a"/>' +
       '<circle cx="34" cy="17" r="3.6" fill="#e9b996"/><path d="M30.2 16.6a3.8 3.8 0 0 1 7.6 0z" fill="#ffd23a"/><rect x="30" y="20" width="8" height="7" rx="2" fill="#ff8a2a"/>' +
       '<circle cx="35" cy="3.4" r="2.6" class="fk-beacon" fill="#ff7a00"/>' +
-      '<circle cx="22" cy="49" r="7.4" fill="#151c2f"/><circle cx="22" cy="49" r="3" fill="#8794ad"/><circle cx="50" cy="50" r="5.6" fill="#151c2f"/><circle cx="50" cy="50" r="2.2" fill="#8794ad"/></svg>';
+      '<g class="hg-wh"><circle cx="22" cy="49" r="7.4" fill="#151c2f"/><circle cx="22" cy="49" r="3" fill="#8794ad"/><rect x="21.2" y="42.4" width="1.6" height="13.2" fill="#3b4767"/></g><g class="hg-wh"><circle cx="50" cy="50" r="5.6" fill="#151c2f"/><circle cx="50" cy="50" r="2.2" fill="#8794ad"/><rect x="49.3" y="45" width="1.4" height="10" fill="#3b4767"/></g></svg>';
   }
   function hgVanSvg() {
     return '<svg viewBox="0 0 116 58" width="116" height="58" aria-hidden="true">' +
       '<rect x="3" y="6" width="80" height="38" rx="6" fill="#eef3fb"/><rect x="3" y="28" width="80" height="6" fill="' + hgPick(['#2d7cff', '#ff8a2a', '#2fb67a']) + '"/>' +
       '<path d="M83 14H100Q108 14 112 26L113 44H83Z" fill="#dfe7f3"/><path d="M90 18H100Q105 18 108 26H90Z" fill="#8fd0ff"/><rect x="2" y="42" width="112" height="4" rx="2" fill="#7e8ba6"/>' +
-      '<circle cx="28" cy="49" r="7.6" fill="#151c2f"/><circle cx="28" cy="49" r="3" fill="#8794ad"/><circle cx="92" cy="49" r="7.6" fill="#151c2f"/><circle cx="92" cy="49" r="3" fill="#8794ad"/></svg>';
+      '<g class="hg-wh"><circle cx="28" cy="49" r="7.6" fill="#151c2f"/><circle cx="28" cy="49" r="3" fill="#8794ad"/><rect x="27.2" y="42.2" width="1.6" height="13.6" fill="#3b4767"/></g><g class="hg-wh"><circle cx="92" cy="49" r="7.6" fill="#151c2f"/><circle cx="92" cy="49" r="3" fill="#8794ad"/><rect x="91.2" y="42.2" width="1.6" height="13.6" fill="#3b4767"/></g></svg>';
   }
   /* сцена: box, belt, tunnel, actors */
   function pxHangar(root) {
-    var layer = $('#hg-actors', root), box = $('#px-hangar', root), alive = 0, last = '', stopped = false;
+    var layer = $('#hg-actors', root), box = $('#px-hangar', root), alive = 0, last = '', stopped = false, cars = 0;
     function W() { return box.clientWidth || 340; }
     function ok() { return !stopped && document.body.contains(layer); }
     function wait(ms) { return new Promise(function (res) { setTimeout(res, ms); }); }
-    function mk(html, cls, yb, w) {
-      var el = document.createElement('div'); el.className = 'hg-a ' + (cls || ''); el.style.bottom = yb + 'px'; el.style.zIndex = String(100 - Math.round(yb)); el.style.width = w + 'px';
-      el.innerHTML = '<div class="hg-in">' + html + '</div>'; layer.appendChild(el); alive++; return el;
+    /* Глубина d: 0 у самой ленты, 1 у дальней стены. Высоту «пола» читаем из вёрстки (на телефоне и компьютере она разная),
+       поэтому колёса и ноги всегда стоят на полу, а не над стыком пола со стеной. Чем дальше, тем мельче. */
+    function lane(d) {
+      var fl = box.querySelector('.hg-floor'), rl = box.querySelector('.px-rollers');
+      var floorTop = fl ? fl.offsetHeight : 80, beltTop = rl ? Math.round(box.getBoundingClientRect().bottom - rl.getBoundingClientRect().top) : 28;
+      if (!(beltTop > 0 && beltTop < floorTop)) beltTop = 28;
+      var near = beltTop + 6, far = Math.max(near + 10, floorTop - 10);
+      return { yb: Math.round(near + d * (far - near)), sc: +(1 - d * 0.28).toFixed(3) };
     }
-    function done(el) { if (el.parentNode) el.parentNode.removeChild(el); alive--; }
-    function face(el, dir) { el.firstChild.classList.toggle('rev', dir < 0); }
-    function go(el, x0, x1, speed) {
+    function mk(html, cls, d, w) {
+      var L = lane(d), el = document.createElement('div');
+      el.className = 'hg-a ' + (cls || ''); el.style.bottom = L.yb + 'px'; el.style.zIndex = String(100 - Math.round(d * 60)); el.style.width = w + 'px';
+      el.innerHTML = '<div class="hg-sc" style="transform:scale(' + L.sc + ')"><div class="hg-in">' + html + '</div></div>'; layer.appendChild(el); alive++; el._d = d; return el;
+    }
+    function done(el) { if (el.parentNode) el.parentNode.removeChild(el); alive--; if (el._car) cars--; }
+    function face(el, dir) { el.querySelector('.hg-in').classList.toggle('rev', dir < 0); }
+    function go(el, x0, x1, speed, ease) {
       return new Promise(function (res) {
         if (!ok()) { res(); return; }
-        face(el, x1 >= x0 ? 1 : -1);
-        var an = el.animate([{ transform: 'translateX(' + x0 + 'px)' }, { transform: 'translateX(' + x1 + 'px)' }], { duration: Math.max(60, Math.abs(x1 - x0) / speed * 1000), easing: 'linear', fill: 'forwards' });
-        an.onfinish = function () { res(); }; an.oncancel = function () { res(); };
+        face(el, x1 >= x0 ? 1 : -1); el.classList.add('mv');
+        var an = el.animate([{ transform: 'translateX(' + x0 + 'px)' }, { transform: 'translateX(' + x1 + 'px)' }], { duration: Math.max(60, Math.abs(x1 - x0) / speed * 1000), easing: ease || 'linear', fill: 'forwards' });
+        an.onfinish = function () { el.classList.remove('mv'); res(); }; an.oncancel = function () { res(); };
       });
     }
+    var ARRIVE = 'cubic-bezier(.25,.6,.35,1)', LEAVE = 'cubic-bezier(.55,0,.75,.45)';
     function worker(opt) {
       opt = opt || {};
       var w = W(), kind = opt.kind || hgPick(['walk', 'walk', 'box', 'box', 'cart', 'check', 'wave']), dir = opt.dir || (Math.random() < .5 ? 1 : -1);
-      var vest = hgPick(HG_VEST), helm = hgPick(HG_HELM), skin = hgPick(HG_SKIN), yb = opt.yb || hgRand(40, 62);
+      var vest = hgPick(HG_VEST), helm = hgPick(HG_HELM), skin = hgPick(HG_SKIN), d = opt.d != null ? opt.d : hgRand(.15, .95);
       var hold = kind === 'box' ? 'box' : kind === 'check' ? 'tab' : '';
-      var el = mk('<span class="hg-ppl' + (kind === 'box' ? ' hw-carry' : '') + '">' + hgWorkerSvg(vest, helm, skin, hold) + '</span>' + (kind === 'cart' ? hgCartSvg() : ''), 'hg-w', yb, kind === 'cart' ? 74 : 28);
+      var el = mk('<span class="hg-ppl' + (kind === 'box' ? ' hw-carry' : '') + '">' + hgWorkerSvg(vest, helm, skin, hold) + '</span>' + (kind === 'cart' ? hgCartSvg() : ''), 'hg-w', d, kind === 'cart' ? 74 : 28);
       var ppl = el.querySelector('.hg-ppl'); ppl.style.setProperty('--st', hgRand(.5, .85).toFixed(2) + 's');
-      var speed = kind === 'cart' ? hgRand(20, 30) : hgRand(26, 50), x0 = opt.x0 != null ? opt.x0 : (dir > 0 ? -90 : w + 20), far = dir > 0 ? w + 20 : -90;
-      var p1 = opt.stopAt != null ? opt.stopAt : hgRand(.18, .82) * w, chain = go(el, x0, p1, speed);
-      chain.then(function () {
+      var speed = (kind === 'cart' ? hgRand(20, 30) : hgRand(26, 50)) * (1 - d * .28), x0 = opt.x0 != null ? opt.x0 : (dir > 0 ? -90 : w + 20), far = dir > 0 ? w + 20 : -90;
+      var p1 = opt.stopAt != null ? opt.stopAt : hgRand(.18, .82) * w;
+      go(el, x0, p1, speed).then(function () {
         if (!ok()) return;
         var act = opt.act || (kind === 'check' ? 'look' : kind === 'wave' ? 'wave' : Math.random() < .4 ? hgPick(['look', 'look', 'back']) : '');
-        el.classList.remove('hw-wave');
         if (!act) return go(el, p1, far, speed);
         ppl.classList.add('hw-stand');
         if (act === 'wave') ppl.classList.add('hw-wave');
-        var t = hgRand(1400, 3600);
-        return wait(t).then(function () {
+        return wait(hgRand(1400, 3600)).then(function () {
           ppl.classList.remove('hw-stand', 'hw-wave');
           if (act === 'back') return go(el, p1, dir > 0 ? -90 : w + 20, speed);
           return go(el, p1, far, speed);
@@ -2207,33 +2219,39 @@
       }).then(function () { done(el); });
       return el;
     }
+    /* техника: одновременно не больше одной машины, чтобы погрузчик и фургон не проезжали друг сквозь друга */
     function fork() {
-      var w = W(), dir = Math.random() < .5 ? 1 : -1, load = Math.random() < .65, yb = hgRand(30, 42), el = mk(hgForkSvg(load), 'hg-f', yb, 88);
-      var x0 = dir > 0 ? -110 : w + 30, far = dir > 0 ? w + 30 : -110, speed = hgRand(46, 78), p1 = hgRand(.25, .75) * w, stopIt = Math.random() < .6;
+      var w = W(), dir = Math.random() < .5 ? 1 : -1, load = Math.random() < .65, el = mk(hgForkSvg(load), 'hg-f', hgRand(.04, .22), 88);
+      el._car = true; cars++;
+      var x0 = dir > 0 ? -110 : w + 30, far = dir > 0 ? w + 30 : -110, speed = hgRand(46, 70), p1 = hgRand(.25, .75) * w, stopIt = Math.random() < .6;
       var mast = el.querySelector('.fk-fork');
-      go(el, x0, stopIt ? p1 : far, speed).then(function () {
+      go(el, x0, stopIt ? p1 : far, speed, stopIt ? ARRIVE : 'linear').then(function () {
         if (!stopIt || !ok()) return;
-        var up = Math.random() < .5; mast.style.transition = 'transform .9s ease-in-out'; mast.style.transform = 'translateY(' + (up ? -16 : -5) + 'px)';
-        return wait(hgRand(1500, 2600)).then(function () { mast.style.transform = 'translateY(0)'; return wait(900); }).then(function () { return go(el, p1, Math.random() < .25 ? x0 : far, speed); });
+        mast.style.transition = 'transform .9s ease-in-out'; mast.style.transform = 'translateY(' + (Math.random() < .5 ? -16 : -6) + 'px)';
+        return wait(hgRand(1500, 2600)).then(function () { mast.style.transform = 'translateY(0)'; return wait(900); }).then(function () { return go(el, p1, far, speed, LEAVE); });
       }).then(function () { done(el); });
     }
     function van() {
-      var w = W(), dir = Math.random() < .5 ? 1 : -1, el = mk(hgVanSvg(), 'hg-v', hgRand(64, 70), 116);
-      var x0 = dir > 0 ? -140 : w + 30, far = dir > 0 ? w + 30 : -140, speed = hgRand(58, 92), p1 = hgRand(.3, .7) * w, stopIt = Math.random() < .7;
-      go(el, x0, stopIt ? p1 : far, speed).then(function () {
+      var w = W(), dir = Math.random() < .5 ? 1 : -1, d = hgRand(.62, .78), el = mk(hgVanSvg(), 'hg-v', d, 116);
+      el._car = true; cars++;
+      var x0 = dir > 0 ? -140 : w + 30, far = dir > 0 ? w + 30 : -140, speed = hgRand(55, 80), p1 = hgRand(.3, .7) * w, stopIt = Math.random() < .7;
+      go(el, x0, stopIt ? p1 : far, speed, stopIt ? ARRIVE : 'linear').then(function () {
         if (!stopIt || !ok()) return;
-        if (Math.random() < .6) worker({ x0: p1 + 40, dir: -dir, kind: 'box', stopAt: p1 + 40 + (dir > 0 ? -1 : 1) * 60 });
-        return wait(hgRand(2200, 4200)).then(function () { return go(el, p1, far, speed); });
+        if (Math.random() < .6) worker({ x0: p1 + 40, dir: -dir, kind: 'box', d: Math.max(.1, d - .3), stopAt: p1 + 40 + (dir > 0 ? -1 : 1) * 60 });
+        return wait(hgRand(2200, 4200)).then(function () { return go(el, p1, far, speed, LEAVE); });
       }).then(function () { done(el); });
     }
     function pair() {
-      var w = W(), mid = hgRand(.35, .65) * w, a = worker({ dir: 1, x0: -90, stopAt: mid - 18, act: 'look', kind: 'walk', yb: hgRand(46, 56) }), b = worker({ dir: -1, x0: w + 20, stopAt: mid + 18, act: 'wave', kind: 'walk', yb: hgRand(46, 56) });
-      return [a, b];
+      var w = W(), mid = hgRand(.35, .65) * w, d = hgRand(.3, .7);
+      worker({ dir: 1, x0: -90, stopAt: mid - 18, act: 'look', kind: 'walk', d: d });
+      worker({ dir: -1, x0: w + 20, stopAt: mid + 18, act: 'wave', kind: 'walk', d: d });
     }
     function next() {
       if (!ok()) return;
       if (alive < 4 && !document.hidden && layer.offsetParent) {
-        var kinds = ['w', 'w', 'w', 'w', 'f', 'f', 'v', 'p'].filter(function (k) { return k !== last || k === 'w'; }), k = hgPick(kinds); last = k;
+        var kinds = ['w', 'w', 'w', 'w', 'f', 'f', 'v', 'p'].filter(function (k) { return k !== last || k === 'w'; }), k = hgPick(kinds);
+        if ((k === 'f' || k === 'v') && cars) k = 'w';
+        last = k;
         if (k === 'f') fork(); else if (k === 'v') van(); else if (k === 'p') pair(); else worker();
       }
       setTimeout(next, hgRand(1100, 2800));
@@ -2244,8 +2262,9 @@
       if (l) { l.classList.add('flick'); setTimeout(function () { l.classList.remove('flick'); }, hgRand(160, 420)); }
       setTimeout(lamps, hgRand(2500, 7000));
     }
+    if (window.__HGDEBUG) window.__hg = { fork: fork, van: van, worker: worker, pair: pair };
     if (REDUCED) { worker({ x0: .3 * W(), stopAt: .3 * W(), act: 'look' }); return function () { stopped = true; }; }
-    worker({ dir: 1, x0: hgRand(.1, .35) * W(), kind: 'box' }); worker({ dir: -1, x0: hgRand(.6, .9) * W(), kind: 'walk', yb: hgRand(48, 62) });
+    worker({ dir: 1, x0: hgRand(.1, .35) * W(), kind: 'box' }); worker({ dir: -1, x0: hgRand(.6, .9) * W(), kind: 'walk', d: hgRand(.4, .9) });
     setTimeout(next, 900); setTimeout(lamps, 2000);
     return function () { stopped = true; };
   }
@@ -2263,7 +2282,7 @@
         '<div class="px-mon" id="px-mon"><div class="px-mon-h"><span>РЕНТГЕН</span><span id="px-st">ГОТОВ</span></div>' +
           '<div class="px-screen" id="px-screen"><i class="px-grid"></i><div class="px-box"><i class="px-tape"></i><div class="px-item" id="px-item"></div></div><i class="px-beam"></i><b class="px-stamp" id="px-stamp">ПРОВЕРЕНО</b></div></div>' +
         '<div class="px-hangar" id="px-hangar">' + HG_BG + HG_LAMPS + '<div class="hg-floor"></div><div class="hg-actors" id="hg-actors"></div>' +
-          '<div class="px-belt" id="px-belt"><div class="px-tunnel"><b class="px-beacon"></b><i></i></div><div class="px-parcel" id="px-parcel"><i class="px-ptape"></i><span class="px-lbl"><i></i></span><img src="assets/logo.png" alt="" width="22" height="22"></div><div class="px-rollers"></div></div>' +
+          '<div class="px-belt" id="px-belt"><div class="px-tunnel"><b class="px-beacon"></b><i></i></div><div class="px-parcel" id="px-parcel"><i class="px-ptape"></i><span class="px-lbl"><i></i></span><img src="' + LOGO + '" alt="" width="22" height="22"></div><div class="px-rollers"></div></div>' +
         '</div>' +
       '</div>' +
       '<div class="px-cap" id="px-cap" aria-live="polite">' + CAP0 + '</div>' +
@@ -2708,7 +2727,7 @@
     var upd = $('#catalog-updated');
     if (upd && CATALOG.updatedAt) { var t = msk(new Date(CATALOG.updatedAt)); upd.textContent = 'Каталог обновлён ' + String(t.d).padStart(2, '0') + '.' + String(t.mo).padStart(2, '0') + '.' + t.y + '.'; }
     var hs = $('#hdr-search');
-    if (hs) hs.addEventListener('submit', function (e) { e.preventDefault(); var q = $('#hdr-q').value.trim(); filter = newFilter(); filter.q = q; var inp = $('#hdr-q'); if (inp) inp.blur(); go('catalog'); });
+    if (hs) hs.addEventListener('submit', function (e) { e.preventDefault(); var q = $('#hdr-q').value.trim(); filter = newFilter(); filter.q = q; if (q.length >= 2) track('search'); var inp = $('#hdr-q'); if (inp) inp.blur(); go('catalog'); });
     window.addEventListener('hashchange', route);
     window.addEventListener('storage', function (e) { if (e.key === 'onion.shop.cart') { cart = store.get('cart', []); updateCounts(); if (current === 'cart') renderCart(); } });
     window.addEventListener('offline', function () { netBar(true); });
