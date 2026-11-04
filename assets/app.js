@@ -68,9 +68,7 @@
     }
   }
   PRODUCTS.forEach(indexProduct);
-  // сезонный логотип: класс html.halloween ставит index.html по дате (15 октября - 15 ноября)
-  var LOGO = document.documentElement.classList.contains('halloween') ? 'assets/logo-halloween.png' : 'assets/logo.png';
-  if (LOGO !== 'assets/logo.png') Array.prototype.forEach.call(document.querySelectorAll('img[src="assets/logo.png"]'), function (im) { im.src = LOGO; });
+  var LOGO = 'assets/logo.png';
   var REDUCED = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
   var WHEEL_SUM = RULES.wheel.reduce(function (a, w) { return a + w.w; }, 0);
 
