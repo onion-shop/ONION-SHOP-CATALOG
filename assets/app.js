@@ -359,7 +359,13 @@
     updateAcctUI();
     showNews(u);
     if (u && u.bdayToday) setTimeout(bdayGift, 700);
-    if (u && !watchSynced && favs.length) { watchSynced = true; syncWatch(); }
+    if (u && !watchSynced) {
+      watchSynced = true;
+      // избранное из аккаунта объединяем с тем, что на этом устройстве: так оно не пропадает при входе с другого телефона
+      var add = (u.favIds || []).filter(function (id) { return BY_ID[id] && !isFav(id); });
+      if (add.length) { favs = favs.concat(add); store.set('favs', favs); updateCounts(); }
+      if (favs.length) syncWatch();
+    }
     achvNews(u);
     if (current === 'account') renderAccount();
     else if (current === 'roulette') updateRoulBalance();
@@ -550,7 +556,7 @@
   }
 
   // ------------------------------------------------------------ карточка товара
-  function badge(p) { return p.status === 'preorder' ? '<span class="badge badge-pre">Предзаказ</span>' : p.status === 'sold' ? '<span class="badge badge-sold">Продано</span>' : p.status === 'out' ? '<span class="badge badge-out"><span class="b-l">Нет в наличии</span><span class="b-s">Закончился</span></span>' : '<span class="badge badge-stock">В наличии</span>'; }
+  function badge(p) { return p.status === 'preorder' ? '<span class="badge badge-pre">Предзаказ</span>' : p.status === 'sold' ? '<span class="badge badge-sold">Продано</span>' : p.status === 'out' ? '<span class="badge badge-out">Нет в наличии</span>' : '<span class="badge badge-stock">В наличии</span>'; }
   function inStockTab(p) { return p.status === 'stock' || p.status === 'out' || p.status === 'sold'; }
   function dscChip(p) { var d = discount(p); return p.oldPrice && d >= 1 ? '<span class="dsc">−' + d + '%</span>' : ''; }
   function discount(p) { return p.oldPrice ? Math.round((1 - p.price / p.oldPrice) * 100) : 0; }
@@ -633,7 +639,7 @@
       '<a class="contact" href="' + SHOP.tiktokUrl + '" target="_blank" rel="noopener"><span class="l">' + icon('play') + '<span><small>TikTok</small><b>@onion_shop</b></span></span>' + icon('arrow-up-right') + '</a></div></div>';
   }
   function preorderBanner() {
-    return '<div class="banner"><span class="ic">' + icon('plane') + '</span><div><h3>Что такое предзаказ</h3><p>Выкупаем товар у поставщика в Китае после вашего заказа, проверяем на складе и отправляем фурой (самолётом: по согласованию с менеджером).  Доставка из Китая уже включена в цену.</p></div>' +
+    return '<div class="banner"><span class="ic">' + icon('plane') + '</span><div><h3>Что такое предзаказ</h3><p>Выкупаем товар у поставщика в Китае после вашего заказа, проверяем на складе и отправляем фурой (самолётом: по согласованию с менеджером). Доставка из Китая уже включена в цену.</p></div>' +
       '<a class="btn btn-ghost" href="' + SHOP.preorderUrl + '" target="_blank" rel="noopener">Условия и сроки' + icon('arrow-up-right') + '</a></div>';
   }
   function stepsBlock() {
@@ -970,8 +976,9 @@
     store.set('views', v);
     track('view', id);
   }
+  function productUrl(p) { return location.href.split('#')[0].split('?')[0] + '#p-' + p.id; }
   function shareProduct(p) {
-    var url = location.href.split('#')[0].split('?')[0] + '#p-' + p.id;
+    var url = productUrl(p);
     var done = function () { track('share', p.id); };
     try {
       if (navigator.share) { navigator.share({ title: p.title, text: p.title + ': ' + rub(p.price), url: url }).then(done, function () { /* отменили */ }); return; }
@@ -1203,12 +1210,72 @@
     if (API.enabled && !acct.user) { requireAuth('cart'); return; }
     cartStep = 'checkout'; renderCart(); window.scrollTo(0, 0);
   }
+  // меню ⋮ у товара в корзине: действия привязаны к самой строке (l), а не к номеру, поэтому не перепутаются
+  function closeCartMenu() {
+    var m = $('#cl-menu'), bg = $('#cl-mbg'), had = !!m;
+    if (m) m.remove(); if (bg) bg.remove();
+    $$('.cl-more[aria-expanded="true"]').forEach(function (b) { b.setAttribute('aria-expanded', 'false'); });
+    window.removeEventListener('scroll', cartMenuScroll, true); window.removeEventListener('resize', closeCartMenu);
+    window.removeEventListener('hashchange', closeCartMenu); document.removeEventListener('keydown', cartMenuKey);
+    return had;
+  }
+  var cartMenuY = 0;
+  function cartMenuScroll() { if (Math.abs(window.scrollY - cartMenuY) > 6) closeCartMenu(); }
+  function cartMenuKey(e) {
+    if (e.key === 'Escape') { var b = $('.cl-more[aria-expanded="true"]'); closeCartMenu(); if (b) b.focus(); return; }
+    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+    var it = $$('#cl-menu .cl-mi'), i = it.indexOf(document.activeElement);
+    e.preventDefault(); it[(i + (e.key === 'ArrowDown' ? 1 : -1) + it.length) % it.length].focus();
+  }
+  function cartToFav(l) {
+    var idx = cart.indexOf(l), p = BY_ID[l.id]; if (idx < 0 || !p) return;
+    var was = isFav(l.id);
+    if (!was) { favs.unshift(String(l.id)); store.set('favs', favs); syncWatch(); track('fav', l.id); }
+    cart.splice(idx, 1); saveCart(); updateCounts(); renderCart();
+    toast(was ? 'Товар уже был в избранном, убран из корзины' : 'Перенесено в избранное', { label: 'Вернуть', run: function () {
+      if (!was) { favs = favs.filter(function (x) { return x !== String(l.id); }); store.set('favs', favs); syncWatch(); }
+      cart.splice(Math.min(idx, cart.length), 0, l); saveCart(); updateCounts(); if (current === 'cart') renderCart();
+    } });
+  }
+  function cartDelete(l) {
+    var idx = cart.indexOf(l); if (idx < 0) return;
+    cart.splice(idx, 1); saveCart(); renderCart();
+    toast('Товар убран из корзины', { label: 'Вернуть', run: function () { cart.splice(Math.min(idx, cart.length), 0, l); saveCart(); if (current === 'cart') renderCart(); } });
+  }
+  function openCartMenu(l, btn) {
+    var was = btn.getAttribute('aria-expanded') === 'true';
+    closeCartMenu(); if (was) return;
+    var p = BY_ID[l.id]; if (!p) return;
+    var bg = document.createElement('div'); bg.id = 'cl-mbg'; bg.className = 'cl-mbg';
+    var m = document.createElement('div'); m.id = 'cl-menu'; m.className = 'cl-menu'; m.setAttribute('role', 'menu');
+    var items = [['share', 'share', 'Поделиться'], ['copy', 'link', 'Скопировать ссылку'], ['fav', 'heart', 'Перенести в избранное'], ['del', 'trash', 'Удалить']];
+    m.innerHTML = items.map(function (x) { return '<button type="button" role="menuitem" class="cl-mi' + (x[0] === 'del' ? ' danger' : '') + '" data-act="' + x[0] + '">' + icon(x[1]) + '<span>' + x[2] + '</span></button>'; }).join('');
+    document.body.appendChild(bg); document.body.appendChild(m);
+    var r = btn.getBoundingClientRect(), w = m.offsetWidth, h = m.offsetHeight, vw = window.innerWidth, vh = window.innerHeight;
+    var left = Math.max(8, Math.min(r.right - w, vw - w - 8)), top = r.bottom + 4;
+    if (top + h > vh - 8) top = Math.max(8, r.top - h - 4);
+    m.style.left = left + 'px'; m.style.top = top + 'px';
+    btn.setAttribute('aria-expanded', 'true');
+    bg.addEventListener('click', function (e) { e.stopPropagation(); closeCartMenu(); });
+    bg.addEventListener('contextmenu', function (e) { e.preventDefault(); closeCartMenu(); });
+    $$('.cl-mi', m).forEach(function (b) { b.addEventListener('click', function (e) {
+      e.stopPropagation(); var a = b.getAttribute('data-act'); closeCartMenu();
+      if (a === 'share') shareProduct(p);
+      else if (a === 'copy') copyText(productUrl(p), 'Ссылка на товар скопирована');
+      else if (a === 'fav') cartToFav(l);
+      else if (a === 'del') cartDelete(l);
+    }); });
+    cartMenuY = window.scrollY; window.addEventListener('scroll', cartMenuScroll, true); window.addEventListener('resize', closeCartMenu);
+    window.addEventListener('hashchange', closeCartMenu); document.addEventListener('keydown', cartMenuKey);
+    var first = $('.cl-mi', m); if (first) first.focus({ preventScroll: true });
+  }
   function renderCartList(v, all, gone) {
     var allOn = all.every(function (l) { return l.sel !== false; }), st = lineTotals(selLines());
     var row = function (l, i) {
       var p = BY_ID[l.id], ph = p.photos.find(function (x) { return x.id === l.photo; }) || p.photos[0], d = discount(p), on = l.sel !== false;
       return '<div class="cl' + (on ? '' : ' unsel') + '" data-k="' + i + '">' +
         '<button type="button" class="cl-chk' + (on ? ' on' : '') + '" data-sel aria-pressed="' + on + '" aria-label="Выбрать товар">' + icon('check') + '</button>' +
+        '<button type="button" class="cl-more" data-more aria-haspopup="menu" aria-expanded="false" aria-label="Действия с товаром: ' + esc(p.title) + '">' + icon('more') + '</button>' +
         '<a class="cl-ph" href="#p-' + esc(p.id) + '"><img src="' + thumb(ph.id) + '" alt="" loading="lazy"></a>' +
         '<div class="cl-b"><div class="cl-pr"><b class="' + (p.oldPrice ? 'sale' : '') + '">' + rub(p.price * l.qty) + '</b>' + (p.oldPrice ? '<s>' + rub(p.oldPrice * l.qty) + '</s>' + dscChip(p) : '') + '</div>' +
         '<a class="cl-t" href="#p-' + esc(p.id) + '">' + esc(p.title) + '</a>' +
@@ -1216,8 +1283,9 @@
         '<div class="cl-m">' + badge(p) + '</div>' +
         (l.note ? '<div class="cl-o">Пожелания: ' + esc(l.note) + '</div>' : '') +
         '<div class="cl-a"><div class="qty sm"><button type="button" data-q="-1" aria-label="Меньше"' + (l.qty <= 1 ? ' disabled' : '') + '>' + icon('minus') + '</button><output>' + l.qty + '</output><button type="button" data-q="1" aria-label="Больше"' + (l.qty >= 10 ? ' disabled' : '') + '>' + icon('plus') + '</button></div>' +
-        '<button class="cl-buy" type="button" data-buy>Купить</button><button class="cl-del" type="button" data-del aria-label="Убрать из корзины">' + icon('trash') + '</button></div></div></div>';
+        '<button class="cl-buy" type="button" data-buy>Купить</button></div></div></div>';
     };
+    closeCartMenu();
     v.innerHTML = '<div class="view-head"><div><h1>Корзина</h1><p class="muted">' + all.length + ' ' + plural(all.length, 'товар', 'товара', 'товаров') + '</p></div></div>' +
       (gone.length ? '<div class="notice notice-info" style="margin-bottom:12px">' + icon('alert') + '<div>Проданные товары убраны из корзины: ' + gone.length + '.</div></div>' : '') +
       '<div class="cl-top"><button type="button" class="cl-all" id="cl-all" aria-pressed="' + allOn + '"><span class="cl-chk' + (allOn ? ' on' : '') + '">' + icon('check') + '</span>Все</button><span class="cl-cnt">Выбрано: ' + selLines().length + '</span><button type="button" class="cl-clear" id="cl-clear" aria-label="Удалить выбранные" ' + (selLines().length ? '' : 'disabled') + '>' + icon('trash') + '</button></div>' +
@@ -1231,11 +1299,7 @@
       $('[data-sel]', rowEl).addEventListener('click', function () { l.sel = l.sel === false; saveCart(); renderCartList(v, cartLines(), []); });
       $$('[data-q]', rowEl).forEach(function (b) { b.addEventListener('click', function () { l.qty = Math.max(1, Math.min(10, l.qty + +b.getAttribute('data-q'))); saveCart(); renderCartList(v, cartLines(), []); }); });
       $('[data-buy]', rowEl).addEventListener('click', function () { cartLines().forEach(function (x) { x.sel = (x === l); }); saveCart(); goCheckout(); });
-      $('[data-del]', rowEl).addEventListener('click', function () {
-        var idx = cart.indexOf(l); if (idx < 0) return;
-        cart.splice(idx, 1); saveCart(); renderCart();
-        toast('Товар убран из корзины', { label: 'Вернуть', run: function () { cart.splice(idx, 0, l); saveCart(); if (current === 'cart') renderCart(); } });
-      });
+      $('[data-more]', rowEl).addEventListener('click', function (e) { e.stopPropagation(); openCartMenu(l, this); });
     });
     $('#cl-all', v).addEventListener('click', function () { var on = !allOn; cartLines().forEach(function (l) { l.sel = on; }); saveCart(); renderCartList(v, cartLines(), []); });
     $('#cl-clear', v).addEventListener('click', function () {
@@ -1303,7 +1367,7 @@
 
       (t.stock && t.pre ? '<div class="card panel"><div class="panel-head"><h2><span class="n">' + (++n) + '</span>Как получить заказ</h2></div><div class="f" data-f="together"><div class="radios">' +
         radio('together', 'together', form.together, 'Всё вместе', 'Товар из наличия дождётся предзаказа, и вы получите всё сразу') +
-        radio('together', 'separate', form.together, 'Раздельно', 'Сначала получите товары в наличии, предзаказ, когда приедет из Китая') + '</div><span class="err-msg" hidden></span></div></div>' : '') +
+        radio('together', 'separate', form.together, 'Раздельно', 'Сначала получите товары в наличии, а предзаказ позже, когда приедет из Китая') + '</div><span class="err-msg" hidden></span></div></div>' : '') +
       '<div class="card panel"><div class="panel-head"><h2><span class="n">' + (++n) + '</span>Комментарий</h2></div><div class="f"><label class="sr" for="f-comment">Комментарий к заказу</label><textarea id="f-comment" maxlength="500" placeholder="По желанию">' + esc(form.comment) + '</textarea></div></div>' +
       (API.enabled ? '<div class="card panel" id="tokpanel"><div class="panel-head"><h2><span class="n">' + (++n) + '</span>Ониксы и промокод</h2>' + (u ? '<span class="tok">' + tk() + num(u.balance) + '</span>' : '') + '</div>' +
         (u ? (t.maxTok > 0 ? '<div class="tokbox"><div class="tokrow"><span>Списать <b id="tok-n">' + num(t.tok) + '</b> <span id="tok-w">' + tokWord(t.tok) + '</span></span><b id="tok-rub">−' + rub(t.tokRub) + '</b></div>' +
@@ -1488,7 +1552,7 @@
       busy(btn, false);
       if (r.needAccount) { toast(r.error, null, 'warn'); API.setSession(''); setUser(null); requireAuth('cart'); return; }
       if (r.needPhone) { phoneModal(); return; }
-      if (r.network) { confirmBox({ title: 'Сервер не отвечает', text: 'Проверьте интернет и нажмите «Оформить» ещё раз. Корзина сохранена. Если не получается: напишите менеджеру.', actions: [{ label: 'Хорошо', cls: 'btn' }, { label: 'Написать менеджеру', cls: 'btn-ghost', run: function () { window.open(SHOP.managerUrl, '_blank', 'noopener'); } }] }); return; }
+      if (r.network) { confirmBox({ title: 'Сервер не отвечает', text: 'Проверьте интернет и нажмите «Оформить заказ» ещё раз. Корзина сохранена. Если не получается: напишите менеджеру.', actions: [{ label: 'Хорошо', cls: 'btn' }, { label: 'Написать менеджеру', cls: 'btn-ghost', run: function () { window.open(SHOP.managerUrl, '_blank', 'noopener'); } }] }); return; }
       toast(r.error || 'Не получилось оформить заказ', null, 'warn');
       if (/промокод/i.test(r.error || '')) { cartPromo = null; renderCart(); }
     });
@@ -1631,7 +1695,7 @@
     return '<div class="auth-side"><h2>Что даёт аккаунт</h2><ul>' +
       '<li>' + tk('lg') + '<span><b>+' + R.register + ' ониксов</b> сразу за регистрацию</span></li>' +
       '<li>' + tk('lg') + '<span>Ониксы и промокод вместе: <b>до 12%</b> заказа · 1 оникс = 0,3 ₽</span></li>' +
-      '<li>' + tk('lg') + '<span><b>Задания дня</b> по 1 ониксу и до ' + RULES.levels[4].streak + ' за 7 дней подряд</span></li>' +
+      '<li>' + tk('lg') + '<span><b>Ежедневные задания</b>: по 1 ониксу, и до ' + RULES.levels[4].streak + ' за 7 дней подряд</span></li>' +
       '<li>' + tk('lg') + '<span><b>Программа лояльности</b>: Бронза → Серебро → Золото → Платина → Алмаз</span></li>' +
       '<li>' + tk('lg') + '<span><b>Посылка</b>: ониксы, промокоды, рамки для аватара</span></li>' +
       '<li>' + tk('lg') + '<span><b>Статусы заказов</b>: от выкупа в Китае до получения</span></li>' +
@@ -1908,7 +1972,6 @@
   }
   function framesModal() {
     var u = acct.user, prev = u.frame && u.frame !== 'base' ? u.frame : 'lvl-' + u.level.key;
-    var RAR = RULES.rarity || [];
     function frameOf(id) { return RULES.frames.filter(function (x) { return x.id === id; })[0] || RULES.frames[0]; }
     function own(f) { return f.id === 'base' || u.frames.indexOf(f.id) >= 0; }
     function lockText(f) {
@@ -1917,28 +1980,19 @@
       if (f.src === 'game') return f.how;
       return 'Выпадает только в «Посылке с сюрпризом»';
     }
-    function badge(f) {
-      if (f.src === 'wheel') return '<em class="fr-r r' + f.r + '">' + esc(RAR[f.r].name) + '</em>';
-      if (f.src === 'level') return '<em class="fr-r lv">Статус</em>';
-      if (f.src === 'ach' || f.src === 'game') return '<em class="fr-r ex">Эксклюзив</em>';
-      return '';
-    }
     function tile(f) {
       var ok = own(f), on = u.frame === f.id;
-      return '<button type="button" class="fr-it' + (ok ? '' : ' lk') + (on ? ' on' : '') + '" data-frame="' + f.id + '" aria-pressed="false" aria-label="' + esc(f.name) + (ok ? '' : ', закрыта') + '">' + ava({ name: u.name, avatar: u.avatar, frame: f.id }, 'md') + (ok ? '' : '<i class="fr-lock">' + icon('lock') + '</i>') + (on ? '<i class="fr-on">' + icon('check') + '</i>' : '') + '<span>' + esc(f.name) + '</span>' + badge(f) + '</button>';
+      return '<button type="button" class="fr-it' + (ok ? '' : ' lk') + (on ? ' on' : '') + '" data-frame="' + f.id + '" aria-pressed="false" aria-label="' + esc(f.name) + (ok ? '' : ', закрыта') + '">' + ava({ name: u.name, avatar: u.avatar, frame: f.id }, 'md') + (ok ? '' : '<i class="fr-lock">' + icon('lock') + '</i>') + (on ? '<i class="fr-on">' + icon('check') + '</i>' : '') + '<span>' + esc(f.name) + '</span></button>';
     }
-    var lv = RULES.frames.filter(function (f) { return f.src === 'level'; });
-    var wh = RULES.frames.filter(function (f) { return f.src === 'wheel'; }).sort(function (a, b) { return a.r - b.r; });
-    var ex = RULES.frames.filter(function (f) { return f.src === 'ach' || f.src === 'game'; });
-    var cnt = function (list) { return list.filter(own).length + ' из ' + list.length; };
+    // одна общая коллекция: все рамки подряд, без разделов и пометок редкости
+    var all = RULES.frames.filter(function (f) { return f.id !== 'base'; });
     var md = openModal(modalHead('Рамка аватара') + '<div class="fr-prev" id="fr-prev"></div>' +
-      '<section class="fr-sec"><div class="fr-h"><b>Статусы</b><span>' + cnt(lv) + '</span></div><p class="fr-note">Каждый статус открывает только свою рамку</p><div class="fr-grid">' + lv.map(tile).join('') + '</div></section>' +
-      '<section class="fr-sec"><div class="fr-h"><b>Из посылки с сюрпризом</b><span>' + cnt(wh) + '</span></div><p class="fr-note">От обычных к легендарным. Чем реже, тем ярче и живее</p><div class="fr-grid">' + wh.map(tile).join('') + '</div></section>' +
-      '<section class="fr-sec fr-ex"><div class="fr-h"><b>За достижения</b><span>' + cnt(ex) + '</span></div><p class="fr-note">Эксклюзивные рамки за достижения в магазине и в играх</p><div class="fr-grid">' + ex.map(tile).join('') + '</div></section>', { cls: 'sm fr-md' });
+      '<div class="fr-h"><b>Коллекция</b><span>' + all.filter(own).length + ' из ' + all.length + '</span></div>' +
+      '<div class="fr-grid">' + all.map(tile).join('') + '</div>', { cls: 'sm fr-md' });
     function show(id) {
       prev = id; var f = frameOf(id), ok = own(f), wearing = (u.frame || 'base') === f.id;
       $$('[data-frame]', md).forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-frame') === id)); });
-      $('#fr-prev', md).innerHTML = ava({ name: u.name, avatar: u.avatar, frame: f.id }, 'lg') + '<div class="fr-t"><b>' + esc(f.name) + '</b>' + badge(f) + '<span class="small">' + (ok ? (wearing ? 'Сейчас надета' : 'Открыта у вас') : esc(lockText(f))) + '</span>' +
+      $('#fr-prev', md).innerHTML = ava({ name: u.name, avatar: u.avatar, frame: f.id }, 'lg') + '<div class="fr-t"><b>' + esc(f.name) + '</b><span class="small">' + (ok ? (wearing ? 'Сейчас надета' : 'Открыта у вас') : esc(lockText(f))) + '</span>' +
         '<div class="fr-acts"><button class="btn btn-sm" type="button" id="fr-wear"' + (ok && !wearing ? '' : ' disabled') + '>' + (wearing ? 'Надета' : ok ? 'Надеть' : 'Пока закрыта') + '</button>' +
         ((u.frame || 'base') !== 'base' ? '<button class="btn btn-sm btn-ghost" type="button" id="fr-off">Снять</button>' : '') + '</div></div>';
       var w = $('#fr-wear', md); if (w) w.addEventListener('click', function () { wear(f.id, 'Рамка «' + f.name + '» надета'); });
@@ -2104,7 +2158,7 @@
     if (p.c === 'tok') h = rlBigIc('i-token', 150, 6) + '<div class="rl-num" style="top:160px;font-size:' + (n >= 1000 ? 58 : 66) + 'px">+' + n + '</div><div class="rl-cap" style="top:246px">' + tokWord(n) + '</div>';
     else if (p.c === 'xp') h = rlBigIc('rl-xp', 146, 8) + '<div class="rl-num" style="top:160px;font-size:66px">+' + n + '</div><div class="rl-cap" style="top:246px">опыт XP</div>';
     else if (p.c === 'pr') h = rlBigIc('rl-ticket', 146, 8) + '<div class="rl-num" style="top:160px;font-size:66px">−' + n + '%</div><div class="rl-cap" style="top:246px">скидка по промокоду</div>';
-    else if (p.c === 'fr') h = rlBigIc(p.rare ? 'rl-frame2' : 'rl-frame', 170, 10) + '<div class="rl-cap" style="top:214px">' + (pr && pr.frameName ? 'рамка «' + esc(pr.frameName) + '»' : p.rare ? 'редкая рамка для аватара' : 'рамка для аватара') + '</div>';
+    else if (p.c === 'fr') h = rlBigIc(p.rare ? 'rl-frame2' : 'rl-frame', 170, 10) + '<div class="rl-cap" style="top:214px">' + (pr && pr.frameName ? 'рамка «' + esc(pr.frameName) + '»' : p.rare ? 'особая рамка для аватара' : 'рамка для аватара') + '</div>';
     else if (p.c === 're') h = rlBigIc('rl-again', 124, 6) + '<div class="rl-num" style="top:138px;font-size:56px">×' + n + '</div><div class="rl-cap" style="top:222px">' + (n === 1 ? 'бесплатная посылка' : 'бесплатные посылки') + '</div>';
     else h = rlBigIc('rl-empty', 150, 20) + '<div class="rl-cap" style="top:206px">Пусто, в другой раз</div>';
     return rlSlide(c, h);
@@ -2467,11 +2521,11 @@
     track('info');
     var R = RULES.reward, L = RULES.levels;
     var order = [
-      faqItem('Как заказать: по шагам', '<ol class="faq-ol"><li><b>Выберите вещь.</b> Откройте карточку, пролистайте фото, посмотрите замеры и характеристики.</li><li><b>Размер и цвет.</b> Нажмите нужный размер: под ним появятся замеры именно этого размера. Цвет выбирайте по фото: на карточке показаны реальные оттенки.</li><li><b>«В корзину».</b> В корзине можно изменить количество, добавить пожелание к каждой вещи (например, «хочу примерить перед покупкой») или убрать лишнее.</li><li><b>Данные для связи.</b> Имя, телефон и Telegram берутся из кабинета, заполните их там, иначе заказ не уйдёт. Это нужно, чтобы менеджер мог вам написать.</li><li><b>Город и способ получения.</b> Для товаров в наличии, самовывоз, Авито Доставка или курьер. Для предзаказа: Авито, СДЭК или личная встреча.</li><li><b>Ониксы и промокод.</b> Это последний шаг перед оформлением. Скидка пересчитается сразу, итог виден в корзине.</li><li><b>«Оформить заказ».</b> Заказ получит номер, уйдёт менеджеру, а в «Моих заказах» появится его статус. Дальше менеджер пишет вам в Telegram и присылает реквизиты.</li></ol><p class="small">Важно: пока менеджер не подтвердил заказ и не пришла оплата, вещь за вами не закреплена.</p>'),
+      faqItem('Как заказать: по шагам', '<ol class="faq-ol"><li><b>Выберите вещь.</b> Откройте карточку, пролистайте фото, посмотрите замеры и характеристики.</li><li><b>Размер и цвет.</b> Нажмите нужный размер: под ним появятся замеры именно этого размера. Цвет выбирайте по фото: на карточке показаны реальные оттенки.</li><li><b>«В корзину».</b> В корзине можно изменить количество, добавить пожелание к каждой вещи (например, «хочу примерить перед покупкой») или убрать лишнее.</li><li><b>Данные для связи.</b> Имя, телефон и Telegram берутся из кабинета, заполните их там, иначе заказ не уйдёт. Это нужно, чтобы менеджер мог вам написать.</li><li><b>Город и способ получения.</b> Для товаров в наличии: самовывоз, Авито Доставка или курьер. Для предзаказа: Авито, СДЭК или личная встреча.</li><li><b>Ониксы и промокод.</b> Это последний шаг перед оформлением. Скидка пересчитается сразу, итог виден в корзине.</li><li><b>«Оформить заказ».</b> Заказ получит номер, уйдёт менеджеру, а в «Моих заказах» появится его статус. Дальше менеджер пишет вам в Telegram и присылает реквизиты.</li></ol><p class="small">Важно: пока менеджер не подтвердил заказ и не пришла оплата, вещь за вами не закреплена.</p>'),
       faqItem('Что такое предзаказ и чем он отличается от «В наличии»', '<p><b>В наличии</b>: вещь уже в Москве. Её можно забрать самому или отправить по России через Авито Доставку, обычно в течение пары дней.</p><p><b>Предзаказ</b>: вещь ещё в Китае. Мы выкупаем её у поставщика только после вашего заказа и оплаты, проверяем и привозим. Так цена ниже, а выбор шире, но ждать дольше.</p><p>Стоимость доставки из Китая <b>уже включена в стоимость</b> предзаказа: отдельно за неё платить не нужно.</p><p><a href="' + SHOP.preorderUrl + '" target="_blank" rel="noopener">Подробные условия предзаказа</a></p>'),
-      faqItem('Этапы предзаказа: что происходит с вашей вещью', '<ol class="faq-ol"><li><b>Оформлен.</b> Заказ создан и отправлен менеджеру. Он связывается с вами, уточняет размер, цвет и детали, присылает реквизиты.</li><li><b>Выкуплен (в течение 12 часов после оплаты).</b> Мы оплачиваем вещь у поставщика в Китае и закрепляем её за вами.</li><li><b>В пути до склада.</b> Поставщик отправляет вещь на склад в Китае, обычно до 7 дней, затем 3-5 дней дорога до склада.</li><li><b>На складе в Китае.</b> Вещь приходит, её проверяют на брак и соответствие описанию. На это уходит 1-2 дня. Вам отправляют фотоотчёт: основной бесплатно.</li><li><b>Едет в Россию.</b> После проверки вещь отправляется из Китая. Фурой это 18-32 дня от склада.</li><li><b>Едет к вам.</b> Вещь в России: её передают в выбранный способ получения. СДЭК, Авито Доставка или личная встреча.</li><li><b>Получен.</b> Вы забрали заказ. Если оставите отзыв, это поможет другим покупателям.</li></ol>'),
+      faqItem('Этапы предзаказа: что происходит с вашей вещью', '<ol class="faq-ol"><li><b>Оформлен.</b> Заказ создан и отправлен менеджеру. Он связывается с вами, уточняет размер, цвет и детали, присылает реквизиты.</li><li><b>Выкуплен (в течение 12 часов после оплаты).</b> Мы оплачиваем вещь у поставщика в Китае и закрепляем её за вами.</li><li><b>В пути до склада.</b> Поставщик отправляет вещь на склад в Китае, обычно до 7 дней, затем 3-5 дней дорога до склада.</li><li><b>На складе в Китае.</b> Вещь приходит, её проверяют на брак и соответствие описанию. На это уходит 1-2 дня. Вам отправляют фотоотчёт, основной бесплатный.</li><li><b>Едет в Россию.</b> После проверки вещь отправляется из Китая. Фурой это 18-32 дня от склада.</li><li><b>Едет к вам.</b> Вещь в России, её передают выбранным способом: СДЭК, Авито Доставка или личная встреча.</li><li><b>Получен.</b> Вы забрали заказ. Если оставите отзыв, это поможет другим покупателям.</li></ol>'),
       faqItem('Сколько ждать предзаказ', '<p>Складывается из этапов: выкуп до 12 часов, поставщик до 7 дней, дорога до склада 3-5 дней, проверка 1-2 дня и доставка 18-32 дня. В сумме обычно <b>от 3,5 до 6,5 недель</b>.</p><p>Быстрее самолётом: это отдельная услуга, её условия и стоимость согласует менеджер. Прямо на сайте самолётом заказать нельзя.</p><p class="small">Сроки примерные: на них влияют праздники в Китае, загрузка перевозчика и погода. Если что-то задерживается, менеджер напишет сам.</p>'),
-      faqItem('Размеры и замеры', '<ul><li>Если у вещи несколько размеров, под выбранным размером показываются его замеры: грудь, длина, плечи, рукав, в сантиметрах.</li><li>Замеры: это ширина самой вещи, не обхват тела. Приложите к себе похожую вещь из шкафа и сравните.</li><li>Если сомневаетесь между двумя размерами, напишите менеджеру, он подскажет по вашим параметрам.</li><li>Разница в замерах до 1-2 см допустима: вещи измеряют вручную.</li></ul>'),
+      faqItem('Размеры и замеры', '<ul><li>Если у вещи несколько размеров, под выбранным размером показываются его замеры: грудь, длина, плечи, рукав, в сантиметрах.</li><li>Замеры показывают ширину самой вещи, а не обхват тела. Приложите к себе похожую вещь из шкафа и сравните.</li><li>Если сомневаетесь между двумя размерами, напишите менеджеру, он подскажет по вашим параметрам.</li><li>Разница в замерах до 1-2 см допустима: вещи измеряют вручную.</li></ul>'),
       faqItem('Цвета и фото', '<ul><li>Цвета на карточке показаны реальными оттенками (болотный, кремовый, бирюзовый и т. д.).</li><li>Оттенок на экране может немного отличаться от настоящего из-за яркости и настроек телефона.</li><li>Фотографии берутся из нашего канала. Если нужен дополнительный фотоотчёт перед отправкой, он оплачивается по тарифу логиста (15 ¥ за позицию), основной бесплатный.</li></ul>'),
       faqItem('Доставка из Китая', '<ul><li>Фура, основной способ, занимает 18-32 дня от склада в Китае.</li><li>Стоимость доставки из Китая уже включена в стоимость товара.</li><li>Самолётом быстрее, но только через менеджера, он рассчитает и согласует.</li><li>Перед отправкой вещь проверяют на складе и фотографируют.</li></ul>'),
       faqItem('Получение по России', '<ul><li><b>СДЭК до пункта выдачи</b>: оплачивается отдельно, по тарифу СДЭК.</li><li><b>Авито Доставка</b>: по Москве и в другой город, с минимальной стоимостью.</li><li><b>Личная встреча</b>: в Москве бесплатно, время согласуйте с менеджером.</li><li>Номер отслеживания менеджер пришлёт в Telegram.</li></ul>'),
@@ -2483,11 +2537,11 @@
     ];
     var bonus = API.enabled ? [
       faqItem('Где взять ониксы', '<ul><li>+' + R.register + ' за регистрацию</li><li>+' + R.checkin + ' за вход каждый день и от ' + L[0].streak + ' до ' + L[4].streak + ' за 7 дней подряд, зависит от уровня</li><li>Задания: ежедневные по 3 оникса, еженедельные по 25, ежемесячные от 40</li><li>Посылка</li><li>+' + R.referrer + ' за друга и +' + R.birthday + ' в день рождения</li></ul><p>Ониксы не сгорают и не передаются другим людям. Пока на балансе больше ' + num(RULES.balanceCap) + ' ониксов, вход, задания и посылка дают опыт вместо ониксов (2 оникса = 1 XP). Ониксы за заказы, отзывы, друзей и день рождения начисляются всегда.</p>'),
-      faqItem('Промокоды', '<p>Личные промокоды выпадают в посылке, с уровня «Золото», −1,5% каждый месяц, на «Алмазе», ещё 3 по −2,5%. Они появляются в кабинете, а в корзине выбираются последним шагом. Каждый действует на один заказ.</p><p>Промокоды магазина вводятся вручную в поле «Промокод» в корзине.</p>'),
+      faqItem('Промокоды', '<p>Личные промокоды выпадают в посылке. С уровня «Золото» раз в месяц даётся промокод −1,5%, а на «Алмазе» ещё 3 промокода по −2,5% в месяц. Они появляются в кабинете, а в корзине выбираются последним шагом. Каждый действует на один заказ.</p><p>Промокоды магазина вводятся вручную в поле «Промокод» в корзине.</p>'),
       faqItem('Как зарабатывается XP', '<ul><li>Полученный заказ: 1 XP за каждые 10 ₽ (когда статус «Получен»)</li><li>Ежедневный вход: +' + RULES.xpReward.checkin + ' XP</li><li>Задания: ежедневные +10 XP, еженедельные +60 XP, ежемесячные +180 XP</li><li>Посылка: приз +50 XP</li></ul>'),
-      faqItem('Как работают уровни', '<p>Уровень растёт от XP, опыта за месяц. 1-го числа XP обнуляется, и уровень начинается заново с Бронзы.</p><button class="btn btn-ghost btn-sm" type="button" id="info-levels">Привилегии уровней</button>'),
+      faqItem('Как работают уровни', '<p>Уровень зависит от XP (опыта), набранного за месяц. 1-го числа XP обнуляется, и уровень начинается заново с Бронзы.</p><button class="btn btn-ghost btn-sm" type="button" id="info-levels">Привилегии уровней</button>'),
       faqItem('Задания: когда обновляются', '<ul><li>Ежедневные: в 00:00 по Москве. Простые: ониксы и XP, чем выше уровень, тем их больше.</li><li>Еженедельные: в понедельник. «Оформить заказ» засчитывается сразу при оформлении.</li><li>Ежемесячные: 1-го числа. Заказы засчитываются, когда статус «Получен».</li></ul>'),
-      faqItem('Посылка: как это работает', '<ul><li>1 бесплатная посылка каждый день на любом уровне, на «Алмазе», 3. Не копятся: обновляются в 00:00 по Москве.</li><li>Дальше посылка стоит ' + RULES.spinCost + ' ониксов. «Ещё раз» даёт бесплатные посылки, они не сгорают.</li><li>На «Платине» и «Алмазе» «Пусто» выпадает реже.</li><li>Призы и шансы у бесплатной и платной посылки одинаковые.</li><li>Ониксы из посылки сразу на балансе, промокод выбирается в корзине, XP идут в уровень месяца.</li></ul>')
+      faqItem('Посылка: как это работает', '<ul><li>1 бесплатная посылка каждый день на любом уровне, на «Алмазе» их 3. Не копятся: обновляются в 00:00 по Москве.</li><li>Дальше посылка стоит ' + RULES.spinCost + ' ониксов. «Ещё раз» даёт бесплатные посылки, они не сгорают.</li><li>На «Платине» и «Алмазе» «Пусто» выпадает реже.</li><li>Призы и шансы у бесплатной и платной посылки одинаковые.</li><li>Ониксы из посылки сразу на балансе, промокод выбирается в корзине, XP идут в уровень месяца.</li></ul>')
     ] : [];
     var shop = [faqItem('Магазин и связь', contactsCard()), faqItem('Мы в соцсетях', socialCard())];
     $('#v-info').innerHTML = '<div class="view-head"><div><h1>Частые вопросы</h1></div></div>' +

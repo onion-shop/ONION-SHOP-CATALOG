@@ -2233,32 +2233,22 @@ html.dr-open{overflow:hidden}
 /* ids: lvl-bronze lvl-silver lvl-gold lvl-platinum lvl-diamond mint rose violet sky lime amber coral ice neon gold sunset aurora rainbow cosmos flame ach-china ach-loyal ach-critic ach-friend gz-1 gz-2 rb-1 rb-2 */
 /* v49: коллекция рамок по группам */
 .fr-md .modal-body,.modal.fr-md{max-width:520px}
-.fr-sec{margin-top:14px}
-.fr-h{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.fr-h{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin:14px 0 8px}
 .fr-h b{font:800 .98rem var(--f-d);color:var(--ink)}
 .fr-h span{font-size:.8rem;color:var(--ink-3);font-variant-numeric:tabular-nums}
-.fr-note{margin:2px 0 8px;font-size:.8rem;color:var(--ink-3)}
-.fr-ex{padding:12px 10px 10px;border-radius:18px;background:linear-gradient(160deg,rgba(255,200,61,.14),rgba(67,201,227,.08));box-shadow:inset 0 0 0 1px rgba(217,162,46,.35)}
 .fr-it{grid-template-rows:auto auto auto;align-content:start;min-width:0}
-.fr-it>span:not(.ava){max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fr-it>span:not(.ava){max-width:100%;white-space:normal;text-wrap:balance;overflow-wrap:normal;hyphens:manual;line-height:1.15;font-size:11px;text-align:center;min-height:2.3em}
 .fr-it.on{color:var(--ink)}
 .fr-it.lk .ava{filter:saturate(.55);opacity:.6}
 .fr-it.lk .ava::after{animation:none}
 .fr-on{position:absolute;right:calc(50% - 32px);top:44px;width:20px;height:20px;border-radius:50%;display:grid;place-items:center;background:var(--accent);color:#fff;box-shadow:0 0 0 2px var(--card)}
 .fr-on .i{width:12px;height:12px}
-.fr-r{font-style:normal;font-size:9.5px;font-weight:800;letter-spacing:.02em;padding:2px 6px;border-radius:99px;line-height:1.3;background:var(--tile-2);color:var(--ink-3);white-space:nowrap}
-.fr-r.r1{background:#eef1f5;color:#5f6b7d}.fr-r.r2{background:#e3f7ec;color:#1f8a52}.fr-r.r3{background:#e2effd;color:#1d63c7}.fr-r.r4{background:#efe7ff;color:#6b3fd6}.fr-r.r5{background:#fff3d6;color:#a8690a}
-.fr-r.lv{background:var(--accent-soft);color:var(--accent-ink)}.fr-r.ex{background:#fff1cc;color:#946200}
-:root[data-theme="dark"] .fr-r.r1{background:rgba(255,255,255,.08);color:#b9c4d4}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .fr-r.r1{background:rgba(255,255,255,.08);color:#b9c4d4}}
-.fr-t .fr-r{justify-self:start;font-size:10.5px}
-.fr-acts{display:flex;gap:8px;flex-wrap:wrap}
+:root[data-theme="dark"] @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .fr-t .fr-acts{display:flex;gap:8px;flex-wrap:wrap}
 @media (max-width:420px){.fr-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 /* v49: статус на карточке всегда в одну строку, как «В наличии» и «Предзаказ» */
 .pcard .tags .badge{white-space:nowrap;text-wrap:nowrap;height:24px;min-height:0;padding-top:0;padding-bottom:0;line-height:1}
 @container (max-width:200px){.pcard .tags .badge{height:22px;font-size:10.5px;letter-spacing:-.01em;padding:0 7px 0 6px;gap:4px}.pcard .tags{max-width:calc(100% - 44px)}}
-.pcard .tags .badge .b-s{display:none}
-@container (max-width:168px){.pcard .tags .badge-out .b-l{display:none}.pcard .tags .badge-out .b-s{display:inline}}
+@container (max-width:168px){.pcard .tags .badge{font-size:10px;letter-spacing:-.02em;padding:0 6px 0 5px;gap:3px}.pcard .tags .badge::before{width:5px;height:5px;box-shadow:none}.pcard .tags{max-width:calc(100% - 38px)}.pcard .fav{width:28px;height:28px;right:5px;top:5px}.pcard .fav .i{width:16px;height:16px}}
 /* v49: раздел «Игры» */
 .gm-grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
 .gm-big{padding:0;overflow:hidden;gap:0;transition:transform .2s var(--ease),box-shadow .2s}
@@ -2271,3 +2261,17 @@ html.dr-open{overflow:hidden}
 .gm-rub .gm-play{background:linear-gradient(140deg,#f08a3c,#a0441e)}
 @media (max-width:960px){.gm-grid3{grid-template-columns:repeat(2,minmax(0,1fr))}.gm-grid3 .gm-p{grid-column:1/-1}}
 @media (max-width:620px){.gm-grid3{grid-template-columns:minmax(0,1fr)}}
+
+/* v50: меню ⋮ в карточке товара корзины */
+.cl-more{position:absolute;right:6px;top:6px;z-index:2;width:38px;height:38px;border:0;border-radius:12px;background:transparent;color:var(--ink-3);display:grid;place-items:center;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.cl-more .i{width:22px;height:22px;fill:currentColor;stroke:none}
+.cl-more:hover,.cl-more[aria-expanded="true"]{background:var(--tile);color:var(--ink)}
+.cl .cl-pr{padding-right:34px}
+.cl-mbg{position:fixed;inset:0;z-index:94;background:transparent}
+.cl-menu{position:fixed;z-index:95;width:max-content;min-width:236px;max-width:calc(100vw - 16px);padding:6px;border-radius:18px;background:var(--card);box-shadow:var(--shadow-lg),0 0 0 1px rgba(128,140,170,.18);animation:clMenu .16s var(--ease,ease-out);transform-origin:top right}
+.cl-mi{display:flex;align-items:center;gap:12px;width:100%;min-height:48px;padding:0 14px;border:0;border-radius:12px;background:transparent;color:var(--ink);font:inherit;font-size:15.5px;text-align:left;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.cl-mi .i{width:22px;height:22px;flex:none;color:var(--accent)}
+.cl-mi:hover,.cl-mi:focus-visible{background:var(--tile);outline:0}
+.cl-mi.danger,.cl-mi.danger .i{color:var(--red)}
+@keyframes clMenu{from{opacity:0;transform:scale(.94) translateY(-4px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.cl-menu{animation:none}}

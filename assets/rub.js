@@ -646,7 +646,7 @@
     var tutor = GK.tutor(S, [
       { id: 'hi', t: 'Мир после катастрофы. Это ваш лагерь, последний рубеж. Пора выживать.', ok: 'Начнём', top: true },
       { id: 'move', t: 'Идите из лагеря к деревьям: джойстик слева, стрелки или нажатие на землю.', at: function () { return nearestNodeScr('wood'); }, done: function () { return Math.hypot(hero.x, hero.y) > R_CAMP + 20 || (st.inv.wood || 0) > 0; } },
-      { id: 'wood', t: 'Встаньте рядом с деревом: герой рубит сам. Наберите 6 дерева.', at: function () { return nearestNodeScr('wood'); }, done: function () { return (st.inv.wood || 0) + (st.store.wood || 0) >= 46 || st.bld.bench > 0; } },
+      { id: 'wood', t: 'Встаньте рядом с деревом: герой рубит сам. Наберите 6 единиц дерева.', at: function () { return nearestNodeScr('wood'); }, done: function () { return (st.inv.wood || 0) + (st.store.wood || 0) >= 46 || st.bld.bench > 0; } },
       { id: 'stone', t: 'Теперь камень: 4 штуки.', at: function () { return nearestNodeScr('stone'); }, done: function () { return (st.inv.stone || 0) + (st.store.stone || 0) >= 34 || st.bld.bench > 0; } },
       { id: 'home', t: 'Вернитесь в лагерь: добыча сама сложится на склад.', at: function () { return scr(0, 60); }, done: function () { return !invN(); } },
       { id: 'bench', t: 'Нажмите на место верстака и постройте его.', at: function () { return scr(BLD.bench.x, BLD.bench.y - 20); }, done: function () { return st.bld.bench > 0; } },

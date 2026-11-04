@@ -25,24 +25,24 @@ var OnionCore = (function () {
     xpReward: { checkin: 10 },
     levels: [
       { key: 'bronze', name: 'Бронза', alias: ['новичок'], min: 0, tasks: 4, streak: 10, spins: 1, priority: '', perks: [
-        ['4 задания в день', 'Плюс недельные и месячные'],
+        ['Доступны 4 задания', 'Ежедневные, а также еженедельные и ежемесячные'],
         ['1 бесплатная посылка в день', 'Обновляется в 00:00 по Москве'],
         ['10 ониксов за серию 7 дней', 'Отмечайтесь 7 дней подряд'],
         ['Рамка «Бронза»', 'Доступна со статусом Бронза']] },
       { key: 'silver', name: 'Серебро', alias: ['модник'], min: 500, tasks: 5, streak: 12, spins: 1, priority: '', perks: [
-        ['5 заданий в день', 'На одно больше, чем на Бронзе'],
+        ['Доступны 5 заданий', 'На одно больше, чем на Бронзе'],
         ['1 бесплатная посылка в день', 'Обновляется в 00:00 по Москве'],
         ['12 ониксов за серию 7 дней', 'Вместо 10 на Бронзе'],
         ['Рамка «Серебро»', 'Доступна со статусом Серебро']] },
       { key: 'gold', name: 'Золото', alias: ['профи'], min: 1500, tasks: 6, streak: 15, spins: 1, priority: 'Повышенный', perks: [
-        ['6 заданий в день', 'Четыре обычных и два особых'],
+        ['Доступны 6 заданий', 'На одно больше, чем на Серебре'],
         ['1 бесплатная посылка в день', 'Обновляется в 00:00 по Москве'],
         ['15 ониксов за серию 7 дней', 'Вместо 12 на Серебре'],
         ['Приоритет заказов', 'Менеджер видит пометку «Приоритет»'],
         ['Промокод −1,5% раз в месяц', 'На одну категорию, выпадает случайно'],
         ['Рамка «Золото»', 'Доступна со статусом Золото']] },
       { key: 'platinum', name: 'Платина', alias: ['эксперт'], min: 4000, tasks: 6, streak: 17, spins: 1, priority: 'Высокий', boost: 1, pack: 'pre10', perks: [
-        ['6 заданий в день', 'Как на Золоте'],
+        ['Доступны 6 заданий', 'Как на Золоте'],
         ['1 бесплатная посылка в день', 'Обновляется в 00:00 по Москве'],
         ['17 ониксов за серию 7 дней', 'Вместо 15 на Золоте'],
         ['Высокий приоритет заказов', 'Менеджер берёт их раньше'],
@@ -51,7 +51,7 @@ var OnionCore = (function () {
         ['−10% на упаковку предзаказа', 'Раз в месяц, отмечается в корзине'],
         ['Рамка «Платина»', 'Доступна со статусом Платина']] },
       { key: 'diamond', name: 'Алмаз', alias: ['икона'], min: 8000, tasks: 6, streak: 20, spins: 3, priority: 'Наивысший', boost: 2, pack: 'free', perks: [
-        ['6 заданий в день', 'Как на Платине'],
+        ['Доступны 6 заданий', 'Как на Платине'],
         ['3 бесплатные посылки в день', 'Шансы выше, чем на Платине'],
         ['20 ониксов за серию 7 дней', 'Вместо 17 на Платине'],
         ['Наивысший приоритет заказов', 'Менеджер берёт их первыми'],
@@ -93,7 +93,7 @@ var OnionCore = (function () {
       { per: 'd', key: 'acc', title: 'Посмотреть аксессуары', hint: 'Любой аксессуар', m: 'viewcat', cats: ['accessories'], n: 1, tk: 3, xp: 10 },
       { per: 'd', key: 'spin', title: 'Открыть посылку', hint: 'Бесплатная посылка раз в день', m: 'spin', n: 1, tk: 3, xp: 10 },
 
-      { per: 'w', key: 'w_days', title: 'Заходить 5 дней за неделю', hint: 'Отмечайтесь кнопкой «Я зашёл»', m: 'checkin', n: 5, tk: 25, xp: 60 },
+      { per: 'w', key: 'w_days', title: 'Заходить 5 дней за неделю', hint: 'Нажимайте «Отметиться» в кабинете', m: 'checkin', n: 5, tk: 25, xp: 60 },
       { per: 'w', key: 'w_view20', title: 'Посмотреть 20 разных товаров', hint: 'За неделю', m: 'view', n: 20, tk: 25, xp: 60 },
       { per: 'w', key: 'w_fav5', title: 'Добавить 5 товаров в избранное', hint: 'Отложите то, что понравилось', m: 'fav', n: 5, tk: 25, xp: 60 },
       { per: 'w', key: 'w_cart3', title: 'Положить в корзину 3 товара', hint: 'Три разных товара', m: 'cart', n: 3, tk: 25, xp: 60 },
@@ -119,9 +119,9 @@ var OnionCore = (function () {
       { per: 'm', key: 'm_sum50', title: 'Получить заказы на 50 000 ₽', hint: 'Сумма «К оплате», статус «Получен»', m: 'recvSum', n: 50000, tk: 200, xp: 180, grp: 'recv' },
       { per: 'm', key: 'm_ord3', title: 'Оформить 3 заказа за месяц', hint: 'Достаточно оформить', m: 'ordN', n: 3, tk: 40, xp: 180 },
       { per: 'm', key: 'm_both', title: 'Заказать и из наличия, и из Китая', hint: 'Один заказ из «В наличии» и один предзаказ', m: 'both', n: 1, tk: 40, xp: 180 },
-      { per: 'm', key: 'm_days20', title: 'Заходить 20 дней за месяц', hint: 'Отмечайтесь кнопкой «Я зашёл»', m: 'checkin', n: 20, tk: 80, xp: 180 },
+      { per: 'm', key: 'm_days20', title: 'Заходить 20 дней за месяц', hint: 'Нажимайте «Отметиться» в кабинете', m: 'checkin', n: 20, tk: 80, xp: 180 },
       { per: 'm', key: 'm_streak14', title: 'Серия входов 14 дней', hint: 'Без пропусков', m: 'streak', n: 14, tk: 80, xp: 180 },
-      { per: 'm', key: 'm_ref2', title: 'Пригласить 2 друзей', hint: 'Друзья по вашей ссылке получают первый заказ от 1 000 ₽', m: 'ref', n: 2, tk: 80, xp: 180 },
+      { per: 'm', key: 'm_ref2', title: 'Пригласить 2 друга', hint: 'Друзья по вашей ссылке получают первый заказ от 1 000 ₽', m: 'ref', n: 2, tk: 80, xp: 180 },
       { per: 'm', key: 'm_spin15', title: 'Открыть 15 посылок', hint: 'За месяц', m: 'spin', n: 15, tk: 80, xp: 180 },
       { per: 'm', key: 'm_weekly', title: 'Выполнить 6 еженедельных заданий', hint: 'Считаются выполненные за месяц', m: 'wDone', n: 6, tk: 80, xp: 180 },
       { per: 'm', key: 'm_view100', title: 'Посмотреть 100 товаров', hint: 'За месяц', m: 'view', n: 100, tk: 80, xp: 180 },
@@ -146,7 +146,7 @@ var OnionCore = (function () {
       { id: 'xp300', label: '+300 XP', sub: 'к уровню', w: 50, xp: 300 },
       { id: 'xp500', label: '+500 XP', sub: 'к уровню', w: 10, xp: 500 },
       { id: 'frame', label: 'Рамка', sub: 'для аватара', w: 330, frame: true },
-      { id: 'frame2', label: 'Редкая рамка', sub: 'эпическая или легендарная', w: 25, frame: 'rare' },
+      { id: 'frame2', label: 'Особая рамка', sub: 'выпадает реже остальных призов', w: 25, frame: 'rare' },
       { id: 'promo', label: '−3%', sub: 'промокод', w: 190, promo: 3 },
       { id: 'promo5', label: '−5%', sub: 'промокод', w: 20, promo: 5 },
       { id: 're1', label: 'Ещё раз', sub: '×1', w: 330, spins: 1 },
@@ -194,7 +194,7 @@ var OnionCore = (function () {
       { id: 'gz-1', name: 'Накладная', src: 'game', game: 'gruz', how: 'Грузомания: склад 5 уровня' },
       { id: 'gz-2', name: 'Грузовой хаб', src: 'game', game: 'gruz', how: 'Грузомания: склад 10 уровня' },
       { id: 'rb-1', name: 'Застава', src: 'game', game: 'rub', how: 'Последний рубеж: победить первого босса' },
-      { id: 'rb-2', name: 'Последний рубеж', src: 'game', game: 'rub', how: 'Последний рубеж: победить всех шесть боссов' }
+      { id: 'rb-2', name: 'Последний рубеж', src: 'game', game: 'rub', how: 'Последний рубеж: победить всех 6 боссов' }
     ],
     rarity: [null, { name: 'Обычная', w: 40 }, { name: 'Необычная', w: 28 }, { name: 'Редкая', w: 18 }, { name: 'Эпическая', w: 10 }, { name: 'Легендарная', w: 4 }],
     // достижения: только значки и рамки, без ониксов; однажды полученные не пропадают
@@ -517,7 +517,7 @@ var OnionCore = (function () {
     orders.forEach(function (o) { o.reviewed = (o.items || []).filter(function (it) { return rk.indexOf(o.no + '|' + it.id) >= 0; }).map(function (it) { return it.id; }); });
     var waits = (db.waitsOf ? db.waitsOf(u.id) : []).map(function (w) { var pr = db.product ? db.product(w.productId) : null; return { id: w.productId, title: w.title, ready: !!(pr && pr.status !== 'out' && pr.status !== 'sold') }; });
     return {
-      tgOn: !!u.tgChat, tgName: u.tgName || '', tgCats: String(u.tgCats || '').split(',').filter(Boolean), waits: waits, reviewCount: rk.length,
+      favIds: Object.keys(u.watch && typeof u.watch === 'object' ? u.watch : {}), tgOn: !!u.tgChat, tgName: u.tgName || '', tgCats: String(u.tgCats || '').split(',').filter(Boolean), waits: waits, reviewCount: rk.length,
       id: u.id, code: 'OS' + u.id, login: u.login, name: u.name, phone: u.phone, tg: u.tg, email: u.email || '', avatar: u.avatar || '',
       board: boardFor(u, db.now()), taskNews: ((u.tasks && u.tasks.news) || []).slice(),
       balance: u.balance || 0, balanceRub: tokensToRub(u.balance || 0),
@@ -965,7 +965,7 @@ var OnionCore = (function () {
       L.push('✈️ ПРЕДЗАКАЗ, отправка из Китая: ' + SHIP[f.ship] + ', город, ' + String(f.city).trim() + ', получение, ' + PRE_RECV[f.preRecv]);
       L.push('☑️ С условиями предзаказа ознакомлен(а)');
     }
-    if (hasStock && hasPre) L.push(f.together === 'together' ? '📮 ПОЛУЧЕНИЕ ЗАКАЗА: ВСЁ ВМЕСТЕ: товар в наличии дождётся предзаказа, клиент получает всё сразу' : '📮 ПОЛУЧЕНИЕ ЗАКАЗА: РАЗДЕЛЬНО: сначала товары в наличии, предзаказ, по приезду из Китая');
+    if (hasStock && hasPre) L.push(f.together === 'together' ? '📮 ПОЛУЧЕНИЕ ЗАКАЗА: ВСЁ ВМЕСТЕ: товар в наличии дождётся предзаказа, клиент получает всё сразу' : '📮 ПОЛУЧЕНИЕ ЗАКАЗА: РАЗДЕЛЬНО: сначала товары в наличии, а предзаказ после приезда из Китая');
     if (String(f.comment || '').trim()) { L.push(''); L.push('💬 Комментарий: ' + String(f.comment).trim()); }
     return L.join('\n');
   }
