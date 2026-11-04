@@ -146,7 +146,7 @@ var OnionCore = (function () {
       { id: 'xp300', label: '+300 XP', sub: 'к уровню', w: 50, xp: 300 },
       { id: 'xp500', label: '+500 XP', sub: 'к уровню', w: 10, xp: 500 },
       { id: 'frame', label: 'Рамка', sub: 'для аватара', w: 330, frame: true },
-      { id: 'frame2', label: 'Редкая рамка', sub: 'для аватара', w: 25, frame: 'rare' },
+      { id: 'frame2', label: 'Редкая рамка', sub: 'эпическая или легендарная', w: 25, frame: 'rare' },
       { id: 'promo', label: '−3%', sub: 'промокод', w: 190, promo: 3 },
       { id: 'promo5', label: '−5%', sub: 'промокод', w: 20, promo: 5 },
       { id: 're1', label: 'Ещё раз', sub: '×1', w: 330, spins: 1 },
@@ -163,35 +163,40 @@ var OnionCore = (function () {
     stageNotes: { 'Оформлен': 'Заказ принят менеджером', 'Выкуплен': 'Оплачен поставщику', 'В пути': 'Поставщик везёт на склад в Китае', 'На складе': 'Проверка и фотоотчёт на складе', 'Едет к нам': 'Из Китая в Москву', 'Едет к вам': 'Передан в доставку', 'Получен': 'Заказ у вас', 'Отменён': 'Заказ отменён' },
     finalStages: ['Получен', 'Отменён'],
     codeTtlMin: 15,
-    // src: wheel: выпадает в рулетке (rare: только в рулетке, даже для Алмаза); level: даётся уровнем
+    /* Рамки. Три группы: level (статус, только свой), wheel (выпадает только в «Посылке с сюрпризом», r: редкость 1..5),
+       ach (эксклюзив за достижение магазина или этап игры). Рамка не даёт никаких привилегий. */
     frames: [
-      { id: 'base', name: 'Обычная' },
-      { id: 'neon', name: 'Неон', src: 'wheel' },
-      { id: 'gold', name: 'Солнце', src: 'wheel' },
-      { id: 'ice', name: 'Лёд', src: 'wheel' },
-      { id: 'cosmos', name: 'Космос', src: 'wheel', rare: true },
-      { id: 'flame', name: 'Пламя', src: 'wheel', rare: true },
-      { id: 'mint', name: 'Мятный леденец', src: 'wheel' },
-      { id: 'rose', name: 'Роза', src: 'wheel' },
-      { id: 'violet', name: 'Фиалка', src: 'wheel' },
-      { id: 'amber', name: 'Янтарные бусы', src: 'wheel' },
-      { id: 'coral', name: 'Коралл', src: 'wheel' },
-      { id: 'lime', name: 'Долька лайма', src: 'wheel' },
-      { id: 'sky', name: 'Облака', src: 'wheel' },
-      { id: 'aurora', name: 'Аврора', src: 'wheel', rare: true },
-      { id: 'sunset', name: 'Закат', src: 'wheel', rare: true },
-      { id: 'rainbow', name: 'Радуга', src: 'wheel', rare: true },
-      { id: 'ach-china', name: 'Маршрут', src: 'ach', ach: 'china' },
-      { id: 'ach-loyal', name: 'Лавры', src: 'ach', ach: 'five' },
-      { id: 'ach-critic', name: 'Пять звёзд', src: 'ach', ach: 'review5' },
-      { id: 'ach-friend', name: 'Сцепка', src: 'ach', ach: 'friend' },
-      { id: 'byr-shop', name: 'Витрина', src: 'byr' },
+      { id: 'base', name: 'Без рамки' },
       { id: 'lvl-bronze', name: 'Бронза', src: 'level', lvl: 0 },
       { id: 'lvl-silver', name: 'Серебро', src: 'level', lvl: 1 },
       { id: 'lvl-gold', name: 'Золото', src: 'level', lvl: 2 },
       { id: 'lvl-platinum', name: 'Платина', src: 'level', lvl: 3 },
-      { id: 'lvl-diamond', name: 'Алмаз', src: 'level', lvl: 4 }
+      { id: 'lvl-diamond', name: 'Алмаз', src: 'level', lvl: 4 },
+      { id: 'mint', name: 'Мятный леденец', src: 'wheel', r: 1 },
+      { id: 'rose', name: 'Роза', src: 'wheel', r: 1 },
+      { id: 'violet', name: 'Фиалка', src: 'wheel', r: 1 },
+      { id: 'sky', name: 'Облака', src: 'wheel', r: 1 },
+      { id: 'lime', name: 'Долька лайма', src: 'wheel', r: 1 },
+      { id: 'amber', name: 'Янтарные бусы', src: 'wheel', r: 2 },
+      { id: 'coral', name: 'Коралл', src: 'wheel', r: 2 },
+      { id: 'ice', name: 'Лёд', src: 'wheel', r: 2 },
+      { id: 'neon', name: 'Неон', src: 'wheel', r: 3 },
+      { id: 'gold', name: 'Солнце', src: 'wheel', r: 3 },
+      { id: 'sunset', name: 'Закат', src: 'wheel', r: 3 },
+      { id: 'aurora', name: 'Аврора', src: 'wheel', r: 4 },
+      { id: 'rainbow', name: 'Радуга', src: 'wheel', r: 4 },
+      { id: 'cosmos', name: 'Космос', src: 'wheel', r: 5 },
+      { id: 'flame', name: 'Пламя', src: 'wheel', r: 5 },
+      { id: 'ach-china', name: 'Маршрут', src: 'ach', ach: 'china' },
+      { id: 'ach-loyal', name: 'Лавры', src: 'ach', ach: 'five' },
+      { id: 'ach-critic', name: 'Пять звёзд', src: 'ach', ach: 'review5' },
+      { id: 'ach-friend', name: 'Сцепка', src: 'ach', ach: 'friend' },
+      { id: 'gz-1', name: 'Накладная', src: 'game', game: 'gruz', how: 'Грузомания: склад 5 уровня' },
+      { id: 'gz-2', name: 'Грузовой хаб', src: 'game', game: 'gruz', how: 'Грузомания: склад 10 уровня' },
+      { id: 'rb-1', name: 'Застава', src: 'game', game: 'rub', how: 'Последний рубеж: победить первого босса' },
+      { id: 'rb-2', name: 'Последний рубеж', src: 'game', game: 'rub', how: 'Последний рубеж: победить всех шесть боссов' }
     ],
+    rarity: [null, { name: 'Обычная', w: 40 }, { name: 'Необычная', w: 28 }, { name: 'Редкая', w: 18 }, { name: 'Эпическая', w: 10 }, { name: 'Легендарная', w: 4 }],
     // достижения: только значки и рамки, без ониксов; однажды полученные не пропадают
     achv: [
       { id: 'first', name: 'Первый заказ', d: 'Получить заказ', ic: 'bag' },
@@ -816,6 +821,20 @@ var OnionCore = (function () {
     return ok({});
   };
 
+  /* рамка из посылки: сначала редкость по весам (только из ещё не открытых), потом рамка этой редкости.
+     «Редкая рамка» даёт эпическую или легендарную, если они ещё есть, иначе любую неоткрытую. */
+  function pickFrame(db, u, rare) {
+    var left = RULES.frames.filter(function (f) { return f.src === 'wheel' && (u.frames || []).indexOf(f.id) < 0; });
+    if (rare && left.some(function (f) { return f.r >= 4; })) left = left.filter(function (f) { return f.r >= 4; });
+    if (!left.length) return null;
+    var byR = {}, sum = 0, r;
+    left.forEach(function (f) { byR[f.r] = byR[f.r] || []; byR[f.r].push(f); });
+    for (r in byR) sum += RULES.rarity[r].w;
+    var x = db.random() * sum, t = 0, pick = null;
+    for (r in byR) { t += RULES.rarity[r].w; if (x < t) { pick = byR[r]; break; } }
+    pick = pick || byR[Object.keys(byR)[0]];
+    return pick[Math.floor(db.random() * pick.length)];
+  }
   A.spin = function (db, p) {
     var u = sessionUser(db, p); if (!u) return err('auth');
     var free = !!p.free && ((u.daySpins || 0) + (u.freeSpins || 0)) > 0;
@@ -830,9 +849,8 @@ var OnionCore = (function () {
     if (prize.spins) { u.freeSpins = (u.freeSpins || 0) + prize.spins; result.spins = prize.spins; }
     if (prize.promo) { var code = genCode(db, 'LUCK', 5); u.promos.push({ code: code, pct: prize.promo, from: 'Посылка', at: db.now() }); result.code = code; result.pct = prize.promo; }
     if (prize.frame) {
-      var left = RULES.frames.filter(function (f) { return f.src === 'wheel' && u.frames.indexOf(f.id) < 0 && (prize.frame !== 'rare' || f.rare); });
-      if (!left.length && prize.frame === 'rare') left = RULES.frames.filter(function (f) { return f.src === 'wheel' && u.frames.indexOf(f.id) < 0; });
-      if (left.length) { var f = left[Math.floor(db.random() * left.length)]; u.frames.push(f.id); result.frameId = f.id; result.frameName = f.name; }
+      var f = pickFrame(db, u, prize.frame === 'rare');
+      if (f) { u.frames.push(f.id); result.frameId = f.id; result.frameName = f.name; result.frameR = f.r; result.frameRarity = RULES.rarity[f.r].name; }
       else { var e2 = earn(db, u, 50, 'Посылка: все рамки уже открыты'); result.tokens = e2.tok; result.sub = 'все рамки открыты: +50 ониксов'; if (e2.xp) { result.capXp = e2.xp; result.cap = RULES.balanceCap; } }
     }
     track(db, u, 'spin'); settle(db, u);
@@ -841,198 +859,44 @@ var OnionCore = (function () {
     return ok({ prize: result, index: idx, user: publicUser(db, u) });
   };
 
-  // ---------------------------------------------------------------- игра «Байер»
-  /* Смена 90 секунд: расписание заказов строится из зерна (одно и то же у клиента и сервера).
-     Клиент присылает список доставок [[id, секунда]], сервер пересчитывает и отбрасывает невозможное.
-     Игровые монеты в ониксы не обмениваются. Награды ониксами: сундук недели и бонус за 3 задания дня.
-     Потолок игры за месяц: 500 ониксов и 400 XP. */
-  var BYR = {
-    len: 90, houses: 6, patience: 24, minGap: 1.4, minTravel: 1.1, chargeMax: 3, chargeMs: 4 * 3600000,
-    monthTok: 500, monthXp: 400, chestMin: 20, chestMax: 60, chestShifts: 5, dailyTok: 8,
-    itemPay: [60, 95, 140], itemNames: ['Футболка', 'Худи', 'Кроссовки'],
-    stages: [
-      { n: 1, name: 'Лавка', need: 0, orders: 14 },
-      { n: 2, name: 'Магазин', need: 3000, orders: 16 },
-      { n: 3, name: 'Шоурум', need: 12000, orders: 18 }
-    ],
-    ups: {
-      spd: { name: 'Кроссовки курьера', info: 'Бег быстрее', max: 5, cost: [250, 500, 900, 1500, 2400] },
-      cap: { name: 'Рюкзак', info: 'Несёте больше посылок', max: 3, cost: [400, 1000, 2200] },
-      pack: { name: 'Упаковка', info: 'Дороже каждый заказ', max: 4, cost: [300, 700, 1300, 2200] }
-    },
-    quests: [
-      { id: 'del', name: 'Доставьте 15 посылок', need: 15, coins: 300 },
-      { id: 'combo', name: 'Серия из 5 подряд', need: 5, coins: 400 },
-      { id: 'earn', name: 'Заработайте 1200 монет', need: 1200, coins: 500 }
-    ]
+  // ---------------------------------------------------------------- игры «Грузомания» и «Последний рубеж»
+  /* Игры считаются в браузере, сервер хранит сохранение (строка JSON) и выдаёт рамки за этапы.
+     Магазину игры пока ничего не дают: ни ониксов, ни опыта. Защита рамок: этап засчитывается не раньше
+     минимального времени игры с первого сохранения (честно так быстро не дойти). */
+  var GAMES = {
+    gruz: { name: 'Грузомания', frames: [{ id: 'gz-1', key: 'lvl', need: 5, minMin: 25 }, { id: 'gz-2', key: 'lvl', need: 10, minMin: 120 }] },
+    rub: { name: 'Последний рубеж', frames: [{ id: 'rb-1', key: 'bosses', need: 1, minMin: 15 }, { id: 'rb-2', key: 'bosses', need: 6, minMin: 180 }] }
   };
-  function byrRng(seed) {
-    var a = seed >>> 0;
-    return function () {
-      a = (a + 0x6D2B79F5) >>> 0; var t = a;
-      t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-    };
-  }
-  /* расписание заказов: id, момент появления, дом, товар, срок терпения */
-  function byrSchedule(seed, stage) {
-    var st = BYR.stages[Math.min(Math.max(stage | 0, 1), 3) - 1], r = byrRng(seed), out = [], free = [], i, span = BYR.len - 34;
-    for (i = 0; i < BYR.houses; i++) free.push(0);
-    for (i = 0; i < st.orders; i++) {
-      var t = 1.2 + i * (span / st.orders) + r() * 1.6, cand = [], h;
-      for (h = 0; h < BYR.houses; h++) if (free[h] <= t) cand.push(h);
-      var rr = r(), item = rr < 0.5 ? 0 : rr < 0.82 ? 1 : 2, pick = r();
-      if (!cand.length) continue;
-      h = cand[Math.floor(pick * cand.length)];
-      var pat = BYR.patience - (item === 2 ? 3 : 0);
-      free[h] = t + pat + 1;
-      out.push({ id: i + 1, t: Math.round(t * 10) / 10, house: h, item: item, pat: pat });
-    }
-    return out;
-  }
-  function byrPackK(ups) { return 1 + 0.1 * Math.min(BYR.ups.pack.max, (ups && ups.pack) || 0); }
-  /* пересчёт смены: принятые доставки, выручка, лучшая серия */
-  function byrScore(seed, stage, ups, deliv, maxT) {
-    var sched = byrSchedule(seed, stage), by = {}, used = {}, last = -9, combo = 0, best = 0, rev = 0, fast = 0, rows = [], k = byrPackK(ups);
-    sched.forEach(function (o) { by[o.id] = o; });
-    (deliv || []).slice(0, 60).forEach(function (d) {
-      var id = (d && d[0]) | 0, t = +(d && d[1]), o = by[id];
-      if (!o || used[id] || !isFinite(t)) return;
-      if (t < o.t + BYR.minTravel || t > o.t + o.pat + 0.3 || t > BYR.len + 0.5 || t < last + BYR.minGap) return;
-      if (maxT != null && t > maxT) return;
-      used[id] = 1;
-      combo = (t - last <= 7) ? combo + 1 : 1; best = Math.max(best, combo); last = t;
-      var isFast = (t - o.t) <= o.pat * 0.5, mult = k * (isFast ? 1.25 : 1) * (1 + 0.05 * Math.min(combo - 1, 5));
-      var pay = Math.round(BYR.itemPay[o.item] * mult);
-      rev += pay; if (isFast) fast++;
-      rows.push({ id: id, t: t, pay: pay, combo: combo, fast: isFast });
+  var GAME_MAX = 150000;
+  function gameMeta(u, g) { u.gm = u.gm && typeof u.gm === 'object' ? u.gm : {}; return (u.gm[g] = u.gm[g] || { first: 0, rev: 0, saves: 0, play: 0 }); }
+  A.gameLoad = function (db, p) {
+    var u = sessionUser(db, p); if (!u) return err('auth');
+    var g = String(p.game || ''); if (!GAMES[g]) return err('Нет такой игры');
+    var m = gameMeta(u, g), d = db.gameGet ? db.gameGet(u.id, g) : null;
+    return ok({ data: d || '', rev: m.rev || 0, now: db.now() });
+  };
+  A.gameSave = function (db, p) {
+    var u = sessionUser(db, p); if (!u) return err('auth');
+    var g = String(p.game || ''), G = GAMES[g]; if (!G) return err('Нет такой игры');
+    var data = String(p.data || ''); if (!data || data.length > GAME_MAX) return err('Сохранение слишком большое');
+    var st; try { st = JSON.parse(data); } catch (e) { return err('Повреждённое сохранение'); }
+    var m = gameMeta(u, g), now = db.now();
+    if ((+p.base || 0) < (m.rev || 0)) return ok({ conflict: true, data: db.gameGet(u.id, g) || '', rev: m.rev });
+    if (!m.first) m.first = now;
+    m.rev = (m.rev || 0) + 1; m.saves = (m.saves || 0) + 1; m.at = now;
+    var ms = st && st.ms && typeof st.ms === 'object' ? st.ms : {}, got = [];
+    u.frames = u.frames || ['base'];
+    G.frames.forEach(function (f) {
+      if ((+ms[f.key] || 0) >= f.need && u.frames.indexOf(f.id) < 0 && now - m.first >= f.minMin * 60000 && m.saves >= 5) {
+        u.frames.push(f.id); got.push({ id: f.id, name: (RULES.frames.filter(function (x) { return x.id === f.id; })[0] || {}).name });
+      }
     });
-    return { sched: sched, rows: rows, n: rows.length, total: sched.length, rev: rev, best: best, fast: fast };
-  }
-  function byrStars(n, total) {
-    if (!n) return 1; var q = n / Math.max(1, total);
-    return q >= 0.9 ? 5 : q >= 0.7 ? 4 : q >= 0.5 ? 3 : q >= 0.3 ? 2 : 1;
-  }
-  function byrOf(db, u) {
-    var b = u.byr, now = db.now();
-    if (!b || typeof b !== 'object' || b.v !== 2) b = u.byr = { v: 2, coins: 0, ups: { spd: 0, cap: 0, pack: 0 }, stage: 1, lp: 0, best: 0, done: 0, ch: BYR.chargeMax, chAt: now, shift: null, wk: null, mo: null, dq: null };
-    if (b.ch < BYR.chargeMax) {
-      var k = Math.floor((now - b.chAt) / BYR.chargeMs);
-      if (k > 0) { b.ch = Math.min(BYR.chargeMax, b.ch + k); b.chAt += k * BYR.chargeMs; }
-      if (b.ch >= BYR.chargeMax) b.chAt = now;
-    } else b.chAt = now;
-    var wk = weekKey(now), mk = monthKey(now), dk = dayKey(now);
-    if (!b.wk || b.wk.id !== wk) b.wk = { id: wk, shifts: 0, st: 0, n: 0, claimed: 0 };
-    if (!b.mo || b.mo.id !== mk) b.mo = { id: mk, tok: 0, xp: 0 };
-    if (!b.dq || b.dq.id !== dk) b.dq = { id: dk, del: 0, combo: 0, earn: 0, got: [0, 0, 0], bonus: 0 };
-    return b;
-  }
-  function byrChest(b) {
-    var avg = b.wk.n ? b.wk.st / b.wk.n : 3;
-    return Math.max(BYR.chestMin, Math.min(BYR.chestMax, Math.round(BYR.chestMin + (avg - 3) * 20)));
-  }
-  function byrGrant(db, u, b, tok, xp, why) {
-    var gt = Math.max(0, Math.min(tok, BYR.monthTok - b.mo.tok)), gx = Math.max(0, Math.min(xp, BYR.monthXp - b.mo.xp)), r = { tok: 0, xp: 0 };
-    if (gt > 0) { var e = earn(db, u, gt, why); r.tok = e.tok; b.mo.tok += gt; }
-    if (gx > 0) { addXp(db, u, gx); r.xp = gx; b.mo.xp += gx; }
-    return r;
-  }
-  function byrPub(db, u) {
-    var b = byrOf(db, u), st = BYR.stages[Math.min(Math.max(+b.stage || 1, 1), 3) - 1], nx = BYR.stages[st.n] || null, now = db.now();
-    var avg = b.wk.n ? Math.round(b.wk.st / b.wk.n * 10) / 10 : 0, dq = b.dq;
-    return {
-      coins: b.coins, ups: { spd: b.ups.spd | 0, cap: b.ups.cap | 0, pack: b.ups.pack | 0 }, stage: st.n, stageName: st.name,
-      next: nx ? { name: nx.name, need: nx.need, have: b.lp } : null, lp: b.lp, best: b.best, done: b.done,
-      charges: b.ch, chargeMax: BYR.chargeMax, nextMs: b.ch >= BYR.chargeMax ? 0 : Math.max(0, b.chAt + BYR.chargeMs - now),
-      week: { shifts: b.wk.shifts, need: BYR.chestShifts, avg: avg, claimed: !!b.wk.claimed, chest: byrChest(b), ready: !b.wk.claimed && b.wk.shifts >= BYR.chestShifts },
-      month: { tok: b.mo.tok, tokMax: BYR.monthTok, xp: b.mo.xp, xpMax: BYR.monthXp },
-      daily: BYR.quests.map(function (q, i) { var v = Math.min(q.need, dq[q.id] || 0); return { id: q.id, name: q.name, need: q.need, have: v, coins: q.coins, ready: v >= q.need && !dq.got[i], got: !!dq.got[i] }; }),
-      dailyBonus: { tok: BYR.dailyTok, got: !!dq.bonus },
-      cat: { len: BYR.len, houses: BYR.houses, patience: BYR.patience, ups: BYR.ups, stages: BYR.stages, itemNames: BYR.itemNames, itemPay: BYR.itemPay }
-    };
-  }
-  function byrAuth(db, p) {
-    var u = sessionUser(db, p); if (!u) return { e: err('auth') };
-    touch(db, u); return { u: u, b: byrOf(db, u) };
-  }
-  A.byrState = function (db, p) {
-    var a = byrAuth(db, p); if (a.e) return a.e;
-    db.saveUser(a.u);
-    return ok({ byr: byrPub(db, a.u) });
-  };
-  function byrClose(db, u, b, deliv, forfeit) {
-    var sh = b.shift; if (!sh) return null;
-    var elapsed = (db.now() - sh.at) / 1000, sc = byrScore(sh.seed, sh.stage, sh.ups, forfeit ? [] : deliv, Math.min(BYR.len + 0.5, elapsed + 2.5));
-    var sum = { n: sc.n, total: sc.total, rev: sc.rev, best: sc.best, fast: sc.fast, stars: byrStars(sc.n, sc.total), forfeit: !!forfeit };
-    b.coins += sc.rev; b.lp += sc.rev; b.done += 1; b.best = Math.max(b.best, sc.rev);
-    b.wk.shifts += 1; b.wk.st += sum.stars; b.wk.n += 1;
-    var dq = b.dq; dq.del += sc.n; dq.earn += sc.rev; dq.combo = Math.max(dq.combo, sc.best);
-    var xp = sc.n > 0 ? Math.min(20, 3 + sc.n) + (sum.stars >= 4 ? 4 : 0) : 1;
-    var g = byrGrant(db, u, b, 0, xp, 'Байер: смена');
-    sum.xp = g.xp; sum.xpCap = g.xp < xp;
-    var nx = BYR.stages[Math.min(Math.max(+b.stage || 1, 1), 3)];
-    if (nx && b.lp >= nx.need) {
-      b.stage = nx.n; sum.stageUp = { n: nx.n, name: nx.name };
-      if (nx.n === 3) { u.frames = u.frames || ['base']; if (u.frames.indexOf('byr-shop') < 0) { u.frames.push('byr-shop'); sum.stageUp.frame = 'Витрина'; } }
-    }
-    b.shift = null; track(db, u, 'byr'); settle(db, u);
-    return sum;
-  }
-  A.byrStart = function (db, p) {
-    var a = byrAuth(db, p); if (a.e) return a.e;
-    var u = a.u, b = a.b;
-    if (b.shift) byrClose(db, u, b, [], true);   // брошенная смена закрывается без награды
-    if (b.ch < 1) return err('Смена появится через ' + Math.ceil((b.chAt + BYR.chargeMs - db.now()) / 60000) + ' мин');
-    if (b.ch >= BYR.chargeMax) b.chAt = db.now();
-    b.ch -= 1;
-    var seed = Math.floor(db.random() * 4294967296);
-    b.shift = { seed: seed, at: db.now(), stage: b.stage, ups: { spd: b.ups.spd | 0, cap: b.ups.cap | 0, pack: b.ups.pack | 0 } };
+    db.gameSet(u.id, g, data, now);
+    if (got.length) settle(db, u);
     db.saveUser(u);
-    return ok({ seed: seed, stage: b.stage, byr: byrPub(db, u) });
-  };
-  A.byrFinish = function (db, p) {
-    var a = byrAuth(db, p); if (a.e) return a.e;
-    var u = a.u, b = a.b; if (!b.shift) return err('Смена не начата');
-    var dl = Array.isArray(p.deliv) ? p.deliv : [];
-    var sum = byrClose(db, u, b, dl, false); db.saveUser(u);
-    return ok({ summary: sum, byr: byrPub(db, u), user: publicUser(db, u) });
-  };
-  A.byrAbort = function (db, p) {
-    var a = byrAuth(db, p); if (a.e) return a.e;
-    if (a.b.shift) byrClose(db, a.u, a.b, [], true);
-    db.saveUser(a.u); return ok({ byr: byrPub(db, a.u), user: publicUser(db, a.u) });
-  };
-  A.byrUp = function (db, p) {
-    var a = byrAuth(db, p); if (a.e) return a.e;
-    var u = a.u, b = a.b, d = BYR.ups[p.k];
-    if (!d) return err('Нет такого улучшения');
-    var lv = b.ups[p.k] | 0; if (lv >= d.max) return err('Улучшение уже на максимуме');
-    var cost = d.cost[lv]; if (b.coins < cost) return err('Не хватает монет: нужно ' + cost);
-    b.coins -= cost; b.ups[p.k] = lv + 1; db.saveUser(u);
-    return ok({ byr: byrPub(db, u), cost: cost });
-  };
-  A.byrQuest = function (db, p) {
-    var a = byrAuth(db, p); if (a.e) return a.e;
-    var u = a.u, b = a.b, i = parseInt(p.i, 10), q = BYR.quests[i], dq = b.dq;
-    if (!q) return err('Нет такого задания');
-    if (dq.got[i]) return err('Награда уже получена');
-    if ((dq[q.id] || 0) < q.need) return err('Задание ещё не выполнено');
-    dq.got[i] = 1; b.coins += q.coins;
-    var res = { coins: q.coins, tok: 0, xp: 0 };
-    if (dq.got[0] && dq.got[1] && dq.got[2] && !dq.bonus) {
-      dq.bonus = 1; var g = byrGrant(db, u, b, BYR.dailyTok, 15, 'Байер: задания дня'); res.tok = g.tok; res.xp = g.xp; res.bonus = true;
-    }
-    db.saveUser(u);
-    return ok({ got: res, byr: byrPub(db, u), user: publicUser(db, u) });
-  };
-  A.byrChest = function (db, p) {
-    var a = byrAuth(db, p); if (a.e) return a.e;
-    var u = a.u, b = a.b;
-    if (b.wk.claimed) return err('Сундук этой недели уже открыт');
-    if (b.wk.shifts < BYR.chestShifts) return err('Нужно смен за неделю: ' + BYR.chestShifts);
-    var n = byrChest(b), g = byrGrant(db, u, b, n, 0, 'Байер: сундук недели');
-    b.wk.claimed = 1; db.saveUser(u);
-    return ok({ chest: n, got: g.tok, capped: g.tok < n, byr: byrPub(db, u), user: publicUser(db, u) });
+    var res = { rev: m.rev, frames: got };
+    if (got.length) res.user = publicUser(db, u);
+    return ok(res);
   };
 
   // ---------------------------------------------------------------- заказ
@@ -1443,7 +1307,7 @@ var OnionCore = (function () {
     RULES: RULES, handle: handle, orderText: orderText, buildLines: buildLines, checkFields: checkFields,
     offlineNo: offlineNo, levelInfo: levelInfo, levelOf: levelOf, fixIndex: fixIndex, receive: receive, priceDrops: priceDrops, photoLinks: photoLinks, earlyLeft: earlyLeft, phoneConfirm: phoneConfirm, flag: flag, referralOnReceive: referralOnReceive, orderCanceled: orderCanceled, canonEmail: canonEmail, bdayIsToday: bdayIsToday, adjustTokens: adjustTokens, xpOfRub: xpOfRub, wheelFor: wheelFor, framesFor: framesFor, pctText: pctText, promoBase: promoBase, touch: touch, tokensToRub: tokensToRub, settings: settings, dayKey: dayKey, monthKey: monthKey,
     statusMessage: statusMessage, tgBind: tgBind,
-    BYR: BYR, byrSchedule: byrSchedule, byrScore: byrScore, byrStars: byrStars,
+    GAMES: GAMES,
     cleanTg: cleanTg, cleanEmail: cleanEmail, phoneKey: phoneKey, fmtPhone: fmtPhone, digits: digits, validEmail: validEmail, taskPick: picksFor, weekKey: weekKey, stagesFor: stagesFor
   };
 })();

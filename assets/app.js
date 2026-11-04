@@ -113,7 +113,7 @@
   function promoLine(p) { var d = p.until ? new Date(+p.until + 3 * 3600000) : null; return (p.cat ? 'только «' + esc(p.catLabel) + '»' : esc(p.from || '')) + (p.exp ? ' · до конца месяца' : d ? ' · до ' + String(d.getUTCDate()).padStart(2, '0') + '.' + String(d.getUTCMonth() + 1).padStart(2, '0') : ''); }
   function ava(u, cls) {
     var f = esc((u && u.frame) || 'base');
-    return '<span class="ava f-' + f + (f !== 'base' ? ' fx' : '') + (f === 'lvl-diamond' ? ' an-' + esc((u && u.frameAnim) || 'shine') : '') + (cls ? ' ' + cls : '') + '">' + (u && u.avatar ? '<img src="' + esc(u.avatar) + '" alt="">' : esc(initials(u && u.name))) + '</span>';
+    return '<span class="ava f-' + f + (f !== 'base' ? ' fx' : '') + (cls ? ' ' + cls : '') + '">' + (u && u.avatar ? '<img src="' + esc(u.avatar) + '" alt="">' : esc(initials(u && u.name))) + '</span>';
   }
 
   // ------------------------------------------------------------ время (Москва)
@@ -364,7 +364,7 @@
     if (current === 'account') renderAccount();
     else if (current === 'roulette') updateRoulBalance();
     else if (current === 'cart' && !$('#checkout :focus')) renderCart();
-    if (u && location.hash.slice(1) === 'byer' && typeof openByer === 'function') openByer();
+    if (u && /^(gruz|rub)$/.test(location.hash.slice(1)) && typeof openGame === 'function') openGame(location.hash.slice(1));
   }
   var checkinHinted = false;
   function refreshMe() {
@@ -409,7 +409,7 @@
       var typing = document.activeElement && /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName);
       if (typing || $('#modal-root .modal')) { acct.user = r.user; updateAcctUI(); return; }
       acct.user = r.user; updateAcctUI();
-      if (current === 'roulette') updateRoulBalance(); else if (current !== 'byer') refreshView(); // посылку не перерисовываем, вдруг крутится
+      if (current === 'roulette') updateRoulBalance(); else refreshView(); // посылку не перерисовываем, вдруг крутится
     }, function () { silentBusy = false; });
   }
   function updateAcctUI() {
@@ -550,7 +550,7 @@
   }
 
   // ------------------------------------------------------------ карточка товара
-  function badge(p) { return p.status === 'preorder' ? '<span class="badge badge-pre">Предзаказ</span>' : p.status === 'sold' ? '<span class="badge badge-sold">Продано</span>' : p.status === 'out' ? '<span class="badge badge-out">Нет в наличии</span>' : '<span class="badge badge-stock">В наличии</span>'; }
+  function badge(p) { return p.status === 'preorder' ? '<span class="badge badge-pre">Предзаказ</span>' : p.status === 'sold' ? '<span class="badge badge-sold">Продано</span>' : p.status === 'out' ? '<span class="badge badge-out"><span class="b-l">Нет в наличии</span><span class="b-s">Закончился</span></span>' : '<span class="badge badge-stock">В наличии</span>'; }
   function inStockTab(p) { return p.status === 'stock' || p.status === 'out' || p.status === 'sold'; }
   function dscChip(p) { var d = discount(p); return p.oldPrice && d >= 1 ? '<span class="dsc">−' + d + '%</span>' : ''; }
   function discount(p) { return p.oldPrice ? Math.round((1 - p.price / p.oldPrice) * 100) : 0; }
@@ -1907,32 +1907,52 @@
     });
   }
   function framesModal() {
-    var u = acct.user, li = u.level.index, prev = u.frame;
+    var u = acct.user, prev = u.frame && u.frame !== 'base' ? u.frame : 'lvl-' + u.level.key;
+    var RAR = RULES.rarity || [];
+    function frameOf(id) { return RULES.frames.filter(function (x) { return x.id === id; })[0] || RULES.frames[0]; }
+    function own(f) { return f.id === 'base' || u.frames.indexOf(f.id) >= 0; }
     function lockText(f) {
-      if (f.src === 'level') return 'Только со статусом «' + RULES.levels[f.lvl].name + '»';
-      if (f.src === 'byr') return 'Открывается в игре «Байер»';
-      if (f.src === 'ach') { var aa = RULES.achv.filter(function (x) { return x.id === f.ach; })[0]; return 'Достижение «' + (aa ? aa.name : '') + '»: ' + (aa ? aa.d.toLowerCase() : ''); }
-      if (f.rare) return 'Редкая, выпадает в посылке';
-      return 'Выпадает в посылке';
+      if (f.src === 'level') return 'Открыта только при статусе «' + RULES.levels[f.lvl].name + '»';
+      if (f.src === 'ach') { var aa = RULES.achv.filter(function (x) { return x.id === f.ach; })[0]; return 'За достижение «' + (aa ? aa.name : '') + '»: ' + (aa ? aa.d.toLowerCase() : ''); }
+      if (f.src === 'game') return f.how;
+      return 'Выпадает только в «Посылке с сюрпризом»';
     }
-    function own(f) { return u.frames.indexOf(f.id) >= 0; }
-    function fname(id) { return (RULES.frames.filter(function (x) { return x.id === id; })[0] || {}).name || ''; }
-    var anims = RULES.frameAnims || [];
-    var sorted = RULES.frames.filter(own).concat(RULES.frames.filter(function (f) { return !own(f); }));
-    var md = openModal(modalHead('Рамка аватара') + '<div class="fr-prev" id="fr-prev"></div><div class="fr-grid">' + sorted.map(function (f) {
-      return '<button type="button" class="fr-it' + (own(f) ? '' : ' lk') + '" data-frame="' + f.id + '" aria-pressed="false">' + ava({ name: u.name, avatar: u.avatar, frame: f.id, frameAnim: u.frameAnim }, 'md') + (own(f) ? '' : '<i class="fr-lock">' + icon('lock') + '</i>') + '<span>' + esc(f.name) + '</span></button>';
-    }).join('') + '</div>' +
-      (li >= 4 ? '<div class="f" style="margin-top:14px"><span class="lbl">Анимация рамки «Алмаз»</span><div class="choices" id="anims">' + anims.map(function (a) { return '<button class="choice" type="button" data-anim="' + a[0] + '" aria-pressed="' + ((u.frameAnim || 'shine') === a[0]) + '">' + esc(a[1]) + '</button>'; }).join('') + '</div></div>'
-        : '<p class="small" style="margin-top:12px">Анимацию можно выбрать со статусом «Алмаз».</p>'), { cls: 'sm' });
+    function badge(f) {
+      if (f.src === 'wheel') return '<em class="fr-r r' + f.r + '">' + esc(RAR[f.r].name) + '</em>';
+      if (f.src === 'level') return '<em class="fr-r lv">Статус</em>';
+      if (f.src === 'ach' || f.src === 'game') return '<em class="fr-r ex">Эксклюзив</em>';
+      return '';
+    }
+    function tile(f) {
+      var ok = own(f), on = u.frame === f.id;
+      return '<button type="button" class="fr-it' + (ok ? '' : ' lk') + (on ? ' on' : '') + '" data-frame="' + f.id + '" aria-pressed="false" aria-label="' + esc(f.name) + (ok ? '' : ', закрыта') + '">' + ava({ name: u.name, avatar: u.avatar, frame: f.id }, 'md') + (ok ? '' : '<i class="fr-lock">' + icon('lock') + '</i>') + (on ? '<i class="fr-on">' + icon('check') + '</i>' : '') + '<span>' + esc(f.name) + '</span>' + badge(f) + '</button>';
+    }
+    var lv = RULES.frames.filter(function (f) { return f.src === 'level'; });
+    var wh = RULES.frames.filter(function (f) { return f.src === 'wheel'; }).sort(function (a, b) { return a.r - b.r; });
+    var ex = RULES.frames.filter(function (f) { return f.src === 'ach' || f.src === 'game'; });
+    var cnt = function (list) { return list.filter(own).length + ' из ' + list.length; };
+    var md = openModal(modalHead('Рамка аватара') + '<div class="fr-prev" id="fr-prev"></div>' +
+      '<section class="fr-sec"><div class="fr-h"><b>Статусы</b><span>' + cnt(lv) + '</span></div><p class="fr-note">Каждый статус открывает только свою рамку</p><div class="fr-grid">' + lv.map(tile).join('') + '</div></section>' +
+      '<section class="fr-sec"><div class="fr-h"><b>Из посылки с сюрпризом</b><span>' + cnt(wh) + '</span></div><p class="fr-note">От обычных к легендарным. Чем реже, тем ярче и живее</p><div class="fr-grid">' + wh.map(tile).join('') + '</div></section>' +
+      '<section class="fr-sec fr-ex"><div class="fr-h"><b>За достижения</b><span>' + cnt(ex) + '</span></div><p class="fr-note">Эксклюзивные рамки за достижения в магазине и в играх</p><div class="fr-grid">' + ex.map(tile).join('') + '</div></section>', { cls: 'sm fr-md' });
     function show(id) {
-      prev = id; var f = RULES.frames.filter(function (x) { return x.id === id; })[0] || RULES.frames[0], ok = own(f), wearing = u.frame === f.id;
+      prev = id; var f = frameOf(id), ok = own(f), wearing = (u.frame || 'base') === f.id;
       $$('[data-frame]', md).forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-frame') === id)); });
-      $('#fr-prev', md).innerHTML = ava({ name: u.name, avatar: u.avatar, frame: f.id, frameAnim: u.frameAnim }, 'lg') + '<div class="fr-t"><b>' + esc(f.name) + '</b><span class="small">' + (ok ? (wearing ? 'Сейчас надета' : 'Открыта у вас') : esc(lockText(f))) + '</span>' +
-        '<button class="btn btn-sm" type="button" id="fr-wear"' + (ok && !wearing ? '' : ' disabled') + '>' + (wearing ? 'Надета' : ok ? 'Надеть' : 'Пока закрыта') + '</button></div>';
-      var w = $('#fr-wear', md); if (w) w.addEventListener('click', function () { API.call('profile', { frame: f.id }).then(function (r) { if (r.ok) { closeModal(); setUser(r.user); toast('Рамка надета'); } else toast(r.error, null, 'warn'); }); });
+      $('#fr-prev', md).innerHTML = ava({ name: u.name, avatar: u.avatar, frame: f.id }, 'lg') + '<div class="fr-t"><b>' + esc(f.name) + '</b>' + badge(f) + '<span class="small">' + (ok ? (wearing ? 'Сейчас надета' : 'Открыта у вас') : esc(lockText(f))) + '</span>' +
+        '<div class="fr-acts"><button class="btn btn-sm" type="button" id="fr-wear"' + (ok && !wearing ? '' : ' disabled') + '>' + (wearing ? 'Надета' : ok ? 'Надеть' : 'Пока закрыта') + '</button>' +
+        ((u.frame || 'base') !== 'base' ? '<button class="btn btn-sm btn-ghost" type="button" id="fr-off">Снять</button>' : '') + '</div></div>';
+      var w = $('#fr-wear', md); if (w) w.addEventListener('click', function () { wear(f.id, 'Рамка «' + f.name + '» надета'); });
+      var o = $('#fr-off', md); if (o) o.addEventListener('click', function () { wear('base', 'Рамка снята'); });
+    }
+    function wear(id, msg) {
+      API.call('profile', { frame: id }).then(function (r) {
+        if (!r.ok) { toast(r.error, null, 'warn'); return; }
+        setUser(r.user); u = acct.user;
+        if (u.frame !== id) { toast('Не удалось надеть рамку, обновите страницу', null, 'warn'); return; }
+        closeModal(); toast(msg);
+      });
     }
     $$('[data-frame]', md).forEach(function (b) { b.addEventListener('click', function () { show(b.getAttribute('data-frame')); }); });
-    $$('[data-anim]', md).forEach(function (b) { b.addEventListener('click', function () { API.call('profile', { frameAnim: b.getAttribute('data-anim'), frame: 'lvl-diamond' }).then(function (r) { if (r.ok) { closeModal(); setUser(r.user); toast('Анимация выбрана'); } else toast(r.error, null, 'warn'); }); }); });
     show(prev);
   }
   // все уровни программы лояльности
@@ -2097,51 +2117,55 @@
     var fbd = $('#roul-free'); if (fbd) fbd.textContent = u.freeSpins ? 'Бесплатных посылок: ' + u.freeSpins : 'Раз в день бесплатно';
     var pbtn = $('#spin-paid'); if (pbtn) { pbtn.disabled = spinning || u.balance < RULES.spinCost; pbtn.querySelector('span').textContent = spinning ? 'Сканируем…' : 'Открыть за ' + RULES.spinCost; }
   }
-  /* ------------------------------------------------------------ «Игры» и «Байер»
-     Экран выбора игры. Сама игра «Байер» (3D) подгружается по требованию: assets/g3d.js и assets/byer.js.
-     Все правила, случайность и награды на сервере (actions byr*). */
-  var byerGame = null, byerBusy = false;
+  /* ------------------------------------------------------------ «Игры»
+     Раздел с выбором игры. «Грузомания» и «Последний рубеж» подгружаются по требованию
+     (assets/gamekit.js + assets/gruz.js или assets/rub.js), открываются на весь экран, прогресс хранится на сервере. */
+  var GAME_LIST = [
+    { id: 'gruz', file: 'gruz', glob: 'Gruz', name: 'Грузомания', tag: 'Склад и логистика', d: 'Начните с крошечного склада: принимайте товар, упаковывайте посылки, нанимайте работников и превратите его в огромный логистический хаб.' },
+    { id: 'rub', file: 'rub', glob: 'Rub', name: 'Последний рубеж', tag: 'Выживание', d: 'Мир после катастрофы. Исследуйте шесть биомов, добывайте ресурсы, сражайтесь с мутантами и боссами, стройте лагерь и защищайте его ночью.' }
+  ];
+  var gameNow = null, gameBusy = false;
+  function gameCover(id) {
+    if (id === 'gruz') return '<svg class="gm-cv" viewBox="0 0 320 170" aria-hidden="true"><defs><linearGradient id="gzbg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#43c9e3"/><stop offset="1" stop-color="#1a5fb8"/></linearGradient></defs><rect width="320" height="170" fill="url(#gzbg)"/><g opacity=".18" fill="#fff"><circle cx="270" cy="30" r="60"/></g><path d="M60 120 160 70 260 120 160 170Z" fill="#e9eef6"/><path d="M60 120 160 170V150L60 100Z" fill="#b9c5d8"/><path d="M260 120 160 170V150L260 100Z" fill="#cfd8e6"/><path d="M60 100 160 50 260 100 160 150Z" fill="#f4f7fb"/><g><path d="M95 95l22-11 22 11-22 11z" fill="#d8a865"/><path d="M95 95v14l22 11V106z" fill="#b8844a"/><path d="M139 95v14l-22 11V106z" fill="#c9965a"/></g><g><path d="M150 78l18-9 18 9-18 9z" fill="#ff5a6e"/><path d="M150 78v12l18 9V87z" fill="#d6404f"/><path d="M186 78v12l-18 9V87z" fill="#e84d5c"/></g><g><path d="M190 100l16-8 16 8-16 8z" fill="#ffb02e"/><path d="M190 100v11l16 8v-11z" fill="#d68a12"/><path d="M222 100v11l-16 8v-11z" fill="#eb9b1d"/></g><circle cx="128" cy="122" r="7" fill="#1a3a6b"/><rect x="122" y="128" width="12" height="16" rx="5" fill="#1a86c0"/></svg>';
+    return '<svg class="gm-cv" viewBox="0 0 320 170" aria-hidden="true"><defs><linearGradient id="rbbg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3a2a4a"/><stop offset=".6" stop-color="#a0522d"/><stop offset="1" stop-color="#3b2a1e"/></linearGradient></defs><rect width="320" height="170" fill="url(#rbbg)"/><circle cx="240" cy="70" r="26" fill="#ffb35a" opacity=".85"/><path d="M0 120 40 96 80 112 120 84 170 110 210 90 260 108 320 88V170H0Z" fill="#2a1f1a"/><g fill="#5a3a22"><path d="M30 150V118l6-8 6 8v32zM46 150V114l6-8 6 8v36zM62 150V118l6-8 6 8v32z"/></g><g fill="#3a2a20"><rect x="150" y="104" width="10" height="46"/><path d="M140 104h30l-15-20z"/></g><circle cx="106" cy="136" r="7" fill="#e8c9a0"/><rect x="99" y="142" width="14" height="18" rx="5" fill="#4a6a3a"/><path d="M114 140l16-12" stroke="#c0c6d0" stroke-width="3" stroke-linecap="round"/><g fill="#7ad04a"><ellipse cx="210" cy="146" rx="12" ry="8"/><circle cx="205" cy="143" r="2" fill="#ff3d3d"/><circle cx="214" cy="143" r="2" fill="#ff3d3d"/></g></svg>';
+  }
   function renderGames() {
     var v = $('#v-games'), u = acct.user;
-    v.innerHTML = '<div class="pad roul-head" style="padding:0 0 10px"><div><h1>Игры</h1><p class="roul-sub">Играйте и получайте ониксы, опыт и рамки</p></div></div>' +
-      '<div class="gm-bar">' + (u ? '<span class="rl-chipb">' + tk('lg') + '<span>' + num(u.balance) + '</span></span>' : '<span class="rl-free">Войдите, чтобы играть и получать призы</span>') + '</div>' +
-      '<div class="gm-grid">' +
-      '<a class="gm-card gm-p" href="#roulette"><span class="gm-ic">' + icon('gift', 'lg') + '</span><h2>Посылка с сюрпризом</h2><p>Рентген показывает приз: ониксы, промокод, опыт или рамка для аватара.</p><span class="gm-tag" id="gm-free">' + (u ? (u.freeSpins ? 'Бесплатных посылок: ' + u.freeSpins : 'Раз в день бесплатно') : 'Раз в день бесплатно') + '</span></a>' +
-      '<a class="gm-card gm-b" href="#byer"><span class="gm-ic gm-3d"><svg viewBox="0 0 24 24"><path d="M3.5 8.5L12 4l8.5 4.5v7L12 20l-8.5-4.5zM12 12v8M3.5 8.5L12 12l8.5-3.5"/></svg></span><h2>Байер</h2><p>3D игра: бегайте по кварталу, носите посылки клиентам, прокачивайте мастерскую и растите до шоурума.</p><span class="gm-tag" id="gm-by">' + (u ? 'Загружаем…' : 'Нужен вход') + '</span></a>' +
-      '</div>';
-    if (u && API.enabled) API.call('byrState').then(function (r) {
-      var t = $('#gm-by'); if (!t) return; if (!r.ok) { t.textContent = 'Играть'; return; }
-      var b = r.byr; t.textContent = b.stageName + ', смен: ' + b.charges + ' из ' + b.chargeMax;
-    }, function () { var t = $('#gm-by'); if (t) t.textContent = 'Играть'; });
+    v.innerHTML = '<div class="pad roul-head" style="padding:0 0 10px"><div><h1>Игры</h1><p class="roul-sub">Посылки с призами и две большие игры</p></div></div>' +
+      '<div class="gm-grid3">' +
+      '<a class="gm-card gm-p" href="#roulette"><span class="gm-ic">' + icon('gift', 'lg') + '</span><h2>Посылка с сюрпризом</h2><p>Рентген показывает приз: ониксы, промокод, опыт или рамка для аватара.</p><span class="gm-tag">' + (u ? (u.freeSpins ? 'Бесплатных посылок: ' + u.freeSpins : 'Раз в день бесплатно') : 'Раз в день бесплатно') + '</span></a>' +
+      GAME_LIST.map(function (g) {
+        return '<a class="gm-card gm-big gm-' + g.id + '" href="#' + g.id + '">' + gameCover(g.id) + '<div class="gm-in"><span class="gm-kind">' + esc(g.tag) + '</span><h2>' + esc(g.name) + '</h2><p>' + esc(g.d) + '</p><span class="gm-play">' + (u ? 'Играть' : 'Войти и играть') + '</span></div></a>';
+      }).join('') + '</div>';
   }
   function loadJs(src) {
     return new Promise(function (res, rej) {
-      var s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = function () { rej(new Error('load')); }; document.head.appendChild(s);
+      if (document.querySelector('script[data-src="' + src + '"]')) { res(); return; }
+      var s = document.createElement('script'); s.src = src; s.setAttribute('data-src', src); s.onload = res; s.onerror = function () { s.remove(); rej(new Error('load')); }; document.head.appendChild(s);
     });
   }
-  function openByer() {
-    var u = acct.user;
-    if (byerGame || byerBusy) return;
-    if (!API.enabled) { toast('Игра скоро появится', null, 'warn'); silentHash('games'); return; }
-    if (!u) { if (!acct.ready) return; requireAuth('byer'); return; }
-    byerBusy = true;
+  function openGame(id) {
+    var g = GAME_LIST.filter(function (x) { return x.id === id; })[0], u = acct.user;
+    if (!g || gameNow || gameBusy) return;
+    if (!API.enabled) { toast('Игры скоро появятся', null, 'warn'); silentHash('games'); return; }
+    if (!u) { if (!acct.ready) return; requireAuth(id); return; }
+    gameBusy = true;
     var me = document.querySelector('script[src*="assets/app.js"]'), q = me && /\?v=[^"&]+/.exec(me.getAttribute('src') || ''), v = q ? q[0] : '';
-    toast('Открываем игру…');
-    Promise.all([loadJs('assets/g3d.js' + v), 0]).then(function () { return loadJs('assets/byer.js' + v); })
-      .then(function () { return API.call('byrState'); })
+    loadJs('assets/gamekit.js' + v).then(function () { return loadJs('assets/' + g.file + '.js' + v); })
+      .then(function () { return API.call('gameLoad', { game: id }); })
       .then(function (r) {
-        byerBusy = false;
+        gameBusy = false;
         if (!r.ok) { toast(r.error || 'Не удалось открыть игру', null, 'warn'); silentHash('games'); return; }
-        var g = window.Byer.open({
-          state: r.byr,
-          call: function (a, p) { return API.call(a, p); },
+        var api = window[g.glob].open({
+          id: id, name: g.name, data: r.data, rev: r.rev, user: { name: u.name },
+          save: function (data, base) { return API.call('gameSave', { game: id, data: data, base: base }); },
           onUser: function (nu) { setUserLite(nu); },
-          toast: function (m, kind) { if (kind === 'warn') toast(m, null, 'warn'); else reward(m); },
-          onClose: function () { byerGame = null; if (location.hash.slice(1) === 'byer') { silentHash('games'); } renderGames(); setNav('games'); }
+          toast: function (m, kind) { toast(m, null, kind === 'warn' ? 'warn' : kind === 'reward' ? 'reward' : null); },
+          onClose: function () { gameNow = null; if (location.hash.slice(1) === id) silentHash('games'); renderGames(); setNav('games'); }
         });
-        if (g.fail) { toast(g.fail, null, 'warn'); silentHash('games'); return; }
-        byerGame = g;
-      }, function () { byerBusy = false; toast('Нет связи, попробуйте ещё раз', null, 'warn'); silentHash('games'); });
+        if (api && api.fail) { toast(api.fail, null, 'warn'); silentHash('games'); return; }
+        gameNow = api;
+      }, function () { gameBusy = false; toast('Нет связи, попробуйте ещё раз', null, 'warn'); silentHash('games'); });
   }
 
   /* ------------------------------------------------------------ «Посылка на рентгене»
@@ -2476,7 +2500,7 @@
   function silentHash(h) { if (location.hash.slice(1) === h) return; skipHash = h; location.hash = h; }
   function go(h) { if (location.hash.slice(1) === h || (!h && !location.hash)) route(); else location.hash = h; }
   function setNav(h) {
-    var key = h === '' ? 'home' : /^p-/.test(h) || h === 'stock' || h === 'preorder' ? 'catalog' : h === 'roulette' || h === 'byer' ? 'games' : h;
+    var key = h === '' ? 'home' : /^p-/.test(h) || h === 'stock' || h === 'preorder' ? 'catalog' : h === 'roulette' || h === 'gruz' || h === 'rub' ? 'games' : h;
     $$('[data-route]').forEach(function (a) {
       var r = a.getAttribute('data-route'), on = r === key || (r === 'preorder' && h === 'preorder');
       if (r === 'catalog' && h === 'preorder' && !a.closest('.tabbar')) on = false;
@@ -2512,7 +2536,7 @@
     var h = decodeURIComponent(location.hash.replace(/^#/, '')); routed++;
     if (skipHash !== null && h === skipHash) { skipHash = null; return; }
     skipHash = null;
-    if (byerGame && h !== 'byer') byerGame.close();
+    if (gameNow && h !== 'gruz' && h !== 'rub') gameNow.close();
     var m = h.match(/^ref=([A-Za-z0-9]{4,12})$/);
     if (m) {
       store.set('ref', m[1].toUpperCase());
@@ -2538,7 +2562,7 @@
     else if (h === 'account') { renderAccount(); show('account'); flushTrack(); }
     else if (h === 'roulette') { renderRoulette(); show('roulette'); }
     else if (h === 'games') { renderGames(); show('games'); }
-    else if (h === 'byer') { renderGames(); show('games'); openByer(); }
+    else if (h === 'gruz' || h === 'rub') { renderGames(); show('games'); openGame(h); }
     else if (h === 'info') { renderInfo(); show('info'); }
     else { renderHome(); show('home'); }
     setNav(h); updFloatBack(h);
@@ -2559,7 +2583,6 @@
     else if (current === 'account') renderAccount();
     else if (current === 'roulette') renderRoulette();
     else if (current === 'games') renderGames();
-    else if (current === 'byer') { /* игра в своём окне */ }
     else if (current === 'cart') renderCart();
     else if (current === 'orders') renderOrders();
     if (acct.user && current === 'catalog') { if (filter.tab === 'preorder') track('pre'); else if (filter.tab === 'stock') track('stock'); }
