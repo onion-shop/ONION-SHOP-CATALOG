@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Магазин ONION SHOP</title>
 <meta name="claude:viewport-fit-sides" content="cover">
-<meta name="description" content="ONION SHOP: одежда, обувь и аксессуары в наличии и по предзаказу из Китая. Токены за покупки и задания, посылка призов, заказ в пару кликов.">
+<meta name="description" content="ONION SHOP: одежда, обувь и аксессуары в наличии и по предзаказу из Китая. Ониксы за покупки и задания, посылка призов, заказ в пару кликов.">
 <meta name="theme-color" content="#dfe6ef">
 <meta property="og:title" content="Магазин ONION SHOP">
 <meta property="og:description" content="Одежда, обувь и аксессуары в наличии и по предзаказу из Китая.">
@@ -20,7 +20,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Onest:wght@500;600;700;800&family=Unbounded:wght@800&display=swap">
 <script>(function(){try{var t=localStorage.getItem('onion.shop.theme');if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
-<link rel="stylesheet" href="assets/style.css?v=1ee1f653">
+<link rel="stylesheet" href="assets/style.css?v=cad7ba1b">
 </head>
 <body>
 <div id="splash" aria-hidden="true">
@@ -80,7 +80,7 @@
     <nav class="nav" aria-label="Разделы">
       <a href="#catalog" data-route="catalog"><svg class="i"><use href="#i-grid"/></svg>Каталог</a>
       <a href="#preorder" data-route="preorder"><svg class="i"><use href="#i-plane"/></svg>Предзаказ</a>
-      <a href="#roulette" data-route="roulette" data-needs-api hidden><svg class="i"><use href="#i-gift"/></svg>Посылка</a>
+      <a href="#games" data-route="games" data-needs-api hidden><svg class="i"><use href="#i-gift"/></svg>Игры</a>
       <a href="#info" data-route="info"><svg class="i"><use href="#i-info"/></svg><span class="l-long">Частые вопросы</span><span class="l-short">Вопросы</span></a>
     </nav>
     <div class="hdr-act">
@@ -91,7 +91,7 @@
     </div>
   </div>
 </header>
-<div class="demo-bar" id="demo-bar" hidden><div class="wrap"><svg class="i" style="color:var(--pre)"><use href="#i-alert"/></svg><span><b>Демо-режим.</b> <i class="l" style="font-style:normal">Аккаунты, токены и заказы живут только в этом браузере, коды из писем показываются на экране.</i><i class="s" style="font-style:normal">Данные только в этом браузере.</i></span><button class="link-btn" type="button" id="demo-reset">Сбросить демо</button></div></div>
+<div class="demo-bar" id="demo-bar" hidden><div class="wrap"><svg class="i" style="color:var(--pre)"><use href="#i-alert"/></svg><span><b>Демо-режим.</b> <i class="l" style="font-style:normal">Аккаунты, ониксы и заказы живут только в этом браузере, коды из писем показываются на экране.</i><i class="s" style="font-style:normal">Данные только в этом браузере.</i></span><button class="link-btn" type="button" id="demo-reset">Сбросить демо</button></div></div>
 
 <main id="main">
   <section class="view wrap" id="v-home" data-view="home"></section>
@@ -102,6 +102,8 @@
   <section class="view wrap" id="v-favorites" data-view="favorites" hidden></section>
   <section class="view wrap" id="v-account" data-view="account" hidden></section>
   <section class="view wrap" id="v-roulette" data-view="roulette" hidden></section>
+  <section class="view wrap" id="v-games" data-view="games" hidden></section>
+  <section class="view wrap" id="v-byer" data-view="byer" hidden></section>
   <section class="view wrap" id="v-info" data-view="info" hidden></section>
 </main>
 
@@ -122,7 +124,7 @@
             <li><a href="#preorder">Предзаказ</a></li>
             <li><a href="#favorites">Избранное</a></li>
             <li><a href="#orders">Мои заказы</a></li>
-            <li data-needs-api hidden><a href="#roulette">Посылка</a></li>
+            <li data-needs-api hidden><a href="#games">Игры</a></li>
             <li><a href="#info">Частые вопросы</a></li>
           </ul>
         </div>
@@ -156,11 +158,11 @@
 
 <div class="down" id="down" hidden role="alert"><div class="down-card"><span class="down-ic"><svg class="i"><use href="#i-clock"/></svg></span><h1>Магазин сейчас не открывается</h1><p>Похоже, пропала связь или сайт обновляется. Подождите минуту и обновите страницу, товары никуда не делись.</p><div class="acts"><button class="btn" type="button" onclick="location.reload()">Обновить страницу</button><a class="btn btn-ghost" href="https://t.me/OnionShop_Support" target="_blank" rel="noopener">Написать менеджеру</a></div></div></div>
 <script>(function(){function show(){var d=document.getElementById('down');if(d&&!window.__onionBoot)d.hidden=false;}window.addEventListener('error',function(){setTimeout(show,300);});setTimeout(show,7000);window.addEventListener('online',function(){if(!window.__onionBoot)location.reload();});})();</script>
-<script src="assets/config.js?v=a8e2c443"></script>
+<script src="assets/config.js?v=eacb1f08"></script>
 <script src="data/catalog.js"></script>
 <script src="data/colors.js?v=d2416c99"></script>
-<script src="assets/core.js?v=ef4a0dfc"></script>
-<script src="assets/api.js?v=ad61a436"></script>
-<script src="assets/app.js?v=455dce13"></script>
+<script src="assets/core.js?v=c6bb9291"></script>
+<script src="assets/api.js?v=3aed40af"></script>
+<script src="assets/app.js?v=67ecce70"></script>
 </body>
 </html>

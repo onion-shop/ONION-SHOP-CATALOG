@@ -1,6 +1,6 @@
 /* ONION SHOP, витрина.
    Каталог: data/catalog.js (обновляется сам из Telegram-канала).
-   Аккаунты, токены, посылка, промокоды и номера заказов: Google Таблица через assets/api.js
+   Аккаунты, ониксы, посылка, промокоды и номера заказов: Google Таблица через assets/api.js
    (в предпросмотре: демо в браузере). Корзина, избранное и недавние, в браузере. */
 (function () {
   'use strict';
@@ -84,7 +84,7 @@
   function rub(n) { return NF.format(Math.round(n)) + ' ₽'; }
   function cap(s) { s = String(s || ''); return s.charAt(0).toUpperCase() + s.slice(1); }
   function plural(n, a, b, c) { n = Math.abs(n); var m10 = n % 10, m100 = n % 100; return (m10 === 1 && m100 !== 11) ? a : (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) ? b : c; }
-  function tokWord(n) { return plural(n, 'токен', 'токена', 'токенов'); }
+  function tokWord(n) { return plural(n, 'оникс', 'оникса', 'ониксов'); }
   // ?v=: отпечаток фото: если фото в посте заменили, браузер не покажет старое из кеша
   function thumb(id) { return 'img/thumb/' + id + '.jpg' + (PHOTO_V[id] ? '?v=' + PHOTO_V[id] : ''); }
   function full(id) { return 'img/full/' + id + '.jpg' + (PHOTO_V[id] ? '?v=' + PHOTO_V[id] : ''); }
@@ -103,7 +103,7 @@
   }
   function perkIcon(t) {
     t = t.toLowerCase();
-    return /упаковк/.test(t) ? 'box' : /рамк/.test(t) ? 'frame' : /промокод/.test(t) ? 'percent' : /серию|серия/.test(t) ? 'flame' : /посылк/.test(t) ? 'gift' : /рулет|прокрут/.test(t) ? 'wheel' : /внимани|приоритет/.test(t) ? 'bolt' : /задани/.test(t) ? 'list' : /токен/.test(t) ? 'token' : 'check-circle';
+    return /упаковк/.test(t) ? 'box' : /рамк/.test(t) ? 'frame' : /промокод/.test(t) ? 'percent' : /серию|серия/.test(t) ? 'flame' : /посылк/.test(t) ? 'gift' : /рулет|прокрут/.test(t) ? 'wheel' : /внимани|приоритет/.test(t) ? 'bolt' : /задани/.test(t) ? 'list' : /оникс|токен/.test(t) ? 'token' : 'check-circle';
   }
   function perkTiles(list) { return '<div class="perk-grid">' + list.map(function (x) { return '<div class="perk-t"><span class="perk-i">' + icon(perkIcon(x[0])) + '</span><span><b>' + esc(x[0]) + '</b>' + (x[1] ? '<small>' + esc(x[1]) + '</small>' : '') + '</span></div>'; }).join('') + '</div>'; }
   function lvlImg(key, size, cls) { return '<img class="lvl-img' + (cls ? ' ' + cls : '') + '" src="assets/lvl/' + esc(key) + '.svg?v=4" width="' + size + '" height="' + size + '" alt="" decoding="async">'; }
@@ -378,7 +378,7 @@
       }
     });
   }
-  /* Тихое обновление профиля: что поменяли в таблице (статус, токены, уровень), клиент видит
+  /* Тихое обновление профиля: что поменяли в таблице (статус, ониксы, уровень), клиент видит
      в течение минуты и сразу при возвращении на вкладку. Экран не перерисовывается, если ничего
      не изменилось или клиент сейчас что-то вводит. */
   var silentBusy = false, lastMe = '';
@@ -408,7 +408,7 @@
       var typing = document.activeElement && /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName);
       if (typing || $('#modal-root .modal')) { acct.user = r.user; updateAcctUI(); return; }
       acct.user = r.user; updateAcctUI();
-      if (current === 'roulette') updateRoulBalance(); else refreshView(); // посылку не перерисовываем, вдруг крутится
+      if (current === 'roulette') updateRoulBalance(); else if (current !== 'byer') refreshView(); // посылку не перерисовываем, вдруг крутится
     }, function () { silentBusy = false; });
   }
   function updateAcctUI() {
@@ -433,7 +433,7 @@
       tab.innerHTML = '<span class="ic">' + icon('user') + '</span><span>Кабинет</span>';
     }
   }
-  function requireAuth(back) { returnTo = back || current; go('account'); toast('Войдите или создайте аккаунт, за регистрацию ' + RULES.reward.register + ' токенов'); }
+  function requireAuth(back) { returnTo = back || current; go('account'); toast('Войдите или создайте аккаунт, за регистрацию ' + RULES.reward.register + ' ониксов'); }
   // события для заданий копим и отправляем пачкой раз в несколько секунд (каждое: один раз в день)
   var evQ = [], evSent = {}, evTimer = null, newsSeen = {};
   function track(ev, id) {
@@ -506,9 +506,9 @@
       } else {
         var g = {}; (res.gifts || []).forEach(function (x) { g[x.k] = x; });
         box.innerHTML = '<div class="gb-res-h"><span class="gb-eyebrow">Подарок получен</span><h2>Всё уже в кабинете</h2></div><div class="gb-cards">' +
-          (g.tok ? '<div class="gb-card c1"><span class="gb-ci">' + tk('gb-ic') + '</span><span class="gb-ct"><small>Токены</small><b>+' + num(g.tok.n) + '</b><em>≈ ' + num(g.tok.rub) + ' ₽ скидки на заказы</em></span></div>' : '') +
+          (g.tok ? '<div class="gb-card c1"><span class="gb-ci">' + tk('gb-ic') + '</span><span class="gb-ct"><small>Ониксы</small><b>+' + num(g.tok.n) + '</b><em>≈ ' + num(g.tok.rub) + ' ₽ скидки на заказы</em></span></div>' : '') +
           (g.xp ? '<div class="gb-card c2"><span class="gb-ci">' + rlUse('rl-xp', 46) + '</span><span class="gb-ct"><small>Опыт</small><b>+' + num(g.xp.n) + ' XP</b><em>Уровень «' + esc(res.user.level.name) + '» до конца месяца</em></span></div>' : '') +
-          (g.promo ? '<div class="gb-card c3"><span class="gb-ci">' + rlUse('rl-ticket', 46) + '</span><span class="gb-ct"><small>Промокод −' + String(g.promo.pct).replace('.', ',') + '%</small><b class="gb-code">' + esc(g.promo.code) + '</b><em>Один раз, до ' + until(g.promo.until) + ', можно вместе с токенами</em></span><button class="gb-copy" type="button" data-copy="' + esc(g.promo.code) + '" aria-label="Скопировать промокод">' + icon('copy') + '</button></div>' : '') +
+          (g.promo ? '<div class="gb-card c3"><span class="gb-ci">' + rlUse('rl-ticket', 46) + '</span><span class="gb-ct"><small>Промокод −' + String(g.promo.pct).replace('.', ',') + '%</small><b class="gb-code">' + esc(g.promo.code) + '</b><em>Один раз, до ' + until(g.promo.until) + ', можно вместе с ониксами</em></span><button class="gb-copy" type="button" data-copy="' + esc(g.promo.code) + '" aria-label="Скопировать промокод">' + icon('copy') + '</button></div>' : '') +
           '</div><button class="gb-open" type="button" id="gb-done">Забрать подарок</button><a class="gb-link" href="#account" id="gb-acc">Открыть кабинет</a>';
         var cp = $('.gb-copy', box); if (cp) cp.addEventListener('click', function () { copyText(cp.getAttribute('data-copy'), 'Промокод скопирован'); });
         var ac = $('#gb-acc', box); if (ac) ac.addEventListener('click', function () { close(); });
@@ -612,7 +612,7 @@
   }
   function paymentCard() {
     return '<div class="card icard"><h3><span class="ic">' + icon('card') + '</span>Оплата</h3><ul><li>Перевод: Сбербанк, Т-Банк, Альфа-Банк, СБП</li><li>Наличными <small>· при встрече в Москве</small></li>' +
-      (API.enabled ? '<li>До 12% заказа: токены и промокод вместе <small>· 1 токен = 0,3 ₽</small></li><li>Промокоды <small>· вводятся при оформлении</small></li>' : '') + '</ul><p class="small">На сайте оплаты нет: менеджер подтвердит заказ и пришлёт реквизиты.</p></div>';
+      (API.enabled ? '<li>До 12% заказа: ониксы и промокод вместе <small>· 1 оникс = 0,3 ₽</small></li><li>Промокоды <small>· вводятся при оформлении</small></li>' : '') + '</ul><p class="small">На сайте оплаты нет: менеджер подтвердит заказ и пришлёт реквизиты.</p></div>';
   }
   function contactsCard() {
     var s = openState();
@@ -637,18 +637,18 @@
   }
   function stepsBlock() {
     var st = [['Выберите вещь', 'В наличии: отправим сразу. Предзаказ: выкупим в Китае под вас.'], ['Размер и цвет', 'Выберите размер и цвет в карточке товара. Пожелания можно написать в комментарии.'],
-      ['Токены и промокод', API.enabled ? 'Спишите токены и введите промокод: вместе до 12% суммы.' : 'Укажите контакты и способ получения.'],
+      ['Ониксы и промокод', API.enabled ? 'Спишите ониксы и введите промокод: вместе до 12% суммы.' : 'Укажите контакты и способ получения.'],
       ['Номер заказа', 'Заказ сам уходит менеджеру. Статус видно в «Моих заказах».']];
     return '<div class="steps">' + st.map(function (s, i) { return '<div class="step"><span class="n">' + (i + 1) + '</span><h3>' + s[0] + '</h3><p>' + s[1] + '</p></div>'; }).join('') + '</div>';
   }
   function tokensStrip() {
     if (!API.enabled) return '';
     var u = acct.user;
-    if (!u) return '<div class="strip" id="tok-strip"><span class="ic">' + tk() + '</span><div><h3>Токены ONION SHOP</h3><p class="small">+' + RULES.reward.register + ' за регистрацию, задания каждый день, посылка и бонус за друга. Токенами и промокодом можно оплатить до 12% заказа.</p></div><div class="acts"><a class="btn btn-sm" href="#account">' + icon('gift') + 'Забрать ' + RULES.reward.register + '</a></div></div>';
+    if (!u) return '<div class="strip" id="tok-strip"><span class="ic">' + tk() + '</span><div><h3>Ониксы ONION SHOP</h3><p class="small">+' + RULES.reward.register + ' за регистрацию, задания каждый день, посылка и бонус за друга. Ониксами и промокодом можно оплатить до 12% заказа.</p></div><div class="acts"><a class="btn btn-sm" href="#account">' + icon('gift') + 'Забрать ' + RULES.reward.register + '</a></div></div>';
     var L = u.level, p = L.next ? Math.min(100, Math.round((u.xp - L.min) / (L.next.min - L.min) * 100)) : 100;
     return '<div class="strip" id="tok-strip"><span class="ic">' + lvlImg(L.key, 44) + '</span><div><h3>' + num(u.balance) + ' ' + tokWord(u.balance) + ' · ' + esc(L.name) + ' · ' + num(u.xp) + ' XP</h3>' +
       '<div class="bar"><i data-w="' + p + '%"></i></div><p class="small" style="margin-top:6px">' + (L.next ? 'Ещё ' + num(L.next.left) + ' XP до «' + esc(L.next.name) + '»' : (L.fixed ? 'Уровень закреплён менеджером' : 'Максимальный уровень месяца')) + '</p></div>' +
-      '<div class="acts"><a class="btn btn-sm" href="#roulette">' + icon('sparkles') + 'Посылка</a><a class="btn btn-ghost btn-sm" href="#account">Кабинет</a></div></div>';
+      '<div class="acts"><a class="btn btn-sm" href="#games">' + icon('sparkles') + 'Игры</a><a class="btn btn-ghost btn-sm" href="#account">Кабинет</a></div></div>';
   }
   function growBars(root) { requestAnimationFrame(function () { $$('[data-w]', root).forEach(function (b) { b.style.width = b.getAttribute('data-w'); }); }); }
 
@@ -1020,7 +1020,7 @@
       '<button class="icon-btn fav-big" type="button" data-fav="' + esc(p.id) + '" aria-pressed="' + isFav(p.id) + '" aria-label="В избранное">' + icon('heart') + '</button></div>' +
       '<div>' + (p.brand ? '<div class="brand-top">' + esc(p.brand) + '</div>' : '') + '<h1>' + esc(p.title) + '</h1>' + (p.subtitle ? '<p class="sub">' + esc(cap(p.subtitle)) + '</p>' : '') + '</div>' +
       '<div class="price-box"><div class="price-row"><span class="price">' + rub(p.price) + '</span>' + (p.oldPrice ? '<span class="old">' + rub(p.oldPrice) + '</span>' + dscChip(p) + '<span class="save-t">выгода ' + rub(p.oldPrice - p.price) + '</span>' : '') + '</div>' +
-      (API.enabled ? '<span class="tok-hint">' + tk() + 'Токенами можно оплатить до <b>' + rub(maxTokRub) + '</b></span>' : '') + '</div>' +
+      (API.enabled ? '<span class="tok-hint">' + tk() + 'Ониксами можно оплатить до <b>' + rub(maxTokRub) + '</b></span>' : '') + '</div>' +
       etaBlock(p) +
       ((p.facts && p.facts.length) ? '<ul class="facts" aria-label="Главное о товаре">' + p.facts.slice(0, 6).map(function (f) { return '<li><small>' + esc(f[0]) + '</small><b>' + esc(f[1]) + '</b></li>'; }).join('') + '</ul>' : '') +
       (p.status === 'sold' ? '<div class="notice notice-sold">' + icon('alert') + '<div><b>Продано.</b> Этот товар уже купили. Похожие: ниже, а новинки в канале.</div></div>' : p.status === 'preorder'
@@ -1161,7 +1161,7 @@
     requestAnimationFrame(function () { goTo(0, false); });
   }
 
-  // ------------------------------------------------------------ корзина, анкета, токены, промокод
+  // ------------------------------------------------------------ корзина, анкета, ониксы, промокод
   var form = Object.assign({ name: '', phone: '', tg: '', recv: '', recvCity: '', recvAddr: '', ship: 'truck', city: '', preRecv: '', comment: '', together: '', vip: false }, store.get('form', {}));
   var draft0 = store.get('draft', {}) || {};
   var ack = draft0.ack === 'yes' || draft0.ack === 'no' ? draft0.ack : null, tokUse = Math.max(0, +draft0.tokUse || 0), cartPromo = draft0.promo && draft0.promo.code ? draft0.promo : null; // cartPromo: {code, pct, withTokens, personal}
@@ -1184,7 +1184,7 @@
     var pbase = t.total;
     if (cartPromo && cartPromo.cat) { var pc = (RULES.promoCats || []).filter(function (c) { return c.key === cartPromo.cat; })[0]; pbase = 0; lines.forEach(function (l) { var p = BY_ID[l.id]; if (pc && pc.cats.indexOf(p.category) >= 0) pbase += p.price * l.qty; }); }
     t.promo = cartPromo ? cartPromo.code : ''; t.promoRub = cartPromo ? Math.round(pbase * cartPromo.pct / 100) : 0; t.promoNoBase = !!(cartPromo && cartPromo.cat && !pbase);
-    // токены и промокод вместе не больше 12% суммы (то же правило проверяет сервер)
+    // ониксы и промокод вместе не больше 12% суммы (то же правило проверяет сервер)
     var room = Math.max(0, Math.floor(t.total * RULES.maxShare) - t.promoRub);
     t.maxTok = u && !noTok ? Math.min(u.balance, Math.floor(room / RULES.tokenRub)) : 0;
     t.tok = Math.max(0, Math.min(tokUse, t.maxTok));
@@ -1304,11 +1304,11 @@
         radio('together', 'together', form.together, 'Всё вместе', 'Товар из наличия дождётся предзаказа, и вы получите всё сразу') +
         radio('together', 'separate', form.together, 'Раздельно', 'Сначала получите товары в наличии, предзаказ, когда приедет из Китая') + '</div><span class="err-msg" hidden></span></div></div>' : '') +
       '<div class="card panel"><div class="panel-head"><h2><span class="n">' + (++n) + '</span>Комментарий</h2></div><div class="f"><label class="sr" for="f-comment">Комментарий к заказу</label><textarea id="f-comment" maxlength="500" placeholder="По желанию">' + esc(form.comment) + '</textarea></div></div>' +
-      (API.enabled ? '<div class="card panel" id="tokpanel"><div class="panel-head"><h2><span class="n">' + (++n) + '</span>Токены и промокод</h2>' + (u ? '<span class="tok">' + tk() + num(u.balance) + '</span>' : '') + '</div>' +
+      (API.enabled ? '<div class="card panel" id="tokpanel"><div class="panel-head"><h2><span class="n">' + (++n) + '</span>Ониксы и промокод</h2>' + (u ? '<span class="tok">' + tk() + num(u.balance) + '</span>' : '') + '</div>' +
         (u ? (t.maxTok > 0 ? '<div class="tokbox"><div class="tokrow"><span>Списать <b id="tok-n">' + num(t.tok) + '</b> <span id="tok-w">' + tokWord(t.tok) + '</span></span><b id="tok-rub">−' + rub(t.tokRub) + '</b></div>' +
-            '<label class="sr" for="tok-range">Сколько токенов списать</label><input class="range" id="tok-range" type="range" min="0" max="' + t.maxTok + '" step="1" value="' + t.tok + '">' +
+            '<label class="sr" for="tok-range">Сколько ониксов списать</label><input class="range" id="tok-range" type="range" min="0" max="' + t.maxTok + '" step="1" value="' + t.tok + '">' +
             '<div class="tokrow"><span class="small">максимум ' + num(t.maxTok) + '</span><span class="tokq"><button type="button" data-tq="0">0</button><button type="button" data-tq="1">Максимум</button></span></div></div>'
-            : (cartPromo && cartPromo.withTokens === false ? '<p class="small">Промокод ' + esc(cartPromo.code) + ' нельзя совмещать с токенами.</p>' : '')) +
+            : (cartPromo && cartPromo.withTokens === false ? '<p class="small">Промокод ' + esc(cartPromo.code) + ' нельзя совмещать с ониксами.</p>' : '')) +
           (u.promos.length ? '<div class="promos">' + u.promos.map(function (pr) { return '<button type="button" class="ticket" data-promo="' + esc(pr.code) + '" aria-pressed="' + (!!cartPromo && cartPromo.code === pr.code) + '"><code>' + esc(pr.code) + '</code><span class="pct">−' + pctTxt(pr.pct) + '%</span>' + (pr.cat ? '<span class="small">на «' + esc(pr.catLabel) + '»</span>' : '') + '</button>'; }).join('') + '</div>' : '')
           : '<div class="guest-box">' + tk('lg') + '<div><b>Заказ оформляется из кабинета, войдите или создайте его</b></div></div><div class="acts"><button class="btn btn-sm btn-ghost" type="button" id="go-auth">' + icon('user') + 'Войти или создать аккаунт</button></div>') +
         '<div class="f"><label for="promo-in">Промокод</label><div class="promo-row"><input class="input" id="promo-in" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Например, HALLOWEEN" value="' + esc(cartPromo && !cartPromo.personal ? cartPromo.code : '') + '"><button class="btn btn-dark" type="button" id="promo-btn">' + (cartPromo && !cartPromo.personal ? 'Убрать' : 'Применить') + '</button></div><div id="promo-msg">' + (cartPromo ? (t.promoNoBase ? '<span class="promo-bad">Промокод ' + esc(cartPromo.code) + ' действует только на «' + esc(cartPromo.catLabel) + '»: таких товаров в корзине нет</span>' : '<span class="promo-ok">' + icon('check-circle') + 'Промокод ' + esc(cartPromo.code) + ': −' + pctTxt(cartPromo.pct) + '%' + (cartPromo.cat ? ' на «' + esc(cartPromo.catLabel) + '»' : '') + '</span>') : '') + '</div></div>' +
@@ -1320,11 +1320,11 @@
       '<aside class="card sumcard"><h2>Ваш заказ</h2>' +
       '<div class="sumrow"><span>Товары · ' + t.cnt + ' шт.</span><b>' + rub(t.total) + '</b></div>' +
       (t.old > t.total ? '<div class="sumrow good"><span>Скидки на товары</span><b>учтены · −' + rub(t.old - t.total) + '</b></div>' : '') +
-      '<div class="sumrow" id="sum-tok"' + (t.tok ? '' : ' hidden') + '><span>Токены</span><b>−' + rub(t.tokRub) + '</b></div>' +
+      '<div class="sumrow" id="sum-tok"' + (t.tok ? '' : ' hidden') + '><span>Ониксы</span><b>−' + rub(t.tokRub) + '</b></div>' +
       '<div class="sumrow good" id="sum-promo"' + (t.promoRub ? '' : ' hidden') + '><span>Промокод <span id="sum-promo-code">' + esc(t.promo) + '</span></span><b>−' + rub(t.promoRub) + '</b></div>' +
       '<div class="sumrow" id="sum-vip"' + (t.vipRub ? '' : ' hidden') + '><span>Приоритетный заказ</span><b>+' + rub(t.vipRub) + '</b></div>' +
       '<div class="sumtotal"><span>К оплате</span><b id="sum-pay">' + rub(t.toPay) + '</b></div>' +
-      (API.enabled && !u ? '<button class="btn btn-block" type="submit" id="submit-btn">' + icon('user') + '<span>Войти, чтобы оформить</span></button>' : ((u && !u.phoneOk ? '<button class="ph-need ph-soft" type="button" id="ph-go2">' + icon('phone') + '<span>Подтвердите телефон в Telegram, чтобы получить приветственные токены и бонусы</span></button>' : '') + '<button class="btn btn-block" type="submit" id="submit-btn">' + icon('check-circle') + '<span>Оформить заказ</span></button>')) +
+      (API.enabled && !u ? '<button class="btn btn-block" type="submit" id="submit-btn">' + icon('user') + '<span>Войти, чтобы оформить</span></button>' : ((u && !u.phoneOk ? '<button class="ph-need ph-soft" type="button" id="ph-go2">' + icon('phone') + '<span>Подтвердите телефон в Telegram, чтобы получить приветственные ониксы и бонусы</span></button>' : '') + '<button class="btn btn-block" type="submit" id="submit-btn">' + icon('check-circle') + '<span>Оформить заказ</span></button>')) +
       '</aside></form>';
 
     // строки корзины
@@ -1339,7 +1339,7 @@
     });
     $('#cart-clear', v).addEventListener('click', function () { confirmBox({ title: 'Очистить корзину?', text: 'Все выбранные товары будут убраны.', actions: [{ label: 'Оставить', cls: 'btn-ghost' }, { label: 'Очистить', cls: 'btn-danger', run: function () { cart = []; saveCart(); renderCart(); } }] }); });
 
-    // токены и промокоды
+    // ониксы и промокоды
     var ga = $('#go-auth', v); if (ga) ga.addEventListener('click', function () { requireAuth('cart'); });
     var range = $('#tok-range', v);
     function updSum() {
@@ -1522,7 +1522,7 @@
       '<span class="rc-label">Номер заказа</span><div class="rc-no"><b>' + esc(o.no) + '</b><button type="button" data-copy="' + esc(o.no) + '">' + icon('copy') + 'Номер</button></div><span class="rc-date">' + esc(fmtAt(o.at)) + '</span></div>' +
       '<div class="rc-perf"><i></i><i></i></div>' + (thumbs ? '<div class="rc-thumbs">' + thumbs + '</div>' : '') +
       '<div class="rc-body"><div class="rc-row"><span>Товары · ' + (o.count || 0) + ' шт.</span><b>' + rub(o.total || 0) + '</b></div>' +
-      (o.tokens ? '<div class="rc-row"><span>Токены · ' + num(o.tokens) + '</span><b>−' + rub(o.tokenRub) + '</b></div>' : '') +
+      (o.tokens ? '<div class="rc-row"><span>Ониксы · ' + num(o.tokens) + '</span><b>−' + rub(o.tokenRub) + '</b></div>' : '') +
       (o.promoRub ? '<div class="rc-row"><span>Промокод ' + esc(o.promo) + '</span><b>−' + rub(o.promoRub) + '</b></div>' : '') +
       '<div class="rc-row total"><span>К оплате</span><b>' + rub(o.toPay != null ? o.toPay : o.total) + '</b></div></div>' + status +
       '<div class="rc-bars">' + barcode(o.no) + '</div></div>';
@@ -1628,18 +1628,18 @@
   function authSide() {
     var R = RULES.reward;
     return '<div class="auth-side"><h2>Что даёт аккаунт</h2><ul>' +
-      '<li>' + tk('lg') + '<span><b>+' + R.register + ' токенов</b> сразу за регистрацию</span></li>' +
-      '<li>' + tk('lg') + '<span>Токены и промокод вместе: <b>до 12%</b> заказа · 1 токен = 0,3 ₽</span></li>' +
-      '<li>' + tk('lg') + '<span><b>Задания дня</b> по 1 токену и до ' + RULES.levels[4].streak + ' за 7 дней подряд</span></li>' +
+      '<li>' + tk('lg') + '<span><b>+' + R.register + ' ониксов</b> сразу за регистрацию</span></li>' +
+      '<li>' + tk('lg') + '<span>Ониксы и промокод вместе: <b>до 12%</b> заказа · 1 оникс = 0,3 ₽</span></li>' +
+      '<li>' + tk('lg') + '<span><b>Задания дня</b> по 1 ониксу и до ' + RULES.levels[4].streak + ' за 7 дней подряд</span></li>' +
       '<li>' + tk('lg') + '<span><b>Программа лояльности</b>: Бронза → Серебро → Золото → Платина → Алмаз</span></li>' +
-      '<li>' + tk('lg') + '<span><b>Посылка</b>: токены, промокоды, рамки для аватара</span></li>' +
+      '<li>' + tk('lg') + '<span><b>Посылка</b>: ониксы, промокоды, рамки для аватара</span></li>' +
       '<li>' + tk('lg') + '<span><b>Статусы заказов</b>: от выкупа в Китае до получения</span></li>' +
-      '<li>' + tk('lg') + '<span><b>+' + R.referrer + ' токенов</b> за друга, когда он получит первый заказ</span></li>' +
+      '<li>' + tk('lg') + '<span><b>+' + R.referrer + ' ониксов</b> за друга, когда он получит первый заказ</span></li>' +
       '</ul><p class="small" style="color:var(--navy-ink-2)">Пароль хранится в зашифрованном виде. Почта нужна, чтобы восстановить пароль.</p></div>';
   }
   function renderAuth(v) {
     var ref = store.get('ref', ''), R = RULES.reward, val = function (id) { var el = $('#' + id, v); return el ? el.value.trim() : ''; };
-    var refBanner = ref ? '<div class="form-ok">' + icon('gift') + ' Вас пригласил друг: при регистрации +' + R.refFriend + ' токенов сверху.</div>' : '';
+    var refBanner = ref ? '<div class="form-ok">' + icon('gift') + ' Вас пригласил друг: при регистрации +' + R.refFriend + ' ониксов сверху.</div>' : '';
     var body;
     if (authTab === 'register') {
       body = '<form id="auth-form" novalidate style="display:grid;gap:14px">' + refBanner +
@@ -1649,10 +1649,10 @@
         '<div class="f"><label for="a-phone">Телефон</label><input class="input" id="a-phone" type="tel" autocomplete="tel" placeholder="+7 900 000-00-00" value="' + esc(form.phone) + '"></div>' +
         '<div class="f"><label for="a-tg">Telegram <span class="opt-l">· желательно</span></label><div class="prefix"><span>@</span><input class="input" id="a-tg" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="username" value="' + esc(form.tg) + '"></div></div>' +
         '<div class="f full"><label for="a-pass">Пароль</label><div class="pass"><input class="input" id="a-pass" type="password" autocomplete="new-password" placeholder="не короче 6 символов"><button type="button" data-eye aria-label="Показать пароль">' + icon('eye') + '</button></div></div>' +
-        '<div class="f full"><label for="a-ref">Код друга <span class="opt-l">· по желанию, +' + R.refFriend + ' токенов</span></label><input class="input" id="a-ref" autocapitalize="characters" spellcheck="false" placeholder="Например, K7Q2MX" value="' + esc(ref) + '"></div>' +
+        '<div class="f full"><label for="a-ref">Код друга <span class="opt-l">· по желанию, +' + R.refFriend + ' ониксов</span></label><input class="input" id="a-ref" autocapitalize="characters" spellcheck="false" placeholder="Например, K7Q2MX" value="' + esc(ref) + '"></div>' +
         '<div class="f full" id="code-box"' + (regSent ? '' : ' hidden') + '><label for="a-code">Код из письма</label><input class="input code" id="a-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="••••••"><button class="link-btn" type="button" id="resend" style="justify-self:start">Отправить код ещё раз</button></div></div>' +
         '<div id="code-msg"></div><div class="form-err" id="auth-err" hidden></div>' +
-        '<button class="btn btn-block" type="submit" id="auth-btn">' + (regSent ? icon('gift') + 'Подтвердить и получить ' + R.register + ' токенов' : icon('mail') + 'Получить код на почту') + '</button></form>';
+        '<button class="btn btn-block" type="submit" id="auth-btn">' + (regSent ? icon('gift') + 'Подтвердить и получить ' + R.register + ' ониксов' : icon('mail') + 'Получить код на почту') + '</button></form>';
     } else if (authTab === 'login') {
       body = '<form id="auth-form" novalidate style="display:grid;gap:14px">' +
         '<div class="f"><label for="a-login">Логин или почта</label><input class="input" id="a-login" autocomplete="username" autocapitalize="off" spellcheck="false" placeholder="логин или name@mail.ru"></div>' +
@@ -1694,7 +1694,7 @@
         if (!regSent) {
           sendCode('register', p.email, btn, out).then(function (r) {
             if (!r) return;
-            regSent = true; $('#code-box', v).hidden = false; btn.innerHTML = icon('gift') + 'Подтвердить и получить ' + R.register + ' токенов';
+            regSent = true; $('#code-box', v).hidden = false; btn.innerHTML = icon('gift') + 'Подтвердить и получить ' + R.register + ' ониксов';
             $('#a-code', v).focus();
           });
           return;
@@ -1790,7 +1790,7 @@
     el.innerHTML = '<div class="dr-bg" data-dr-close></div><aside class="dr-p" role="dialog" aria-modal="true" aria-label="Меню"><div class="dr-h"><b>Меню</b><button class="icon-btn" type="button" data-dr-close aria-label="Закрыть">' + icon('x') + '</button></div><div class="dr-b">' +
       '<div class="dr-g">' + link('home', 'Главная', 'href="#home" data-go="home"') + link('grid', 'Каталог', 'href="#catalog" data-go="catalog" data-reset="1"') + link('box', 'В наличии', 'href="#stock" data-go="stock"') + link('plane', 'Предзаказ из Китая', 'href="#preorder" data-go="preorder"') + link('percent', 'Товары со скидкой', 'href="#catalog" data-go="catalog" data-sale="1"', nSale ? nSale + ' ' + plural(nSale, 'товар', 'товара', 'товаров') : '') + '</div>' +
       '<div class="dr-s">Категории</div><div class="dr-cats">' + cats.map(function (c) { return '<a class="dr-c' + (c.n ? '' : ' empty') + '" href="#catalog" data-go="catalog" data-cat="' + c.key + '"><img class="lt" src="assets/cat/' + c.key + '.svg" alt=""><img class="dk" src="assets/cat/dark/' + c.key + '.svg" alt=""><span>' + esc(c.label) + '</span></a>'; }).join('') + '</div>' +
-      '<div class="dr-s">Мои покупки</div><div class="dr-g">' + link('heart', 'Избранное', 'href="#favorites" data-go="favorites"') + link('bag', 'Корзина', 'href="#cart" data-go="cart"') + link('user', u ? 'Кабинет' : 'Войти', 'href="#account" data-go="account"', u ? esc(u.name || u.login || '') : '') + (API.enabled ? link('receipt', 'Мои заказы', 'href="#orders" data-go="orders"') + link('gift', 'Посылка', 'href="#roulette" data-go="roulette"') : '') + '</div>' +
+      '<div class="dr-s">Мои покупки</div><div class="dr-g">' + link('heart', 'Избранное', 'href="#favorites" data-go="favorites"') + link('bag', 'Корзина', 'href="#cart" data-go="cart"') + link('user', u ? 'Кабинет' : 'Войти', 'href="#account" data-go="account"', u ? esc(u.name || u.login || '') : '') + (API.enabled ? link('receipt', 'Мои заказы', 'href="#orders" data-go="orders"') + link('gift', 'Игры', 'href="#games" data-go="games"') : '') + '</div>' +
       '<div class="dr-s">Информация</div><div class="dr-g">' + link('info', 'Частые вопросы', 'href="#info" data-go="info"', 'заказ, сроки, доставка, оплата') + link('truck', 'Как работает предзаказ', 'href="' + SHOP.preorderUrl + '" target="_blank" rel="noopener"') + link('pin', 'Магазин и контакты', 'href="#info" data-go="info"', esc(SHOP.address)) + '</div>' +
       '<div class="dr-s">Оформление</div><div class="dr-th" id="dr-th">' + ['auto', 'light', 'dark'].map(function (k) { return '<button type="button" data-th="' + k + '" aria-pressed="' + (themeMode() === k) + '">' + (k === 'auto' ? 'Авто' : THEME_NAMES[k]) + '</button>'; }).join('') + '</div>' +
       '<div class="dr-s">Связь</div><div class="dr-g">' + link('send', 'Менеджер в Telegram', 'href="' + SHOP.managerUrl + '" target="_blank" rel="noopener"', '@' + SHOP.manager) + link('megaphone', 'Канал магазина', 'href="' + SHOP.channelUrl + '" target="_blank" rel="noopener"') + link('star', 'Отзывы покупателей', 'href="' + SHOP.reviewsUrl + '" target="_blank" rel="noopener"') + link('play', 'TikTok', 'href="' + SHOP.tiktokUrl + '" target="_blank" rel="noopener"') + '</div>' +
@@ -1895,7 +1895,7 @@
     $('#m-forgot', md).addEventListener('click', function () { closeModal(); API.call('logout'); API.setSession(''); authTab = 'reset'; setUser(null); });
   }
   function bdayModal() {
-    var md = openModal(modalHead('День рождения') + '<p class="muted">Указывается один раз. В день рождения вас ждёт подарок: токены, XP и промокод. Подарок получают аккаунты старше 30 дней.</p><div class="f"><label for="m-bday">Дата</label><input class="input" id="m-bday" type="date"></div><button class="btn btn-block" type="button" id="m-save">Сохранить</button>', { cls: 'sm' });
+    var md = openModal(modalHead('День рождения') + '<p class="muted">Указывается один раз. В день рождения вас ждёт подарок: ониксы, XP и промокод. Подарок получают аккаунты старше 30 дней.</p><div class="f"><label for="m-bday">Дата</label><input class="input" id="m-bday" type="date"></div><button class="btn btn-block" type="button" id="m-save">Сохранить</button>', { cls: 'sm' });
     $('#m-save', md).addEventListener('click', function () {
       var val = $('#m-bday', md).value; if (!val) { toast('Выберите дату', null, 'warn'); return; }
       var MON = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'], mm = +val.slice(5, 7), dd = +val.slice(8, 10);
@@ -1954,7 +1954,7 @@
       confirmBox({ title: 'Пока нельзя удалить', text: 'Аккаунт можно удалить, когда нет активных заказов. Сейчас активных: ' + act + '. Дождитесь получения или напишите менеджеру.', actions: [{ label: 'Понятно', cls: 'btn' }] });
       return;
     }
-    var md = openModal(modalHead('Удалить аккаунт?') + '<p class="muted">Удалятся данные кабинета, токены (' + num(u.balance) + '), промокоды и уровень. Восстановить будет нельзя. При новой регистрации на тот же телефон или почту приветственные бонусы повторно не начисляются.</p>' +
+    var md = openModal(modalHead('Удалить аккаунт?') + '<p class="muted">Удалятся данные кабинета, ониксы (' + num(u.balance) + '), промокоды и уровень. Восстановить будет нельзя. При новой регистрации на тот же телефон или почту приветственные бонусы повторно не начисляются.</p>' +
       '<div class="f"><label for="m-pass">Пароль для подтверждения</label><input class="input" id="m-pass" type="password" autocomplete="current-password"></div><div id="m-msg"></div>' +
       '<div class="send-row"><button class="btn btn-ghost" type="button" data-close>Оставить</button><button class="btn btn-danger" type="button" id="m-del">Удалить навсегда</button></div>', { cls: 'sm' });
     $('#m-del', md).addEventListener('click', function () {
@@ -1994,14 +1994,14 @@
     var dashOrders = active.length ? active.slice(0, 3) : u.orders.slice(0, 1);
     var bd = u.birthday ? u.birthday.split('-') : null;
     v.innerHTML =
-      (u.phoneOk ? '' : '<div class="ph-cta"><span class="ph-ic">' + icon('phone') + '</span><div><b>Подтвердите телефон</b><small>10 секунд в Telegram. После этого: приветственные токены, бонусы за друзей и подарок на день рождения.</small></div><button class="btn" type="button" id="ph-go">Подтвердить</button></div>') +
+      (u.phoneOk ? '' : '<div class="ph-cta"><span class="ph-ic">' + icon('phone') + '</span><div><b>Подтвердите телефон</b><small>10 секунд в Telegram. После этого: приветственные ониксы, бонусы за друзей и подарок на день рождения.</small></div><button class="btn" type="button" id="ph-go">Подтвердить</button></div>') +
       (u.email ? '' : '<div class="notice notice-warn" style="margin-bottom:12px">' + icon('mail') + '<div><b>Добавьте почту.</b> Без неё не получится восстановить пароль. <button class="link-btn" type="button" id="add-email">Добавить</button></div></div>') +
       '<div class="dash">' +
       '<div class="profile c12"><div class="who"><div class="ava-wrap">' + ava(u, 'lg') + '<button class="ava-cam" type="button" id="ava-cam" aria-label="Изменить фото">' + icon('camera') + '</button></div>' +
       '<div style="min-width:0"><h1>' + esc(u.name) + '</h1>' +
       '<div class="meta"><span>@' + esc(u.login) + '</span>' + (u.email ? '<span>' + esc(u.email) + '</span>' : '') + '<button class="idb" type="button" data-copy="' + esc(u.code) + '">ID ' + esc(u.code) + icon('copy') + '</button><span>с нами с ' + esc(since) + '</span></div></div></div>' +
-      '<div class="ptiles"><div class="ptile"><small>Токены</small><b>' + tk() + num(u.balance) + '</b></div><div class="ptile"><small>Это скидка до</small><b>' + rub(u.balanceRub) + '</b></div><div class="ptile"><small>Серия входов</small><b>' + u.streak + ' ' + plural(u.streak, 'день', 'дня', 'дней') + '</b></div><div class="ptile"><small>Активные заказы</small><b>' + active.length + '</b></div></div>' +
-      '<div class="acts"><a class="btn" href="#roulette">' + icon('gift') + 'Посылка</a><a class="btn btn-white" href="#cart">' + icon('bag') + 'Потратить токены</a></div></div>' +
+      '<div class="ptiles"><div class="ptile"><small>Ониксы</small><b>' + tk() + num(u.balance) + '</b></div><div class="ptile"><small>Это скидка до</small><b>' + rub(u.balanceRub) + '</b></div><div class="ptile"><small>Серия входов</small><b>' + u.streak + ' ' + plural(u.streak, 'день', 'дня', 'дней') + '</b></div><div class="ptile"><small>Активные заказы</small><b>' + active.length + '</b></div></div>' +
+      '<div class="acts"><a class="btn" href="#games">' + icon('gift') + 'Игры</a><a class="btn btn-white" href="#cart">' + icon('bag') + 'Потратить ониксы</a></div></div>' +
 
       '<div class="card tile c6 loyal lv-' + L.key + '"><div class="tile-h"><h3>Программа лояльности</h3><button class="link-btn" type="button" id="all-levels">Все уровни</button></div>' +
       '<div class="lh lh-row lv-' + L.key + '">' + emblem(L.key, 68, 3) + '<div class="lh-t"><span class="small">Ваш уровень' + (L.fixed ? ' · закреплён менеджером' : '') + '</span><b class="loyal-name">' + esc(L.name) + '</b><span class="xp-num">' + num(u.xp) + ' XP <span class="small">за месяц</span></span></div></div>' +
@@ -2016,7 +2016,7 @@
 
       '<div class="card tile c6"><div class="tile-h"><h3>Пригласить друга</h3><span class="side">' + u.refCount + ' ' + plural(u.refCount, 'друг', 'друга', 'друзей') + '</span></div>' +
       '<div class="ref-stats"><div><small>Друзей пришло</small><b>' + u.refCount + '</b></div><div><small>Заработано</small><b>' + tk() + num(u.refCount * R.referrer) + '</b></div><div><small>За каждого друга</small><b>+' + R.referrer + '</b></div></div>' +
-      '<p class="small ref-note">Друг получает +' + R.refFriend + ' токенов при регистрации, а вы +' + R.referrer + ', когда он получит первый заказ от ' + num(RULES.refMinOrder) + ' ₽.</p>' +
+      '<p class="small ref-note">Друг получает +' + R.refFriend + ' ониксов при регистрации, а вы +' + R.referrer + ', когда он получит первый заказ от ' + num(RULES.refMinOrder) + ' ₽.</p>' +
       '<div class="ref-row"><span class="lnk">' + esc(refLink.replace(/^https?:\/\//, '')) + '</span><button class="icon-btn" type="button" data-copy="' + esc(refLink) + '" aria-label="Скопировать ссылку">' + icon('copy') + '</button><button class="icon-btn acc" type="button" id="ref-share" aria-label="Поделиться">' + icon('share') + '</button></div>' +
       '<p class="small">Ваш код: <b>' + esc(u.refCode) + '</b></p></div>' +
 
@@ -2051,7 +2051,7 @@
     on('r-logout', function () { API.call('logout'); API.setSession(''); setUser(null); toast('Вы вышли из аккаунта'); });
     on('checkin-btn', function () { doCheckin($('#checkin-btn', v)); });
     on('ref-share', function () {
-      var text = 'Заходи в ONION SHOP, по моей ссылке +' + R.refFriend + ' токенов при регистрации';
+      var text = 'Заходи в ONION SHOP, по моей ссылке +' + R.refFriend + ' ониксов при регистрации';
       try { if (navigator.share) { navigator.share({ title: 'ONION SHOP', text: text, url: refLink }).catch(function () { /* отменили */ }); return; } } catch (e) { /* */ }
       copyText(refLink, 'Ссылка-приглашение скопирована');
     });
@@ -2095,9 +2095,156 @@
     var fbd = $('#roul-free'); if (fbd) fbd.textContent = u.freeSpins ? 'Бесплатных посылок: ' + u.freeSpins : 'Раз в день бесплатно';
     var pbtn = $('#spin-paid'); if (pbtn) { pbtn.disabled = spinning || u.balance < RULES.spinCost; pbtn.querySelector('span').textContent = spinning ? 'Сканируем…' : 'Открыть за ' + RULES.spinCost; }
   }
+  /* ------------------------------------------------------------ «Игры» и «Байер»
+     Экран выбора и сама игра. Все правила и случайность на сервере (actions byr*), здесь только показ и кнопки. */
+  var byTimer = null, by = null, byAt = 0;
+  function mon(n) { return num(n) + ' мон.'; }
+  function renderGames() {
+    var v = $('#v-games'), u = acct.user;
+    if (!API.enabled) { v.innerHTML = '<div class="empty"><span class="ico">' + icon('gift') + '</span><h3>Игры скоро появятся</h3><a class="btn" href="#catalog">В каталог</a></div>'; return; }
+    v.innerHTML = '<div class="pad roul-head" style="padding:0 0 10px"><div><h1>Игры</h1></div></div>' +
+      '<div class="gm-bar">' + (u ? '<span class="rl-chipb">' + tk('lg') + '<span>' + num(u.balance) + '</span></span>' : '<span class="rl-free">Войдите, чтобы играть и получать призы</span>') + '</div>' +
+      '<div class="gm-grid">' +
+      '<a class="gm-card gm-p" href="#roulette"><span class="gm-ic">' + icon('gift', 'lg') + '</span><h2>Посылка с сюрпризом</h2><p>Рентген показывает приз: ониксы, промокод, опыт или рамка для аватара.</p><span class="gm-tag" id="gm-free">' + (u ? (u.freeSpins ? 'Бесплатных посылок: ' + u.freeSpins : 'Раз в день бесплатно') : 'Раз в день бесплатно') + '</span></a>' +
+      '<a class="gm-card gm-b" href="#byer"><span class="gm-ic">' + icon('bag', 'lg') + '</span><h2>Байер</h2><p>Свой магазин: закупайте вещи в Китае, ставьте цены, выполняйте заказы клиентов и растите до шоурума.</p><span class="gm-tag" id="gm-by">' + (u ? 'Загружаем…' : 'Нужен вход') + '</span></a>' +
+      '</div>';
+    if (u) API.call('byrState').then(function (r) {
+      var t = $('#gm-by'); if (!t || !r.ok) { if (t) t.textContent = 'Играть'; return; }
+      var b = r.byr; t.textContent = b.stage.name + ' · смен: ' + b.charges + ' из ' + b.chargeMax;
+    }, function () { var t = $('#gm-by'); if (t) t.textContent = 'Играть'; });
+  }
+  function renderByer() {
+    var v = $('#v-byer'), u = acct.user;
+    clearInterval(byTimer); byTimer = null; by = null;
+    if (!API.enabled) { v.innerHTML = '<div class="empty"><span class="ico">' + icon('gift') + '</span><h3>Игра скоро появится</h3><a class="btn" href="#catalog">В каталог</a></div>'; return; }
+    if (!u) { v.innerHTML = '<div class="pad roul-head" style="padding:0 0 10px"><div><h1>Байер</h1></div></div><div class="card panel by-note"><p>Игра хранит ваш магазин в кабинете. Войдите, чтобы начать.</p><button class="btn" type="button" id="by-login">' + icon('user') + 'Войти</button></div>'; $('#by-login', v).addEventListener('click', function () { requireAuth('byer'); }); return; }
+    v.innerHTML = '<div class="pad roul-head" style="padding:0 0 10px"><div><h1>Байер</h1></div><a class="btn btn-ghost btn-sm" href="#games">Все игры</a></div><div id="by-root" class="by"><div class="by-load">Открываем магазин…</div></div>';
+    var root = $('#by-root', v), sel = 0, pr = 'mid', chk = false, brd = false, bItem = '', bShip = 'truck', bQty = 5, msg = null, busy = false;
+    function g(path, payload) { return API.call(path, payload || {}); }
+    function setBy(b) { by = b; byAt = Date.now(); if (!bItem) bItem = b.stage.items[0]; if (b.stage.items.indexOf(bItem) < 0) bItem = b.stage.items[0]; if (bShip === 'air' && !b.stage.air) bShip = 'truck'; }
+    function stockOf(id) { var r = by.stock.filter(function (x) { return x.id === id; })[0]; return r ? r.q : 0; }
+    function nm(id) { return by.cat.items[id].name; }
+    function stars(n) { var s = ''; for (var i = 1; i <= 5; i++) s += '<i class="' + (n >= i - 0.25 ? 'on' : n >= i - 0.75 ? 'half' : '') + '">' + icon('star') + '</i>'; return '<span class="by-stars" aria-label="Рейтинг ' + n + '">' + s + '</span>'; }
+    function chText() {
+      var ms = Math.max(0, by.nextMs - (Date.now() - byAt)), m = Math.ceil(ms / 60000);
+      return by.charges >= by.chargeMax ? 'смены полные' : 'следующая через ' + (m >= 60 ? Math.floor(m / 60) + ' ч ' + (m % 60) + ' мин' : m + ' мин');
+    }
+    function head() {
+      var dots = ''; for (var i = 0; i < by.chargeMax; i++) dots += '<i class="' + (i < by.charges ? 'on' : '') + '"></i>';
+      return '<div class="by-chips"><div class="by-chip"><small>Касса</small><b>' + mon(by.cash) + '</b></div><div class="by-chip"><small>Рейтинг</small><b>' + stars(by.rating) + '</b></div>' +
+        '<div class="by-chip"><small>' + esc(by.stage.name) + '</small><b>Этап ' + by.stage.n + '</b></div><div class="by-chip"><small>Смены</small><b><span class="by-dots">' + dots + '</span></b><em id="by-ch">' + chText() + '</em></div></div>';
+    }
+    function priceOf(item, k) { return Math.round(by.cat.items[item].mkt * by.cat.price[k] / 10) * 10; }
+    function ordHtml(o) {
+      var sold = o.st === 1, st = o.st;
+      var tag = st === 1 ? '<span class="by-st ok">продано</span>' : st === -1 ? '<span class="by-st no">отказ</span>' : st === -2 ? '<span class="by-st no">брак</span>' : st === -3 ? '<span class="by-st">пропущен</span>' : '';
+      var on = o.id === sel && st === 0;
+      var h = '<div class="by-ord' + (on ? ' on' : '') + (st ? ' done' : '') + '"><button class="by-oh" type="button" data-o="' + o.id + '"' + (st ? ' disabled' : '') + '><span class="by-ci c-' + o.cust + '">' + esc(by.cat.cust[o.cust].name.charAt(0)) + '</span><span class="by-ot"><b>' + esc(nm(o.item)) + '</b><small>' + esc(by.cat.cust[o.cust].name) + ' клиент' + (o.urgent ? ' · <u>срочный ×1,5</u>' : '') + '</small></span>' + tag + '</button>';
+      if (on) {
+        var has = stockOf(o.item), need = chk ? 2 : 1, left = by.shift.t;
+        h += '<div class="by-ctl"><div class="by-seg" role="radiogroup" aria-label="Цена">' + ['low', 'mid', 'high'].map(function (k) { return '<button type="button" role="radio" aria-checked="' + (pr === k) + '" data-p="' + k + '"><small>' + ({ low: 'Низкая', mid: 'Средняя', high: 'Высокая' })[k] + '</small><b>' + num(priceOf(o.item, k)) + '</b></button>'; }).join('') + '</div>' +
+          '<label class="by-opt"><input type="checkbox" id="by-chk"' + (chk ? ' checked' : '') + '><span>Проверить перед отправкой <small>+1 к времени, без брака</small></span></label>' +
+          (by.stage.brand ? '<label class="by-opt"><input type="checkbox" id="by-brd"' + (brd ? ' checked' : '') + '><span>Фирменная упаковка <small>−' + by.cat.brandCost + ' мон., отзыв выше</small></span></label>' : '') +
+          (has ? '' : '<p class="by-warn">' + esc(nm(o.item)) + ' нет на складе. Закажите ниже: фура едет дольше, самолёт быстрее.</p>') +
+          '<div class="by-acts"><button class="btn" type="button" id="by-sell"' + (!has || left < need || busy ? ' disabled' : '') + '>' + icon('check-circle') + 'Продать <small>(время: ' + need + ')</small></button><button class="btn btn-ghost" type="button" id="by-skip"' + (busy ? ' disabled' : '') + '>Пропустить</button></div></div>';
+      }
+      return h + '</div>';
+    }
+    function shiftHtml() {
+      var s = by.shift, t = '';
+      for (var i = 0; i < by.cat.time; i++) t += '<i class="' + (i < s.t ? 'on' : '') + '"></i>';
+      return '<section class="card panel by-shift"><div class="panel-head"><h2>Смена идёт</h2><span class="by-time" title="Осталось времени">' + icon('hourglass') + '<span class="by-tb">' + t + '</span></span></div>' +
+        '<p class="small">Выручка смены: <b>' + mon(s.rev) + '</b> · продано: ' + s.sold + '. Продажа тратит 1 время, проверка ещё 1. Смена закончится, когда выйдет время или закрыты все заказы.</p>' +
+        (msg ? '<div class="by-msg ' + msg.k + '">' + esc(msg.t) + '</div>' : '') +
+        '<div class="by-ords">' + s.orders.map(ordHtml).join('') + '</div>' +
+        '<div class="by-end"><button class="btn btn-ghost btn-sm" type="button" id="by-fin"' + (busy ? ' disabled' : '') + '>Закончить смену</button></div></section>';
+    }
+    function startHtml() {
+      return '<section class="card panel by-start"><div class="panel-head"><h2>Новая смена</h2></div>' +
+        '<p>5 клиентов, 6 единиц времени. Первый заказ срочный: платит в 1,5 раза больше и даёт опыт. Смен до ' + by.chargeMax + ' в запасе, новая появляется каждые 4 часа.</p>' +
+        (msg ? '<div class="by-msg ' + msg.k + '">' + esc(msg.t) + '</div>' : '') +
+        '<button class="btn btn-block" type="button" id="by-start"' + (by.charges < 1 || busy ? ' disabled' : '') + '>' + icon('play') + (by.charges < 1 ? 'Смен нет, ' + chText() : 'Начать смену') + '</button></section>';
+    }
+    function stockHtml() {
+      var rows = by.stock.map(function (x) { return '<li><span>' + esc(nm(x.id)) + '</span><b>' + x.q + ' шт.</b><small>себестоимость ' + x.c + '</small></li>'; }).join('');
+      var inb = by.inbound.map(function (x) { return '<li><span>' + esc(by.cat.ship[x.ship].name) + ': ' + x.q + ' × ' + esc(nm(x.item)) + '</span><small>через ' + x.left + ' ' + plural(x.left, 'смену', 'смены', 'смен') + '</small></li>'; }).join('');
+      return '<section class="card panel"><div class="panel-head"><h2>Склад</h2><span class="small">' + by.used + ' из ' + by.stage.cap + '</span></div><ul class="by-list">' + (rows || '<li class="muted"><span>Пусто</span></li>') + '</ul>' +
+        (inb ? '<div class="by-sub">В пути</div><ul class="by-list">' + inb + '</ul>' : '') + '<p class="small">Аренда за смену: ' + mon(by.stage.rent) + '</p></section>';
+    }
+    function buyHtml() {
+      var it = by.cat.items[bItem], sp = by.cat.ship[bShip], k = by.cat.batch[bQty], unit = Math.round(it.buy * sp.k * k), cost = unit * bQty;
+      var items = by.stage.items.map(function (id) { return '<button type="button" data-bi="' + id + '" aria-pressed="' + (bItem === id) + '">' + esc(nm(id)) + '</button>'; }).join('');
+      var ships = ['truck', 'air'].map(function (id) { var s = by.cat.ship[id], lock = id === 'air' && !by.stage.air; return '<button type="button" data-bs="' + id + '" aria-pressed="' + (bShip === id) + '"' + (lock ? ' disabled' : '') + '>' + esc(s.name) + '<small>' + (lock ? 'откроется на этапе 2' : s.shifts + ' ' + plural(s.shifts, 'смена', 'смены', 'смен')) + '</small></button>'; }).join('');
+      var qs = [1, 5, 10].map(function (q) { return '<button type="button" data-bq="' + q + '" aria-pressed="' + (bQty === q) + '">' + q + ' шт.<small>' + (by.cat.batch[q] < 1 ? '−' + Math.round((1 - by.cat.batch[q]) * 100) + '%' : 'без скидки') + '</small></button>'; }).join('');
+      return '<section class="card panel"><div class="panel-head"><h2>Закупка в Китае</h2></div><div class="by-pick">' + items + '</div><div class="by-pick">' + ships + '</div><div class="by-pick">' + qs + '</div>' +
+        '<p class="small">За штуку ' + mon(unit) + ', всего <b>' + mon(cost) + '</b>; фура дешевле на 30%, но едет 3 смены. Партия дешевле за штуку, но занимает место.</p>' +
+        '<button class="btn btn-block" type="button" id="by-buy"' + (by.cash < cost || by.used + bQty > by.stage.cap || busy ? ' disabled' : '') + '>' + icon('truck') + 'Заказать</button></section>';
+    }
+    function weekHtml() {
+      var w = by.week, m = by.month, nx = by.stage.next, pct = nx ? Math.min(100, Math.round(by.lp / nx.need * 100)) : 100;
+      return '<section class="card panel"><div class="panel-head"><h2>Награды</h2></div>' +
+        '<div class="by-row"><span>Сундук недели</span><b>' + Math.min(w.shifts, w.need) + ' из ' + w.need + ' смен</b></div>' +
+        '<p class="small">Откройте после ' + w.need + ' смен за неделю. Ониксов внутри зависит от рейтинга: от 20 до 60, сейчас ' + w.chest + '.</p>' +
+        '<button class="btn btn-block' + (w.ready ? '' : ' btn-ghost') + '" type="button" id="by-chest"' + (w.ready && !busy ? '' : ' disabled') + '>' + tk() + (w.claimed ? 'Сундук уже открыт' : w.ready ? 'Открыть сундук: ' + w.chest : 'Ещё ' + Math.max(0, w.need - w.shifts) + ' ' + plural(Math.max(0, w.need - w.shifts), 'смена', 'смены', 'смен')) + '</button>' +
+        (nx ? '<div class="by-row"><span>До этапа «' + esc(nx.name) + '»</span><b>' + num(by.lp) + ' из ' + num(nx.need) + '</b></div><div class="by-bar"><i style="width:' + pct + '%"></i></div><p class="small">Считается прибыль со смен. На новом этапе открываются кроссовки, самолёт, фирменная упаковка, склад на 20 и рамка «Витрина» для аватара.</p>' : '<p class="small">Все этапы этой версии пройдены. Дальше появятся новые.</p>') +
+        '<p class="small by-cap">Из игры в этом месяце: ' + num(m.tok) + ' из ' + num(m.tokMax) + ' ониксов, ' + num(m.xp) + ' из ' + num(m.xpMax) + ' XP. Касса игровая, в ониксы и рубли не обменивается.</p></section>';
+    }
+    function rulesHtml() {
+      return '<details class="by-how card"><summary>Как играть</summary><ol><li>Закажите вещи в Китае: фура дешевле, самолёт быстрее.</li><li>Начните смену и выберите заказ клиента.</li><li>Поставьте цену: чем выше, тем меньше шанс, что клиент согласится. Экономный клиент платит меньше, щедрый больше.</li><li>Проверка занимает время, но защищает от брака. Фирменная упаковка поднимает отзыв.</li><li>В конце смены вы получаете опыт для уровня на сайте. Раз в неделю открывается сундук с ониксами.</li></ol></details>';
+    }
+    function draw() {
+      root.innerHTML = head() + (by.shift ? shiftHtml() : startHtml()) + '<div class="by-two">' + stockHtml() + buyHtml() + '</div>' + weekHtml() + rulesHtml();
+      bind();
+    }
+    function run(path, payload, done) {
+      if (busy) return; busy = true; draw();
+      g(path, payload).then(function (r) {
+        busy = false;
+        if (!r.ok) { msg = { k: 'bad', t: r.error || 'Не получилось' }; toast(msg.t, null, 'warn'); if (r.byr) setBy(r.byr); draw(); return; }
+        if (r.byr) setBy(r.byr);
+        if (r.user) setUserLite(r.user);
+        try { done(r); } catch (e) { }
+        draw();
+      }, function () { busy = false; msg = { k: 'bad', t: 'Нет связи, попробуйте ещё раз' }; draw(); });
+    }
+    function summary(s) {
+      var rows = [['Выручка', '+' + num(s.rev)], ['Закупочная цена проданного', '−' + num(Math.round(s.cogs))], ['Упаковка', '−' + num(s.pack)], ['Аренда', '−' + num(s.rent)]];
+      var h = openModal(modalHead('Итог смены') + '<div class="by-sum">' + rows.map(function (r) { return '<div class="by-row"><span>' + r[0] + '</span><b>' + r[1] + '</b></div>'; }).join('') +
+        '<div class="by-row tot"><span>Прибыль</span><b class="' + (s.profit < 0 ? 'neg' : 'pos') + '">' + (s.profit >= 0 ? '+' : '') + num(Math.round(s.profit)) + '</b></div>' +
+        '<p class="small">Продано: ' + s.sold + (s.defects ? ', брак: ' + s.defects : '') + (s.skipped ? ', пропущено: ' + s.skipped : '') + '. Рейтинг магазина: ' + s.rating + '.</p>' +
+        '<div class="by-gain">' + (s.xp ? '<span>+' + s.xp + ' XP' + (s.contract ? ' (с заказом-контрактом)' : '') + '</span>' : '<span>Опыт за месяц из игры на максимуме</span>') + '</div>' +
+        (s.stageUp ? '<div class="by-up"><b>Новый этап: ' + esc(s.stageUp.name) + '</b><span>Открыты кроссовки, самолёт, фирменная упаковка и склад на 20.' + (s.stageUp.frame ? ' Рамка «' + esc(s.stageUp.frame) + '» уже в профиле.' : '') + '</span></div>' : '') +
+        '<button class="btn btn-block" type="button" data-close>Хорошо</button></div>', { cls: 'sm' });
+      if (s.xp) reward('+' + s.xp + ' XP за смену');
+    }
+    function bind() {
+      var by1 = function (sl, fn, all) { $$(sl, root).forEach(function (el) { el.addEventListener('click', function () { fn(el); }); }); };
+      by1('[data-o]', function (el) { var id = +el.getAttribute('data-o'); sel = sel === id ? 0 : id; draw(); });
+      by1('[data-p]', function (el) { pr = el.getAttribute('data-p'); draw(); });
+      by1('[data-bi]', function (el) { bItem = el.getAttribute('data-bi'); draw(); });
+      by1('[data-bs]', function (el) { bShip = el.getAttribute('data-bs'); draw(); });
+      by1('[data-bq]', function (el) { bQty = +el.getAttribute('data-bq'); draw(); });
+      var c1 = $('#by-chk', root); if (c1) c1.addEventListener('change', function () { chk = c1.checked; draw(); });
+      var c2 = $('#by-brd', root); if (c2) c2.addEventListener('change', function () { brd = c2.checked; draw(); });
+      var st = $('#by-start', root); if (st) st.addEventListener('click', function () { msg = null; sel = 0; run('byrStart', {}, function () { var o = by.shift && by.shift.orders[0]; sel = o ? o.id : 0; }); });
+      var sl = $('#by-sell', root); if (sl) sl.addEventListener('click', function () {
+        var oid = sel; run('byrSell', { order: oid, price: pr, check: chk, brand: brd }, function (r) { msg = { k: r.outcome === 'ok' ? 'ok' : 'bad', t: r.msg }; sel = 0; if (r.summary) { msg = null; summary(r.summary); } else { var nx = by.shift.orders.filter(function (o) { return o.st === 0; })[0]; sel = nx ? nx.id : 0; } });
+      });
+      var sk = $('#by-skip', root); if (sk) sk.addEventListener('click', function () { var oid = sel; run('byrSkip', { order: oid }, function (r) { msg = { k: 'bad', t: 'Заказ пропущен, рейтинг чуть просел' }; sel = 0; if (r.summary) { msg = null; summary(r.summary); } else { var nx = by.shift.orders.filter(function (o) { return o.st === 0; })[0]; sel = nx ? nx.id : 0; } }); });
+      var fn = $('#by-fin', root); if (fn) fn.addEventListener('click', function () { run('byrEnd', {}, function (r) { sel = 0; msg = null; if (r.summary) summary(r.summary); }); });
+      var bb = $('#by-buy', root); if (bb) bb.addEventListener('click', function () { run('byrBuy', { item: bItem, ship: bShip, qty: bQty }, function (r) { toast('Заказано: ' + bQty + ' × ' + nm(bItem) + ', списано ' + mon(r.cost)); }); });
+      var ch = $('#by-chest', root); if (ch) ch.addEventListener('click', function () { run('byrChest', {}, function (r) { reward('Сундук недели: +' + r.got + ' ' + tokWord(r.got) + (r.capped ? ' (месячный потолок игры)' : '')); }); });
+    }
+    g('byrState').then(function (r) {
+      if (!r.ok) { root.innerHTML = '<div class="by-load">' + esc(r.error || 'Не удалось открыть игру') + '</div>'; return; }
+      setBy(r.byr); draw();
+      byTimer = setInterval(function () { if (current !== 'byer') { clearInterval(byTimer); byTimer = null; return; } var e = $('#by-ch'); if (e && by) e.textContent = chText(); }, 20000);
+    }, function () { root.innerHTML = '<div class="by-load">Нет связи, обновите страницу</div>'; });
+  }
+
   /* ------------------------------------------------------------ «Посылка на рентгене»
      Одна кнопка: посылка из Китая едет в сканер таможни, рентген показывает, что внутри,, штамп «ПРОВЕРЕНО».
-     Приз и списание токенов определяет сервер (тот же action 'spin', те же шансы и цена). */
+     Приз и списание ониксов определяет сервер (тот же action 'spin', те же шансы и цена). */
   var pxStop = null;
   function pxIcon(info, pr) {
     if (pr && pr.frameId) return '<span class="px-ava">' + ava({ name: acct.user && acct.user.name, avatar: acct.user && acct.user.avatar, frame: pr.frameId }, 'lg') + '</span>';
@@ -2315,7 +2462,7 @@
     function setState(s, t) { px.setAttribute('data-s', s); st.textContent = t; }
     function reveal(r, real) {
       var info = rlInfo(r.prize.id), c = pxCap(info, r.prize), big = rlBig(info);
-      if (r.prize.capXp) c = ['+' + r.prize.capXp + ' XP', 'баланс токенов на максимуме, вместо токенов опыт'];
+      if (r.prize.capXp) c = ['+' + r.prize.capXp + ' XP', 'баланс ониксов на максимуме, вместо ониксов опыт'];
       item.className = 'px-item xray'; item.innerHTML = pxIcon(info, r.prize);
       setState('found', info.c === 'none' ? 'ПУСТО' : 'НАЙДЕНО');
       setTimeout(function () {
@@ -2348,7 +2495,7 @@
     }
     function doOpen(free) {
       if (busyNow || !acct.user) return;
-      if (!free && acct.user.balance < RULES.spinCost) { toast('Нужно ' + RULES.spinCost + ' токенов. Выполните задания или отметьтесь в кабинете', null, 'warn'); return; }
+      if (!free && acct.user.balance < RULES.spinCost) { toast('Нужно ' + RULES.spinCost + ' ониксов. Выполните задания или отметьтесь в кабинете', null, 'warn'); return; }
       busyNow = true; clearInterval(rlTimer); spinning = true; updateRoulBalance();
       stamp.className = 'px-stamp'; item.className = 'px-item'; item.innerHTML = '';
       cap.innerHTML = '<b>Сканируем…</b><span>Посылка едет в рентген</span>';
@@ -2372,12 +2519,12 @@
     var fb = $('#spin-free', v); if (fb) fb.addEventListener('click', function () { doOpen(true); });
   }
   function prizeTitle(p) { return p.id === 'none' ? 'Пусто' : p.tokens ? '+' + num(p.tokens) + ' ' + tokWord(p.tokens) : p.code ? 'Промокод −' + p.pct + '%' : p.xp ? '+' + p.xp + ' XP' : p.spins ? '+' + p.spins + ' ' + plural(p.spins, 'посылка', 'посылки', 'посылок') : p.frameName ? 'Рамка «' + p.frameName + '»' : p.label; }
-  function prizeSub(p) { return p.id === 'none' ? 'В этот раз не повезло, попробуйте ещё.' : p.code ? 'Код ' + p.code + ' уже в кабинете. Выберите его в корзине.' : p.xp ? 'Опыт засчитан в уровень этого месяца.' : p.spins ? 'Бесплатные посылки добавлены.' : p.frameName ? 'Новая рамка открыта.' : 'Токены уже на балансе.'; }
+  function prizeSub(p) { return p.id === 'none' ? 'В этот раз не повезло, попробуйте ещё.' : p.code ? 'Код ' + p.code + ' уже в кабинете. Выберите его в корзине.' : p.xp ? 'Опыт засчитан в уровень этого месяца.' : p.spins ? 'Бесплатные посылки добавлены.' : p.frameName ? 'Новая рамка открыта.' : 'Ониксы уже на балансе.'; }
   function showPrize(p) {
     var win = p.id !== 'none';
     var visual = p.frameId ? ava({ name: acct.user && acct.user.name, avatar: acct.user && acct.user.avatar, frame: p.frameId }, 'lg') : pz(p.id);
     var title = p.id === 'none' ? 'Пусто' : p.tokens ? '+' + num(p.tokens) + ' ' + tokWord(p.tokens) : p.code ? 'Промокод −' + p.pct + '%' : p.xp ? '+' + p.xp + ' XP' : p.spins ? '+' + p.spins + ' ' + plural(p.spins, 'посылка', 'посылки', 'посылок') : p.frameName ? 'Рамка «' + p.frameName + '»' : p.label;
-    var sub = p.id === 'none' ? 'В этот раз не повезло. Следующая посылка может принести джекпот.' : p.code ? 'Код ' + p.code + ' уже в кабинете. Выберите его в корзине.' : p.xp ? 'Опыт засчитан в уровень этого месяца.' : p.spins ? 'Бесплатные посылки добавлены.' : p.frameName ? 'Новая рамка открыта: наденьте её в кабинете.' : p.id === 'jackpot' ? 'Джекпот! Токены уже на балансе.' : 'Токены уже на балансе.';
+    var sub = p.id === 'none' ? 'В этот раз не повезло. Следующая посылка может принести джекпот.' : p.code ? 'Код ' + p.code + ' уже в кабинете. Выберите его в корзине.' : p.xp ? 'Опыт засчитан в уровень этого месяца.' : p.spins ? 'Бесплатные посылки добавлены.' : p.frameName ? 'Новая рамка открыта: наденьте её в кабинете.' : p.id === 'jackpot' ? 'Джекпот! Ониксы уже на балансе.' : 'Ониксы уже на балансе.';
     var md = openModal('<div class="prize-pop"><div class="burst">' + visual + '</div><span class="eyebrow">' + (win ? 'Ваш приз' : 'Результат') + '</span><h2>' + esc(title) + '</h2><p class="muted">' + esc(sub) + '</p>' +
       '<div class="send-row" style="width:100%">' + (p.spins ? '<button class="btn" type="button" id="again-free">' + icon('sparkles') + 'Крутить бесплатно</button>' : '<button class="btn" type="button" id="again">' + icon('sparkles') + 'Ещё раз</button>') +
       (p.frameId ? '<button class="btn btn-ghost" type="button" id="wear">Надеть рамку</button>' : '<button class="btn btn-ghost" type="button" data-close>Закрыть</button>') + '</div></div>', { cls: 'sm' });
@@ -2394,7 +2541,7 @@
     track('info');
     var R = RULES.reward, L = RULES.levels;
     var order = [
-      faqItem('Как заказать: по шагам', '<ol class="faq-ol"><li><b>Выберите вещь.</b> Откройте карточку, пролистайте фото, посмотрите замеры и характеристики.</li><li><b>Размер и цвет.</b> Нажмите нужный размер: под ним появятся замеры именно этого размера. Цвет выбирайте по фото: на карточке показаны реальные оттенки.</li><li><b>«В корзину».</b> В корзине можно изменить количество, добавить пожелание к каждой вещи (например, «хочу примерить перед покупкой») или убрать лишнее.</li><li><b>Данные для связи.</b> Имя, телефон и Telegram берутся из кабинета, заполните их там, иначе заказ не уйдёт. Это нужно, чтобы менеджер мог вам написать.</li><li><b>Город и способ получения.</b> Для товаров в наличии, самовывоз, Авито Доставка или курьер. Для предзаказа: Авито, СДЭК или личная встреча.</li><li><b>Токены и промокод.</b> Это последний шаг перед оформлением. Скидка пересчитается сразу, итог виден в корзине.</li><li><b>«Оформить заказ».</b> Заказ получит номер, уйдёт менеджеру, а в «Моих заказах» появится его статус. Дальше менеджер пишет вам в Telegram и присылает реквизиты.</li></ol><p class="small">Важно: пока менеджер не подтвердил заказ и не пришла оплата, вещь за вами не закреплена.</p>'),
+      faqItem('Как заказать: по шагам', '<ol class="faq-ol"><li><b>Выберите вещь.</b> Откройте карточку, пролистайте фото, посмотрите замеры и характеристики.</li><li><b>Размер и цвет.</b> Нажмите нужный размер: под ним появятся замеры именно этого размера. Цвет выбирайте по фото: на карточке показаны реальные оттенки.</li><li><b>«В корзину».</b> В корзине можно изменить количество, добавить пожелание к каждой вещи (например, «хочу примерить перед покупкой») или убрать лишнее.</li><li><b>Данные для связи.</b> Имя, телефон и Telegram берутся из кабинета, заполните их там, иначе заказ не уйдёт. Это нужно, чтобы менеджер мог вам написать.</li><li><b>Город и способ получения.</b> Для товаров в наличии, самовывоз, Авито Доставка или курьер. Для предзаказа: Авито, СДЭК или личная встреча.</li><li><b>Ониксы и промокод.</b> Это последний шаг перед оформлением. Скидка пересчитается сразу, итог виден в корзине.</li><li><b>«Оформить заказ».</b> Заказ получит номер, уйдёт менеджеру, а в «Моих заказах» появится его статус. Дальше менеджер пишет вам в Telegram и присылает реквизиты.</li></ol><p class="small">Важно: пока менеджер не подтвердил заказ и не пришла оплата, вещь за вами не закреплена.</p>'),
       faqItem('Что такое предзаказ и чем он отличается от «В наличии»', '<p><b>В наличии</b>: вещь уже в Москве. Её можно забрать самому или отправить по России через Авито Доставку, обычно в течение пары дней.</p><p><b>Предзаказ</b>: вещь ещё в Китае. Мы выкупаем её у поставщика только после вашего заказа и оплаты, проверяем и привозим. Так цена ниже, а выбор шире, но ждать дольше.</p><p>Стоимость доставки из Китая <b>уже включена в стоимость</b> предзаказа: отдельно за неё платить не нужно.</p><p><a href="' + SHOP.preorderUrl + '" target="_blank" rel="noopener">Подробные условия предзаказа</a></p>'),
       faqItem('Этапы предзаказа: что происходит с вашей вещью', '<ol class="faq-ol"><li><b>Оформлен.</b> Заказ создан и отправлен менеджеру. Он связывается с вами, уточняет размер, цвет и детали, присылает реквизиты.</li><li><b>Выкуплен (в течение 12 часов после оплаты).</b> Мы оплачиваем вещь у поставщика в Китае и закрепляем её за вами.</li><li><b>В пути до склада.</b> Поставщик отправляет вещь на склад в Китае, обычно до 7 дней, затем 3-5 дней дорога до склада.</li><li><b>На складе в Китае.</b> Вещь приходит, её проверяют на брак и соответствие описанию. На это уходит 1-2 дня. Вам отправляют фотоотчёт: основной бесплатно.</li><li><b>Едет в Россию.</b> После проверки вещь отправляется из Китая. Фурой это 18-32 дня от склада.</li><li><b>Едет к вам.</b> Вещь в России: её передают в выбранный способ получения. СДЭК, Авито Доставка или личная встреча.</li><li><b>Получен.</b> Вы забрали заказ. Если оставите отзыв, это поможет другим покупателям.</li></ol>'),
       faqItem('Сколько ждать предзаказ', '<p>Складывается из этапов: выкуп до 12 часов, поставщик до 7 дней, дорога до склада 3-5 дней, проверка 1-2 дня и доставка 18-32 дня. В сумме обычно <b>от 3,5 до 6,5 недель</b>.</p><p>Быстрее самолётом: это отдельная услуга, её условия и стоимость согласует менеджер. Прямо на сайте самолётом заказать нельзя.</p><p class="small">Сроки примерные: на них влияют праздники в Китае, загрузка перевозчика и погода. Если что-то задерживается, менеджер напишет сам.</p>'),
@@ -2403,22 +2550,22 @@
       faqItem('Доставка из Китая', '<ul><li>Фура, основной способ, занимает 18-32 дня от склада в Китае.</li><li>Стоимость доставки из Китая уже включена в стоимость товара.</li><li>Самолётом быстрее, но только через менеджера, он рассчитает и согласует.</li><li>Перед отправкой вещь проверяют на складе и фотографируют.</li></ul>'),
       faqItem('Получение по России', '<ul><li><b>СДЭК до пункта выдачи</b>: оплачивается отдельно, по тарифу СДЭК.</li><li><b>Авито Доставка</b>: по Москве и в другой город, с минимальной стоимостью.</li><li><b>Личная встреча</b>: в Москве бесплатно, время согласуйте с менеджером.</li><li>Номер отслеживания менеджер пришлёт в Telegram.</li></ul>'),
       faqItem('Получение товаров в наличии', '<ul><li><b>Авито Доставка</b>: по Москве и в другой город, быстрее всего.</li><li><b>Курьер по Москве</b>: не всегда доступен, согласуется с менеджером.</li><li><b>Самовывоз</b>: ' + esc(SHOP.address) + '. Время согласуйте с менеджером.</li></ul>'),
-      faqItem('Оплата', '<ul><li>Перевод: Сбербанк, Т-Банк, Альфа-Банк, СБП.</li><li>Наличными: при встрече в Москве.</li><li>На сайте оплаты нет: менеджер подтвердит заказ и пришлёт реквизиты.</li><li>До 12% заказа можно оплатить токенами и промокодом вместе, 1 токен = 0,3 ₽.</li><li>Предзаказ начинаем выкупать после оплаты, это ускоряет заказ.</li></ul>'),
+      faqItem('Оплата', '<ul><li>Перевод: Сбербанк, Т-Банк, Альфа-Банк, СБП.</li><li>Наличными: при встрече в Москве.</li><li>На сайте оплаты нет: менеджер подтвердит заказ и пришлёт реквизиты.</li><li>До 12% заказа можно оплатить ониксами и промокодом вместе, 1 оникс = 0,3 ₽.</li><li>Предзаказ начинаем выкупать после оплаты, это ускоряет заказ.</li></ul>'),
       faqItem('Статусы заказа', '<ul><li><b>Оформлен</b>: заказ создан, ждёт подтверждения менеджера.</li><li><b>Выкуплен</b>: вещь оплачена у поставщика.</li><li><b>В пути</b>: едет на склад в Китае.</li><li><b>На складе</b>: прошла проверку, готовится к отправке.</li><li><b>Едет к нам</b>: международная доставка.</li><li><b>Едет к вам</b>: в России, передана в доставку.</li><li><b>Получен</b>: заказ у вас.</li><li><b>Отменён</b>: заказ остановлен, подробности пришлёт менеджер.</li></ul><p class="small">Статус меняет менеджер, в кабинете он обновляется сам.</p>'),
       faqItem('Что не зависит от магазина', '<ul><li>Задержки у поставщика, на складе или у перевозчика, праздники и погода.</li><li>Состояние вещи, которое видно только при проверке: если найдём брак, сразу напишем вам и предложим решение.</li><li>Работа пунктов выдачи и сроки СДЭК или Авито после передачи посылки.</li></ul>'),
       faqItem('Если что-то пошло не так', '<p>Напишите менеджеру в Telegram, он отвечает в рабочее время (Пн-Пт 08:30-21:00, Сб-Вс 10:00-20:00). Бот-помощник отвечает с задержкой около минуты, это нормально, просто подождите.</p><p><a class="btn btn-sm" href="' + SHOP.managerUrl + '" target="_blank" rel="noopener">Написать менеджеру</a></p>')
     ];
     var bonus = API.enabled ? [
-      faqItem('Где взять токены', '<ul><li>+' + R.register + ' за регистрацию</li><li>+' + R.checkin + ' за вход каждый день и от ' + L[0].streak + ' до ' + L[4].streak + ' за 7 дней подряд, зависит от уровня</li><li>Задания: ежедневные по 3 токена, еженедельные по 25, ежемесячные от 40</li><li>Посылка</li><li>+' + R.referrer + ' за друга и +' + R.birthday + ' в день рождения</li></ul><p>Токены не сгорают и не передаются другим людям. Пока на балансе больше ' + num(RULES.balanceCap) + ' токенов, вход, задания и посылка дают опыт вместо токенов (2 токена = 1 XP). Токены за заказы, отзывы, друзей и день рождения начисляются всегда.</p>'),
+      faqItem('Где взять ониксы', '<ul><li>+' + R.register + ' за регистрацию</li><li>+' + R.checkin + ' за вход каждый день и от ' + L[0].streak + ' до ' + L[4].streak + ' за 7 дней подряд, зависит от уровня</li><li>Задания: ежедневные по 3 оникса, еженедельные по 25, ежемесячные от 40</li><li>Посылка</li><li>+' + R.referrer + ' за друга и +' + R.birthday + ' в день рождения</li></ul><p>Ониксы не сгорают и не передаются другим людям. Пока на балансе больше ' + num(RULES.balanceCap) + ' ониксов, вход, задания и посылка дают опыт вместо ониксов (2 оникса = 1 XP). Ониксы за заказы, отзывы, друзей и день рождения начисляются всегда.</p>'),
       faqItem('Промокоды', '<p>Личные промокоды выпадают в посылке, с уровня «Золото», −1,5% каждый месяц, на «Алмазе», ещё 3 по −2,5%. Они появляются в кабинете, а в корзине выбираются последним шагом. Каждый действует на один заказ.</p><p>Промокоды магазина вводятся вручную в поле «Промокод» в корзине.</p>'),
       faqItem('Как зарабатывается XP', '<ul><li>Полученный заказ: 1 XP за каждые 10 ₽ (когда статус «Получен»)</li><li>Ежедневный вход: +' + RULES.xpReward.checkin + ' XP</li><li>Задания: ежедневные +10 XP, еженедельные +60 XP, ежемесячные +180 XP</li><li>Посылка: приз +50 XP</li></ul>'),
       faqItem('Как работают уровни', '<p>Уровень растёт от XP, опыта за месяц. 1-го числа XP обнуляется, и уровень начинается заново с Бронзы.</p><button class="btn btn-ghost btn-sm" type="button" id="info-levels">Привилегии уровней</button>'),
-      faqItem('Задания: когда обновляются', '<ul><li>Ежедневные: в 00:00 по Москве. Простые: токены и XP, чем выше уровень, тем их больше.</li><li>Еженедельные: в понедельник. «Оформить заказ» засчитывается сразу при оформлении.</li><li>Ежемесячные: 1-го числа. Заказы засчитываются, когда статус «Получен».</li></ul>'),
-      faqItem('Посылка: как это работает', '<ul><li>1 бесплатная посылка каждый день на любом уровне, на «Алмазе», 3. Не копятся: обновляются в 00:00 по Москве.</li><li>Дальше посылка стоит ' + RULES.spinCost + ' токенов. «Ещё раз» даёт бесплатные посылки, они не сгорают.</li><li>На «Платине» и «Алмазе» «Пусто» выпадает реже.</li><li>У бесплатной посылки своя таблица призов: больше опыта и рамок, меньше токенов. Платная посылка за ' + RULES.spinCost + ' токенов чаще даёт крупные токены.</li><li>Токены из посылки сразу на балансе, промокод выбирается в корзине, XP идут в уровень месяца.</li></ul>')
+      faqItem('Задания: когда обновляются', '<ul><li>Ежедневные: в 00:00 по Москве. Простые: ониксы и XP, чем выше уровень, тем их больше.</li><li>Еженедельные: в понедельник. «Оформить заказ» засчитывается сразу при оформлении.</li><li>Ежемесячные: 1-го числа. Заказы засчитываются, когда статус «Получен».</li></ul>'),
+      faqItem('Посылка: как это работает', '<ul><li>1 бесплатная посылка каждый день на любом уровне, на «Алмазе», 3. Не копятся: обновляются в 00:00 по Москве.</li><li>Дальше посылка стоит ' + RULES.spinCost + ' ониксов. «Ещё раз» даёт бесплатные посылки, они не сгорают.</li><li>На «Платине» и «Алмазе» «Пусто» выпадает реже.</li><li>У бесплатной посылки своя таблица призов: больше опыта и рамок, меньше ониксов. Платная посылка за ' + RULES.spinCost + ' ониксов чаще даёт крупные ониксы.</li><li>Ониксы из посылки сразу на балансе, промокод выбирается в корзине, XP идут в уровень месяца.</li></ul>')
     ] : [];
     var shop = [faqItem('Магазин и связь', contactsCard()), faqItem('Мы в соцсетях', socialCard())];
     $('#v-info').innerHTML = '<div class="view-head"><div><h1>Частые вопросы</h1></div></div>' +
-      faqGroup('Заказ и доставка', order) + (bonus.length ? faqGroup('Токены и уровни', bonus) : '') + faqGroup('Магазин', shop);
+      faqGroup('Заказ и доставка', order) + (bonus.length ? faqGroup('Ониксы и уровни', bonus) : '') + faqGroup('Магазин', shop);
     var il = $('#info-levels'); if (il) il.addEventListener('click', levelsModal);
   }
 
@@ -2427,7 +2574,7 @@
   function silentHash(h) { if (location.hash.slice(1) === h) return; skipHash = h; location.hash = h; }
   function go(h) { if (location.hash.slice(1) === h || (!h && !location.hash)) route(); else location.hash = h; }
   function setNav(h) {
-    var key = h === '' ? 'home' : /^p-/.test(h) || h === 'stock' || h === 'preorder' ? 'catalog' : h;
+    var key = h === '' ? 'home' : /^p-/.test(h) || h === 'stock' || h === 'preorder' ? 'catalog' : h === 'roulette' || h === 'byer' ? 'games' : h;
     $$('[data-route]').forEach(function (a) {
       var r = a.getAttribute('data-route'), on = r === key || (r === 'preorder' && h === 'preorder');
       if (r === 'catalog' && h === 'preorder' && !a.closest('.tabbar')) on = false;
@@ -2466,7 +2613,7 @@
     var m = h.match(/^ref=([A-Za-z0-9]{4,12})$/);
     if (m) {
       store.set('ref', m[1].toUpperCase());
-      if (!acct.user) { authTab = 'register'; toast('Приглашение принято: +' + RULES.reward.refFriend + ' токенов при регистрации'); }
+      if (!acct.user) { authTab = 'register'; toast('Приглашение принято: +' + RULES.reward.refFriend + ' ониксов при регистрации'); }
       history.replaceState(null, '', location.pathname + location.search + '#account'); h = 'account';
     }
     closeModal(); closeLightbox(); hideBuybar(); stopHomeTimers();
@@ -2487,6 +2634,8 @@
     else if (h === 'favorites') { renderFavorites(); show('favorites'); }
     else if (h === 'account') { renderAccount(); show('account'); flushTrack(); }
     else if (h === 'roulette') { renderRoulette(); show('roulette'); }
+    else if (h === 'games') { renderGames(); show('games'); }
+    else if (h === 'byer') { renderByer(); show('byer'); }
     else if (h === 'info') { renderInfo(); show('info'); }
     else { renderHome(); show('home'); }
     setNav(h); updFloatBack(h);
@@ -2506,6 +2655,8 @@
     if (current === 'home') { var b = $('#tok-strip'); if (b) { b.outerHTML = tokensStrip(); growBars($('#v-home')); } }
     else if (current === 'account') renderAccount();
     else if (current === 'roulette') renderRoulette();
+    else if (current === 'games') renderGames();
+    else if (current === 'byer') renderByer();
     else if (current === 'cart') renderCart();
     else if (current === 'orders') renderOrders();
     if (acct.user && current === 'catalog') { if (filter.tab === 'preorder') track('pre'); else if (filter.tab === 'stock') track('stock'); }
@@ -2539,7 +2690,7 @@
   }
   function reviewModal(o) {
     var R = RULES.reward, items = (o.items || []).filter(function (it) { return (o.reviewed || []).indexOf(it.id) < 0; });
-    var md = openModal(modalHead('Отзыв о заказе') + '<p class="small">За оценку: +' + R.review + ' токенов, за оценку с отзывом от 20 символов, +' + R.reviewText + '. Отзыв увидят другие покупатели на странице товара.</p><div class="rv-list">' +
+    var md = openModal(modalHead('Отзыв о заказе') + '<p class="small">За оценку: +' + R.review + ' ониксов, за оценку с отзывом от 20 символов, +' + R.reviewText + '. Отзыв увидят другие покупатели на странице товара.</p><div class="rv-list">' +
       items.map(function (it) {
         var id = it.photo || it.thumb;
         return '<div class="rv" data-id="' + esc(it.id) + '"><div class="rv-h">' + (id ? '<img src="' + thumb(id) + '" alt="">' : '') + '<b>' + esc(it.title) + '</b></div>' +
@@ -2557,8 +2708,8 @@
           busy(send, false);
           if (!r.ok) { msg.textContent = r.error; return; }
           acct.user = r.user; updateAcctUI(); revCache = {};
-          box.innerHTML = '<div class="rv-done">' + icon('check-circle') + '<span>Спасибо! <b>+' + r.reward + '</b> ' + plural(r.reward, 'токен', 'токена', 'токенов') + ' на балансе</span></div>';
-          reward('Спасибо за отзыв: +' + r.reward + ' токенов');
+          box.innerHTML = '<div class="rv-done">' + icon('check-circle') + '<span>Спасибо! <b>+' + r.reward + '</b> ' + plural(r.reward, 'оникс', 'оникса', 'ониксов') + ' на балансе</span></div>';
+          reward('Спасибо за отзыв: +' + r.reward + ' ониксов');
           if (!$('.rv [data-send]', md)) setTimeout(function () { closeModal(); refreshView(); }, 1300);
         });
       });
@@ -2586,7 +2737,7 @@
     var md = openModal(modalHead('Подтверждение телефона') + '<div id="ph-body"></div>', { cls: 'sm' }), polls = 0;
     var b = $('#ph-body', md);
     b.innerHTML = '<div class="tg-hero"><span class="tg-ic">' + icon('phone') + '</span><h3>Один шаг до бонусов</h3><p>Telegram подтвердит, что номер ' + esc(u.phone || '') + ' ваш. Мы не видим ничего, кроме номера.</p></div>' +
-      '<ul class="tg-perks"><li><span class="ic">' + tk() + '</span><span><b>Приветственные токены</b><small>начислятся сразу после подтверждения</small></span></li><li><span class="ic">' + icon('bag') + '</span><span><b>Бонусы за друзей и подарок на ДР</b><small>и статусы заказов прямо в Telegram</small></span></li></ul>' +
+      '<ul class="tg-perks"><li><span class="ic">' + tk() + '</span><span><b>Приветственные ониксы</b><small>начислятся сразу после подтверждения</small></span></li><li><span class="ic">' + icon('bag') + '</span><span><b>Бонусы за друзей и подарок на ДР</b><small>и статусы заказов прямо в Telegram</small></span></li></ul>' +
       (API.mode === 'demo' ? '<button class="btn btn-block" type="button" id="ph-demo">Подтвердить (демо)</button>' : '<button class="btn btn-block" type="button" id="ph-on">' + icon('send') + 'Подтвердить в Telegram</button>') + '<div id="ph-out"></div>';
     var dm = $('#ph-demo', b); if (dm) dm.addEventListener('click', function () { API.call('phoneDemo').then(function (r) { if (!r.ok) { toast(r.error, null, 'warn'); return; } setUser(r.user); closeModal(); confetti(120); reward('Телефон подтверждён' + (r.got ? ' · +' + r.got + ' ' + tokWord(r.got) : '')); }); });
     var on = $('#ph-on', b); if (on) on.addEventListener('click', function () {
@@ -2713,7 +2864,7 @@
     try { var ref = new URLSearchParams(location.search).get('ref'); if (ref) store.set('ref', ref.toUpperCase().slice(0, 12)); } catch (e) { /* */ }
     updateCounts(); updateAcctUI(); startClock(); themeIcon(); applyHomeIcon();
     $('#demo-bar').hidden = API.mode !== 'demo';
-    $('#demo-reset').addEventListener('click', function () { confirmBox({ title: 'Сбросить демо?', text: 'Удалятся демо-аккаунты, токены и заказы в этом браузере.', actions: [{ label: 'Отмена', cls: 'btn-ghost' }, { label: 'Сбросить', cls: 'btn-danger', run: function () { API.resetDemo(); acct.user = null; updateAcctUI(); route(); toast('Демо сброшено'); } }] }); });
+    $('#demo-reset').addEventListener('click', function () { confirmBox({ title: 'Сбросить демо?', text: 'Удалятся демо-аккаунты, ониксы и заказы в этом браузере.', actions: [{ label: 'Отмена', cls: 'btn-ghost' }, { label: 'Сбросить', cls: 'btn-danger', run: function () { API.resetDemo(); acct.user = null; updateAcctUI(); route(); toast('Демо сброшено'); } }] }); });
     var mb = $('#menu-btn'); if (mb) mb.addEventListener('click', openMenu);
     if (window.matchMedia) { try { matchMedia('(prefers-color-scheme: dark)').addEventListener('change', themeIcon); } catch (e) { /* */ } }
     document.addEventListener('click', function (e) {
