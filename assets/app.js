@@ -1,6 +1,6 @@
 /* ONION SHOP — витрина.
    Каталог: data/catalog.js (обновляется сам из Telegram-канала).
-   Аккаунты, токены, рулетка, промокоды и номера заказов: Google Таблица через assets/api.js
+   Аккаунты, токены, посылка, промокоды и номера заказов: Google Таблица через assets/api.js
    (в предпросмотре — демо в браузере). Корзина, избранное и недавние — в браузере. */
 (function () {
   'use strict';
@@ -102,7 +102,7 @@
   }
   function perkIcon(t) {
     t = t.toLowerCase();
-    return /упаковк/.test(t) ? 'box' : /рамк/.test(t) ? 'frame' : /промокод/.test(t) ? 'percent' : /серию|серия/.test(t) ? 'flame' : /рулет|прокрут/.test(t) ? 'wheel' : /внимани|приоритет/.test(t) ? 'bolt' : /задани/.test(t) ? 'list' : /токен/.test(t) ? 'token' : 'check-circle';
+    return /упаковк/.test(t) ? 'box' : /рамк/.test(t) ? 'frame' : /промокод/.test(t) ? 'percent' : /серию|серия/.test(t) ? 'flame' : /посылк/.test(t) ? 'gift' : /рулет|прокрут/.test(t) ? 'wheel' : /внимани|приоритет/.test(t) ? 'bolt' : /задани/.test(t) ? 'list' : /токен/.test(t) ? 'token' : 'check-circle';
   }
   function perkTiles(list) { return '<div class="perk-grid">' + list.map(function (x) { return '<div class="perk-t"><span class="perk-i">' + icon(perkIcon(x[0])) + '</span><span><b>' + esc(x[0]) + '</b>' + (x[1] ? '<small>' + esc(x[1]) + '</small>' : '') + '</span></div>'; }).join('') + '</div>'; }
   function lvlImg(key, size, cls) { return '<img class="lvl-img' + (cls ? ' ' + cls : '') + '" src="assets/lvl/' + esc(key) + '.svg?v=4" width="' + size + '" height="' + size + '" alt="" decoding="async">'; }
@@ -230,18 +230,25 @@
     $$('[data-cart-count]').forEach(function (el) { el.textContent = n; if (el.closest('.tabbar')) el.hidden = !n; if (bumpIt) bump(el); });
     $$('[data-fav-count]').forEach(function (el) { el.textContent = f; el.hidden = !f; });
   }
+  // ранний доступ: первые сутки новинка доступна уровню «Золото» и выше (сервер тоже проверяет)
+  function earlyLock(p) { var left = CORE.earlyLeft(p, Date.now()); if (!left) return 0; var u = acct.user; return u && u.level && u.level.index >= RULES.early.level ? 0 : left; }
+  function earlyH(ms) { return Math.max(1, Math.ceil(ms / 3600000)); }
   function addToCart(line) {
+    var ep = BY_ID[line.id], el = ep ? earlyLock(ep) : 0;
+    if (el) { toast('Новинка откроется для всех через ' + earlyH(el) + ' ч. Первые сутки — ранний доступ для уровня «Золото» и выше', null, 'warn'); return false; }
     var key = lineKey(line), ex = cart.find(function (l) { return lineKey(l) === key; });
     if (ex) ex.qty = Math.min(10, ex.qty + line.qty); else cart.push(line);
     saveCart();
     track('cart', line.id);
   }
   function isFav(id) { return favs.indexOf(String(id)) >= 0; }
+  var watchT = 0, watchSynced = false;
+  function syncWatch() { clearTimeout(watchT); watchT = setTimeout(function () { if (acct.user && API.enabled) API.call('watch', { ids: favs }); }, 1500); }
   function toggleFav(id, btn) {
     id = String(id);
     var on = !isFav(id);
     if (on) favs.unshift(id); else favs = favs.filter(function (x) { return x !== id; });
-    store.set('favs', favs);
+    store.set('favs', favs); syncWatch();
     $$('[data-fav="' + id + '"]').forEach(function (b) { b.setAttribute('aria-pressed', String(on)); });
     if (btn && on) { btn.classList.remove('pop'); void btn.offsetWidth; btn.classList.add('pop'); }
     updateCounts();
@@ -351,6 +358,8 @@
     updateAcctUI();
     showNews(u);
     if (u && u.bdayToday) setTimeout(bdayGift, 700);
+    if (u && !watchSynced && favs.length) { watchSynced = true; syncWatch(); }
+    achvNews(u);
     if (current === 'account') renderAccount();
     else if (current === 'roulette') updateRoulBalance();
     else if (current === 'cart' && !$('#checkout :focus')) renderCart();
@@ -398,7 +407,7 @@
       var typing = document.activeElement && /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName);
       if (typing || $('#modal-root .modal')) { acct.user = r.user; updateAcctUI(); return; }
       acct.user = r.user; updateAcctUI();
-      if (current === 'roulette') updateRoulBalance(); else refreshView(); // рулетку не перерисовываем — вдруг крутится
+      if (current === 'roulette') updateRoulBalance(); else refreshView(); // посылку не перерисовываем — вдруг крутится
     }, function () { silentBusy = false; });
   }
   function updateAcctUI() {
@@ -569,12 +578,17 @@
       }, { passive: true });
     }
   })();
+  function earlyTag(p) {
+    if (!CORE.earlyLeft(p, Date.now())) return '';
+    var lk = earlyLock(p);
+    return '<span class="early' + (lk ? ' lk' : '') + '">' + icon(lk ? 'lock' : 'crown') + (lk ? 'Для всех через ' + earlyH(lk) + ' ч' : 'Ранний доступ') + '</span>';
+  }
   function card(p, i) {
     var a = p.photos[0], d = discount(p), id = esc(p.id);
     var sw = p.colors.length > 1 ? '<div class="sw-row">' + p.colors.slice(0, 5).map(function (c) { return '<i class="sw" style="' + swatch(c) + '" title="' + esc(c) + '"></i>'; }).join('') + (p.colors.length > 5 ? '<small>+' + (p.colors.length - 5) + '</small>' : '') + '</div>' : '';
     return '<article class="pcard" data-pid="' + id + '" style="--i:' + (i || 0) + '">' +
       '<a class="ph" href="#p-' + id + '" tabindex="-1" aria-hidden="true">' + phTrack(p) +
-      '<div class="tags">' + badge(p) + '</div>' + phDots(p) + '</a>' +
+      '<div class="tags">' + badge(p) + '</div>' + phDots(p) + earlyTag(p) + '</a>' +
       '<button class="fav" type="button" data-fav="' + id + '" aria-pressed="' + isFav(p.id) + '" aria-label="Избранное: ' + esc(p.title) + '">' + icon('heart') + '</button>' +
       '<a class="body" href="#p-' + id + '"><span class="brand-l">' + esc(p.brand || p.categoryLabel) + '</span><span class="t">' + esc(p.title) + '</span>' + sw +
       '<div class="prices"><span class="price">' + rub(p.price) + '</span>' + (p.oldPrice ? '<span class="old">' + rub(p.oldPrice) + '</span>' + dscChip(p) : '') + '</div></a>' +
@@ -629,11 +643,11 @@
   function tokensStrip() {
     if (!API.enabled) return '';
     var u = acct.user;
-    if (!u) return '<div class="strip" id="tok-strip"><span class="ic">' + tk() + '</span><div><h3>Токены ONION SHOP</h3><p class="small">+' + RULES.reward.register + ' за регистрацию, задания каждый день, рулетка и бонус за друга. До 15% заказа можно оплатить токенами.</p></div><div class="acts"><a class="btn btn-sm" href="#account">' + icon('gift') + 'Забрать ' + RULES.reward.register + '</a></div></div>';
+    if (!u) return '<div class="strip" id="tok-strip"><span class="ic">' + tk() + '</span><div><h3>Токены ONION SHOP</h3><p class="small">+' + RULES.reward.register + ' за регистрацию, задания каждый день, посылка и бонус за друга. До 15% заказа можно оплатить токенами.</p></div><div class="acts"><a class="btn btn-sm" href="#account">' + icon('gift') + 'Забрать ' + RULES.reward.register + '</a></div></div>';
     var L = u.level, p = L.next ? Math.min(100, Math.round((u.xp - L.min) / (L.next.min - L.min) * 100)) : 100;
     return '<div class="strip" id="tok-strip"><span class="ic">' + lvlImg(L.key, 44) + '</span><div><h3>' + num(u.balance) + ' ' + tokWord(u.balance) + ' · ' + esc(L.name) + ' · ' + num(u.xp) + ' XP</h3>' +
       '<div class="bar"><i data-w="' + p + '%"></i></div><p class="small" style="margin-top:6px">' + (L.next ? 'Ещё ' + num(L.next.left) + ' XP до «' + esc(L.next.name) + '»' : (L.fixed ? 'Уровень закреплён менеджером' : 'Максимальный уровень месяца')) + '</p></div>' +
-      '<div class="acts"><a class="btn btn-sm" href="#roulette">' + icon('sparkles') + 'Рулетка</a><a class="btn btn-ghost btn-sm" href="#account">Кабинет</a></div></div>';
+      '<div class="acts"><a class="btn btn-sm" href="#roulette">' + icon('sparkles') + 'Посылка</a><a class="btn btn-ghost btn-sm" href="#account">Кабинет</a></div></div>';
   }
   function growBars(root) { requestAnimationFrame(function () { $$('[data-w]', root).forEach(function (b) { b.style.width = b.getAttribute('data-w'); }); }); }
 
@@ -665,6 +679,11 @@
     return a.mo === b.mo ? a.d + '–' + b.d + ' ' + MONTHS[b.mo - 1] : a.d + ' ' + MONTHS[a.mo - 1] + ' – ' + b.d + ' ' + MONTHS[b.mo - 1];
   }
   function etaBlock(p) {
+    var el = CORE.earlyLeft(p, Date.now());
+    if (el) { var lk = earlyLock(p); return '<div class="eta early-n">' + icon(lk ? 'lock' : 'crown') + '<div><b>' + (lk ? 'Ранний доступ: для всех через ' + earlyH(lk) + ' ч' : 'Ранний доступ для вас') + '</b><small>' + (lk ? 'Первые сутки новинку могут купить клиенты уровня «Золото» и выше.' : 'Новинка видна всем, но купить её первые сутки можете только вы и другие клиенты «Золота» и выше.') + '</small></div></div>' + etaBase(p); }
+    return etaBase(p);
+  }
+  function etaBase(p) {
     if (p.status === 'sold') return '';
     if (p.status === 'preorder') return '<div class="eta">' + icon('truck') + '<div><b>Ориентировочно получите: ' + dateRange(24, 47) + '</b><small>Если оплатить сегодня. Выкуп до 12 часов, проверка на складе и фотоотчёт, стоимость доставки из Китая уже включена в стоимость.</small></div></div>';
     if (p.status === 'out') return '<div class="oos"><div class="oos-h"><span class="oos-ic">' + icon('hourglass') + '</span><div><b>Сейчас нет в наличии</b><small>Менеджер уточнит срок поступления' + (API.enabled ? ' и напишет вам, как только товар появится.' : '. Напишите ему — подскажет, когда ждать.') + '</small></div></div>' + (API.enabled ? '<button class="oos-btn" type="button" id="wait-btn"></button>' : '') + '</div>';
@@ -774,7 +793,7 @@
     if (p.status === 'sold') { toast('Этот товар уже продан', null, 'warn'); return; }
     var sel = { size: p.sizes.length === 1 ? p.sizes[0] : null, color: p.colors.length === 1 ? p.colors[0] : null };
     function put() {
-      addToCart({ id: p.id, size: sel.size, color: sel.color, photo: (sel.color && p.colorPhoto && p.colorPhoto[sel.color]) || null, qty: 1, note: '' });
+      if (addToCart({ id: p.id, size: sel.size, color: sel.color, photo: (sel.color && p.colorPhoto && p.colorPhoto[sel.color]) || null, qty: 1, note: '' }) === false) return;
       toast('В корзине: ' + p.title, { label: 'Корзина', run: function () { go('cart'); } });
     }
     if (p.sizes.length <= 1 && p.colors.length <= 1) { put(); return; }
@@ -1107,7 +1126,7 @@
     }
     function add() {
       if (!validate()) return false;
-      addToCart({ id: p.id, size: sel.size, color: sel.color, photo: sel.photo, qty: sel.qty, note: $('#p-note').value.trim() });
+      if (addToCart({ id: p.id, size: sel.size, color: sel.color, photo: sel.photo, qty: sel.qty, note: $('#p-note').value.trim() }) === false) return false;
       var img = $$('figure img', slides)[cur]; flyToCart(img);
       return true;
     }
@@ -1302,7 +1321,7 @@
       '<div class="sumrow good" id="sum-promo"' + (t.promoRub ? '' : ' hidden') + '><span>Промокод <span id="sum-promo-code">' + esc(t.promo) + '</span></span><b>−' + rub(t.promoRub) + '</b></div>' +
       '<div class="sumrow" id="sum-vip"' + (t.vipRub ? '' : ' hidden') + '><span>Приоритетный заказ</span><b>+' + rub(t.vipRub) + '</b></div>' +
       '<div class="sumtotal"><span>К оплате</span><b id="sum-pay">' + rub(t.toPay) + '</b></div>' +
-      (API.enabled && !u ? '<button class="btn btn-block" type="submit" id="submit-btn">' + icon('user') + '<span>Войти, чтобы оформить</span></button>' : '<button class="btn btn-block" type="submit" id="submit-btn">' + icon('check-circle') + '<span>Оформить заказ</span></button>') +
+      (API.enabled && !u ? '<button class="btn btn-block" type="submit" id="submit-btn">' + icon('user') + '<span>Войти, чтобы оформить</span></button>' : ((u && !u.phoneOk ? '<button class="ph-need ph-soft" type="button" id="ph-go2">' + icon('phone') + '<span>Подтвердите телефон в Telegram, чтобы получить приветственные токены и бонусы</span></button>' : '') + '<button class="btn btn-block" type="submit" id="submit-btn">' + icon('check-circle') + '<span>Оформить заказ</span></button>')) +
       '</aside></form>';
 
     // строки корзины
@@ -1464,6 +1483,7 @@
       if (r.ok) { if (r.user) setUser(r.user); finish(r.order, {}); return; }
       busy(btn, false);
       if (r.needAccount) { toast(r.error, null, 'warn'); API.setSession(''); setUser(null); requireAuth('cart'); return; }
+      if (r.needPhone) { phoneModal(); return; }
       if (r.network) { confirmBox({ title: 'Сервер не отвечает', text: 'Проверьте интернет и нажмите «Оформить» ещё раз. Корзина сохранена. Если не получается — напишите менеджеру.', actions: [{ label: 'Хорошо', cls: 'btn' }, { label: 'Написать менеджеру', cls: 'btn-ghost', run: function () { window.open(SHOP.managerUrl, '_blank', 'noopener'); } }] }); return; }
       toast(r.error || 'Не получилось оформить заказ', null, 'warn');
       if (/промокод/i.test(r.error || '')) { cartPromo = null; renderCart(); }
@@ -1525,6 +1545,7 @@
   function orderCard(o, i) {
     return '<article class="card order" data-o="' + i + '"><div class="order-top"><div><span class="order-no">№ ' + esc(o.no) + '</span><p class="date">' + esc(fmtAt(o.at)) + ' · ' + (o.count || 0) + ' шт.</p></div><div style="display:grid;justify-items:end;gap:6px"><span class="sum">' + rub(o.toPay != null ? o.toPay : o.total) + '</span>' + stPill(o) + '</div></div>' +
       '<div class="order-items">' + (o.items || []).map(function (it) { var id = it.photo || it.thumb; return '<a class="oi" href="#p-' + esc(it.id) + '" title="' + esc(it.title) + '">' + (id ? '<img src="' + thumb(id) + '" alt="' + esc(it.title) + '" loading="lazy">' : '') + (it.qty > 1 ? '<i>×' + it.qty + '</i>' : '') + '</a>'; }).join('') + '</div>' +
+      ((o.photos || []).length ? '<div class="ord-photos">' + icon('camera') + '<b>Фотоотчёт</b>' + o.photos.map(function (l, k) { return '<a class="chip" href="' + esc(l) + '" target="_blank" rel="noopener">Фото ' + (k + 1) + '</a>'; }).join('') + '</div>' : '') +
       '<div class="acts"><button class="btn btn-sm" type="button" data-open>' + icon('receipt') + (o.stages ? 'Статус и чек' : 'Чек') + '</button><button class="btn btn-ghost btn-sm" type="button" data-repeat>' + icon('refresh') + 'Повторить</button>' + reviewBtn(o) + '</div></article>';
   }
   function bindOrders(root, list) {
@@ -1556,6 +1577,7 @@
   function renderFavorites() {
     var v = $('#v-favorites'), list = favs.map(function (id) { return BY_ID[id]; }).filter(Boolean);
     v.innerHTML = '<div class="view-head"><div><h1>Избранное</h1><p class="muted">' + (list.length ? list.length + ' ' + plural(list.length, 'товар', 'товара', 'товаров') + ' — сохранено на потом' : 'Сохраняйте понравившееся, чтобы вернуться позже') + '</p></div></div>' +
+      (list.length && acct.user ? '<div class="fav-watch">' + icon('bell') + '<span>' + (acct.user.tgOn ? 'Сообщим в Telegram, если вещь из избранного подешевеет' : 'Подключите Telegram в кабинете — сообщим, если вещь из избранного подешевеет') + '</span></div>' : '') +
       (list.length ? grid(list) : '<div class="empty fav-empty"><span class="ico">' + icon('heart') + '</span><h3>Пока пусто</h3><a class="btn" href="#catalog">Перейти в каталог</a></div>');
   }
 
@@ -1576,6 +1598,23 @@
 
   // ------------------------------------------------------------ кабинет
   var authTab = 'register', regSent = false;
+  // достижения: значки (и рамки за некоторые); новые показываем один раз
+  function achvTile(u) {
+    var have = u.achv || [], n = have.length;
+    return '<div class="card tile c12"><div class="tile-h"><h3>Достижения</h3><span class="side">' + n + ' из ' + RULES.achv.length + '</span></div><div class="achv">' +
+      RULES.achv.map(function (a) { var on = have.indexOf(a.id) >= 0; var fr = a.frame ? (RULES.frames.filter(function (f) { return f.id === a.frame; })[0] || {}).name : '';
+        return '<div class="ach' + (on ? ' on' : '') + '" title="' + esc(a.d) + '"><span class="ach-i">' + icon(on ? a.ic : 'lock') + '</span><b>' + esc(a.name) + '</b><small>' + esc(a.d) + (fr ? ' · рамка «' + esc(fr) + '»' : '') + '</small></div>'; }).join('') + '</div></div>';
+  }
+  function achvNews(u) {
+    if (!u || !u.achv) return;
+    var seen = store.get('achvSeen:' + u.id, null);
+    if (seen === null) { store.set('achvSeen:' + u.id, u.achv); return; }
+    var fresh = u.achv.filter(function (x) { return seen.indexOf(x) < 0; });
+    if (!fresh.length) return;
+    store.set('achvSeen:' + u.id, u.achv);
+    var a = RULES.achv.filter(function (x) { return x.id === fresh[0]; })[0];
+    if (a) setTimeout(function () { reward('Новое достижение: «' + a.name + '»' + (a.frame ? ' — и новая рамка для аватара' : '')); }, 1200);
+  }
   function renderAccount() {
     var v = $('#v-account');
     if (!API.enabled) { v.innerHTML = '<div class="empty"><span class="ico">' + icon('user') + '</span><h3>Личный кабинет скоро появится</h3><p>Пока заказы хранятся в браузере.</p><a class="btn" href="#orders">Мои заказы</a></div>'; return; }
@@ -1590,7 +1629,7 @@
       '<li>' + tk('lg') + '<span>Токенами можно оплатить <b>до 15%</b> заказа · 1 токен = 0,3 ₽</span></li>' +
       '<li>' + tk('lg') + '<span><b>Задания дня</b> по 1 токену и до ' + RULES.levels[4].streak + ' за 7 дней подряд</span></li>' +
       '<li>' + tk('lg') + '<span><b>Программа лояльности</b>: Бронза → Серебро → Золото → Платина → Алмаз</span></li>' +
-      '<li>' + tk('lg') + '<span><b>Рулетка</b>: токены, промокоды, рамки для аватара</span></li>' +
+      '<li>' + tk('lg') + '<span><b>Посылка</b>: токены, промокоды, рамки для аватара</span></li>' +
       '<li>' + tk('lg') + '<span><b>Статусы заказов</b> — от выкупа в Китае до получения</span></li>' +
       '<li>' + tk('lg') + '<span><b>+' + R.referrer + ' токенов</b> за друга, когда он получит первый заказ</span></li>' +
       '</ul><p class="small" style="color:var(--navy-ink-2)">Пароль хранится в зашифрованном виде. Почта нужна, чтобы восстановить пароль.</p></div>';
@@ -1663,7 +1702,8 @@
           busy(btn, false);
           if (!r.ok) { fail(r.error); return; }
           regSent = false; store.set('ref', ''); API.setSession(r.session);
-          if (r.repeat) toast('Добро пожаловать! Приветственные бонусы на эти данные уже выдавались раньше, поэтому повторно не начисляются'); else { confetti(150); reward('Добро пожаловать! +' + r.welcome + ' ' + tokWord(r.welcome) + (API.mode === 'demo' ? ' (и демо-токены для проверки)' : '')); }
+          if (r.repeat) toast('Добро пожаловать! Приветственные бонусы на эти данные уже выдавались раньше, поэтому повторно не начисляются'); else toast('Аккаунт создан! Подтвердите телефон в Telegram — и получите +' + r.pending + ' ' + tokWord(r.pending));
+          setTimeout(phoneModal, 900);
           setUser(r.user); var back = returnTo; returnTo = null; if (back && back !== 'account') go(back);
         });
       } else if (authTab === 'login') {
@@ -1747,7 +1787,7 @@
     el.innerHTML = '<div class="dr-bg" data-dr-close></div><aside class="dr-p" role="dialog" aria-modal="true" aria-label="Меню"><div class="dr-h"><b>Меню</b><button class="icon-btn" type="button" data-dr-close aria-label="Закрыть">' + icon('x') + '</button></div><div class="dr-b">' +
       '<div class="dr-g">' + link('home', 'Главная', 'href="#home" data-go="home"') + link('grid', 'Каталог', 'href="#catalog" data-go="catalog" data-reset="1"') + link('box', 'В наличии', 'href="#stock" data-go="stock"') + link('plane', 'Предзаказ из Китая', 'href="#preorder" data-go="preorder"') + link('percent', 'Товары со скидкой', 'href="#catalog" data-go="catalog" data-sale="1"', nSale ? nSale + ' ' + plural(nSale, 'товар', 'товара', 'товаров') : '') + '</div>' +
       '<div class="dr-s">Категории</div><div class="dr-cats">' + cats.map(function (c) { return '<a class="dr-c' + (c.n ? '' : ' empty') + '" href="#catalog" data-go="catalog" data-cat="' + c.key + '"><img class="lt" src="assets/cat/' + c.key + '.svg" alt=""><img class="dk" src="assets/cat/dark/' + c.key + '.svg" alt=""><span>' + esc(c.label) + '</span></a>'; }).join('') + '</div>' +
-      '<div class="dr-s">Мои покупки</div><div class="dr-g">' + link('heart', 'Избранное', 'href="#favorites" data-go="favorites"') + link('bag', 'Корзина', 'href="#cart" data-go="cart"') + link('user', u ? 'Кабинет' : 'Войти', 'href="#account" data-go="account"', u ? esc(u.name || u.login || '') : '') + (API.enabled ? link('receipt', 'Мои заказы', 'href="#orders" data-go="orders"') + link('gift', 'Рулетка', 'href="#roulette" data-go="roulette"') : '') + '</div>' +
+      '<div class="dr-s">Мои покупки</div><div class="dr-g">' + link('heart', 'Избранное', 'href="#favorites" data-go="favorites"') + link('bag', 'Корзина', 'href="#cart" data-go="cart"') + link('user', u ? 'Кабинет' : 'Войти', 'href="#account" data-go="account"', u ? esc(u.name || u.login || '') : '') + (API.enabled ? link('receipt', 'Мои заказы', 'href="#orders" data-go="orders"') + link('gift', 'Посылка', 'href="#roulette" data-go="roulette"') : '') + '</div>' +
       '<div class="dr-s">Информация</div><div class="dr-g">' + link('info', 'Частые вопросы', 'href="#info" data-go="info"', 'заказ, сроки, доставка, оплата') + link('truck', 'Как работает предзаказ', 'href="' + SHOP.preorderUrl + '" target="_blank" rel="noopener"') + link('pin', 'Магазин и контакты', 'href="#info" data-go="info"', esc(SHOP.address)) + '</div>' +
       '<div class="dr-s">Оформление</div><div class="dr-th" id="dr-th">' + ['auto', 'light', 'dark'].map(function (k) { return '<button type="button" data-th="' + k + '" aria-pressed="' + (themeMode() === k) + '">' + (k === 'auto' ? 'Авто' : THEME_NAMES[k]) + '</button>'; }).join('') + '</div>' +
       '<div class="dr-s">Связь</div><div class="dr-g">' + link('send', 'Менеджер в Telegram', 'href="' + SHOP.managerUrl + '" target="_blank" rel="noopener"', '@' + SHOP.manager) + link('megaphone', 'Канал магазина', 'href="' + SHOP.channelUrl + '" target="_blank" rel="noopener"') + link('star', 'Отзывы покупателей', 'href="' + SHOP.reviewsUrl + '" target="_blank" rel="noopener"') + link('play', 'TikTok', 'href="' + SHOP.tiktokUrl + '" target="_blank" rel="noopener"') + '</div>' +
@@ -1866,8 +1906,9 @@
     var u = acct.user, li = u.level.index, prev = u.frame;
     function lockText(f) {
       if (f.src === 'level') return 'Откроется на уровне «' + RULES.levels[f.lvl].name + '» и выше';
-      if (f.rare) return 'Редкая: выпадает только в рулетке';
-      return 'Выпадает в рулетке или открыт на «Алмазе»';
+      if (f.src === 'ach') { var aa = RULES.achv.filter(function (x) { return x.id === f.ach; })[0]; return 'Достижение «' + (aa ? aa.name : '') + '»: ' + (aa ? aa.d.toLowerCase() : ''); }
+      if (f.rare) return 'Редкая: выпадает только в посылке';
+      return 'Выпадает в посылке или открыт на «Алмазе»';
     }
     function own(f) { return u.frames.indexOf(f.id) >= 0; }
     function fname(id) { return (RULES.frames.filter(function (x) { return x.id === id; })[0] || {}).name || ''; }
@@ -1950,13 +1991,14 @@
     var dashOrders = active.length ? active.slice(0, 3) : u.orders.slice(0, 1);
     var bd = u.birthday ? u.birthday.split('-') : null;
     v.innerHTML =
+      (u.phoneOk ? '' : '<div class="ph-cta"><span class="ph-ic">' + icon('phone') + '</span><div><b>Подтвердите телефон</b><small>10 секунд в Telegram. После этого — приветственные токены, бонусы за друзей и подарок на день рождения.</small></div><button class="btn" type="button" id="ph-go">Подтвердить</button></div>') +
       (u.email ? '' : '<div class="notice notice-warn" style="margin-bottom:12px">' + icon('mail') + '<div><b>Добавьте почту.</b> Без неё не получится восстановить пароль. <button class="link-btn" type="button" id="add-email">Добавить</button></div></div>') +
       '<div class="dash">' +
       '<div class="profile c12"><div class="who"><div class="ava-wrap">' + ava(u, 'lg') + '<button class="ava-cam" type="button" id="ava-cam" aria-label="Изменить фото">' + icon('camera') + '</button></div>' +
       '<div style="min-width:0"><h1>' + esc(u.name) + '</h1>' +
       '<div class="meta"><span>@' + esc(u.login) + '</span>' + (u.email ? '<span>' + esc(u.email) + '</span>' : '') + '<button class="idb" type="button" data-copy="' + esc(u.code) + '">ID ' + esc(u.code) + icon('copy') + '</button><span>с нами с ' + esc(since) + '</span></div></div></div>' +
       '<div class="ptiles"><div class="ptile"><small>Токены</small><b>' + tk() + num(u.balance) + '</b></div><div class="ptile"><small>Это скидка до</small><b>' + rub(u.balanceRub) + '</b></div><div class="ptile"><small>Серия входов</small><b>' + u.streak + ' ' + plural(u.streak, 'день', 'дня', 'дней') + '</b></div><div class="ptile"><small>Активные заказы</small><b>' + active.length + '</b></div></div>' +
-      '<div class="acts"><a class="btn" href="#roulette">' + icon('gift') + 'Рулетка</a><a class="btn btn-white" href="#cart">' + icon('bag') + 'Потратить токены</a></div></div>' +
+      '<div class="acts"><a class="btn" href="#roulette">' + icon('gift') + 'Посылка</a><a class="btn btn-white" href="#cart">' + icon('bag') + 'Потратить токены</a></div></div>' +
 
       '<div class="card tile c6 loyal lv-' + L.key + '"><div class="tile-h"><h3>Программа лояльности</h3><button class="link-btn" type="button" id="all-levels">Все уровни</button></div>' +
       '<div class="lh lh-row lv-' + L.key + '">' + emblem(L.key, 68, 3) + '<div class="lh-t"><span class="small">Ваш уровень' + (L.fixed ? ' · закреплён менеджером' : '') + '</span><b class="loyal-name">' + esc(L.name) + '</b><span class="xp-num">' + num(u.xp) + ' XP <span class="small">за месяц</span></span></div></div>' +
@@ -1980,6 +2022,7 @@
       ((u.waits || []).length ? '<div class="card tile c12"><div class="tile-h"><h3>Жду появления</h3><span class="side">' + u.waits.length + '</span></div><div class="waits">' + u.waits.map(function (w) {
         return '<div class="wait-c' + (w.ready ? ' rdy' : '') + '"><a class="wait-ph" href="#p-' + esc(w.id) + '"><img src="' + thumb(w.id) + '" alt="" loading="lazy" width="64" height="64"></a><div class="wait-i"><a href="#p-' + esc(w.id) + '">' + esc(w.title) + '</a>' + (w.ready ? '<span class="wait-st ok">' + icon('check-circle') + 'Уже можно заказать</span>' : '<span class="wait-st">' + icon('hourglass') + 'Сообщим, когда появится</span>') + '</div><button class="icon-btn" type="button" data-wx="' + esc(w.id) + '" aria-label="Больше не ждать">' + icon('x') + '</button></div>';
       }).join('') + '</div></div>' : '') +
+      achvTile(u) +
       '<div class="card tile c12"><div class="tile-h"><h3>Мои заказы</h3><a class="link-btn" href="#orders">Все заказы</a></div>' +
       (dashOrders.length ? '<div class="orders">' + dashOrders.map(orderCard).join('') + '</div>' + (u.orders.filter(isDoneOrder).length ? '<p class="small" style="margin-top:10px"><a href="#orders">История заказов · ' + u.orders.filter(isDoneOrder).length + '</a> — завершённые заказы, их можно повторить</p>' : '') : '<p class="small">Здесь появятся заказы с номерами и статусами. <a href="#catalog">Перейти в каталог</a></p>') + '</div>' +
 
@@ -2037,7 +2080,7 @@
     else if (p.c === 'xp') h = rlBigIc('rl-xp', 146, 8) + '<div class="rl-num" style="top:160px;font-size:66px">+' + n + '</div><div class="rl-cap" style="top:246px">опыт XP</div>';
     else if (p.c === 'pr') h = rlBigIc('rl-ticket', 146, 8) + '<div class="rl-num" style="top:160px;font-size:66px">−' + n + '%</div><div class="rl-cap" style="top:246px">скидка по промокоду</div>';
     else if (p.c === 'fr') h = rlBigIc(p.rare ? 'rl-frame2' : 'rl-frame', 170, 10) + '<div class="rl-cap" style="top:214px">' + (pr && pr.frameName ? 'рамка «' + esc(pr.frameName) + '»' : p.rare ? 'редкая рамка для аватара' : 'рамка для аватара') + '</div>';
-    else if (p.c === 're') h = rlBigIc('rl-again', 124, 6) + '<div class="rl-num" style="top:138px;font-size:56px">×' + n + '</div><div class="rl-cap" style="top:222px">' + (n === 1 ? 'бесплатный прокрут' : 'бесплатных прокрута') + '</div>';
+    else if (p.c === 're') h = rlBigIc('rl-again', 124, 6) + '<div class="rl-num" style="top:138px;font-size:56px">×' + n + '</div><div class="rl-cap" style="top:222px">' + (n === 1 ? 'бесплатная посылка' : 'бесплатные посылки') + '</div>';
     else h = rlBigIc('rl-empty', 150, 20) + '<div class="rl-cap" style="top:206px">Пусто, в другой раз</div>';
     return rlSlide(c, h);
   }
@@ -2045,120 +2088,91 @@
   function updateRoulBalance() {
     var u = acct.user, b = $('#roul-bal'); if (!b || !u) return;
     b.innerHTML = tk('lg') + '<span>' + num(u.balance) + '</span>';
-    var fb = $('#spin-free'); if (fb) { fb.hidden = !u.freeSpins; fb.textContent = 'Крутить бесплатно'; fb.disabled = spinning; }
-    var fbd = $('#roul-free'); if (fbd) fbd.textContent = u.freeSpins ? 'Бесплатных прокрутов: ' + u.freeSpins : 'Раз в день бесплатно';
-    var pbtn = $('#spin-paid'); if (pbtn) { pbtn.disabled = spinning || u.balance < RULES.spinCost; pbtn.querySelector('span').textContent = spinning ? 'Крутим…' : 'Крутить за ' + RULES.spinCost; }
+    var fb = $('#spin-free'); if (fb) { fb.hidden = !u.freeSpins; fb.textContent = 'Открыть бесплатно'; fb.disabled = spinning; }
+    var fbd = $('#roul-free'); if (fbd) fbd.textContent = u.freeSpins ? 'Бесплатных посылок: ' + u.freeSpins : 'Раз в день бесплатно';
+    var pbtn = $('#spin-paid'); if (pbtn) { pbtn.disabled = spinning || u.balance < RULES.spinCost; pbtn.querySelector('span').textContent = spinning ? 'Сканируем…' : 'Открыть за ' + RULES.spinCost; }
+  }
+  /* ------------------------------------------------------------ «Посылка на рентгене»
+     Одна кнопка: посылка из Китая едет в сканер таможни, рентген показывает, что внутри, — штамп «ПРОВЕРЕНО».
+     Приз и списание токенов определяет сервер (тот же action 'spin', те же шансы и цена). */
+  function pxIcon(info, pr) {
+    if (pr && pr.frameId) return '<span class="px-ava">' + ava({ name: acct.user && acct.user.name, avatar: acct.user && acct.user.avatar, frame: pr.frameId }, 'lg') + '</span>';
+    return rlUse(rlSym(info), 92);
+  }
+  function pxCap(info, pr) {
+    var n = info.n;
+    if (info.c === 'tok') return ['+' + num(n), tokWord(n)];
+    if (info.c === 'xp') return ['+' + n + ' XP', 'опыт к уровню'];
+    if (info.c === 'pr') return ['−' + n + '%', 'промокод' + (pr && pr.code ? ' ' + pr.code : '')];
+    if (info.c === 'fr') return [pr && pr.frameName ? '«' + pr.frameName + '»' : info.rare ? 'Редкая рамка' : 'Рамка', 'для аватара'];
+    if (info.c === 're') return ['+' + n, n === 1 ? 'посылка бесплатно' : 'посылки бесплатно'];
+    return ['Пусто', 'в этот раз посылка пустая'];
   }
   function renderRoulette() {
     var v = $('#v-roulette');
     clearInterval(rlTimer); rlTimer = null;
-    if (!API.enabled) { v.innerHTML = '<div class="empty"><span class="ico">' + icon('gift') + '</span><h3>Рулетка скоро появится</h3><a class="btn" href="#catalog">В каталог</a></div>'; return; }
-    var u = acct.user, N = RL_ORD.length, ORD = RL_ORD.map(rlInfo), STEP = 94, R = 6, pool = [], raf = 0, heroIdx = -1, lastC = null, vel = 0;
-    v.innerHTML = '<div class="pad roul-head" style="padding:0 0 12px"><div><h1>Испытайте удачу</h1></div></div>' +
-      '<section class="rl-scene" id="rl-scene">' +
-      '<div class="rl-inner" id="rl-inner"><div class="rl-bar">' + (u ? '<span class="rl-chipb" id="roul-bal"></span><span class="rl-free" id="roul-free"></span>' : '<span class="rl-chipb">' + rlUse('i-token', 26) + '<span>Рулетка</span></span><span class="rl-free">Войдите, чтобы крутить</span>') + '</div>' +
-      '<div class="rl-hero" id="rl-hero"></div><div class="rl-rail" id="rl-rail"><div class="rl-mark" id="rl-mark"></div></div>' +
-      (u ? '<button class="rl-go" id="spin-paid" type="button">' + rlUse('i-token', 28) + '<span>Крутить за ' + RULES.spinCost + '</span></button><button class="rl-go2" id="spin-free" type="button" hidden></button>' : '<button class="rl-go" id="spin-guest" type="button">' + rlUse('i-token', 28) + '<span>Войти и получить ' + RULES.reward.register + '</span></button>') +
-      '</div><div class="rl-fx" id="rl-fx"></div></section>';
-    var scene = $('#rl-scene', v), hero = $('#rl-hero', v), rail = $('#rl-rail', v), mark = $('#rl-mark', v), inner = $('#rl-inner', v), fxBox = $('#rl-fx', v);
-    function mod(i) { return ((i % N) + N) % N; }
-    for (var j = -R; j <= R; j++) { var e = document.createElement('div'); e.className = 'rl-cube'; e.dataset.j = j; rail.insertBefore(e, rail.firstChild); pool.push(e); }
-    function setHero(c) {
-      heroIdx = c; hero.classList.remove('rl-pop');
-      hero.innerHTML = rlArt(ORD[mod(c)]);
+    if (!API.enabled) { v.innerHTML = '<div class="empty"><span class="ico">' + icon('gift') + '</span><h3>Посылка скоро появится</h3><a class="btn" href="#catalog">В каталог</a></div>'; return; }
+    var u = acct.user, busyNow = false, idleI = 0, IDLE = ['t100', 'xp100', 'promo', 'frame', 're1', 't500'];
+    v.innerHTML = '<div class="pad roul-head" style="padding:0 0 10px"><div><h1>Посылка из Китая</h1></div></div>' +
+      '<section class="px" id="px">' +
+      '<div class="rl-bar">' + (u ? '<span class="rl-chipb" id="roul-bal"></span><span class="rl-free" id="roul-free"></span>' : '<span class="rl-chipb">' + rlUse('i-token', 26) + '<span>Посылка</span></span><span class="rl-free">Войдите, чтобы открыть</span>') + '</div>' +
+      '<div class="px-station">' +
+        '<div class="px-mon" id="px-mon"><div class="px-mon-h"><span>РЕНТГЕН</span><span id="px-st">ГОТОВ</span></div>' +
+          '<div class="px-screen" id="px-screen"><i class="px-grid"></i><div class="px-box"><i class="px-tape"></i><div class="px-item" id="px-item"></div></div><i class="px-beam"></i><b class="px-stamp" id="px-stamp">ПРОВЕРЕНО</b></div></div>' +
+        '<div class="px-belt"><div class="px-tunnel"><i></i></div><div class="px-parcel" id="px-parcel"><i class="px-ptape"></i><span class="px-lbl"><b>CN → MSK</b><i></i></span><img src="assets/logo.png" alt="" width="22" height="22"></div><div class="px-rollers"></div></div>' +
+      '</div>' +
+      '<div class="px-cap" id="px-cap" aria-live="polite"><b>Что внутри?</b><span>Посылка проходит рентген — и вы сразу видите приз</span></div>' +
+      (u ? '<button class="rl-go" id="spin-paid" type="button">' + rlUse('i-token', 24) + '<span>Открыть за ' + RULES.spinCost + '</span></button><button class="rl-go2" id="spin-free" type="button" hidden></button>' : '<button class="rl-go" id="spin-guest" type="button">' + icon('user') + '<span>Войти и получить ' + RULES.reward.register + ' ' + tokWord(RULES.reward.register) + '</span></button>') +
+      '</section>';
+    var px = $('#px', v), item = $('#px-item', v), cap = $('#px-cap', v), st = $('#px-st', v), stamp = $('#px-stamp', v);
+    function idleShow() { var info = rlInfo(IDLE[idleI++ % IDLE.length]); item.className = 'px-item ghost'; item.innerHTML = pxIcon(info); }
+    function idleOn() { clearInterval(rlTimer); idleShow(); rlTimer = setInterval(function () { if (!$('#px')) { clearInterval(rlTimer); return; } if (!busyNow && !document.hidden) idleShow(); }, 2600); }
+    function setState(s, t) { px.setAttribute('data-s', s); st.textContent = t; }
+    function reveal(r, real) {
+      var info = rlInfo(r.prize.id), c = pxCap(info, r.prize), big = rlBig(info);
+      item.className = 'px-item xray'; item.innerHTML = pxIcon(info, r.prize);
+      setState('found', info.c === 'none' ? 'ПУСТО' : 'НАЙДЕНО');
+      setTimeout(function () {
+        item.className = 'px-item real' + (big ? ' big' : '');
+        stamp.textContent = info.c === 'none' ? 'ПУСТО' : 'ПРОВЕРЕНО'; stamp.className = 'px-stamp on' + (info.c === 'none' ? ' grey' : '');
+        cap.innerHTML = '<b class="' + (info.c === 'none' ? '' : 'win') + '">' + esc(c[0]) + '</b><span>' + esc(c[1]) + '</span>';
+        setState('done', 'ГОТОВ');
+        setUser(real); updateRoulBalance();
+        if (big) { px.classList.add('px-flash'); setTimeout(function () { px.classList.remove('px-flash'); }, 900); confetti(160); }
+        if (r.prize.frameId) toast('Рамка «' + (r.prize.frameName || '') + '» — в кабинете → «Рамка аватара»');
+        else if (r.prize.code) toast('Промокод ' + r.prize.code + ' уже в кабинете');
+        busyNow = false; updateRoulBalance();
+        setTimeout(function () { if (!busyNow && $('#px')) { stamp.className = 'px-stamp'; idleOn(); } }, 5200);
+      }, REDUCED ? 50 : 650);
     }
-    function layout() {
-      var c = Math.round(rlPos);
-      pool.forEach(function (e) {
-        var jj = +e.dataset.j, idx = c + jj, d = idx - rlPos, ad = Math.abs(d);
-        if (e.dataset.k !== String(idx)) { e.dataset.k = idx; e.innerHTML = rlUse(rlSym(ORD[mod(idx)]), 60); }
-        e.classList.toggle('rl-c0', ad < .5);
-        var sc = 1.22 - 0.22 * Math.min(1, ad) - Math.min(ad, 3) * .045;
-        e.style.transform = 'translate3d(' + (d * STEP) + 'px,0,0) scale(' + sc + ')';
-        e.style.zIndex = String(100 - Math.round(ad * 10)); e.style.opacity = ad > 4.4 ? '0' : '1';
-      });
-      if (c !== lastC) { if (spinning) { mark.classList.remove('rl-hit'); void mark.offsetWidth; mark.classList.add('rl-hit'); } else if (c !== heroIdx) setHero(c); lastC = c; }
-    }
-    function animTo(to, dur, ease, done) {
-      var from = rlPos, t0 = performance.now(); cancelAnimationFrame(raf);
-      (function f(now) { var t = Math.min(1, (now - t0) / dur); rlPos = from + (to - from) * ease(t); layout(); if (t < 1) raf = requestAnimationFrame(f); else { rlPos = to; layout(); if (done) done(); } })(t0);
-    }
-    function idleOn() { clearInterval(rlTimer); rlTimer = setInterval(function () { if (!$('#rl-rail')) { clearInterval(rlTimer); return; } if (!spinning && !document.hidden) animTo(Math.round(rlPos) + 1, REDUCED ? 10 : 800, function (t) { return t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; }); }, 3200); }
-    function fxBurst(n) {
-      var cols = ['#43c9e3', '#7fe8ff', '#ffffff', '#ffd451', '#4a76ec', '#ff7ab0'];
-      for (var q = 0; q < n; q++) {
-        var el = document.createElement('i'); el.className = 'rl-p'; el.style.cssText = 'left:50%;top:200px;width:9px;height:14px;border-radius:2px;background:' + cols[q % cols.length]; fxBox.appendChild(el);
-        var a = Math.random() * Math.PI * 2, spd = 120 + Math.random() * 260, dx = Math.cos(a) * spd, dy = Math.sin(a) * spd - 140;
-        el.animate([{ transform: 'translate(0,0) rotate(0)', opacity: 1 }, { transform: 'translate(' + dx + 'px,' + (dy + 420) + 'px) rotate(' + (Math.random() * 900) + 'deg)', opacity: 0 }], { duration: 1500 + Math.random() * 1100, easing: 'cubic-bezier(.15,.7,.3,1)' }).onfinish = (function (x) { return function () { x.remove(); }; })(el);
-      }
-    }
-    function boomFx() { ['rl-flash', 'rl-ring'].forEach(function (k) { var d = document.createElement('div'); d.className = k; fxBox.appendChild(d); setTimeout(function () { d.remove(); }, 1100); }); }
-    function banner() { var b = document.createElement('div'); b.className = 'rl-cong'; b.textContent = 'ПОЗДРАВЛЯЕМ!'; fxBox.appendChild(b); setTimeout(function () { b.remove(); }, 3200); }
-    function bigSeq(done) {
-      if (REDUCED) { done(); return; }
-      var t0 = performance.now(), D = 1900; scene.classList.add('rl-charge');
-      (function f(now) {
-        var t = Math.min(1, (now - t0) / D), e3 = t * t * t, a = e3 * 12;
-        inner.style.transform = 'scale(' + (1 + .3 * e3) + ') translate(' + ((Math.random() - .5) * a) + 'px,' + ((Math.random() - .5) * a) + 'px)';
-        if (t < 1) requestAnimationFrame(f);
-        else {
-          scene.classList.remove('rl-charge'); inner.style.transform = '';
-          inner.animate([{ transform: 'scale(1.3)' }, { transform: 'scale(.93)', offset: .3 }, { transform: 'scale(1.02)', offset: .6 }, { transform: 'scale(1)' }], { duration: 700, easing: 'ease-out' });
-          scene.animate([{ transform: 'translate(0,0)' }, { transform: 'translate(-7px,5px)' }, { transform: 'translate(6px,-5px)' }, { transform: 'translate(-4px,3px)' }, { transform: 'translate(0,0)' }], { duration: 500 });
-          boomFx(); banner(); done();
-        }
-      })(t0);
-    }
-    function showResult(pr, isBig) {
-      var win = pr.id !== 'none';
-      toast(win ? (isBig ? 'Поздравляем! ' : '') + prizeTitle(pr) : 'В этот раз пусто');
-    }
-    function finish(pr, big, real) {
-      spinning = false; scene.classList.remove('rl-spinning'); hero.classList.remove('rl-shake');
-      setUser(real); updateRoulBalance();
-      var info = rlInfo(pr.id); heroIdx = -1;
-      hero.innerHTML = rlArt(info, pr); hero.firstChild.classList.add('rl-in'); hero.firstChild.classList.remove('rl-in'); hero.classList.add('rl-pop');
-      showResult(pr, big);
-      if (info.c !== 'none') fxBurst(big ? 280 : 80);
-      setTimeout(idleOn, big ? 5200 : 4200);
-    }
-    function doSpin(free) {
-      if (spinning || !acct.user) return;
-      var u2 = acct.user;
-      if (!free && u2.balance < RULES.spinCost) { toast('Нужно ' + RULES.spinCost + ' токенов. Выполните задания или отметьтесь в кабинете', null, 'warn'); return; }
-      spinning = true; clearInterval(rlTimer); cancelAnimationFrame(raf); updateRoulBalance();
-      $$('#spin-free').forEach(function (b) { b.disabled = true; });
-      scene.classList.add('rl-spinning'); hero.classList.add('rl-shake'); hero.innerHTML = rlMystery();
-      var V = 0.022, alive = true, last = performance.now();
-      if (!REDUCED) (function tick(now) { if (!alive) return; var dt = Math.min(48, now - last); last = now; rlPos += V * dt; layout(); raf = requestAnimationFrame(tick); })(last);
-      function fail(msg) { alive = false; cancelAnimationFrame(raf); spinning = false; scene.classList.remove('rl-spinning'); hero.classList.remove('rl-shake'); heroIdx = -1; setHero(Math.round(rlPos)); updateRoulBalance(); toast(msg, null, 'warn'); idleOn(); }
+    function doOpen(free) {
+      if (busyNow || !acct.user) return;
+      if (!free && acct.user.balance < RULES.spinCost) { toast('Нужно ' + RULES.spinCost + ' токенов. Выполните задания или отметьтесь в кабинете', null, 'warn'); return; }
+      busyNow = true; clearInterval(rlTimer); spinning = true; updateRoulBalance();
+      stamp.className = 'px-stamp'; item.className = 'px-item'; item.innerHTML = '';
+      cap.innerHTML = '<b>Сканируем…</b><span>Посылка проходит рентген</span>';
+      setState('in', 'ПРИЁМ');
+      var t0 = Date.now(), MIN = REDUCED ? 100 : 1700;
+      setTimeout(function () { if (busyNow) setState('scan', 'СКАН'); }, REDUCED ? 0 : 650);
       API.call('spin', { free: free }).then(function (r) {
-        if (!r.ok) { fail(r.error); return; }
+        if (!r.ok) { busyNow = false; spinning = false; setState('idle', 'ГОТОВ'); cap.innerHTML = '<b>Что внутри?</b><span>Посылка проходит рентген — и вы сразу видите приз</span>'; updateRoulBalance(); toast(r.error, null, 'warn'); idleOn(); return; }
         var shown = Object.assign({}, acct.user, { balance: acct.user.balance - (free ? 0 : RULES.spinCost), freeSpins: acct.user.freeSpins - (free ? 1 : 0) });
         var real = r.user; acct.user = shown; updateRoulBalance(); updateAcctUI();
-        alive = false; cancelAnimationFrame(raf);
-        var id = RULES.wheel[r.index].id, oi = RL_ORD.indexOf(id); if (oi < 0) oi = 0;
-        var K = 3.6, x0 = rlPos, tgt = Math.ceil(x0 + 26); tgt += mod(oi - tgt);
-        var L = tgt - x0, D = REDUCED ? 300 : K * L / V;
-        animTo(tgt, D, function (t) { return 1 - Math.pow(1 - t, K); }, function () {
-          scene.classList.remove('rl-spinning'); hero.classList.remove('rl-shake');
-          var big = rlBig(rlInfo(r.prize.id));
-          if (big) bigSeq(function () { finish(r.prize, true, real); }); else finish(r.prize, false, real);
-        });
-      }, function () { fail('Нет связи, попробуйте ещё раз'); });
+        setTimeout(function () { spinning = false; reveal(r, real); }, Math.max(0, MIN - (Date.now() - t0)));
+      }, function () { busyNow = false; spinning = false; setState('idle', 'ГОТОВ'); updateRoulBalance(); toast('Нет связи, попробуйте ещё раз', null, 'warn'); idleOn(); });
     }
-    layout(); updateRoulBalance(); idleOn();
+    setState('idle', 'ГОТОВ'); updateRoulBalance(); idleOn();
     var g = $('#spin-guest', v); if (g) g.addEventListener('click', function () { requireAuth('roulette'); });
-    var pbtn = $('#spin-paid', v); if (pbtn) pbtn.addEventListener('click', function () { doSpin(false); });
-    var fb = $('#spin-free', v); if (fb) fb.addEventListener('click', function () { doSpin(true); });
+    var pbtn = $('#spin-paid', v); if (pbtn) pbtn.addEventListener('click', function () { doOpen(false); });
+    var fb = $('#spin-free', v); if (fb) fb.addEventListener('click', function () { doOpen(true); });
   }
-  function prizeTitle(p) { return p.id === 'none' ? 'Пусто' : p.tokens ? '+' + num(p.tokens) + ' ' + tokWord(p.tokens) : p.code ? 'Промокод −' + p.pct + '%' : p.xp ? '+' + p.xp + ' XP' : p.spins ? '+' + p.spins + ' ' + plural(p.spins, 'прокрут', 'прокрута', 'прокрутов') : p.frameName ? 'Рамка «' + p.frameName + '»' : p.label; }
-  function prizeSub(p) { return p.id === 'none' ? 'В этот раз не повезло, попробуйте ещё.' : p.code ? 'Код ' + p.code + ' уже в кабинете. Выберите его в корзине.' : p.xp ? 'Опыт засчитан в уровень этого месяца.' : p.spins ? 'Бесплатные прокруты добавлены.' : p.frameName ? 'Новая рамка открыта.' : 'Токены уже на балансе.'; }
+  function prizeTitle(p) { return p.id === 'none' ? 'Пусто' : p.tokens ? '+' + num(p.tokens) + ' ' + tokWord(p.tokens) : p.code ? 'Промокод −' + p.pct + '%' : p.xp ? '+' + p.xp + ' XP' : p.spins ? '+' + p.spins + ' ' + plural(p.spins, 'посылка', 'посылки', 'посылок') : p.frameName ? 'Рамка «' + p.frameName + '»' : p.label; }
+  function prizeSub(p) { return p.id === 'none' ? 'В этот раз не повезло, попробуйте ещё.' : p.code ? 'Код ' + p.code + ' уже в кабинете. Выберите его в корзине.' : p.xp ? 'Опыт засчитан в уровень этого месяца.' : p.spins ? 'Бесплатные посылки добавлены.' : p.frameName ? 'Новая рамка открыта.' : 'Токены уже на балансе.'; }
   function showPrize(p) {
     var win = p.id !== 'none';
     var visual = p.frameId ? ava({ name: acct.user && acct.user.name, avatar: acct.user && acct.user.avatar, frame: p.frameId }, 'lg') : pz(p.id);
-    var title = p.id === 'none' ? 'Пусто' : p.tokens ? '+' + num(p.tokens) + ' ' + tokWord(p.tokens) : p.code ? 'Промокод −' + p.pct + '%' : p.xp ? '+' + p.xp + ' XP' : p.spins ? '+' + p.spins + ' ' + plural(p.spins, 'прокрут', 'прокрута', 'прокрутов') : p.frameName ? 'Рамка «' + p.frameName + '»' : p.label;
-    var sub = p.id === 'none' ? 'В этот раз не повезло. Следующий прокрут может принести джекпот.' : p.code ? 'Код ' + p.code + ' уже в кабинете. Выберите его в корзине.' : p.xp ? 'Опыт засчитан в уровень этого месяца.' : p.spins ? 'Бесплатные прокруты добавлены.' : p.frameName ? 'Новая рамка открыта — наденьте её в кабинете.' : p.id === 'jackpot' ? 'Джекпот! Токены уже на балансе.' : 'Токены уже на балансе.';
+    var title = p.id === 'none' ? 'Пусто' : p.tokens ? '+' + num(p.tokens) + ' ' + tokWord(p.tokens) : p.code ? 'Промокод −' + p.pct + '%' : p.xp ? '+' + p.xp + ' XP' : p.spins ? '+' + p.spins + ' ' + plural(p.spins, 'посылка', 'посылки', 'посылок') : p.frameName ? 'Рамка «' + p.frameName + '»' : p.label;
+    var sub = p.id === 'none' ? 'В этот раз не повезло. Следующая посылка может принести джекпот.' : p.code ? 'Код ' + p.code + ' уже в кабинете. Выберите его в корзине.' : p.xp ? 'Опыт засчитан в уровень этого месяца.' : p.spins ? 'Бесплатные посылки добавлены.' : p.frameName ? 'Новая рамка открыта — наденьте её в кабинете.' : p.id === 'jackpot' ? 'Джекпот! Токены уже на балансе.' : 'Токены уже на балансе.';
     var md = openModal('<div class="prize-pop"><div class="burst">' + visual + '</div><span class="eyebrow">' + (win ? 'Ваш приз' : 'Результат') + '</span><h2>' + esc(title) + '</h2><p class="muted">' + esc(sub) + '</p>' +
       '<div class="send-row" style="width:100%">' + (p.spins ? '<button class="btn" type="button" id="again-free">' + icon('sparkles') + 'Крутить бесплатно</button>' : '<button class="btn" type="button" id="again">' + icon('sparkles') + 'Ещё раз</button>') +
       (p.frameId ? '<button class="btn btn-ghost" type="button" id="wear">Надеть рамку</button>' : '<button class="btn btn-ghost" type="button" data-close>Закрыть</button>') + '</div></div>', { cls: 'sm' });
@@ -2190,12 +2204,12 @@
       faqItem('Если что-то пошло не так', '<p>Напишите менеджеру в Telegram — он отвечает в рабочее время (Пн–Пт 08:30–21:00, Сб–Вс 10:00–20:00). Бот-помощник отвечает с задержкой около минуты — это нормально, просто подождите.</p><p><a class="btn btn-sm" href="' + SHOP.managerUrl + '" target="_blank" rel="noopener">Написать менеджеру</a></p>')
     ];
     var bonus = API.enabled ? [
-      faqItem('Где взять токены', '<ul><li>+' + R.register + ' за регистрацию</li><li>+' + R.checkin + ' за вход каждый день и от ' + L[0].streak + ' до ' + L[4].streak + ' за 7 дней подряд — зависит от уровня</li><li>Задания дня — по 1 токену, с уровнем их больше</li><li>Рулетка</li><li>+' + R.referrer + ' за друга и +' + R.birthday + ' в день рождения</li></ul><p>Токены не сгорают и не передаются другим людям.</p>'),
-      faqItem('Промокоды', '<p>Личные промокоды выпадают в рулетке, с уровня «Золото» — −1,5% каждый месяц, на «Алмазе» — ещё 3 по −2,5%. Они появляются в кабинете, а в корзине выбираются последним шагом. Каждый действует на один заказ.</p><p>Промокоды магазина вводятся вручную в поле «Промокод» в корзине.</p>'),
-      faqItem('Как зарабатывается XP', '<ul><li>Полученный заказ — 1 XP за каждые 10 ₽ (когда статус «Получен»)</li><li>Ежедневный вход — +' + RULES.xpReward.checkin + ' XP</li><li>Задания: ежедневные +2–3 XP, еженедельные +12–40 XP, ежемесячные +40–300 XP</li><li>Рулетка — приз +50 XP</li></ul>'),
+      faqItem('Где взять токены', '<ul><li>+' + R.register + ' за регистрацию</li><li>+' + R.checkin + ' за вход каждый день и от ' + L[0].streak + ' до ' + L[4].streak + ' за 7 дней подряд — зависит от уровня</li><li>Задания дня — по 1 токену, с уровнем их больше</li><li>Посылка</li><li>+' + R.referrer + ' за друга и +' + R.birthday + ' в день рождения</li></ul><p>Токены не сгорают и не передаются другим людям.</p>'),
+      faqItem('Промокоды', '<p>Личные промокоды выпадают в посылке, с уровня «Золото» — −1,5% каждый месяц, на «Алмазе» — ещё 3 по −2,5%. Они появляются в кабинете, а в корзине выбираются последним шагом. Каждый действует на один заказ.</p><p>Промокоды магазина вводятся вручную в поле «Промокод» в корзине.</p>'),
+      faqItem('Как зарабатывается XP', '<ul><li>Полученный заказ — 1 XP за каждые 10 ₽ (когда статус «Получен»)</li><li>Ежедневный вход — +' + RULES.xpReward.checkin + ' XP</li><li>Задания: ежедневные +2–3 XP, еженедельные +12–40 XP, ежемесячные +40–300 XP</li><li>Посылка — приз +50 XP</li></ul>'),
       faqItem('Как работают уровни', '<p>Уровень растёт от XP — опыта за месяц. 1-го числа XP обнуляется, и уровень начинается заново с Бронзы.</p><button class="btn btn-ghost btn-sm" type="button" id="info-levels">Привилегии уровней</button>'),
       faqItem('Задания: когда обновляются', '<ul><li>Ежедневные — в 00:00 по Москве. Простые: токены и XP, чем выше уровень, тем их больше.</li><li>Еженедельные — в понедельник. «Оформить заказ» засчитывается сразу при оформлении.</li><li>Ежемесячные — 1-го числа. Заказы засчитываются, когда статус «Получен».</li></ul>'),
-      faqItem('Рулетка: как это работает', '<ul><li>1 бесплатный прокрут каждый день на любом уровне, на «Алмазе» — 3. Не копятся: обновляются в 00:00 по Москве.</li><li>Дальше прокрут стоит ' + RULES.spinCost + ' токенов. «Ещё раз» даёт бесплатные прокруты — они не сгорают.</li><li>На «Платине» и «Алмазе» «Пусто» выпадает реже.</li><li>Токены из рулетки сразу на балансе, промокод выбирается в корзине, XP идут в уровень месяца.</li></ul>')
+      faqItem('Посылка: как это работает', '<ul><li>1 бесплатная посылка каждый день на любом уровне, на «Алмазе» — 3. Не копятся: обновляются в 00:00 по Москве.</li><li>Дальше посылка стоит ' + RULES.spinCost + ' токенов. «Ещё раз» даёт бесплатные посылки — они не сгорают.</li><li>На «Платине» и «Алмазе» «Пусто» выпадает реже.</li><li>Токены из посылки сразу на балансе, промокод выбирается в корзине, XP идут в уровень месяца.</li></ul>')
     ] : [];
     var shop = [faqItem('Магазин и связь', contactsCard()), faqItem('Мы в соцсетях', socialCard())];
     $('#v-info').innerHTML = '<div class="view-head"><div><h1>Частые вопросы</h1></div></div>' +
@@ -2361,6 +2375,32 @@
       revCache[pid] = r; drawReviews(r, body, n);
     });
   }
+  /* подтверждение телефона: бот привязывается к кабинету и просит «Поделиться номером» */
+  function phoneModal() {
+    var u = acct.user; if (!u || u.phoneOk) return;
+    var md = openModal(modalHead('Подтверждение телефона') + '<div id="ph-body"></div>', { cls: 'sm' }), polls = 0;
+    var b = $('#ph-body', md);
+    b.innerHTML = '<div class="tg-hero"><span class="tg-ic">' + icon('phone') + '</span><h3>Один шаг до бонусов</h3><p>Telegram подтвердит, что номер ' + esc(u.phone || '') + ' ваш. Мы не видим ничего, кроме номера.</p></div>' +
+      '<ul class="tg-perks"><li><span class="ic">' + tk() + '</span><span><b>Приветственные токены</b><small>начислятся сразу после подтверждения</small></span></li><li><span class="ic">' + icon('bag') + '</span><span><b>Бонусы за друзей и подарок на ДР</b><small>и статусы заказов прямо в Telegram</small></span></li></ul>' +
+      (API.mode === 'demo' ? '<button class="btn btn-block" type="button" id="ph-demo">Подтвердить (демо)</button>' : '<button class="btn btn-block" type="button" id="ph-on">' + icon('send') + 'Подтвердить в Telegram</button>') + '<div id="ph-out"></div>';
+    var dm = $('#ph-demo', b); if (dm) dm.addEventListener('click', function () { API.call('phoneDemo').then(function (r) { if (!r.ok) { toast(r.error, null, 'warn'); return; } setUser(r.user); closeModal(); confetti(120); reward('Телефон подтверждён' + (r.got ? ' · +' + r.got + ' ' + tokWord(r.got) : '')); }); });
+    var on = $('#ph-on', b); if (on) on.addEventListener('click', function () {
+      busy(on, true, 'Секунду');
+      API.call('tgLink').then(function (r) {
+        busy(on, false); var out = $('#ph-out', b);
+        if (!r.ok || !r.bot) { out.innerHTML = '<div class="form-err">' + esc(r.error || 'Бот магазина ещё настраивается. Напишите менеджеру @OnionShop_Support') + '</div>'; return; }
+        on.hidden = true;
+        out.innerHTML = '<ol class="tg-steps"><li class="now"><i>1</i><span>Откройте бота и нажмите «Старт»<a class="btn" target="_blank" rel="noopener" href="https://t.me/' + esc(r.bot) + '?start=' + esc(r.code) + '">' + icon('send') + 'Открыть @' + esc(r.bot) + '</a></span></li>' +
+          '<li><i>2</i><span>Нажмите в боте «📱 Поделиться номером»</span></li><li><i>3</i><span>Вернитесь сюда — подтвердится само <em class="tg-wait"><span class="spinner"></span>ждём бота…</em></span></li></ol>' +
+          '<p class="small">Бот отвечает с задержкой до минуты. Код действует час.</p>';
+        (function poll() {
+          if (!document.body.contains(md) || ++polls > 60) return;
+          setTimeout(function () { API.call('me').then(function (m) { if (m.ok && m.user && m.user.phoneOk) { setUser(m.user); closeModal(); confetti(120); reward('Телефон подтверждён'); } else poll(); }); }, 4000);
+        })();
+      });
+    });
+  }
+  document.addEventListener('click', function (e) { if (e.target.closest && e.target.closest('#ph-go,#ph-go2')) phoneModal(); });
   function tgModal() {
     if (!acct.user) return;
     var md = openModal(modalHead('Уведомления в Telegram') + '<div id="tg-body"></div>', { cls: 'sm' });
