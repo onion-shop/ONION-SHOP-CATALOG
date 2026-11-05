@@ -23,18 +23,32 @@
   var UPS = {
     cap: { n: 'Вместимость склада', d: 'Больше товара на хранении: +6 ящиков', max: 7, cost: function (l) { return Math.round(110 * Math.pow(1.85, l)); } },
     dock: { n: 'Скорость приёмки', d: 'Фуры приезжают чаще', max: 6, cost: function (l) { return Math.round(160 * Math.pow(1.9, l)); } },
-    pay: { n: 'Оплата заказов', d: 'Клиенты платят на 10% больше', max: 8, cost: function (l) { return Math.round(220 * Math.pow(2, l)); } }
+    pay: { n: 'Оплата заказов', d: 'Клиенты платят на 10% больше', max: 8, cost: function (l) { return Math.round(220 * Math.pow(2, l)); } },
+    scan: { n: 'Сканер штрихкодов', d: 'Зелёная зона упаковки шире', max: 4, cost: function (l) { return Math.round(300 * Math.pow(2.1, l)); }, eq: true },
+    cart: { n: 'Погрузочная тележка', d: 'Энергия восстанавливается быстрее', max: 5, cost: function (l) { return Math.round(260 * Math.pow(2, l)); }, eq: true }
   };
+  /* сотрудники: работают сами, энергию не тратят. lvl: с какого уровня хаба доступны; уровень сотрудника растёт покупкой */
+  var EMP = {
+    loader: { n: 'Грузчик', d: 'Сам разгружает фуры', lvl: 2, base: 180, max: 5, every: function (l) { return Math.max(5, 14 - 2 * l); } },
+    picker: { n: 'Комплектовщик', d: 'Сам собирает заказы, без упаковки и бонуса', lvl: 3, base: 320, max: 5, every: function (l) { return Math.max(7, 22 - 3 * l); } },
+    disp: { n: 'Диспетчер', d: 'Фуры и заказы приходят чаще', lvl: 5, base: 600, max: 5 }
+  };
+  function empCost(k, l) { return Math.round(EMP[k].base * Math.pow(2.2, l)); }
+  var EVENTS = ['rush', 'double', 'rain', 'inspect'];
+  function offlineCap(st) { return clamp(2 + .5 * st.lvl, 2, 8) * 3600; }
+  function avgBase(st) { var it = ORDER_KEYS.filter(function (k) { return ITEMS[k].lvl <= st.lvl; }); return it.reduce(function (a, k) { return a + ITEMS[k].base; }, 0) / it.length; }
+  function avgPay(st) { return avgBase(st) * 1.9 * 1.7 * (1 + .1 * (st.up.pay || 0)) * (1 + (st.lvl - 1) * .06); }
+  function offlineRate(st) { var p = st.emp.picker || 0, q = st.emp.loader || 0; if (!p) return 0; return Math.min(6 + 5 * p, 10 + 5 * q); }   // заказов в час
   function capOf(st) { return 12 + 6 * (st.up.cap || 0) + (st.lvl - 1) * 2; }
   function docksOf(st) { return st.lvl >= 6 ? 3 : st.lvl >= 3 ? 2 : 1; }
   function maxOrders(st) { return 2 + Math.floor((st.lvl + 1) / 3); }
-  function truckEvery(st) { return Math.max(14, 40 - (st.up.dock || 0) * 4 - st.lvl) * 1000; }
+  function truckEvery(st) { return Math.max(14, 40 - (st.up.dock || 0) * 4 - st.lvl) * 1000 * (1 - .08 * (st.emp.disp || 0)); }
   function unlockedItems(st) { return ORDER_KEYS.filter(function (k) { return ITEMS[k].lvl <= st.lvl; }); }
   function stockTotal(st) { return ORDER_KEYS.reduce(function (a, k) { return a + (st.stock[k] || 0); }, 0); }
 
   function fresh() {
     var now = Date.now();
-    return { v: 2, coins: 120, xp: 0, lvl: 1, rating: 3.5, stock: { tee: 0, hood: 0, shoe: 0 }, up: { cap: 0, dock: 0, pay: 0 }, orders: [], trucks: [{ dock: 0, k: 'tee', n: 4, s: 'wait', t: 1 }],
+    return { v: 2, coins: 120, xp: 0, lvl: 1, rating: 3.5, stock: { tee: 0, hood: 0, shoe: 0 }, up: { cap: 0, dock: 0, pay: 0, scan: 0, cart: 0 }, emp: { loader: 0, picker: 0, disp: 0 }, nextEvent: now + 200000, bonusTruck: 0, orders: [], trucks: [{ dock: 0, k: 'tee', n: 4, s: 'wait', t: 1 }],
       oseq: 1, nextTruck: now + 25000, nextOrder: now + 2500, stats: { shipped: 0, perfect: 0, crates: 0, earned: 0, expired: 0 }, ms: { lvl: 1, earn: 0 }, tut: 0, en: EN_MAX, enAt: now, t0: now, lastAt: now };
   }
   function load(str) {
@@ -46,6 +60,7 @@
         ['tee', 'hood', 'shoe'].forEach(function (k) { st.stock[k] = Math.max(0, +st.stock[k] || 0); });
         st.trucks = (st.trucks || []).filter(function (t) { return t.s !== 'out'; }).map(function (t) { t.s = 'wait'; t.t = 1; return t; });
         st.lvl = clamp(+st.lvl || 1, 1, LVL_MAX);
+        st.up = Object.assign({ cap: 0, dock: 0, pay: 0, scan: 0, cart: 0 }, st.up); st.emp = Object.assign({ loader: 0, picker: 0, disp: 0 }, st.emp);
       }
     } catch (e) { }
     return st;
@@ -54,7 +69,9 @@
   /* ================================================================ запуск */
   function open(ctx) {
     var S = GK.shell({ title: 'Грузомания', cls: 'gz' });
-    var st = load(ctx.data), E = GK.energy(st, EN_MAX + (st.lvl - 1) * 2, EN_REGEN), enUI = GK.energyChip(S, E);
+    var st = load(ctx.data), E = GK.energy(st, EN_MAX + (st.lvl - 1) * 2, EN_REGEN - 2 * ((st.up && st.up.cart) || 0)), enUI = GK.energyChip(S, E);
+    var skew = ctx.now ? ctx.now - Date.now() : 0;   // разница с часами сервера: офлайн-доход считаем по времени сервера
+    function sNow() { return Date.now() + skew; }
     var I = GK.input(S, { pinch: true, joystick: false });
     var parts = GK.parts(), alive = true, ready = false, META = null, IMG = {}, T = 0, flyers = [], rings = [];
     injectCss();
@@ -64,7 +81,7 @@
     var coinChip = document.createElement('div'); coinChip.className = 'gk-chip'; coinChip.innerHTML = '<i class="gz-coin"></i><span>0</span>'; S.left.appendChild(coinChip);
     var rateChip = document.createElement('div'); rateChip.className = 'gk-chip gz-rate'; rateChip.innerHTML = '<span class="s">★</span><span>0</span>'; S.left.appendChild(rateChip);
     S.hud.innerHTML = '<div class="gz-hint" hidden></div><button class="gz-act" type="button" hidden></button>' +
-      '<div class="gz-dock"><button class="gz-d" data-gz="orders" type="button">Заказы<em hidden></em></button><button class="gz-d" data-gz="stock" type="button">Склад</button><button class="gz-d" data-gz="rewards" type="button">Награды</button></div>';
+      '<div class="gz-dock"><button class="gz-d" data-gz="orders" type="button">Заказы<em hidden></em></button><button class="gz-d" data-gz="stock" type="button">Склад</button><button class="gz-d" data-gz="team" type="button">Команда</button><button class="gz-d" data-gz="rewards" type="button">Награды</button></div>';
     var $ = function (q) { return S.root.querySelector(q); };
 
     /* ---- камера и проекция */
@@ -84,7 +101,7 @@
     S.onresize = function () { if (ready) { cam.z = Math.max(cam.z, minZ()); clampCam(); } };
 
     /* ---- сохранение */
-    var saver = GK.saver(ctx, S, function () { st.lastAt = Date.now(); st.ms = { lvl: st.lvl, earn: st.stats.earned }; return st; }, ctx.onUser);
+    var saver = GK.saver(ctx, S, function () { st.lastAt = sNow(); st.ms = { lvl: st.lvl, earn: st.stats.earned }; return st; }, ctx.onUser);
     function dirty(now) { saver.mark(); if (now) saver.flush(); }
 
     /* ---- действия */
@@ -97,18 +114,30 @@
       S.sheet('Уровень хаба: ' + st.lvl, '<p class="gk-lead">Склад растёт. Что нового:</p><div class="gk-list"><div class="gk-it"><span class="t"><b>' + esc(UNLOCK[st.lvl] || 'Новые возможности') + '</b><small>Энергии стало больше, часть восполнена</small></span></div></div><div class="gk-row"><button class="gk-btn" data-gk="sheetx">Отлично</button></div>', { w: 400 });
       dirty(true);
     }
-    function unload(tr) {
-      if (!tr || tr.s !== 'wait') return;
-      if (!E.has(1)) { GK.noEnergy(S, E, st, 'Разгрузить фуру'); return; }
+    function unload(tr, auto) {
+      if (!tr || tr.s !== 'wait') return false;
+      if (!auto && !E.has(1)) { GK.noEnergy(S, E, st, 'Разгрузить фуру'); return false; }
       var room = capOf(st) - stockTotal(st);
-      if (room <= 0) { S.toast('Склад полон: отправьте заказы или расширьте склад', 'warn'); GK.sfx.err(); return; }
-      var take = Math.min(tr.n, room); E.spend(1);
-      st.stock[tr.k] += take; tr.n -= take; st.stats.crates += take; GK.sfx.drop(); GK.sfx.truck();
+      if (room <= 0) { if (!auto) { S.toast('Склад полон: отправьте заказы или расширьте склад', 'warn'); GK.sfx.err(); } return false; }
+      var take = Math.min(tr.n, room); if (!auto) E.spend(1);
+      st.stock[tr.k] += take; tr.n -= take; st.stats.crates += take; GK.sfx.drop(); if (!auto) GK.sfx.truck();
       var pos = w2s(tr.dock * 4 - 4, -7, 1.5); S.float(pos[0], pos[1] - 20, '+' + take + ' ' + plural(take, 'ящик', 'ящика', 'ящиков'), '#fff', 18);
       for (var i = 0; i < take; i++) flyers.push({ t: -i * .12, d: .8, k: tr.k, from: [tr.dock * 4 - 4, -6.5, 1.8], to: padPos(tr.k, (st.stock[tr.k] - take + i)), kind: 'crate' });
       parts.burst(pos[0], pos[1], 14, { cols: ['#ffd34d', '#fff'], spd: 120, r: 3, g: 200 });
       if (tr.n <= 0) { tr.s = 'out'; tr.t = 0; }
-      addXp(2 * take); dirty();
+      addXp(2 * take); dirty(); return true;
+    }
+    /* заказ собран: вручную (с мини-игрой, mult 1..1,5) или комплектовщиком (auto) */
+    function completeOrder(o, mult, d) {
+      o.items.forEach(function (p) { st.stock[p.k] -= p.n; });
+      st.orders = st.orders.filter(function (x) { return x.id !== o.id; });
+      var coins = Math.round(o.pay * mult), n = o.items.reduce(function (a, p) { return a + p.n; }, 0);
+      addCoins(coins); st.stats.shipped++; if (d === 'perfect') st.stats.perfect++; st.rating = clamp(st.rating + (d === 'perfect' ? .08 : d === 'good' ? .04 : .01), 1, 5);
+      GK.sfx.tape(); setTimeout(function () { GK.sfx.coin(); }, 260);
+      flyers.push({ t: 0, d: 1.1, kind: 'parcel', from: padPos(o.items[0].k, 0), to: [8.6, 2.6, 1.7] });
+      var sp = w2s(8.6, 2.6, 1.7); S.float(sp[0], sp[1] - 20, '+' + fmt(coins), '#ffd34d', d === 'auto' ? 16 : 22);
+      addXp(8 + 3 * n); dirty(d !== 'auto');
+      return coins;
     }
     function addXp(n) { st.xp += n; levelUp(); }
     function padPos(k, i) { var pi = unlockedItems(st).indexOf(k); if (pi < 0) pi = 0; return [-8.5, -3.2 - pi * 2.9, .24 + Math.floor(i / 4) * .7]; }
@@ -137,7 +166,7 @@
     function packGame(id) {
       var o = st.orders.filter(function (x) { return x.id === id; })[0]; if (!o || need(o).length) return;
       if (!E.has(1)) { GK.noEnergy(S, E, st, 'Собрать заказ'); return; }
-      var zone = clamp(.2 - st.lvl * .004, .12, .2), zs = .15 + Math.random() * (.85 - zone - .15), t0 = performance.now(), dir = 1, pos = 0, done = false;
+      var zone = clamp(.2 - st.lvl * .004 + .015 * (st.up.scan || 0), .12, .27), zs = .15 + Math.random() * (.85 - zone - .15), t0 = performance.now(), dir = 1, pos = 0, done = false;
       var body = S.sheet('Упаковка: ' + esc(o.name), '<p class="gk-lead">' + esc(itemsTxt(o)) + '</p><div class="gz-meter" id="gz-m"><i class="z" style="left:' + zs * 100 + '%;width:' + zone * 100 + '%"></i><b class="p"></b></div><div class="gk-row"><button class="gk-btn" id="gz-stamp" type="button">Заклеить скотчем</button></div><p class="gk-note">Нажмите, когда бегунок в зелёной зоне. Пробел тоже работает.</p>', { w: 420, onclose: function () { cancelAnimationFrame(packRaf); W.removeEventListener('keydown', key); } });
       var mk = body.querySelector('.p'), spd = .85 + st.lvl * .03;
       (function tick(t) { if (done) return; pos += dir * spd * Math.min(.05, (t - t0) / 1000) ; t0 = t; if (pos > 1) { pos = 1; dir = -1; } if (pos < 0) { pos = 0; dir = 1; } mk.style.left = pos * 100 + '%'; packRaf = requestAnimationFrame(tick); })(t0);
@@ -145,16 +174,8 @@
         if (done) return; done = true; cancelAnimationFrame(packRaf); W.removeEventListener('keydown', key);
         var d = pos >= zs && pos <= zs + zone ? 'perfect' : (pos >= zs - zone && pos <= zs + zone * 2 ? 'good' : 'ok'), mult = d === 'perfect' ? 1.5 : d === 'good' ? 1.2 : 1;
         if (!E.spend(1)) { S.closeSheet(); return; }
-        o.items.forEach(function (p) { st.stock[p.k] -= p.n; });
-        st.orders = st.orders.filter(function (x) { return x.id !== o.id; });
-        var coins = Math.round(o.pay * mult), n = o.items.reduce(function (a, p) { return a + p.n; }, 0);
-        addCoins(coins); st.stats.shipped++; if (d === 'perfect') st.stats.perfect++; st.rating = clamp(st.rating + (d === 'perfect' ? .08 : d === 'good' ? .04 : .01), 1, 5);
-        GK.sfx.tape(); setTimeout(function () { GK.sfx.coin(); }, 260);
-        var from = padPos(o.items[0].k, 0); flyers.push({ t: 0, d: 1.1, kind: 'parcel', from: from, to: [8.6, 2.6, 1.7] });
-        var lab = d === 'perfect' ? 'Идеально! ×1,5' : d === 'good' ? 'Хорошо ×1,2' : 'Принято';
+        var coins = completeOrder(o, mult, d), lab = d === 'perfect' ? 'Идеально! ×1,5' : d === 'good' ? 'Хорошо ×1,2' : 'Принято';
         S.closeSheet(); S.toast(lab + ': +' + fmt(coins) + ' монет', d === 'perfect' ? 'gold' : 'ok');
-        var sp = w2s(8.6, 2.6, 1.7); S.float(sp[0], sp[1] - 20, '+' + fmt(coins), '#ffd34d', 22);
-        addXp(8 + 3 * n); dirty(true);
       }
       function key(e) { if (e.code === 'Space' || e.key === 'Enter') { e.preventDefault(); finish(); } }
       W.addEventListener('keydown', key); body.querySelector('#gz-stamp').addEventListener('click', finish); body.querySelector('#gz-m').addEventListener('pointerdown', finish);
@@ -164,16 +185,52 @@
     function stockSheet() {
       var cap = capOf(st), tot = stockTotal(st);
       var rows = unlockedItems(st).map(function (k) { return '<div class="gk-it"><span class="ic"><i class="gz-crate" style="--c:' + ITEMS[k].c + '"></i></span><span class="t"><b>' + ITEMS[k].n + '</b><small>На складе: ' + (st.stock[k] || 0) + '</small></span></div>'; }).join('');
-      var ups = Object.keys(UPS).map(function (k) {
-        var u = UPS[k], l = st.up[k] || 0, c = u.cost(l), max = l >= u.max;
-        return '<div class="gk-it"><span class="t"><b>' + u.n + ' · ' + l + '/' + u.max + '</b><small>' + u.d + '</small></span><button class="gk-btn sm" data-gz-up="' + k + '"' + (max || st.coins < c ? ' disabled' : '') + '>' + (max ? 'Максимум' : '<i class="gz-coin"></i>' + fmt(c)) + '</button></div>';
-      }).join('');
-      var body = S.sheet('Склад', '<div class="gk-it"><span class="t"><b>Занято ' + tot + ' из ' + cap + '</b><div class="gk-bar"><i style="width:' + Math.min(100, tot / cap * 100) + '%"></i></div></span></div><div class="gk-list">' + rows + '</div><h3 class="gz-h">Улучшения</h3><div class="gk-list">' + ups + '</div>', { w: 460 });
+      function upRows(eq) {
+        return Object.keys(UPS).filter(function (k) { return !!UPS[k].eq === eq; }).map(function (k) {
+          var u = UPS[k], l = st.up[k] || 0, c = u.cost(l), max = l >= u.max;
+          return '<div class="gk-it"><span class="t"><b>' + u.n + ' · ' + l + '/' + u.max + '</b><small>' + u.d + '</small></span><button class="gk-btn sm" data-gz-up="' + k + '"' + (max || st.coins < c ? ' disabled' : '') + '>' + (max ? 'Максимум' : '<i class="gz-coin"></i>' + fmt(c)) + '</button></div>';
+        }).join('');
+      }
+      var body = S.sheet('Склад', '<div class="gk-it"><span class="t"><b>Занято ' + tot + ' из ' + cap + '</b><div class="gk-bar"><i style="width:' + Math.min(100, tot / cap * 100) + '%"></i></div></span></div><div class="gk-list">' + rows + '</div><h3 class="gz-h">Улучшения</h3><div class="gk-list">' + upRows(false) + '</div><h3 class="gz-h">Оборудование</h3><div class="gk-list">' + upRows(true) + '</div>', { w: 460 });
       body.addEventListener('click', function (e) {
         var b = e.target.closest('[data-gz-up]'); if (!b || b.disabled) return;
         var k = b.getAttribute('data-gz-up'), u = UPS[k], l = st.up[k] || 0, c = u.cost(l);
-        if (st.coins < c || l >= u.max) return; st.coins -= c; st.up[k] = l + 1; GK.sfx.build(); GK.sfx.up(); dirty(true); S.closeSheet(); stockSheet();
+        if (st.coins < c || l >= u.max) return; st.coins -= c; st.up[k] = l + 1; if (k === 'cart') E.regen = EN_REGEN - 2 * st.up.cart; GK.sfx.build(); GK.sfx.up(); dirty(true); S.closeSheet(); stockSheet();
       });
+    }
+    /* команда: сотрудники работают сами и приносят доход, даже когда вас нет (лимит по времени зависит от уровня) */
+    function teamSheet() {
+      var rows = Object.keys(EMP).map(function (k) {
+        var e = EMP[k], l = st.emp[k] || 0, lock = st.lvl < e.lvl, c = empCost(k, l), max = l >= e.max;
+        var eff = k === 'loader' ? 'Разгрузка раз в ' + e.every(Math.max(1, l)) + ' с' : k === 'picker' ? 'Сборка заказа раз в ' + e.every(Math.max(1, l)) + ' с' : 'Фуры чаще на ' + Math.max(8, 8 * l) + '%';
+        return '<div class="gk-it' + (lock ? ' lk' : '') + '"><span class="t"><b>' + e.n + (l ? ' · уровень ' + l + '/' + e.max : '') + '</b><small>' + e.d + (lock ? '. Откроется на уровне хаба ' + e.lvl : '. ' + eff) + '</small></span>' +
+          (lock ? '' : '<button class="gk-btn sm" data-gz-emp="' + k + '"' + (max || st.coins < c ? ' disabled' : '') + '>' + (max ? 'Максимум' : (l ? 'Улучшить ' : 'Нанять ') + '<i class="gz-coin"></i>' + fmt(c)) + '</button>') + '</div>';
+      }).join('');
+      var cap = offlineCap(st) / 3600, capTxt = String(cap).replace('.', ','), rate = offlineRate(st);
+      var body = S.sheet('Команда', '<div class="gk-list">' + rows + '</div><div class="gk-it"><span class="t"><b>Работа без вас</b><small>' + (rate ? 'Склад принесёт около ' + rate + ' ' + plural(rate, 'заказа', 'заказов', 'заказов') + ' в час, но не дольше ' + capTxt + ' ч подряд.' : 'Наймите комплектовщика, и склад будет зарабатывать, пока вас нет (не дольше ' + capTxt + ' ч подряд).') + '</small></span></div>', { w: 460 });
+      body.addEventListener('click', function (e) {
+        var b = e.target.closest('[data-gz-emp]'); if (!b || b.disabled) return;
+        var k = b.getAttribute('data-gz-emp'), l = st.emp[k] || 0, c = empCost(k, l);
+        if (st.coins < c || l >= EMP[k].max || st.lvl < EMP[k].lvl) return; st.coins -= c; st.emp[k] = l + 1; GK.sfx.build(); GK.sfx.up(); S.toast(EMP[k].n + (l ? ': уровень ' + (l + 1) : ' нанят'), 'ok'); dirty(true); S.closeSheet(); teamSheet();
+      });
+    }
+    /* события: случайные, раз в несколько минут */
+    function fireEvent(kind) {
+      var now = Date.now();
+      if (kind === 'rush') { var o = orderGen(); o.pay *= 2; o.name = 'СРОЧНО: ' + o.name; o.due = now + 100000; if (st.orders.length < 8) { st.orders.push(o); S.toast('Срочный заказ: платят вдвое, но времени мало', 'gold'); GK.sfx.up(); } }
+      else if (kind === 'double') { st.bonusTruck = 1; S.toast('Скидка поставщика: следующая фура привезёт вдвое больше', 'ok'); GK.sfx.up(); }
+      else if (kind === 'rain') { st.nextTruck += 60000; S.toast('Дождь: фуры задерживаются на минуту', 'warn'); }
+      else if (kind === 'inspect') { if (st.rating >= 4) { var bonus = 90 * st.lvl; addCoins(bonus); S.toast('Проверка прошла отлично: премия ' + fmt(bonus) + ' монет', 'gold'); GK.sfx.win(); } else { S.toast('Проверка: рейтинг ниже 4, премии нет. Закрывайте заказы вовремя', 'warn'); } }
+      st.nextEvent = now + (150 + Math.random() * 150) * 1000; dirty();
+    }
+    /* офлайн-доход: считаем по времени сервера, не больше лимита; сервер дополнительно проверяет скорость роста */
+    function offlineClaim() {
+      var away = Math.max(0, (sNow() - (st.lastAt || sNow())) / 1000), cap = offlineCap(st), rate = offlineRate(st); st.lastAt = sNow();
+      if (away < 120 || !rate) return;
+      var secs = Math.min(away, cap), orders = Math.floor(secs / 3600 * rate); if (orders < 1) return;
+      var coins = Math.round(orders * avgPay(st) * .8), xp = orders * 14; addCoins(coins); st.stats.shipped += orders; addXp(xp);
+      GK.sfx.coin(); dirty(true);
+      S.sheet('Пока вас не было', '<p class="gk-lead">Команда работала ' + GK.dur(secs) + (away > cap ? ' (больше ' + GK.dur(cap) + ' подряд склад не работает без вас)' : '') + '.</p><div class="gk-list"><div class="gk-it"><span class="t"><b>Закрыто заказов: ' + orders + '</b><small>Заработано <i class="gz-coin"></i> ' + fmt(coins) + ' и ' + xp + ' опыта</small></span></div></div><div class="gk-row"><button class="gk-btn" data-gk="sheetx">Забрать</button></div>', { w: 400 });
     }
     function rewardsSheet() {
       function row(name, lvlNeed, mins) { var have = st.lvl >= lvlNeed, ok = (Date.now() - st.t0) / 60000 >= mins; return '<div class="gk-it' + (have ? ' done' : '') + '"><span class="t"><b>Рамка «' + name + '»</b><small>' + (have ? 'Уровень достигнут, рамка выдаётся автоматически' : 'Нужен уровень хаба ' + lvlNeed + ', сейчас ' + st.lvl) + (have && !ok ? ' (нужно ещё немного поиграть)' : '') + '</small><div class="gk-bar"><i style="width:' + Math.min(100, st.lvl / lvlNeed * 100) + '%"></i></div></span></div>'; }
@@ -202,7 +259,7 @@
       h.hidden = tutor.active() || S.sheetOpen(); h.textContent = msg; a.hidden = !act || tutor.active() || S.sheetOpen(); a.textContent = act; a._act = act;
     }
     $('.gz-act').addEventListener('click', function () { if (this._act === 'Разгрузить фуру') unload(st.trucks.filter(function (t) { return t.s === 'wait'; })[0]); else ordersSheet(); });
-    S.root.addEventListener('click', function (e) { var b = e.target.closest('[data-gz]'); if (!b) return; GK.sfx.click(); var k = b.getAttribute('data-gz'); if (k === 'orders') ordersSheet(); else if (k === 'stock') stockSheet(); else if (k === 'rewards') rewardsSheet(); });
+    S.root.addEventListener('click', function (e) { var b = e.target.closest('[data-gz]'); if (!b) return; GK.sfx.click(); var k = b.getAttribute('data-gz'); if (k === 'orders') ordersSheet(); else if (k === 'stock') stockSheet(); else if (k === 'team') teamSheet(); else if (k === 'rewards') rewardsSheet(); });
 
     /* ---- ввод: нажатие по фуре и по складу */
     function truckRect(tr) {
@@ -218,7 +275,7 @@
     function truckOff(tr) { return tr.s === 'in' ? -24 * (1 - GK.ease(clamp(tr.t, 0, 1))) : tr.s === 'out' ? -24 * GK.ease(clamp(tr.t, 0, 1)) : 0; }
 
     /* ---- обновление */
-    var lastHud = 0, secT = 0;
+    var lastHud = 0, secT = 0, acc = { loader: 0, picker: 0 };
     function update(dt) {
       T += dt; var now = Date.now();
       if (ready) {
@@ -226,16 +283,20 @@
         st.trucks = st.trucks.filter(function (tr) { return !(tr.s === 'out' && tr.t >= 1); });
         if (now >= st.nextTruck && st.trucks.length < docksOf(st)) {
           var used = st.trucks.map(function (t) { return t.dock; }), dock = [0, 1, 2].filter(function (d) { return d < docksOf(st) && used.indexOf(d) < 0; })[0];
-          if (dock != null) { var items = unlockedItems(st), k = items[Math.floor(Math.random() * items.length)]; st.trucks.push({ dock: dock, k: k, n: 3 + Math.floor(Math.random() * 3) + Math.floor(st.lvl / 4), s: 'in', t: 0 }); st.nextTruck = now + truckEvery(st) * (.8 + Math.random() * .5); GK.sfx.truck(); dirty(); }
+          if (dock != null) { var items = unlockedItems(st), k = items[Math.floor(Math.random() * items.length)]; st.trucks.push({ dock: dock, k: k, n: (3 + Math.floor(Math.random() * 3) + Math.floor(st.lvl / 4)) * (st.bonusTruck ? 2 : 1), s: 'in', t: 0 }); st.bonusTruck = 0; st.nextTruck = now + truckEvery(st) * (.8 + Math.random() * .5); GK.sfx.truck(); dirty(); }
           else st.nextTruck = now + 5000;
         }
-        if (now >= st.nextOrder && st.orders.length < maxOrders(st)) { st.orders.push(orderGen()); st.nextOrder = now + (22 + Math.random() * 25) * 1000; GK.sfx.click(); dirty(); }
+        if (now >= st.nextOrder && st.orders.length < maxOrders(st)) { st.orders.push(orderGen()); st.nextOrder = now + (22 + Math.random() * 25) * 1000 * (1 - .06 * (st.emp.disp || 0)); GK.sfx.click(); dirty(); }
         else if (now >= st.nextOrder) st.nextOrder = now + 8000;
+        // сотрудники работают сами: энергию не тратят
+        if (st.emp.loader) { acc.loader += dt; if (acc.loader >= EMP.loader.every(st.emp.loader)) { acc.loader = 0; var wt = st.trucks.filter(function (t) { return t.s === 'wait'; })[0]; if (wt) unload(wt, true); } }
+        if (st.emp.picker) { acc.picker += dt; if (acc.picker >= EMP.picker.every(st.emp.picker)) { acc.picker = 0; var ro = st.orders.filter(function (o) { return !need(o).length; })[0]; if (ro) completeOrder(ro, 1 + .05 * st.emp.picker, 'auto'); } }
         secT += dt;
         if (secT > 1) {
           secT = 0;
           var before = st.orders.length; st.orders = st.orders.filter(function (o) { if (o.due < now) { st.rating = clamp(st.rating - .12, 1, 5); st.stats.expired++; return false; } return true; });
           if (st.orders.length < before) { S.toast('Заказ просрочен, рейтинг снизился', 'warn'); dirty(); }
+          if (st.lvl >= 2 && now >= st.nextEvent && !S.sheetOpen()) fireEvent(EVENTS[Math.floor(Math.random() * EVENTS.length)]);
           saver.tick(); hint(); hud();
         }
         tutor.update();
@@ -279,6 +340,11 @@
         for (var i = 0; i < n; i++) (function (i) { var cxw = -8.5 + ((i % 2) - .5) * .9, cyw = y + (((Math.floor(i / 2)) % 2) - .5) * .9, z = .24 + Math.floor(i / 4) * .7; list.push({ d: w2p(-8.5, y, 0)[1] + 1 + .01 * i + Math.floor(i / 4) * .3, f: function () { spr(ITEMS[k].spr, cxw, cyw, z); } }); })(i);
       });
       st.trucks.forEach(function (tr) { var nm = ['truck_w', 'truck_o', 'truck_b'][tr.dock], off = truckOff(tr), wx = tr.dock * 4 - 4; list.push({ d: w2p(wx, -7 + off, 0)[1], f: function () { spr(nm, wx, -7 + off, 0); } }); });
+      // сотрудники на местах: грузчик у доков, комплектовщик у конвейера (лёгкое покачивание)
+      [['loader', 'worker_l', -1.8, -4.6], ['picker', 'worker_p', 7, -2.8]].forEach(function (w) {
+        if (!st.emp[w[0]] || !IMG[w[1]]) return; var bob = Math.abs(Math.sin(T * 2.4 + w[2])) * .1;
+        shadow(w[2], w[3], .7, .7, 1.7, .14); list.push({ d: w2p(w[2], w[3], 0)[1], f: function () { spr(w[1], w[2], w[3], bob); } });
+      });
       list.sort(function (a, b) { return a.d - b.d; }); list.forEach(function (it) { it.f(); });
       // кольца и подписи у ждущих фур
       st.trucks.forEach(function (tr) {
@@ -306,7 +372,7 @@
       });
     }
     function start() {
-      ready = true; fit(); hud(); hint(); S.loaded(); GK.music('warm');
+      ready = true; fit(); hud(); hint(); S.loaded(); GK.music('warm'); setTimeout(function () { if (alive) offlineClaim(); }, 800);
       S.onclose = function () { if (!alive) return; alive = false; loop.stop(); I.destroy(); cancelAnimationFrame(packRaf); saver.flush(true).then(function () { saver.stop(); saver.off(); S.destroy(); ctx.onClose(); }); };
     }
     var loop = GK.loop(function (dt) { if (alive) update(dt); });
@@ -315,7 +381,7 @@
       S.loaded(); S.sheet('Нет связи', '<p class="gk-lead">Не удалось загрузить графику игры. Проверьте интернет и попробуйте ещё раз.</p><div class="gk-row"><button class="gk-btn" id="gz-retry" type="button">Повторить</button><button class="gk-btn g" id="gz-quit" type="button">Выйти</button></div>', { noClose: true, w: 380 });
       $('#gz-retry').addEventListener('click', function () { location.reload(); }); $('#gz-quit').addEventListener('click', function () { S.onclose(); });
     });
-    W.__gz = { st: st, S: S, ordersSheet: ordersSheet, stockSheet: stockSheet, unload: unload, packGame: packGame, cam: cam, tutor: tutor, update: update, E: E, w2s: w2s, truckRect: truckRect, I: I };
+    W.__gz = { fireEvent: fireEvent, offlineClaim: offlineClaim, teamSheet: teamSheet, completeOrder: completeOrder, sNow: sNow, st: st, S: S, ordersSheet: ordersSheet, stockSheet: stockSheet, unload: unload, packGame: packGame, cam: cam, tutor: tutor, update: update, E: E, w2s: w2s, truckRect: truckRect, I: I };
     return { close: function () { S.onclose(); } };
   }
 
@@ -327,7 +393,7 @@
       '.gz-lv b{display:grid;place-items:center;width:24px;height:24px;border-radius:8px;background:linear-gradient(140deg,#43c9e3,#1a86c0);font-size:.8rem}.gz-lv .bar{width:46px;height:6px;border-radius:9px;background:rgba(255,255,255,.18);overflow:hidden}.gz-lv .bar i{display:block;height:100%;background:#43c9e3;transition:width .4s}' +
       '.gz-rate .s{color:#ffd34d}' +
       '.gz-dock{position:absolute;left:50%;bottom:calc(10px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);display:flex;gap:6px;z-index:5;padding:6px;border-radius:18px;background:rgba(11,29,58,.72);border:1px solid rgba(255,255,255,.18);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}' +
-      '.gz-d{position:relative;height:46px;padding:0 16px;border-radius:13px;border:0;background:rgba(255,255,255,.1);font-weight:800;font-size:.9rem;white-space:nowrap}.gz-d:active{transform:scale(.95)}' +
+      '.gz-d{position:relative;height:46px;padding:0 13px;border-radius:13px;border:0;background:rgba(255,255,255,.1);font-weight:800;font-size:.9rem;white-space:nowrap}.gz-d:active{transform:scale(.95)}' +
       '.gz-d em{position:absolute;top:-6px;right:-4px;min-width:20px;height:20px;border-radius:10px;background:#ff5a6e;color:#fff;font:800 .72rem/20px Onest,sans-serif;text-align:center;font-style:normal;padding:0 5px}.gz-d em[hidden]{display:none}' +
       '.gz-hint{position:absolute;left:50%;top:calc(60px + env(safe-area-inset-top,0px));transform:translateX(-50%);max-width:min(92vw,440px);padding:9px 14px;border-radius:14px;background:rgba(255,255,255,.95);color:#0f2747;font-weight:700;font-size:.86rem;line-height:1.3;text-align:center;box-shadow:0 8px 20px rgba(8,30,70,.25);z-index:4;pointer-events:none}.gz-hint[hidden],.gz-act[hidden]{display:none}' +
       '.gz-act{position:absolute;left:50%;bottom:calc(78px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);height:50px;padding:0 24px;border-radius:16px;border:0;background:linear-gradient(140deg,#ffb347,#ff7a1a);color:#fff;font-weight:800;font-size:1rem;box-shadow:0 10px 26px rgba(255,122,26,.45),0 0 0 3px rgba(255,255,255,.25);z-index:5;white-space:nowrap}' +

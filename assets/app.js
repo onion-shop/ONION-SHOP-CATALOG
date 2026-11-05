@@ -2215,7 +2215,7 @@
         gameBusy = false;
         if (!r.ok) { toast(r.error || 'Не удалось открыть игру', null, 'warn'); silentHash('games'); return; }
         var api = window[g.glob].open({
-          id: id, name: g.name, data: r.data, rev: r.rev, user: { name: u.name },
+          id: id, name: g.name, data: r.data, rev: r.rev, now: r.now, user: { name: u.name },
           save: function (data, base) { return API.call('gameSave', { game: id, data: data, base: base }); },
           onUser: function (nu) { setUserLite(nu); },
           toast: function (m, kind) { toast(m, null, kind === 'warn' ? 'warn' : kind === 'reward' ? 'reward' : null); },

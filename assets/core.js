@@ -873,7 +873,9 @@ var OnionCore = (function () {
      Магазину игры пока ничего не дают: ни ониксов, ни опыта. Защита рамок: этап засчитывается не раньше
      минимального времени игры с первого сохранения (честно так быстро не дойти). */
   var GAMES = {
-    gruz: { name: 'Грузомания', frames: [{ id: 'gz-1', key: 'lvl', need: 5, minMin: 25 }, { id: 'gz-2', key: 'lvl', need: 10, minMin: 120 }] },
+    /* rate: сколько монет в час игра может честно заработать на уровне хаба; burst: запас на одно сохранение.
+       Если ms.earn вырос быстрее, сохранение принимается, но рост обрезается и рамки в этот раз не выдаются (подделка сохранения). */
+    gruz: { name: 'Грузомания', rate: function (lvl) { return 30000 * Math.max(1, Math.min(12, lvl)); }, burst: 60000, frames: [{ id: 'gz-1', key: 'lvl', need: 5, minMin: 25 }, { id: 'gz-2', key: 'lvl', need: 10, minMin: 120 }] },
     rub: { name: 'Последний рубеж', frames: [{ id: 'rb-1', key: 'bosses', need: 1, minMin: 15 }, { id: 'rb-2', key: 'bosses', need: 6, minMin: 180 }] }
   };
   var GAME_MAX = 150000;
@@ -892,11 +894,16 @@ var OnionCore = (function () {
     var m = gameMeta(u, g), now = db.now();
     if ((+p.base || 0) < (m.rev || 0)) return ok({ conflict: true, data: db.gameGet(u.id, g) || '', rev: m.rev });
     if (!m.first) m.first = now;
+    var prevAt = m.at || now;
     m.rev = (m.rev || 0) + 1; m.saves = (m.saves || 0) + 1; m.at = now;
     var ms = st && st.ms && typeof st.ms === 'object' ? st.ms : {}, got = [];
+    // проверка скорости роста: заработок по игре не может расти быстрее правил (по времени сервера, не телефона)
+    var earn = Math.max(0, +ms.earn || 0), prevE = m.earn || 0, dtH = Math.max(0, now - prevAt) / 3600000;
+    var lim = G.rate ? G.rate(+ms.lvl || 1) * dtH + (G.burst || 0) : Infinity, fast = G.rate && earn - prevE > lim;
+    if (G.rate) { m.earn = fast ? prevE + lim : Math.max(prevE, earn); if (fast) m.sus = (m.sus || 0) + 1; }
     u.frames = u.frames || ['base'];
     G.frames.forEach(function (f) {
-      if ((+ms[f.key] || 0) >= f.need && u.frames.indexOf(f.id) < 0 && now - m.first >= f.minMin * 60000 && m.saves >= 5) {
+      if (!fast && (+ms[f.key] || 0) >= f.need && u.frames.indexOf(f.id) < 0 && now - m.first >= f.minMin * 60000 && m.saves >= 5) {
         u.frames.push(f.id); got.push({ id: f.id, name: (RULES.frames.filter(function (x) { return x.id === f.id; })[0] || {}).name });
       }
     });
