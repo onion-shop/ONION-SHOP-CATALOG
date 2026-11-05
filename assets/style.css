@@ -2319,3 +2319,30 @@ html.dr-open{overflow:hidden}
 .rv-th img{width:48px;height:48px;border-radius:12px;object-fit:cover}
 .rv-det .rc-row{display:flex;justify-content:space-between;padding:4px 0;font-size:14px}
 .rv-det .rc-row.total{border-top:1px dashed var(--line-2);margin-top:6px;padding-top:10px;font-weight:800;font-size:16px}
+
+/* плашка-карточка уведомления (нет в наличии и т.п.) */
+.toast.card{align-items:flex-start;gap:12px;padding:14px 12px 14px 14px;border-radius:20px;background:linear-gradient(150deg,#16396b,#0b1d3a);box-shadow:0 0 0 1px rgba(67,201,227,.28),var(--shadow-lg);position:relative}
+.toast.card .tc-ic{flex:none;width:40px;height:40px;border-radius:13px;display:grid;place-items:center;background:rgba(255,255,255,.12);color:#8fe6f5}
+.toast.card .tc-ic .i{width:21px;height:21px}
+.toast.card .tc-b{flex:1;min-width:0;padding-right:18px}
+.toast.card .tc-b b{display:block;font-size:15px;font-weight:800;line-height:1.25}
+.toast.card .tc-b p{margin:3px 0 0;font-size:13.5px;line-height:1.35;color:rgba(255,255,255,.78)}
+.toast.card .tc-btn{margin-top:11px;display:flex;align-items:center;justify-content:center;gap:8px;width:100%;border:0;border-radius:13px;padding:11px 14px;background:#fff;color:#0b1d3a;font-weight:800;font-size:14.5px;cursor:pointer;box-shadow:0 6px 16px rgba(0,0,0,.25)}
+.toast.card .tc-btn .i{width:18px;height:18px;color:#ff4d6a}
+.toast.card .tc-btn:active{transform:scale(.98)}
+.toast.card .tc-x{position:absolute;top:8px;right:8px;width:26px;height:26px;border:0;border-radius:50%;background:rgba(255,255,255,.12);color:#fff;font-size:17px;line-height:1;padding:0;display:grid;place-items:center}
+/* баннер «Подтвердите телефон» в кабинете */
+.ph-cta2{margin-bottom:14px;padding:16px;border-radius:22px;color:#fff;background:linear-gradient(135deg,#1a86c0 0%,#14468a 60%,#0b1d3a 100%);box-shadow:0 14px 30px rgba(20,70,138,.28);position:relative;overflow:hidden}
+.ph-cta2:after{content:"";position:absolute;right:-40px;top:-40px;width:150px;height:150px;border-radius:50%;background:radial-gradient(circle,rgba(67,201,227,.45),transparent 70%);pointer-events:none}
+.ph-cta2 .pc-top{display:flex;align-items:center;gap:12px;position:relative;z-index:1}
+.ph-cta2 .pc-ic{flex:none;width:46px;height:46px;border-radius:15px;display:grid;place-items:center;background:rgba(255,255,255,.16);box-shadow:inset 0 0 0 1px rgba(255,255,255,.25)}
+.ph-cta2 .pc-ic .i{width:23px;height:23px}
+.ph-cta2 .pc-top b{display:block;font-size:18px;font-weight:800}
+.ph-cta2 .pc-top small{opacity:.82;font-size:13.5px}
+.ph-cta2 .pc-list{list-style:none;margin:14px 0 14px;padding:0;display:grid;gap:8px;position:relative;z-index:1}
+.ph-cta2 .pc-list li{display:flex;align-items:center;gap:10px;font-size:14px;font-weight:600}
+.ph-cta2 .pc-list li span{flex:none;width:28px;height:28px;border-radius:9px;display:grid;place-items:center;background:rgba(255,255,255,.14);color:#8fe6f5}
+.ph-cta2 .pc-list .i{width:16px;height:16px}
+.ph-cta2 .pc-btn{position:relative;z-index:1;display:flex;align-items:center;justify-content:center;gap:9px;width:100%;border:0;border-radius:15px;padding:13px 16px;background:#fff;color:#0b3a66;font-weight:800;font-size:15.5px;cursor:pointer;box-shadow:0 8px 20px rgba(0,0,0,.22)}
+.ph-cta2 .pc-btn .i{width:19px;height:19px;color:#1a86c0}
+.ph-cta2 .pc-btn:active{transform:scale(.98)}

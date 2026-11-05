@@ -238,7 +238,8 @@
   // товар, которого нет в наличии, в корзину не попадает никак: предлагаем избранное и уведомление о поступлении
   function offerFav(p) {
     var isF = isFav(p.id);
-    toast(p.status === 'sold' ? 'Этот товар уже продан' : 'Сейчас нет в наличии, заказать нельзя. ' + (isF ? 'Он уже в избранном: сообщим, когда появится.' : 'Добавьте в избранное, мы подскажем, когда он появится.'), isF ? null : { label: 'В избранное', run: function () { toggleFav(p.id); } }, 'warn');
+    if (p.status === 'sold') { toast('Этот товар уже продан', null, 'warn'); return; }
+    toastCard({ kind: 'oos', icon: 'hourglass', title: 'Сейчас нет в наличии', text: isF ? 'Заказать пока нельзя. Товар уже в избранном: напишем, когда он появится.' : 'Заказать пока нельзя. Добавьте в избранное, и мы подскажем, когда он появится.', action: isF ? null : { label: 'В избранное', icon: 'heart', run: function () { toggleFav(p.id); } } });
   }
   function addToCart(line) {
     var ep = BY_ID[line.id], el = ep ? earlyLock(ep) : 0;
@@ -277,6 +278,18 @@
     var close = function () { el.classList.add('out'); setTimeout(function () { el.remove(); }, 300); };
     var timer = setTimeout(close, action ? 6000 : 3200);
     if (action) el.querySelector('button').addEventListener('click', function () { clearTimeout(timer); close(); action.run(); });
+  }
+  // красивая плашка с заголовком, пояснением и крупной кнопкой (товар без наличия и подобное)
+  function toastCard(o) {
+    var root = $('#toasts'), el = document.createElement('div');
+    el.className = 'toast card ' + (o.kind || '');
+    el.innerHTML = '<span class="tc-ic">' + icon(o.icon || 'hourglass') + '</span><div class="tc-b"><b>' + esc(o.title) + '</b><p>' + esc(o.text) + '</p>' + (o.action ? '<button class="tc-btn" type="button">' + icon(o.action.icon || 'heart') + esc(o.action.label) + '</button>' : '') + '</div><button class="tc-x" type="button" aria-label="Закрыть">×</button>';
+    root.appendChild(el);
+    while (root.children.length > 3) root.firstChild.remove();
+    var close = function () { el.classList.add('out'); setTimeout(function () { el.remove(); }, 300); };
+    var timer = setTimeout(close, 8000);
+    el.querySelector('.tc-x').addEventListener('click', function () { clearTimeout(timer); close(); });
+    if (o.action) el.querySelector('.tc-btn').addEventListener('click', function () { clearTimeout(timer); close(); o.action.run(); });
   }
   function reward(msg) { toast(msg, null, 'reward'); }
   var lastFocus = null;
@@ -2081,7 +2094,7 @@
     var dashOrders = active.length ? active.slice(0, 3) : u.orders.slice(0, 1);
     var bd = u.birthday ? u.birthday.split('-') : null;
     v.innerHTML =
-      (u.phoneOk ? '' : '<div class="ph-cta"><span class="ph-ic">' + icon('phone') + '</span><div><b>Подтвердите телефон</b><small>10 секунд в Telegram. После этого: приветственные ониксы, бонусы за друзей и подарок на день рождения.</small></div><button class="btn" type="button" id="ph-go">Подтвердить</button></div>') +
+      (u.phoneOk ? '' : '<div class="ph-cta2"><div class="pc-top"><span class="pc-ic">' + icon('send') + '</span><div><b>Подтвердите телефон</b><small>10 секунд в Telegram</small></div></div><ul class="pc-list"><li><span>' + tk() + '</span>Приветственные ониксы</li><li><span>' + icon('users') + '</span>Бонусы за друзей</li><li><span>' + icon('gift') + '</span>Подарок на день рождения</li></ul><button class="pc-btn" type="button" id="ph-go">' + icon('send') + 'Подтвердить в Telegram</button></div>') +
       (u.email ? '' : '<div class="notice notice-warn" style="margin-bottom:12px">' + icon('mail') + '<div><b>Добавьте почту.</b> Без неё не получится восстановить пароль. <button class="link-btn" type="button" id="add-email">Добавить</button></div></div>') +
       '<div class="dash">' +
       '<div class="profile c12"><div class="who"><div class="ava-wrap">' + ava(u, 'lg') + '<button class="ava-cam" type="button" id="ava-cam" aria-label="Изменить фото">' + icon('camera') + '</button></div>' +
