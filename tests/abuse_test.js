@@ -186,7 +186,7 @@ mem.orders.forEach(o => { if (o.userId === bu.id) o.status = 'Получен'; }
 r = H('me', { session: bs });
 ok(r.user.achv.indexOf('first') >= 0 && bu.balance === r.user.balance, 'достижение «Первая распаковка» выдано, ониксы не начисляются');
 bu.recvTotal = 5; r = H('me', { session: bs });
-ok(r.user.achv.indexOf('five') >= 0 && r.user.frames.indexOf('ach-loyal') >= 0, '5 полученных заказов → значок и рамка «Лавры»');
+ok(r.user.achv.indexOf('five') >= 0 && r.user.frames.indexOf('f27') >= 0, '5 полученных заказов → значок «Пять образов» и рамка «Лавровый венок»');
 bu.recvTotal = 0; r = H('me', { session: bs }); ok(r.user.achv.indexOf('five') >= 0, 'полученное достижение не пропадает');
 
 console.log('\n— 12. Достижения: только за реальное действие');
@@ -224,26 +224,32 @@ console.log('\n— 14. Игры удалены: серверных действ�
 { const pu = reg({ login: 'gm1', email: 'gm1@mail.ru', phone: '+7 999 700-80-90' });
   ok(!H('gameLoad', { session: pu.session, game: 'gruz' }).ok && !H('gameSave', { session: pu.session, game: 'gruz', data: '{}' }).ok, 'Грузомании и Последнего рубежа больше нет на сервере'); }
 
-console.log('\n— 14b. Рамки из посылки: редкость');
+console.log('\n— 14b. Рамки из посылки: коллекция из 39 штук');
 { const F = C.RULES.frames, W = F.filter(f => f.src === 'wheel');
-  ok(W.every(f => f.r >= 1 && f.r <= 5) && [1, 2, 3, 4, 5].every(r => W.some(f => f.r === r)), 'у каждой рамки из посылки редкость 1–5, все пять редкостей есть');
+  ok(F.length === 40 && W.length === 24 && F.filter(f => f.src === 'ach').length === 10, 'в коллекции базовая, 5 статусных, 24 из посылки и 10 за достижения (всего 39 рамок)');
+  ok(C.RULES.achv.every(a => a.frame && F.some(f => f.id === a.frame && f.ach === a.id)), 'у каждого из 10 достижений своя рамка');
   ok(F.filter(f => f.src === 'level').length === 5, 'пять статусных рамок');
-  ok(F.filter(f => f.src === 'ach' || f.src === 'game').length === 4, 'четыре эксклюзивные рамки за достижения');
+  ok(F.every(f => !('r' in f)) && !C.RULES.rarity, 'редкости у рамок нет');
+  ok(!F.some(f => /^(gz|rb|ach)-/.test(f.id) || f.src === 'game'), 'рамок за игры нет');
+  ok(!F.some(f => ['mint', 'rose', 'violet', 'sky', 'lime', 'amber', 'coral', 'ice', 'neon', 'gold', 'sunset', 'aurora', 'rainbow', 'cosmos', 'flame'].indexOf(f.id) >= 0), 'старых 28 рамок больше нет');
   const pu = reg({ login: 'fr9', email: 'fr9@mail.ru', phone: '+7 999 700-90-90' }); const uu = user(pu.session); uu.phoneOk = true;
   const got = {}; let all = true;
-  for (let i = 0; i < 400; i++) { uu.frames = ['base']; uu.balance = 5000; uu.xp = 0;
+  for (let i = 0; i < 240; i++) { uu.balance = 5000; uu.xp = 0;
     const idx = C.RULES.wheel.findIndex(w => w.id === 'frame'); const save = C.RULES.wheel.map(w => w.w); C.RULES.wheel.forEach((w, k) => { w.w = k === idx ? 1 : 0; });
     const r = H('spin', { session: pu.session }); C.RULES.wheel.forEach((w, k) => { w.w = save[k]; });
-    if (!r.ok || !r.prize.frameId) { all = false; break; }
-    const f = F.find(x => x.id === r.prize.frameId); got[f.r] = (got[f.r] || 0) + 1;
-    if (uu.frames.indexOf(f.id) < 0 || f.src !== 'wheel') all = false; }
-  ok(all, 'выпавшая рамка добавляется в коллекцию и это рамка из посылки');
-  ok(got[1] > got[3] && got[3] > got[5] && got[5] > 0, 'обычные выпадают чаще редких, легендарные реже всех: ' + JSON.stringify(got));
-  uu.frames = ['base']; const idx2 = C.RULES.wheel.findIndex(w => w.id === 'frame2'); const sv = C.RULES.wheel.map(w => w.w); C.RULES.wheel.forEach((w, k) => { w.w = k === idx2 ? 1 : 0; });
+    if (!r.ok) { all = false; break; }
+    if (r.prize.frameId) { got[r.prize.frameId] = 1; if (uu.frames.indexOf(r.prize.frameId) < 0) all = false; } }
+  ok(all && Object.keys(got).length === 24 && !Object.keys(got).some(id => F.find(x => x.id === id).src !== 'wheel'), 'посылка отдаёт только 24 свои рамки, дубликатов нет: ' + Object.keys(got).length);
+  uu.frames = ['base']; uu.balance = 5000; const idx2 = C.RULES.wheel.findIndex(w => w.id === 'frame2'); const sv = C.RULES.wheel.map(w => w.w); C.RULES.wheel.forEach((w, k) => { w.w = k === idx2 ? 1 : 0; });
   const r2 = H('spin', { session: pu.session }); C.RULES.wheel.forEach((w, k) => { w.w = sv[k]; });
-  ok(r2.ok && F.find(x => x.id === r2.prize.frameId).r >= 4, '«Редкая рамка» даёт эпическую или легендарную');
+  ok(r2.ok && r2.prize.frameId && !('frameRarity' in r2.prize), 'призовая рамка без метки редкости');
   const fid = r2.prize.frameId; ok(H('profile', { session: pu.session, frame: fid }).ok && H('me', { session: pu.session }).user.frame === fid, 'полученную рамку можно надеть, сервер возвращает её же');
-  ok(!H('profile', { session: pu.session, frame: 'cosmos' === fid ? 'flame' : 'cosmos' }).ok || uu.frames.indexOf('cosmos') >= 0, 'не полученную рамку надеть нельзя'); }
+  ok(!H('profile', { session: pu.session, frame: fid === 'f5' ? 'f8' : 'f5' }).ok, 'не полученную рамку надеть нельзя');
+  uu.achv = ['first', 'streak']; uu.frames = ['base']; const meA = H('me', { session: pu.session }).user;
+  ok(meA.frames.indexOf('f48') >= 0 && meA.frames.indexOf('f8') >= 0, 'рамки за уже полученные достижения выдаются задним числом («Луковица», «Воксельный огонь»)');
+  // миграция: удалённая рамка сбрасывается, остальное цело
+  uu.frame = 'mint'; uu.frames = ['base', 'mint', 'rose', fid]; const bal = uu.balance; const me = H('me', { session: pu.session }).user;
+  ok(me.frame === 'base' && me.frames.indexOf('mint') < 0 && me.frames.indexOf('rose') < 0 && me.frames.indexOf(fid) >= 0 && uu.balance === bal, 'надетая удалённая рамка сброшена на базовую, новые рамки и баланс целы'); }
 
 console.log('\n— 15. Статусы и рамки');
 { const pu = reg({ login: 'frm1', email: 'frm1@mail.ru', phone: '+7 999 800-10-20' }); const uu = user(pu.session); uu.phoneOk = true; const S = pu.session;
@@ -256,11 +262,11 @@ console.log('\n— 15. Статусы и рамки');
   });
   ok(C.RULES.frames.filter(f => f.src === 'level').length === 5, 'у каждого из 5 статусов своя рамка (включая бронзовую и платиновую)');
   uu.xpMonth = mk; uu.xp = 500; H('me', { session: S });
-  ok(H('profile', { session: S, frame: 'lvl-silver' }).ok && !H('profile', { session: S, frame: 'lvl-gold' }).ok && !H('profile', { session: S, frame: 'neon' }).ok, 'на Серебре можно надеть серебряную, золотую и неоткрытую «Неон» нельзя');
+  ok(H('profile', { session: S, frame: 'lvl-silver' }).ok && !H('profile', { session: S, frame: 'lvl-gold' }).ok && !H('profile', { session: S, frame: 'f17' }).ok, 'на Серебре можно надеть серебряную, золотую и неоткрытую «Неон-радуга» нельзя');
   uu.xp = 1500; const me2 = H('me', { session: S }).user; ok(me2.frame === 'base', 'после повышения до Золота серебряная рамка снимается');
-  uu.xp = 8000; uu.frames = ['base', 'neon']; let fr = H('me', { session: S }).user.frames;
-  ok(fr.indexOf('neon') >= 0 && fr.indexOf('ice') < 0 && fr.indexOf('lvl-gold') < 0, 'Алмаз открывает алмазную рамку; полученная из посылки «Неон» остаётся, «Лёд» не открывается сама');
-  ok(!H('profile', { session: S, frame: 'ice' }).ok && !H('profile', { session: S, frame: 'lvl-silver' }).ok && H('profile', { session: S, frame: 'lvl-diamond' }).ok, 'на Алмазе нельзя надеть чужие рамки, алмазную можно');
+  uu.xp = 8000; uu.frames = ['base', 'f17']; let fr = H('me', { session: S }).user.frames;
+  ok(fr.indexOf('f17') >= 0 && fr.indexOf('f46') < 0 && fr.indexOf('lvl-gold') < 0, 'Алмаз открывает алмазную рамку; полученная из посылки «Неон-радуга» остаётся, «Хром» не открывается сам');
+  ok(!H('profile', { session: S, frame: 'f46' }).ok && !H('profile', { session: S, frame: 'lvl-silver' }).ok && H('profile', { session: S, frame: 'lvl-diamond' }).ok, 'на Алмазе нельзя надеть чужие рамки, алмазную можно');
   const ids = C.RULES.achv.map(a => a.id); ok(ids.indexOf('gold') < 0 && C.RULES.achv.find(a => a.id === 'friend').name === 'Душа компании', 'достижение «Золотой статус» заменено, «Душа компании» переименована');
   ok(C.RULES.achv.every(a => a.name.length <= 20 && a.d.length <= 34), 'названия достижений до 20 знаков, описания до 34');
   ok(C.RULES.levels.every(l => l.perks.every(p => p[0] && p[1])), 'в карточках программы лояльности нет пустых текстов ни у одного статуса'); }

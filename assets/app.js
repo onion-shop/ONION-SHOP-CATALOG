@@ -113,7 +113,7 @@
   function promoLine(p) { var d = p.until ? new Date(+p.until + 3 * 3600000) : null; return (p.cat ? 'только «' + esc(p.catLabel) + '»' : esc(p.from || '')) + (p.exp ? ' · до конца месяца' : d ? ' · до ' + String(d.getUTCDate()).padStart(2, '0') + '.' + String(d.getUTCMonth() + 1).padStart(2, '0') : ''); }
   function ava(u, cls) {
     var f = esc((u && u.frame) || 'base');
-    return '<span class="ava f-' + f + (f !== 'base' ? ' fx' : '') + (cls ? ' ' + cls : '') + '">' + (u && u.avatar ? '<img src="' + esc(u.avatar) + '" alt="">' : esc(initials(u && u.name))) + '</span>';
+    return '<span class="ava f-' + f + (f !== 'base' ? ' fx' : '') + (cls ? ' ' + cls : '') + '">' + (u && u.avatar ? '<img src="' + esc(u.avatar) + '" alt="">' : '<b class="ini">' + esc(initials(u && u.name)) + '</b>') + '</span>';
   }
 
   // ------------------------------------------------------------ время (Москва)
@@ -2001,7 +2001,6 @@
     function lockText(f) {
       if (f.src === 'level') return 'Открыта только при статусе «' + RULES.levels[f.lvl].name + '»';
       if (f.src === 'ach') { var aa = RULES.achv.filter(function (x) { return x.id === f.ach; })[0]; return 'За достижение «' + (aa ? aa.name : '') + '»: ' + (aa ? aa.d.toLowerCase() : ''); }
-      if (f.src === 'game') return f.how;
       return 'Выпадает только в «Посылке с сюрпризом»';
     }
     function tile(f) {
@@ -2182,7 +2181,7 @@
     if (p.c === 'tok') h = rlBigIc('i-token', 150, 6) + '<div class="rl-num" style="top:160px;font-size:' + (n >= 1000 ? 58 : 66) + 'px">+' + n + '</div><div class="rl-cap" style="top:246px">' + tokWord(n) + '</div>';
     else if (p.c === 'xp') h = rlBigIc('rl-xp', 146, 8) + '<div class="rl-num" style="top:160px;font-size:66px">+' + n + '</div><div class="rl-cap" style="top:246px">опыт XP</div>';
     else if (p.c === 'pr') h = rlBigIc('rl-ticket', 146, 8) + '<div class="rl-num" style="top:160px;font-size:66px">−' + n + '%</div><div class="rl-cap" style="top:246px">скидка по промокоду</div>';
-    else if (p.c === 'fr') h = rlBigIc(p.rare ? 'rl-frame2' : 'rl-frame', 170, 10) + '<div class="rl-cap" style="top:214px">' + (pr && pr.frameName ? 'рамка «' + esc(pr.frameName) + '»' : p.rare ? 'особая рамка для аватара' : 'рамка для аватара') + '</div>';
+    else if (p.c === 'fr') h = rlBigIc(p.rare ? 'rl-frame2' : 'rl-frame', 170, 10) + '<div class="rl-cap" style="top:214px">' + (pr && pr.frameName ? 'рамка «' + esc(pr.frameName) + '»' : 'рамка для аватара') + '</div>';
     else if (p.c === 're') h = rlBigIc('rl-again', 124, 6) + '<div class="rl-num" style="top:138px;font-size:56px">×' + n + '</div><div class="rl-cap" style="top:222px">' + (n === 1 ? 'бесплатная посылка' : 'бесплатные посылки') + '</div>';
     else h = rlBigIc('rl-empty', 150, 20) + '<div class="rl-cap" style="top:206px">Пусто, в другой раз</div>';
     return rlSlide(c, h);
@@ -2217,7 +2216,7 @@
     if (info.c === 'tok') return ['+' + num(n), tokWord(n)];
     if (info.c === 'xp') return ['+' + n + ' XP', 'опыт к уровню'];
     if (info.c === 'pr') return ['−' + n + '%', 'промокод' + (pr && pr.code ? ' ' + pr.code : '')];
-    if (info.c === 'fr') return [pr && pr.frameName ? '«' + pr.frameName + '»' : info.rare ? 'Редкая рамка' : 'Рамка', 'для аватара'];
+    if (info.c === 'fr') return [pr && pr.frameName ? '«' + pr.frameName + '»' : 'Рамка', 'для аватара'];
     if (info.c === 're') return ['+' + n, n === 1 ? 'посылка бесплатно' : 'посылки бесплатно'];
     return ['Пусто', 'в этот раз посылка пустая'];
   }

@@ -163,8 +163,9 @@ var OnionCore = (function () {
     stageNotes: { 'Оформлен': 'Заказ принят менеджером', 'Выкуплен': 'Оплачен поставщику', 'В пути': 'Поставщик везёт на склад в Китае', 'На складе': 'Проверка и фотоотчёт на складе', 'Едет к нам': 'Из Китая в Москву', 'Едет к вам': 'Передан в доставку', 'Получен': 'Заказ у вас', 'Отменён': 'Заказ отменён' },
     finalStages: ['Получен', 'Отменён'],
     codeTtlMin: 15,
-    /* Рамки. Три группы: level (статус, только свой), wheel (выпадает только в «Посылке с сюрпризом», r: редкость 1..5),
-       ach (эксклюзив за достижение магазина или этап игры). Рамка не даёт никаких привилегий. */
+    /* Рамки: одна коллекция из 39 штук (рисунки assets/fr/, генератор scripts/make_frames.js, источник docs/frames-gallery.html), без редкости.
+       level: статусные пять, надеваются только при своём статусе; wheel: выпадают только в «Посылке с сюрпризом»
+       (поровну среди неоткрытых); ach: рамка за достижение магазина (одна на достижение). Рамка не даёт никаких привилегий. */
     frames: [
       { id: 'base', name: 'Без рамки' },
       { id: 'lvl-bronze', name: 'Бронза', src: 'level', lvl: 0 },
@@ -172,39 +173,53 @@ var OnionCore = (function () {
       { id: 'lvl-gold', name: 'Золото', src: 'level', lvl: 2 },
       { id: 'lvl-platinum', name: 'Платина', src: 'level', lvl: 3 },
       { id: 'lvl-diamond', name: 'Алмаз', src: 'level', lvl: 4 },
-      { id: 'mint', name: 'Мятный леденец', src: 'wheel', r: 1 },
-      { id: 'rose', name: 'Роза', src: 'wheel', r: 1 },
-      { id: 'violet', name: 'Фиалка', src: 'wheel', r: 1 },
-      { id: 'sky', name: 'Облака', src: 'wheel', r: 1 },
-      { id: 'lime', name: 'Долька лайма', src: 'wheel', r: 1 },
-      { id: 'amber', name: 'Янтарные бусы', src: 'wheel', r: 2 },
-      { id: 'coral', name: 'Коралл', src: 'wheel', r: 2 },
-      { id: 'ice', name: 'Лёд', src: 'wheel', r: 2 },
-      { id: 'neon', name: 'Неон', src: 'wheel', r: 3 },
-      { id: 'gold', name: 'Солнце', src: 'wheel', r: 3 },
-      { id: 'sunset', name: 'Закат', src: 'wheel', r: 3 },
-      { id: 'aurora', name: 'Аврора', src: 'wheel', r: 4 },
-      { id: 'rainbow', name: 'Радуга', src: 'wheel', r: 4 },
-      { id: 'cosmos', name: 'Космос', src: 'wheel', r: 5 },
-      { id: 'flame', name: 'Пламя', src: 'wheel', r: 5 },
-      { id: 'ach-china', name: 'Маршрут', src: 'ach', ach: 'china' },
-      { id: 'ach-loyal', name: 'Лавры', src: 'ach', ach: 'five' },
-      { id: 'ach-critic', name: 'Пять звёзд', src: 'ach', ach: 'review5' },
-      { id: 'ach-friend', name: 'Сцепка', src: 'ach', ach: 'friend' },
+      { id: 'f5', name: 'Пиксельная радуга', src: 'wheel' },
+      { id: 'f8', name: 'Воксельный огонь', src: 'ach', ach: 'streak' },
+      { id: 'f15', name: 'Неон закат', src: 'wheel' },
+      { id: 'f17', name: 'Неон-радуга', src: 'wheel' },
+      { id: 'f21', name: 'Роза справа сверху', src: 'wheel' },
+      { id: 'f24', name: 'Ромашки', src: 'ach', ach: 'review' },
+      { id: 'f27', name: 'Лавровый венок', src: 'ach', ach: 'five' },
+      { id: 'f46', name: 'Хром', src: 'ach', ach: 'collector' },
+      { id: 'f48', name: 'Луковица', src: 'ach', ach: 'first' },
+      { id: 'f52', name: 'Осторожно: хрупкое', src: 'ach', ach: 'china' },
+      { id: 'f53', name: 'Надпись ONION SHOP', src: 'ach', ach: 'ten' },
+      { id: 'f55', name: 'Штрихкод', src: 'wheel' },
+      { id: 'f57', name: 'Подарочная лента', src: 'wheel' },
+      { id: 'f63', name: 'Космос', src: 'wheel' },
+      { id: 'f65', name: 'Солнце', src: 'wheel' },
+      { id: 'f69', name: 'Капли', src: 'wheel' },
+      { id: 'f80', name: 'HUD', src: 'wheel' },
+      { id: 'f81', name: 'Шестерёнки', src: 'ach', ach: 'review5' },
+      { id: 'f83', name: 'Аркада', src: 'wheel' },
+      { id: 'f84', name: 'Тетрис', src: 'wheel' },
+      { id: 'f85', name: 'Кошачьи ушки', src: 'wheel' },
+      { id: 'f87', name: 'Ангел', src: 'wheel' },
+      { id: 'f89', name: 'Чертёнок', src: 'wheel' },
+      { id: 'f90', name: 'Сердечки', src: 'ach', ach: 'friend' },
+      { id: 'f91', name: 'Бант', src: 'ach', ach: 'bday' },
+      { id: 'f94', name: 'Гирлянда', src: 'wheel' },
+      { id: 'f95', name: 'Хэллоуин', src: 'wheel' },
+      { id: 'f96', name: 'Ёлочные шары', src: 'wheel' },
+      { id: 'f97', name: 'Леденец', src: 'wheel' },
+      { id: 'f98', name: 'Арбуз', src: 'wheel' },
+      { id: 'f99', name: 'Пончик', src: 'wheel' },
+      { id: 'f101', name: 'Шахматка', src: 'wheel' },
+      { id: 'f104', name: 'Радужные секторы', src: 'wheel' },
+      { id: 'f105', name: 'Горошек', src: 'wheel' }
     ],
-    rarity: [null, { name: 'Обычная', w: 40 }, { name: 'Необычная', w: 28 }, { name: 'Редкая', w: 18 }, { name: 'Эпическая', w: 10 }, { name: 'Легендарная', w: 4 }],
     // достижения: только значки и рамки, без ониксов; однажды полученные не пропадают
     achv: [
-      { id: 'first', name: 'Первый заказ', d: 'Получить заказ', ic: 'bag' },
-      { id: 'china', name: 'Дальний рейс', d: 'Получить заказ из Китая', ic: 'plane', frame: 'ach-china' },
-      { id: 'five', name: 'Пять образов', d: 'Получить 5 заказов', ic: 'trophy', frame: 'ach-loyal' },
-      { id: 'ten', name: 'Гардероб', d: 'Получить 10 заказов', ic: 'crown' },
-      { id: 'review', name: 'Своё мнение', d: 'Оставить первый отзыв', ic: 'chat' },
-      { id: 'review5', name: 'Знаток', d: 'Оставить 5 отзывов', ic: 'star', frame: 'ach-critic' },
-      { id: 'friend', name: 'Душа компании', d: 'Друг сделал первый заказ', ic: 'users', frame: 'ach-friend' },
-      { id: 'collector', name: 'Коллекционер', d: 'Собрать 3 рамки из посылок', ic: 'frame' },
-      { id: 'streak', name: 'Семь дней', d: 'Заходить 7 дней подряд', ic: 'flame' },
-      { id: 'bday', name: 'Свой праздник', d: 'Открыть подарок на день рождения', ic: 'gift' }
+      { id: 'first', name: 'Первый заказ', d: 'Получить заказ', ic: 'bag', frame: 'f48' },
+      { id: 'china', name: 'Дальний рейс', d: 'Получить заказ из Китая', ic: 'plane', frame: 'f52' },
+      { id: 'five', name: 'Пять образов', d: 'Получить 5 заказов', ic: 'trophy', frame: 'f27' },
+      { id: 'ten', name: 'Гардероб', d: 'Получить 10 заказов', ic: 'crown', frame: 'f53' },
+      { id: 'review', name: 'Своё мнение', d: 'Оставить первый отзыв', ic: 'chat', frame: 'f24' },
+      { id: 'review5', name: 'Знаток', d: 'Оставить 5 отзывов', ic: 'star', frame: 'f81' },
+      { id: 'friend', name: 'Душа компании', d: 'Друг сделал первый заказ', ic: 'users', frame: 'f90' },
+      { id: 'collector', name: 'Коллекционер', d: 'Собрать 3 рамки из посылок', ic: 'frame', frame: 'f46' },
+      { id: 'streak', name: 'Семь дней', d: 'Заходить 7 дней подряд', ic: 'flame', frame: 'f8' },
+      { id: 'bday', name: 'Свой праздник', d: 'Открыть подарок на день рождения', ic: 'gift', frame: 'f91' }
     ],
     frameAnims: [['shine', 'Блеск'], ['pulse', 'Пульс'], ['orbit', 'Орбита'], ['none', 'Без анимации']]
   };
@@ -440,6 +455,9 @@ var OnionCore = (function () {
     ['d', 'w', 'm'].forEach(function (per) { taskSlot(u, per, now); });
     if (!u.promos) u.promos = [];
     if (!u.frames || !u.frames.length) u.frames = ['base'];
+    var fk = RULES.frames.map(function (f) { return f.id; }); // рамки старой коллекции удалены: из списка убираем, надетая удалённая становится базовой
+    u.frames = u.frames.filter(function (id) { return fk.indexOf(id) >= 0; }); if (u.frames.indexOf('base') < 0) u.frames.unshift('base');
+    if (u.frame && fk.indexOf(u.frame) < 0) u.frame = 'base';
     grantPerks(db, u);
     settle(db, u);
   }
@@ -507,6 +525,8 @@ var OnionCore = (function () {
       have.push(a.id); add.push(a.id);
       if (a.frame) { u.frames = u.frames || ['base']; if (u.frames.indexOf(a.frame) < 0) u.frames.push(a.frame); }
     });
+    // рамки за достижения, полученные раньше, выдаём задним числом
+    RULES.achv.forEach(function (a) { if (a.frame && have.indexOf(a.id) >= 0) { u.frames = u.frames || ['base']; if (u.frames.indexOf(a.frame) < 0) { u.frames.push(a.frame); add.push('+' + a.frame); } } });
     if (add.length) u.achv = have;
     return add; // элемент '-bday' означает «значок снят», нужен только чтобы сохранить пользователя
   }
@@ -826,19 +846,10 @@ var OnionCore = (function () {
     return ok({});
   };
 
-  /* рамка из посылки: сначала редкость по весам (только из ещё не открытых), потом рамка этой редкости.
-     «Редкая рамка» даёт эпическую или легендарную, если они ещё есть, иначе любую неоткрытую. */
-  function pickFrame(db, u, rare) {
+  /* рамка из посылки: поровну среди ещё не открытых (редкости нет) */
+  function pickFrame(db, u) {
     var left = RULES.frames.filter(function (f) { return f.src === 'wheel' && (u.frames || []).indexOf(f.id) < 0; });
-    if (rare && left.some(function (f) { return f.r >= 4; })) left = left.filter(function (f) { return f.r >= 4; });
-    if (!left.length) return null;
-    var byR = {}, sum = 0, r;
-    left.forEach(function (f) { byR[f.r] = byR[f.r] || []; byR[f.r].push(f); });
-    for (r in byR) sum += RULES.rarity[r].w;
-    var x = db.random() * sum, t = 0, pick = null;
-    for (r in byR) { t += RULES.rarity[r].w; if (x < t) { pick = byR[r]; break; } }
-    pick = pick || byR[Object.keys(byR)[0]];
-    return pick[Math.floor(db.random() * pick.length)];
+    return left.length ? left[Math.floor(db.random() * left.length)] : null;
   }
   A.spin = function (db, p) {
     var u = sessionUser(db, p); if (!u) return err('auth');
@@ -854,8 +865,8 @@ var OnionCore = (function () {
     if (prize.spins) { u.freeSpins = (u.freeSpins || 0) + prize.spins; result.spins = prize.spins; }
     if (prize.promo) { var code = genCode(db, 'LUCK', 5); u.promos.push({ code: code, pct: prize.promo, from: 'Посылка', at: db.now() }); result.code = code; result.pct = prize.promo; }
     if (prize.frame) {
-      var f = pickFrame(db, u, prize.frame === 'rare');
-      if (f) { u.frames.push(f.id); result.frameId = f.id; result.frameName = f.name; result.frameR = f.r; result.frameRarity = RULES.rarity[f.r].name; }
+      var f = pickFrame(db, u);
+      if (f) { u.frames.push(f.id); result.frameId = f.id; result.frameName = f.name; }
       else { var e2 = earn(db, u, 50, 'Посылка: все рамки уже открыты'); result.tokens = e2.tok; result.sub = 'все рамки открыты: +50 ониксов'; if (e2.xp) { result.capXp = e2.xp; result.cap = RULES.balanceCap; } }
     }
     track(db, u, 'spin'); settle(db, u);
