@@ -34,6 +34,17 @@
     disp: { n: 'Диспетчер', d: 'Фуры и заказы приходят чаще', lvl: 5, base: 600, max: 5 }
   };
   function empCost(k, l) { return Math.round(EMP[k].base * Math.pow(2.2, l)); }
+  /* сортировочный центр: три звена, пропускная способность = слабейшее звено (узкое место) */
+  var CTR = {
+    conv: { n: 'Конвейер', d: 'Скорость ленты', mul: 1 },
+    scan: { n: 'Сканер', d: 'Распознавание посылок', mul: 1.25 },
+    sort: { n: 'Сортировщик', d: 'Раскладка по направлениям', mul: 1.5 }
+  };
+  var CTR_MAX = 5, CTR_LVL = 4;
+  function ctrCost(k, l) { return Math.round(260 * CTR[k].mul * Math.pow(2.15, l)); }
+  function ctrRate(st) { return Math.min(st.ctr.conv, st.ctr.scan, st.ctr.sort) * 2; }   // ящиков в минуту
+  function ctrWeak(st) { var ks = Object.keys(CTR).sort(function (a, b) { return st.ctr[a] - st.ctr[b]; }); return st.ctr[ks[0]] === st.ctr[ks[2]] ? null : ks[0]; }
+  var MINI = { find: { n: 'Найти коробку', d: 'Найдите нужную коробку среди похожих', lvl: 2, cd: 90 }, load: { n: 'Загрузить кузов', d: 'Разместите коробки в кузове без пустот', lvl: 3, cd: 120 } };
   var EVENTS = ['rush', 'double', 'rain', 'inspect'];
   function offlineCap(st) { return clamp(2 + .5 * st.lvl, 2, 8) * 3600; }
   function avgBase(st) { var it = ORDER_KEYS.filter(function (k) { return ITEMS[k].lvl <= st.lvl; }); return it.reduce(function (a, k) { return a + ITEMS[k].base; }, 0) / it.length; }
@@ -48,7 +59,7 @@
 
   function fresh() {
     var now = Date.now();
-    return { v: 2, coins: 120, xp: 0, lvl: 1, rating: 3.5, stock: { tee: 0, hood: 0, shoe: 0 }, up: { cap: 0, dock: 0, pay: 0, scan: 0, cart: 0 }, emp: { loader: 0, picker: 0, disp: 0 }, nextEvent: now + 200000, bonusTruck: 0, orders: [], trucks: [{ dock: 0, k: 'tee', n: 4, s: 'wait', t: 1 }],
+    return { v: 2, coins: 120, xp: 0, lvl: 1, rating: 3.5, stock: { tee: 0, hood: 0, shoe: 0 }, up: { cap: 0, dock: 0, pay: 0, scan: 0, cart: 0 }, emp: { loader: 0, picker: 0, disp: 0 }, ctr: { conv: 0, scan: 0, sort: 0 }, cd: { find: 0, load: 0 }, nextEvent: now + 200000, bonusTruck: 0, orders: [], trucks: [{ dock: 0, k: 'tee', n: 4, s: 'wait', t: 1 }],
       oseq: 1, nextTruck: now + 25000, nextOrder: now + 2500, stats: { shipped: 0, perfect: 0, crates: 0, earned: 0, expired: 0 }, ms: { lvl: 1, earn: 0 }, tut: 0, en: EN_MAX, enAt: now, t0: now, lastAt: now };
   }
   function load(str) {
@@ -61,6 +72,7 @@
         st.trucks = (st.trucks || []).filter(function (t) { return t.s !== 'out'; }).map(function (t) { t.s = 'wait'; t.t = 1; return t; });
         st.lvl = clamp(+st.lvl || 1, 1, LVL_MAX);
         st.up = Object.assign({ cap: 0, dock: 0, pay: 0, scan: 0, cart: 0 }, st.up); st.emp = Object.assign({ loader: 0, picker: 0, disp: 0 }, st.emp);
+        st.ctr = Object.assign({ conv: 0, scan: 0, sort: 0 }, st.ctr); st.cd = Object.assign({ find: 0, load: 0 }, st.cd);
       }
     } catch (e) { }
     return st;
@@ -81,7 +93,7 @@
     var coinChip = document.createElement('div'); coinChip.className = 'gk-chip'; coinChip.innerHTML = '<i class="gz-coin"></i><span>0</span>'; S.left.appendChild(coinChip);
     var rateChip = document.createElement('div'); rateChip.className = 'gk-chip gz-rate'; rateChip.innerHTML = '<span class="s">★</span><span>0</span>'; S.left.appendChild(rateChip);
     S.hud.innerHTML = '<div class="gz-hint" hidden></div><button class="gz-act" type="button" hidden></button>' +
-      '<div class="gz-dock"><button class="gz-d" data-gz="orders" type="button">Заказы<em hidden></em></button><button class="gz-d" data-gz="stock" type="button">Склад</button><button class="gz-d" data-gz="team" type="button">Команда</button><button class="gz-d" data-gz="rewards" type="button">Награды</button></div>';
+      '<div class="gz-dock"><button class="gz-d" data-gz="orders" type="button">Заказы<em hidden></em></button><button class="gz-d" data-gz="stock" type="button">Склад</button><button class="gz-d" data-gz="center" type="button" hidden>Центр</button><button class="gz-d" data-gz="team" type="button">Команда</button><button class="gz-d" data-gz="rewards" type="button">Награды</button></div>';
     var $ = function (q) { return S.root.querySelector(q); };
 
     /* ---- камера и проекция */
@@ -160,8 +172,15 @@
         return '<div class="gk-it gz-ord' + (left < 45 ? ' hot' : '') + '"><span class="t"><b>' + esc(o.name) + '<span class="gz-pay"><i class="gz-coin"></i>' + fmt(o.pay) + '</span></b><small>' + esc(itemsTxt(o)) + ' · осталось ' + GK.dur(left) + '</small>' +
           (lack.length ? '<small class="no">Не хватает: ' + lack.map(function (p) { return (p.n - (st.stock[p.k] || 0)) + ' ' + ITEMS[p.k].n.toLowerCase(); }).join(', ') + '</small>' : '') + '</span><button class="gk-btn sm" data-gz-pack="' + o.id + '"' + (lack.length ? ' disabled' : '') + '>Собрать</button></div>';
       }).join('') : '<p class="gk-lead">Новых заказов пока нет. Они появляются сами, пока работает склад.</p>';
-      var body = S.sheet('Заказы клиентов', '<div class="gk-list">' + rows + '</div><p class="gk-note">Сборка стоит 1 энергии. Поймайте зелёную зону при упаковке, и клиент заплатит больше.</p>', { w: 460 });
-      body.addEventListener('click', function (e) { var b = e.target.closest('[data-gz-pack]'); if (b && !b.disabled) packGame(+b.getAttribute('data-gz-pack')); });
+      var minis = Object.keys(MINI).map(function (k) {
+        var m = MINI[k], lock = st.lvl < m.lvl, cd = miniCd(k);
+        return '<div class="gk-it' + (lock ? ' lk' : '') + '"><span class="t"><b>' + m.n + '</b><small>' + m.d + (lock ? '. Откроется на уровне хаба ' + m.lvl : ' · 2 энергии' + (cd > 0 ? ' · через ' + GK.dur(cd) : '')) + '</small></span>' + (lock ? '' : '<button class="gk-btn sm" data-gz-mini="' + k + '"' + (cd > 0 ? ' disabled' : '') + '>Играть</button>') + '</div>';
+      }).join('');
+      var body = S.sheet('Заказы клиентов', '<div class="gk-list">' + rows + '</div><p class="gk-note">Сборка стоит 1 энергии. Поймайте зелёную зону при упаковке, и клиент заплатит больше.</p><h3 class="gz-h">Срочные задания</h3><div class="gk-list">' + minis + '</div>', { w: 460 });
+      body.addEventListener('click', function (e) {
+        var b = e.target.closest('[data-gz-pack]'); if (b && !b.disabled) { packGame(+b.getAttribute('data-gz-pack')); return; }
+        var m = e.target.closest('[data-gz-mini]'); if (m && !m.disabled) { var k = m.getAttribute('data-gz-mini'); if (k === 'find') findGame(); else loadGame(); }
+      });
     }
     function packGame(id) {
       var o = st.orders.filter(function (x) { return x.id === id; })[0]; if (!o || need(o).length) return;
@@ -214,6 +233,93 @@
         if (st.coins < c || l >= EMP[k].max || st.lvl < EMP[k].lvl) return; st.coins -= c; st.emp[k] = l + 1; GK.sfx.build(); GK.sfx.up(); S.toast(EMP[k].n + (l ? ': уровень ' + (l + 1) : ' нанят'), 'ok'); dirty(true); S.closeSheet(); teamSheet();
       });
     }
+    /* сортировочный центр: ящики со склада (сверх нужного открытым заказам) идут по ленте и приносят монеты */
+    function centerSheet() {
+      var rate = ctrRate(st), weak = ctrWeak(st);
+      var rows = Object.keys(CTR).map(function (k) {
+        var l = st.ctr[k], max = l >= CTR_MAX, c = ctrCost(k, l);
+        return '<div class="gk-it"><span class="t"><b>' + CTR[k].n + ' · ' + l + '/' + CTR_MAX + (weak === k ? ' <span class="gz-weak">узкое место</span>' : '') + '</b><small>' + CTR[k].d + '</small><div class="gk-bar"><i style="width:' + l / CTR_MAX * 100 + '%"></i></div></span><button class="gk-btn sm" data-gz-ctr="' + k + '"' + (max || st.coins < c ? ' disabled' : '') + '>' + (max ? 'Максимум' : (l ? 'Улучшить ' : 'Построить ') + '<i class="gz-coin"></i>' + fmt(c)) + '</button></div>';
+      }).join('');
+      var body = S.sheet('Сортировочный центр', '<div class="gk-it"><span class="t"><b>' + (rate ? 'Обрабатывает ' + rate + ' ' + plural(rate, 'ящик', 'ящика', 'ящиков') + ' в минуту' : 'Пока не работает') + '</b><small>' + (rate ? 'За каждый ящик платят 70% его цены. Берутся только ящики сверх нужного открытым заказам. Скорость равна слабейшему звену.' : 'Постройте все три звена: скорость центра равна слабейшему из них.') + '</small></span></div><div class="gk-list">' + rows + '</div>', { w: 460 });
+      body.addEventListener('click', function (e) {
+        var b = e.target.closest('[data-gz-ctr]'); if (!b || b.disabled) return;
+        var k = b.getAttribute('data-gz-ctr'), l = st.ctr[k], c = ctrCost(k, l); if (st.coins < c || l >= CTR_MAX) return;
+        st.coins -= c; st.ctr[k] = l + 1; GK.sfx.build(); GK.sfx.up(); dirty(true); S.closeSheet(); centerSheet();
+      });
+    }
+    function ctrProcess() {
+      var res = {}; st.orders.forEach(function (o) { o.items.forEach(function (p) { res[p.k] = (res[p.k] || 0) + p.n; }); });
+      var best = null, sur = 0; unlockedItems(st).forEach(function (k) { var s = (st.stock[k] || 0) - (res[k] || 0); if (s > sur) { sur = s; best = k; } });
+      if (!best) return false;
+      st.stock[best]--; addCoins(Math.round(ITEMS[best].base * .7)); addXp(1);
+      flyers.push({ t: 0, d: 2.2, kind: 'crate', k: best, from: [8.0, 2.6, 1.7], to: [14.5, 2.6, 1.7], flat: 1 }); dirty(); return true;
+    }
+
+    /* мини-игры: срочные задания за 2 энергии с перерывом */
+    function miniCd(k) { return Math.max(0, ((st.cd[k] || 0) - Date.now()) / 1000); }
+    function miniStart(k) {
+      if (st.lvl < MINI[k].lvl) return false;
+      if (miniCd(k) > 0) { S.toast('Ещё ' + GK.dur(miniCd(k)) + ' до следующей попытки', 'warn'); return false; }
+      if (!E.has(2)) { GK.noEnergy(S, E, st, MINI[k].n); return false; }
+      E.spend(2); st.cd[k] = Date.now() + MINI[k].cd * 1000; return true;
+    }
+    function miniEnd(k, win, frac, mistakes) {
+      var coins = win ? Math.round((40 + 25 * st.lvl) * clamp(.5 + .5 * frac, .3, 1) * Math.max(.4, 1 - .1 * (mistakes || 0))) : 10 * st.lvl;
+      addCoins(coins); if (win) st.stats.mini = (st.stats.mini || 0) + 1; GK.sfx[win ? 'win' : 'err']();
+      S.closeSheet(); S.toast((win ? 'Готово' : 'Время вышло') + ': +' + fmt(coins) + ' монет', win ? 'gold' : 'warn'); addXp(win ? 6 + st.lvl : 2); dirty(true); return coins;
+    }
+    function findGame() {
+      if (!miniStart('find')) return;
+      var codes = []; 'АБВГД'.split('').forEach(function (l) { for (var i = 1; i <= 4; i++) codes.push(l + i); });
+      for (var i = codes.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)), t = codes[i]; codes[i] = codes[j]; codes[j] = t; }
+      var target = codes[Math.floor(Math.random() * codes.length)], limit = Math.max(9, 16 - st.lvl * .4), t0 = performance.now(), mistakes = 0, done = false, raf = 0;
+      var cells = codes.map(function (c, n) { return '<button type="button" class="gz-cell" data-c="' + c + '" style="--h:' + ((n * 37) % 360) + '">' + c + '</button>'; }).join('');
+      var body = S.sheet('Поиск: найдите коробку', '<p class="gk-lead">Найдите коробку с маркировкой <b class="gz-tg">' + target + '</b></p><div class="gk-bar"><i id="gz-tm" style="width:100%"></i></div><div class="gz-grid5">' + cells + '</div><p class="gk-note">Ошибка отнимает время.</p>', { w: 440, onclose: function () { done = true; cancelAnimationFrame(raf); } });
+      var bar = body.querySelector('#gz-tm');
+      (function tick() { if (done) return; var left = limit - (performance.now() - t0) / 1000 - mistakes * 1.5; bar.style.width = clamp(left / limit * 100, 0, 100) + '%'; if (left <= 0) { done = true; miniEnd('find', false, 0, mistakes); return; } raf = requestAnimationFrame(tick); })();
+      body.addEventListener('click', function (e) {
+        var b = e.target.closest('.gz-cell'); if (!b || done) return;
+        if (b.getAttribute('data-c') === target) { done = true; cancelAnimationFrame(raf); var left = limit - (performance.now() - t0) / 1000 - mistakes * 1.5; miniEnd('find', true, clamp(left / limit, 0, 1), mistakes); }
+        else { mistakes++; b.classList.add('bad'); b.disabled = true; GK.sfx.err(); }
+      });
+    }
+    function loadGame() {
+      if (!miniStart('load')) return;
+      var GW = 6, GH = 4, pieces = [];
+      (function split(x0, y0, w, h, depth) {   // делим кузов на прямоугольники: решение всегда существует
+        if (w * h <= 2 || depth > 4 || (w * h <= 4 && Math.random() < .55)) { pieces.push({ w: w, h: h, sx: x0, sy: y0 }); return; }
+        if ((w >= h && w >= 2) || h < 2) { var a = 1 + Math.floor(Math.random() * (w - 1)); split(x0, y0, a, h, depth + 1); split(x0 + a, y0, w - a, h, depth + 1); }
+        else { var bb = 1 + Math.floor(Math.random() * (h - 1)); split(x0, y0, w, bb, depth + 1); split(x0, y0 + bb, w, h - bb, depth + 1); }
+      })(0, 0, GW, GH, 0);
+      W.__gzLoad = pieces;
+      pieces.forEach(function (p, i) { p.id = i; p.h0 = (i * 53 + 20) % 360; p.x = -1; p.y = -1; });
+      var sel = null, limit = 55, t0 = performance.now(), done = false, raf = 0;
+      var body = S.sheet('Погрузка: заполните кузов', '<div class="gk-bar"><i id="gz-tm" style="width:100%"></i></div><div class="gz-ld" id="gz-ld"></div><p class="gk-note">Выберите коробку, затем нажмите клетку кузова (левый верхний угол). Нажатие на уложенную коробку снимает её.</p>', { w: 440, onclose: function () { done = true; cancelAnimationFrame(raf); } });
+      var box = body.querySelector('#gz-ld'), bar = body.querySelector('#gz-tm');
+      function occ() { var g = []; for (var y = 0; y < GH; y++) { g.push([]); for (var x = 0; x < GW; x++) g[y].push(-1); } pieces.forEach(function (p) { if (p.x >= 0) for (var yy = 0; yy < p.h; yy++) for (var xx = 0; xx < p.w; xx++) g[p.y + yy][p.x + xx] = p.id; }); return g; }
+      function paint() {
+        var g = occ(), cells = '';
+        for (var y = 0; y < GH; y++) for (var x = 0; x < GW; x++) { var id = g[y][x]; cells += '<button type="button" class="gz-lc' + (id >= 0 ? ' f' : '') + '" data-x="' + x + '" data-y="' + y + '"' + (id >= 0 ? ' style="--h:' + pieces[id].h0 + '"' : '') + '></button>'; }
+        var tray = pieces.filter(function (p) { return p.x < 0; }).map(function (p) { return '<button type="button" class="gz-pc' + (sel === p.id ? ' on' : '') + '" data-p="' + p.id + '" style="--h:' + p.h0 + ';--w:' + p.w + ';--hh:' + p.h + '">' + p.w + '×' + p.h + '</button>'; }).join('');
+        box.innerHTML = '<div class="gz-truck" style="--gw:' + GW + '">' + cells + '</div><div class="gz-tray">' + tray + '<button type="button" class="gk-btn sm g" data-rot="1"' + (sel == null ? ' disabled' : '') + '>Повернуть</button></div>';
+      }
+      paint();
+      (function tick() { if (done) return; var left = limit - (performance.now() - t0) / 1000; bar.style.width = clamp(left / limit * 100, 0, 100) + '%'; if (left <= 0) { done = true; var filled = pieces.filter(function (p) { return p.x >= 0; }).reduce(function (a, p) { return a + p.w * p.h; }, 0); miniEnd('load', filled >= GW * GH * .75, filled / (GW * GH) * .5, 0); return; } raf = requestAnimationFrame(tick); })();
+      box.addEventListener('click', function (e) {
+        if (done) return; var t = e.target.closest('button'); if (!t) return;
+        if (t.hasAttribute('data-p')) { var id = +t.getAttribute('data-p'); sel = sel === id ? null : id; GK.sfx.click(); paint(); }
+        else if (t.hasAttribute('data-rot')) { var pp = pieces[sel]; if (pp) { var w = pp.w; pp.w = pp.h; pp.h = w; GK.sfx.click(); paint(); } }
+        else if (t.hasAttribute('data-x')) {
+          var x = +t.getAttribute('data-x'), y = +t.getAttribute('data-y'), g = occ();
+          if (g[y][x] >= 0) { var q = pieces[g[y][x]]; q.x = q.y = -1; sel = q.id; GK.sfx.pick(); paint(); return; }
+          var p = sel != null ? pieces[sel] : null; if (!p) return;
+          if (x + p.w > GW || y + p.h > GH) { GK.sfx.err(); return; }
+          for (var yy = 0; yy < p.h; yy++) for (var xx = 0; xx < p.w; xx++) if (g[y + yy][x + xx] >= 0) { GK.sfx.err(); return; }
+          p.x = x; p.y = y; sel = null; GK.sfx.drop(); paint();
+          if (pieces.every(function (r) { return r.x >= 0; })) { done = true; cancelAnimationFrame(raf); var left = limit - (performance.now() - t0) / 1000; miniEnd('load', true, clamp(left / limit, 0, 1), 0); }
+        }
+      });
+    }
     /* события: случайные, раз в несколько минут */
     function fireEvent(kind) {
       var now = Date.now();
@@ -259,7 +365,7 @@
       h.hidden = tutor.active() || S.sheetOpen(); h.textContent = msg; a.hidden = !act || tutor.active() || S.sheetOpen(); a.textContent = act; a._act = act;
     }
     $('.gz-act').addEventListener('click', function () { if (this._act === 'Разгрузить фуру') unload(st.trucks.filter(function (t) { return t.s === 'wait'; })[0]); else ordersSheet(); });
-    S.root.addEventListener('click', function (e) { var b = e.target.closest('[data-gz]'); if (!b) return; GK.sfx.click(); var k = b.getAttribute('data-gz'); if (k === 'orders') ordersSheet(); else if (k === 'stock') stockSheet(); else if (k === 'team') teamSheet(); else if (k === 'rewards') rewardsSheet(); });
+    S.root.addEventListener('click', function (e) { var b = e.target.closest('[data-gz]'); if (!b) return; GK.sfx.click(); var k = b.getAttribute('data-gz'); if (k === 'orders') ordersSheet(); else if (k === 'stock') stockSheet(); else if (k === 'team') teamSheet(); else if (k === 'center') centerSheet(); else if (k === 'rewards') rewardsSheet(); });
 
     /* ---- ввод: нажатие по фуре и по складу */
     function truckRect(tr) {
@@ -275,7 +381,7 @@
     function truckOff(tr) { return tr.s === 'in' ? -24 * (1 - GK.ease(clamp(tr.t, 0, 1))) : tr.s === 'out' ? -24 * GK.ease(clamp(tr.t, 0, 1)) : 0; }
 
     /* ---- обновление */
-    var lastHud = 0, secT = 0, acc = { loader: 0, picker: 0 };
+    var lastHud = 0, secT = 0, acc = { loader: 0, picker: 0, ctr: 0 };
     function update(dt) {
       T += dt; var now = Date.now();
       if (ready) {
@@ -288,6 +394,8 @@
         }
         if (now >= st.nextOrder && st.orders.length < maxOrders(st)) { st.orders.push(orderGen()); st.nextOrder = now + (22 + Math.random() * 25) * 1000 * (1 - .06 * (st.emp.disp || 0)); GK.sfx.click(); dirty(); }
         else if (now >= st.nextOrder) st.nextOrder = now + 8000;
+        // сортировочный центр
+        var cr = st.lvl >= CTR_LVL ? ctrRate(st) : 0; if (cr > 0) { acc.ctr += dt; if (acc.ctr >= 60 / cr) { acc.ctr = 0; ctrProcess(); } }
         // сотрудники работают сами: энергию не тратят
         if (st.emp.loader) { acc.loader += dt; if (acc.loader >= EMP.loader.every(st.emp.loader)) { acc.loader = 0; var wt = st.trucks.filter(function (t) { return t.s === 'wait'; })[0]; if (wt) unload(wt, true); } }
         if (st.emp.picker) { acc.picker += dt; if (acc.picker >= EMP.picker.every(st.emp.picker)) { acc.picker = 0; var ro = st.orders.filter(function (o) { return !need(o).length; })[0]; if (ro) completeOrder(ro, 1 + .05 * st.emp.picker, 'auto'); } }
@@ -309,6 +417,7 @@
       var need_ = xpNeed(st.lvl);
       lvChip.querySelector('b').textContent = st.lvl; lvChip.querySelector('.bar i').style.width = (st.lvl >= LVL_MAX ? 100 : Math.min(100, st.xp / need_ * 100)) + '%'; lvChip.title = st.lvl >= LVL_MAX ? 'Максимальный уровень' : 'Опыт ' + st.xp + ' из ' + need_;
       coinChip.lastChild.textContent = fmt(st.coins); rateChip.lastChild.textContent = String(st.rating.toFixed(1)).replace('.', ','); enUI(st);
+      $('[data-gz="center"]').hidden = st.lvl < CTR_LVL;
       var rd = st.orders.filter(function (o) { return !need(o).length; }).length, em = $('[data-gz="orders"] em'); em.hidden = !rd; em.textContent = rd;
     }
 
@@ -355,7 +464,7 @@
       });
       // летающие ящики и посылки
       flyers.forEach(function (f) {
-        if (f.t < 0) return; var k = GK.ease(clamp(f.t / f.d, 0, 1)), x = GK.lerp(f.from[0], f.to[0], k), y = GK.lerp(f.from[1], f.to[1], k), z = GK.lerp(f.from[2], f.to[2], k) + Math.sin(k * PI) * 2.6;
+        if (f.t < 0) return; var k = GK.ease(clamp(f.t / f.d, 0, 1)), x = GK.lerp(f.from[0], f.to[0], k), y = GK.lerp(f.from[1], f.to[1], k), z = GK.lerp(f.from[2], f.to[2], k) + (f.flat ? 0 : Math.sin(k * PI) * 2.6);
         spr(f.kind === 'parcel' ? 'parcel' : ITEMS[f.k].spr, x, y, z, 1);
       });
       parts.draw(cx, 0, 0);
@@ -381,7 +490,7 @@
       S.loaded(); S.sheet('Нет связи', '<p class="gk-lead">Не удалось загрузить графику игры. Проверьте интернет и попробуйте ещё раз.</p><div class="gk-row"><button class="gk-btn" id="gz-retry" type="button">Повторить</button><button class="gk-btn g" id="gz-quit" type="button">Выйти</button></div>', { noClose: true, w: 380 });
       $('#gz-retry').addEventListener('click', function () { location.reload(); }); $('#gz-quit').addEventListener('click', function () { S.onclose(); });
     });
-    W.__gz = { fireEvent: fireEvent, offlineClaim: offlineClaim, teamSheet: teamSheet, completeOrder: completeOrder, sNow: sNow, st: st, S: S, ordersSheet: ordersSheet, stockSheet: stockSheet, unload: unload, packGame: packGame, cam: cam, tutor: tutor, update: update, E: E, w2s: w2s, truckRect: truckRect, I: I };
+    W.__gz = { centerSheet: centerSheet, ctrProcess: ctrProcess, findGame: findGame, loadGame: loadGame, fireEvent: fireEvent, offlineClaim: offlineClaim, teamSheet: teamSheet, completeOrder: completeOrder, sNow: sNow, st: st, S: S, ordersSheet: ordersSheet, stockSheet: stockSheet, unload: unload, packGame: packGame, cam: cam, tutor: tutor, update: update, E: E, w2s: w2s, truckRect: truckRect, I: I };
     return { close: function () { S.onclose(); } };
   }
 
@@ -400,6 +509,11 @@
       '.gz-ord .no{color:#ff8a80}.gz-ord.hot{border-color:rgba(255,138,128,.6)}.gz-pay{display:inline-flex;align-items:center;gap:3px;color:#ffd34d;font-size:.82rem;margin-left:8px}.gz-pay .gz-coin{width:13px;height:13px}' +
       '.gz-crate{display:block;width:28px;height:28px;border-radius:7px;background:var(--c);box-shadow:inset 0 0 0 3px rgba(0,0,0,.14),inset 0 -6px 0 rgba(0,0,0,.12)}.gz-h{margin:6px 0 0;font-size:.95rem}' +
       '.gz-meter{position:relative;height:40px;border-radius:12px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);overflow:hidden;touch-action:manipulation}.gz-meter .z{position:absolute;top:0;bottom:0;background:linear-gradient(180deg,#5ef08a,#1fae55);opacity:.9}.gz-meter .p{position:absolute;top:-2px;bottom:-2px;width:8px;margin-left:-4px;border-radius:6px;background:#fff;box-shadow:0 0 12px rgba(255,255,255,.8)}' +
+      '.gz-d[hidden]{display:none}@media (max-width:480px){.gz-d{padding:0 9px;font-size:.78rem}.gz-dock{gap:4px;padding:5px;max-width:calc(100vw - 10px)}}' +
+      '.gz-weak{margin-left:6px;padding:2px 7px;border-radius:8px;background:rgba(255,138,128,.22);color:#ff8a80;font-size:.7rem;font-weight:800;vertical-align:1px;white-space:nowrap;display:inline-block}' +
+      '.gz-grid5{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}.gz-cell{height:46px;border-radius:10px;border:1px solid rgba(255,255,255,.2);background:hsl(var(--h) 55% 38%);font-weight:800;font-size:.95rem;color:#fff}.gz-cell.bad{opacity:.35;background:#444}.gz-tg{color:#ffd34d;font-size:1.2rem}' +
+      '.gz-truck{display:grid;grid-template-columns:repeat(var(--gw),1fr);gap:3px;padding:8px;border-radius:14px;background:rgba(255,255,255,.08);border:2px solid rgba(255,255,255,.25)}.gz-lc{aspect-ratio:1;border-radius:6px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06)}.gz-lc.f{background:hsl(var(--h) 60% 48%);border-color:rgba(255,255,255,.4)}' +
+      '.gz-tray{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px}.gz-pc{min-width:calc(var(--w) * 26px + 14px);height:calc(var(--hh) * 26px + 14px);border-radius:10px;border:2px solid rgba(255,255,255,.3);background:hsl(var(--h) 60% 48%);font-weight:800;font-size:.8rem;color:#fff}.gz-pc.on{outline:3px solid #ffd34d}' +
       '.gz .gk-tut{z-index:25}';
     document.head.appendChild(s);
   }
