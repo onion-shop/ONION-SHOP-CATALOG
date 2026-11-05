@@ -237,10 +237,15 @@ var OnionCore = (function () {
   function validEmail(e) { return /^[^\s@]{1,64}@[^\s@]+\.[a-z]{2,}$/i.test(e) && e.length <= 120; }
   function validTg(t) { return /^[A-Za-z0-9_]{4,32}$/.test(t); }
   // ---------------------------------------------------------------- задания: день / неделя / месяц
+  // порядок обработки заказов менеджером: сначала уровни с приоритетом (от старшего), потом платный «Приоритетный заказ», потом остальные
+  function priorityOrder() { return RULES.levels.filter(function (L) { return L.priority; }).map(function (L) { return L.name; }).reverse(); }
+  function taskLine(i) { return taskCount('d', i) + ' ежедневных, ' + taskCount('w', i) + ' еженедельных, ' + taskCount('m', i) + ' ежемесячных'; }
   // первая привилегия каждого уровня считается из taskCount(): числа не расходятся с правилами выдачи заданий
   RULES.levels.forEach(function (L, i) {
-    L.perks[0] = ['Ежедневных заданий: ' + taskCount('d', i), 'Еженедельных: ' + taskCount('w', i) + ', ежемесячных: ' + taskCount('m', i)];
+    L.perks[0] = ['Задания', taskLine(i)];
+    L.perks.forEach(function (pk) { if (/приоритет заказов/i.test(pk[0])) pk[1] = 'Порядок обработки: ' + priorityOrder().join(', '); });
   });
+  RULES.taskLine = taskLine; RULES.priorityOrder = priorityOrder;
   var TASK = {}; RULES.tasks.forEach(function (t) { TASK[t.key] = t; });
   var TASK_UNIQ = { view: 150, fav: 60, cart: 60, share: 60, sale: 60, vc: 150 }; // считаем разные товары, а не повторные нажатия
   var CLIENT_EV = ['view', 'fav', 'cart', 'share', 'pre', 'stock', 'info', 'search', 'brand', 'price', 'zoom', 'measure', 'mgr'];
@@ -920,12 +925,21 @@ var OnionCore = (function () {
   }
   function whenText(ms) { var d = msk(ms); return pad(d.getUTCDate(), 2) + '.' + pad(d.getUTCMonth() + 1, 2) + '.' + d.getUTCFullYear() + ', ' + pad(d.getUTCHours(), 2) + ':' + pad(d.getUTCMinutes(), 2) + ' (МСК)'; }
 
+  // значение колонки «Приоритет» в таблице: номер очереди и название, сортируется по возрастанию («№1 Алмаз», «№4 Платный»)
+  function prioCell(priority, li, paid, u) {
+    var ord = priorityOrder(), r = priority && li ? ord.indexOf(li.name) + 1 : 0;
+    if (r) return '№' + r + ' ' + li.name + (paid ? ' · платный' : '');
+    return paid ? '№' + (ord.length + 1) + ' Платный' : (u ? 'Обычный' : '');
+  }
+
   /** Текст заказа для менеджера. o: {no, at, f (поля анкеты), lines:[{title,status,size,color,photoNo,note,qty,price,link}], total, tokens, tokenRub, promo, promoRub, toPay, user} */
   function orderText(o) {
     var f = o.f, L = [], hasPre = false, hasStock = false, hasOut = false, cnt = 0;
     L.push('🛍 ЗАКАЗ ONION SHOP · №' + o.no);
-    if (o.f.vip === true) L.push('⚡ ПРИОРИТЕТНЫЙ ЗАКАЗ (+' + RULES.vipPrice + ' ₽, оплачено в заказе), клиент просит уделить заказу особое внимание');
-    if (o.priority) L.push('⭐ ПРИОРИТЕТ: ' + o.priority.toUpperCase() + ' (уровень ' + o.user.levelName + ')');
+    var pOrder = priorityOrder(), pRank = o.priority && o.user ? pOrder.indexOf(o.user.levelName) + 1 : 0, pTotal = pOrder.length + 1;
+    if (pRank) L.push('⭐ ПРИОРИТЕТ УРОВНЯ: ' + o.priority.toUpperCase() + ' (' + o.user.levelName + '), очередь №' + pRank + ' из ' + pTotal);
+    if (o.f.vip === true) L.push('⚡ ПЛАТНЫЙ ПРИОРИТЕТ (+' + RULES.vipPrice + ' ₽, оплачено в заказе)' + (pRank ? ', очередь определяет уровень' : ', очередь №' + pTotal + ' из ' + pTotal + ', после ' + pOrder.join(', ')));
+    if (pRank || o.f.vip === true) L.push('📋 Порядок обработки: ' + pOrder.join(', ') + ', платный приоритет, остальные заказы');
     L.push('📅 ' + whenText(o.at));
     L.push('');
     L.push('👤 ПОКУПАТЕЛЬ');
@@ -1096,7 +1110,7 @@ var OnionCore = (function () {
     var order = {
       no: no, seq: seq, at: at, userId: u ? u.id : '', login: u ? u.login : '', name: String(f.name).trim(), phone: fmtPhone(f.phone), tg: cleanTg(f.tg) ? '@' + cleanTg(f.tg) : '', status: 'Оформлен',
       items: built.lines.map(function (l) { return { id: l.id, title: l.title, qty: l.qty, price: l.price, size: l.size, color: l.color, photo: l.photo, thumb: l.thumb, status: l.status }; }),
-      count: cnt, total: total, tokens: tokens, tokenRub: tokenRub, promo: promo, promoRub: promoRub, vipRub: vipRub, toPay: toPay, priority: f.vip === true ? '⚡ Приоритетный' + (priority ? ' · ' + priority : '') : (priority || (u ? 'Обычный' : '')), pack: pack, level: li ? li.name : '',
+      count: cnt, total: total, tokens: tokens, tokenRub: tokenRub, promo: promo, promoRub: promoRub, vipRub: vipRub, toPay: toPay, priority: prioCell(priority, li, f.vip === true, u), pack: pack, level: li ? li.name : '',
       kind: hasPre && hasStock ? 'смешанный' : hasPre ? 'предзаказ' : (hasOut && !built.lines.some(function (l) { return l.status === 'stock'; })) ? 'временно нет' : 'в наличии', comment: String(f.comment || '').trim(), text: text
     };
     if (u && taskRew.length) order.taskRew = JSON.stringify(taskRew);

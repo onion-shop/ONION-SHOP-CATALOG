@@ -1335,7 +1335,6 @@ details.fold[open]>summary .i{transform:rotate(180deg)}
 .hero-dots button.on{width:24px;background:#fff}
 @media (min-width:760px){.hero{aspect-ratio:21/9;max-height:520px}.hs img{object-position:center 30%}.hs-cap{padding:70px 36px 44px}}
 .badge-hit{background:#0b1d3a;color:#fff}
-.bn-rec .bn-txt b::before{content:"★ ";color:#ffd23f}
 @media (prefers-reduced-motion: reduce){.hs,.hs img{transition:none}}
 @media (min-width:760px){
   .hero{aspect-ratio:auto;height:440px;max-height:none;background:linear-gradient(120deg,#0b1d3a,#124a8c 70%,#1a86c0)}

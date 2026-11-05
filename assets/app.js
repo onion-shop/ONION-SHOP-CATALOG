@@ -1291,7 +1291,7 @@
       '<div class="cl-top"><button type="button" class="cl-all" id="cl-all" aria-pressed="' + allOn + '"><span class="cl-chk' + (allOn ? ' on' : '') + '">' + icon('check') + '</span>Все</button><span class="cl-cnt">Выбрано: ' + selLines().length + '</span><button type="button" class="cl-clear" id="cl-clear" aria-label="Удалить выбранные" ' + (selLines().length ? '' : 'disabled') + '>' + icon('trash') + '</button></div>' +
       '<div class="cl-list">' + all.map(row).join('') + '</div>' +
       (API.enabled && !acct.user && acct.ready ? '<div class="notice notice-info" style="margin-top:12px">' + icon('user') + '<div><b>Заказ оформляется из кабинета.</b> Войдите, чтобы продолжить.</div></div>' : '') +
-      '<div class="card panel vip-panel"><label class="vip"><span class="vip-t"><b>' + icon('bolt') + 'Приоритетный заказ · ' + rub(RULES.vipPrice) + '</b><small>Менеджер уделит вашему заказу особое внимание и займётся им в первую очередь</small></span><input type="checkbox" id="cl-vip"' + (form.vip ? ' checked' : '') + '><span class="sw-tg"></span></label></div>' +
+      '<div class="card panel vip-panel"><label class="vip"><span class="vip-t"><b>' + icon('bolt') + 'Приоритетный заказ · ' + rub(RULES.vipPrice) + '</b><small>Менеджер возьмёт заказ раньше обычных. Порядок: ' + esc(RULES.priorityOrder().join(', ')) + ', затем платный приоритет.</small></span><input type="checkbox" id="cl-vip"' + (form.vip ? ' checked' : '') + '><span class="sw-tg"></span></label></div>' +
       '<div class="cart-bar"><div class="cb-sub">' + (st.old > st.sum ? '<span class="cb-save">Скидка −' + rub(st.old - st.sum) + '</span>' : '<span></span>') + (form.vip && st.n ? '<span class="cb-vip">⚡ Приоритет +' + rub(RULES.vipPrice) + '</span>' : '') + '</div><button class="cb-go" type="button" id="cb-go"' + (st.n ? '' : ' disabled') + '><span>' + (st.n ? 'К оформлению · ' + st.n : 'Выберите товары') + '</span><b>' + (st.n ? rub(st.sum + (form.vip ? RULES.vipPrice : 0)) : '') + '</b></button></div>';
     var all2 = all;
     $$('.cl', v).forEach(function (rowEl) {
@@ -2181,12 +2181,20 @@
   }
   function renderGames() {
     var v = $('#v-games'), u = acct.user;
-    v.innerHTML = '<div class="pad roul-head" style="padding:0 0 10px"><div><h1>Игры</h1><p class="roul-sub">Посылки с призами и две большие игры</p></div></div>' +
+    v.innerHTML = backRow('gm-back') + '<div class="pad roul-head" style="padding:0 0 10px"><div><h1>Игры</h1><p class="roul-sub">Посылки с призами и две большие игры</p></div></div>' +
       '<div class="gm-grid3">' +
       '<a class="gm-card gm-p" href="#roulette"><span class="gm-ic">' + icon('gift', 'lg') + '</span><h2>Посылка с сюрпризом</h2><p>Рентген показывает приз: ониксы, промокод, опыт или рамка для аватара.</p><span class="gm-tag">' + (u ? (u.freeSpins ? 'Бесплатных посылок: ' + u.freeSpins : 'Раз в день бесплатно') : 'Раз в день бесплатно') + '</span></a>' +
       GAME_LIST.map(function (g) {
         return '<a class="gm-card gm-big gm-' + g.id + '" href="#' + g.id + '">' + gameCover(g.id) + '<div class="gm-in"><span class="gm-kind">' + esc(g.tag) + '</span><h2>' + esc(g.name) + '</h2><p>' + esc(g.d) + '</p><span class="gm-play">' + (u ? 'Играть' : 'Войти и играть') + '</span></div></a>';
       }).join('') + '</div>';
+    var gb = $('#gm-back', v); if (gb) gb.addEventListener('click', gamesBack);
+  }
+  // «Назад» в играх: из «Игр» туда, откуда пришли (последний экран вне игр), без истории: кабинет или главная
+  function backRow(id) { return '<div class="back-row"><button class="back-btn" type="button" id="' + id + '" aria-label="Назад">' + icon('arrow-right') + 'Назад</button></div>'; }
+  function gamesBack() {
+    var t = lastOutside;
+    if (typeof t !== 'string' || t === 'games') t = acct.user ? 'account' : '';
+    location.hash = t;
   }
   function loadJs(src) {
     return new Promise(function (res, rej) {
@@ -2398,7 +2406,7 @@
     if (!API.enabled) { v.innerHTML = '<div class="empty"><span class="ico">' + icon('gift') + '</span><h3>Посылка скоро появится</h3><a class="btn" href="#catalog">В каталог</a></div>'; return; }
     var u = acct.user, busyNow = false, idleI = 0, IDLE = ['t100', 'xp100', 'promo', 'frame', 're1', 't500'];
     var CAP0 = '<b>Что внутри?</b><span>Посылка проходит рентген, и вы сразу видите приз</span>';
-    v.innerHTML = '<div class="pad roul-head" style="padding:0 0 10px"><div><h1>Посылка с сюрпризом</h1></div></div>' +
+    v.innerHTML = backRow('rl-back') + '<div class="pad roul-head" style="padding:0 0 10px"><div><h1>Посылка с сюрпризом</h1></div></div>' +
       '<section class="px" id="px">' +
       '<div class="rl-bar">' + (u ? '<span class="rl-chipb" id="roul-bal"></span><span class="rl-free" id="roul-free"></span>' : '<span class="rl-chipb">' + rlUse('i-token', 26) + '<span>Посылка</span></span><span class="rl-free">Войдите, чтобы открыть</span>') + '</div>' +
       '<div class="px-station">' +
@@ -2490,6 +2498,7 @@
       }, function () { shown = true; fail('Нет связи, попробуйте ещё раз'); });
     }
     setState('idle', 'ГОТОВ'); updateRoulBalance(); idleOn(); put(xWait());
+    var rb = $('#rl-back', v); if (rb) rb.addEventListener('click', function () { location.hash = 'games'; });
     var g = $('#spin-guest', v); if (g) g.addEventListener('click', function () { requireAuth('roulette'); });
     var pbtn = $('#spin-paid', v); if (pbtn) pbtn.addEventListener('click', function () { doOpen(false); });
     var fb = $('#spin-free', v); if (fb) fb.addEventListener('click', function () { doOpen(true); });
@@ -2535,8 +2544,8 @@
       faqItem('Где взять ониксы', '<ul><li>+' + R.register + ' за регистрацию</li><li>+' + R.checkin + ' за вход каждый день и от ' + L[0].streak + ' до ' + L[4].streak + ' за 7 дней подряд, зависит от уровня</li><li>Задания: ежедневные по 3 оникса, еженедельные по 25, ежемесячные от 40</li><li>Посылка</li><li>+' + R.referrer + ' за друга и +' + R.birthday + ' в день рождения</li></ul><p>Ониксы не сгорают и не передаются другим людям. Пока на балансе больше ' + num(RULES.balanceCap) + ' ониксов, вход, задания и посылка дают опыт вместо ониксов (2 оникса = 1 XP). Ониксы за заказы, отзывы, друзей и день рождения начисляются всегда.</p>'),
       faqItem('Промокоды', '<p>Личные промокоды выпадают в посылке. С уровня «Золото» раз в месяц даётся промокод −1,5%, а на «Алмазе» ещё 3 промокода по −2,5% в месяц. Они появляются в кабинете, а в корзине выбираются последним шагом. Каждый действует на один заказ.</p><p>Промокоды магазина вводятся вручную в поле «Промокод» в корзине.</p>'),
       faqItem('Как зарабатывается XP', '<ul><li>Полученный заказ: 1 XP за каждые 10 ₽ (когда статус «Получен»)</li><li>Ежедневный вход: +' + RULES.xpReward.checkin + ' XP</li><li>Задания: ежедневные +10 XP, еженедельные +60 XP, ежемесячные +180 XP</li><li>Посылка: призы от ' + Math.min.apply(null, RULES.wheel.filter(function (w) { return w.xp; }).map(function (w) { return w.xp; })) + ' до ' + Math.max.apply(null, RULES.wheel.filter(function (w) { return w.xp; }).map(function (w) { return w.xp; })) + ' XP</li></ul>'),
-      faqItem('Как работают уровни', '<p>Уровень зависит от XP (опыта), набранного за месяц. 1-го числа XP обнуляется, и уровень начинается заново с Бронзы.</p><button class="btn btn-ghost btn-sm" type="button" id="info-levels">Привилегии уровней</button>'),
-      faqItem('Задания: когда обновляются', '<ul><li>Ежедневные: в 00:00 по Москве. Простые: ониксы и XP, чем выше уровень, тем их больше.</li><li>Еженедельные: в понедельник. «Оформить заказ» засчитывается сразу при оформлении.</li><li>Ежемесячные: 1-го числа. Заказы засчитываются, когда статус «Получен».</li></ul>'),
+      faqItem('Как работают уровни', '<p>Уровень зависит от XP (опыта), набранного за месяц. 1-го числа XP обнуляется, и уровень начинается заново с Бронзы.</p><p>Заказы берутся в работу по порядку: ' + esc(RULES.priorityOrder().join(', ')) + '. Затем идёт платный «Приоритетный заказ» (' + rub(RULES.vipPrice) + ') для тех, у кого такой привилегии нет, потом обычные заказы.</p><button class="btn btn-ghost btn-sm" type="button" id="info-levels">Привилегии уровней</button>'),
+      faqItem('Задания: когда обновляются', '<ul><li>Ежедневные: в 00:00 по Москве. Простые: ониксы и XP, чем выше уровень, тем их больше.</li><li>Еженедельные: в понедельник. «Оформить заказ» засчитывается сразу при оформлении.</li><li>Ежемесячные: 1-го числа. Заказы засчитываются, когда статус «Получен».</li></ul><p class="small">Сколько заданий на уровне:</p><ul>' + L.map(function (l) { return '<li><b>' + esc(l.name) + '</b>: ' + esc(l.perks[0][1]) + '</li>'; }).join('') + '</ul>'),
       faqItem('Посылка: как это работает', '<ul><li>1 бесплатная посылка каждый день на любом уровне, на «Алмазе» их 3. Не копятся: обновляются в 00:00 по Москве.</li><li>Дальше посылка стоит ' + RULES.spinCost + ' ониксов. «Ещё раз» даёт бесплатные посылки, они не сгорают.</li><li>На «Платине» и «Алмазе» «Пусто» выпадает реже.</li><li>Призы и шансы у бесплатной и платной посылки одинаковые.</li><li>Ониксы из посылки сразу на балансе, промокод выбирается в корзине, XP идут в уровень месяца.</li></ul>')
     ] : [];
     var shop = [faqItem('Магазин и связь', contactsCard()), faqItem('Мы в соцсетях', socialCard())];
@@ -2546,7 +2555,7 @@
   }
 
   // ------------------------------------------------------------ маршруты
-  var skipHash = null, catBack = null, routed = 0;
+  var skipHash = null, catBack = null, routed = 0, lastOutside; // lastOutside: последний экран вне «Игр», куда вернёт «Назад» из раздела
   function silentHash(h) { if (location.hash.slice(1) === h) return; skipHash = h; location.hash = h; }
   function go(h) { if (location.hash.slice(1) === h || (!h && !location.hash)) route(); else location.hash = h; }
   function setNav(h) {
@@ -2593,6 +2602,7 @@
       if (!acct.user) { authTab = 'register'; toast('Приглашение принято: +' + RULES.reward.refFriend + ' ониксов при регистрации'); }
       history.replaceState(null, '', location.pathname + location.search + '#account'); h = 'account';
     }
+    if (!/^(games|roulette|gruz|rub)$/.test(h)) lastOutside = (h === 'home') ? '' : h;
     closeModal(); closeLightbox(); hideBuybar(); stopHomeTimers();
     // запоминаем место в каталоге, когда уходим из него в товар; вернёмся к этой же карточке
     var restore = null;
