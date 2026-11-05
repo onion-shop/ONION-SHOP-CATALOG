@@ -2243,7 +2243,7 @@ html.dr-open{overflow:hidden}
 .fr-it.lk .ava::after{animation:none}
 .fr-on{position:absolute;right:calc(50% - 32px);top:44px;width:20px;height:20px;border-radius:50%;display:grid;place-items:center;background:var(--accent);color:#fff;box-shadow:0 0 0 2px var(--card)}
 .fr-on .i{width:12px;height:12px}
-:root[data-theme="dark"] @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .fr-t .fr-acts{display:flex;gap:8px;flex-wrap:wrap}
+.fr-t .fr-acts{display:flex;gap:8px;flex-wrap:wrap}
 @media (max-width:420px){.fr-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 /* v49: статус на карточке всегда в одну строку, как «В наличии» и «Предзаказ» */
 .pcard .tags .badge{white-space:nowrap;text-wrap:nowrap;height:24px;min-height:0;padding-top:0;padding-bottom:0;line-height:1}
@@ -2267,6 +2267,7 @@ html.dr-open{overflow:hidden}
 .cl-more .i{width:22px;height:22px;fill:currentColor;stroke:none}
 .cl-more:hover,.cl-more[aria-expanded="true"]{background:var(--tile);color:var(--ink)}
 .cl .cl-pr{padding-right:34px}
+.line .cl-more{position:static;flex:none;background:var(--tile)}
 .cl-mbg{position:fixed;inset:0;z-index:94;background:transparent}
 .cl-menu{position:fixed;z-index:95;width:max-content;min-width:236px;max-width:calc(100vw - 16px);padding:6px;border-radius:18px;background:var(--card);box-shadow:var(--shadow-lg),0 0 0 1px rgba(128,140,170,.18);animation:clMenu .16s var(--ease,ease-out);transform-origin:top right}
 .cl-mi{display:flex;align-items:center;gap:12px;width:100%;min-height:48px;padding:0 14px;border:0;border-radius:12px;background:transparent;color:var(--ink);font:inherit;font-size:15.5px;text-align:left;cursor:pointer;-webkit-tap-highlight-color:transparent}
@@ -2275,3 +2276,14 @@ html.dr-open{overflow:hidden}
 .cl-mi.danger,.cl-mi.danger .i{color:var(--red)}
 @keyframes clMenu{from{opacity:0;transform:scale(.94) translateY(-4px)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){.cl-menu{animation:none}}
+
+/* v51: карточка «Частые вопросы» на главной */
+.faqc{display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:var(--r-lg,20px);background:var(--card);box-shadow:var(--shadow);color:var(--ink);text-decoration:none;min-width:0}
+.faqc-ic{flex:none;width:44px;height:44px;border-radius:14px;display:grid;place-items:center;background:var(--grad);color:#fff}
+.faqc-ic .i{width:24px;height:24px}
+.faqc-t{flex:1;min-width:0;display:grid;gap:2px}
+.faqc-t b{font-size:16px;font-weight:800;line-height:1.2}
+.faqc-t small{color:var(--ink-3);font-size:13px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.faqc-go{flex:none;width:32px;height:32px;border-radius:50%;display:grid;place-items:center;background:var(--tile);color:var(--accent-ink)}
+.faqc-go .i{width:18px;height:18px}
+@media (max-width:360px){.faqc{gap:10px;padding:12px}.faqc-ic{width:40px;height:40px;border-radius:12px}.faqc-t small{font-size:11.5px;letter-spacing:-.01em}.faqc-go{width:20px;height:20px;background:none}.faqc-go .i{width:20px;height:20px}}

@@ -80,7 +80,7 @@ var OnionCore = (function () {
       { per: 'd', key: 'stock', title: 'Заглянуть в раздел «В наличии»', hint: 'Вещи, которые уже в Москве', m: 'stock', n: 1, tk: 3, xp: 10 },
       { per: 'd', key: 'cart', title: 'Положить товар в корзину', hint: 'Любой товар', m: 'cart', n: 1, tk: 3, xp: 10 },
       { per: 'd', key: 'cart2', title: 'Положить 2 товара в корзину', hint: 'Два разных товара', m: 'cart', n: 2, tk: 3, xp: 10 },
-      { per: 'd', key: 'info', title: 'Прочитать «Как это работает»', hint: 'Раздел «Инфо» в меню', m: 'info', n: 1, tk: 3, xp: 10 },
+      { per: 'd', key: 'info', title: 'Открыть «Частые вопросы»', hint: 'Раздел в меню', m: 'info', n: 1, tk: 3, xp: 10 },
       { per: 'd', key: 'sale', title: 'Посмотреть 2 товара со скидкой', hint: 'Карточки с зачёркнутой ценой', m: 'sale', n: 2, tk: 3, xp: 10 },
       { per: 'd', key: 'brand', title: 'Открыть товары одного бренда', hint: 'Фильтр «Бренд» в каталоге', m: 'brand', n: 1, tk: 3, xp: 10 },
       { per: 'd', key: 'search', title: 'Найти вещь через поиск', hint: 'Строка поиска вверху сайта', m: 'search', n: 1, tk: 3, xp: 10 },
@@ -237,6 +237,10 @@ var OnionCore = (function () {
   function validEmail(e) { return /^[^\s@]{1,64}@[^\s@]+\.[a-z]{2,}$/i.test(e) && e.length <= 120; }
   function validTg(t) { return /^[A-Za-z0-9_]{4,32}$/.test(t); }
   // ---------------------------------------------------------------- задания: день / неделя / месяц
+  // первая привилегия каждого уровня считается из taskCount(): числа не расходятся с правилами выдачи заданий
+  RULES.levels.forEach(function (L, i) {
+    L.perks[0] = ['Ежедневных заданий: ' + taskCount('d', i), 'Еженедельных: ' + taskCount('w', i) + ', ежемесячных: ' + taskCount('m', i)];
+  });
   var TASK = {}; RULES.tasks.forEach(function (t) { TASK[t.key] = t; });
   var TASK_UNIQ = { view: 150, fav: 60, cart: 60, share: 60, sale: 60, vc: 150 }; // считаем разные товары, а не повторные нажатия
   var CLIENT_EV = ['view', 'fav', 'cart', 'share', 'pre', 'stock', 'info', 'search', 'brand', 'price', 'zoom', 'measure', 'mgr'];
