@@ -1582,24 +1582,32 @@
       return '<li class="' + cls + '"><span class="dotc"><span class="dot">' + icon('check') + '</span>' + (i < stages.length - 1 ? '<span class="lnk"></span>' : '') + '</span><span class="tx"><b>' + esc(s) + '</b>' + (notes[s] ? '<small>' + esc(notes[s]) + '</small>' : '') + '</span></li>';
     }).join('') + '</ol>';
   }
-  function receiptHtml(o) {
-    var thumbs = (o.items || []).map(function (it) { var id = it.photo || it.thumb; return id ? '<img src="' + thumb(id) + '" alt="" loading="lazy">' : ''; }).join('');
-    var status = o.offline ? '<div class="rc-status todo">' + icon('send') + '<span>Сервер недоступен: напишите менеджеру номер заказа.</span></div>'
-      : '<div class="rc-status ok">' + icon('check-circle') + '<span>Заказ у менеджера. Он свяжется с вами в Telegram или по телефону.</span></div>';
-    return '<div class="receipt"><div class="rc-top"><div class="rc-brand"><img src="' + LOGO + '" alt="">ONION SHOP<span>' + icon('check') + 'оформлен</span></div>' +
-      '<span class="rc-label">Номер заказа</span><div class="rc-no"><b>' + esc(o.no) + '</b><button type="button" data-copy="' + esc(o.no) + '">' + icon('copy') + 'Номер</button></div><span class="rc-date">' + esc(fmtAt(o.at)) + '</span></div>' +
-      '<div class="rc-perf"><i></i><i></i></div>' + (thumbs ? '<div class="rc-thumbs">' + thumbs + '</div>' : '') +
-      '<div class="rc-body"><div class="rc-row"><span>Товары · ' + (o.count || 0) + ' шт.</span><b>' + rub(o.total || 0) + '</b></div>' +
+  // окно заказа: «трекер посылки» (номер, статус по шагам, состав заказа раскрывается)
+  function rvTimeline(o) {
+    var stages = o.stages || [], at = stages.indexOf(o.status), notes = RULES.stageNotes || {};
+    if (o.status === 'Отменён') return '<div class="notice notice-warn">' + icon('alert') + '<div>Заказ отменён. Вопросы: менеджеру <a href="' + SHOP.managerUrl + '" target="_blank" rel="noopener">@' + SHOP.manager + '</a>.</div></div>';
+    return '<ol class="rv-tl">' + stages.map(function (s, i) {
+      var done = i < at || (i === at && i === stages.length - 1), cls = done ? 'done' : i === at ? 'now' : '';
+      return '<li class="' + cls + '"><span class="rv-dt">' + (done ? icon('check') : (i + 1)) + '</span><span class="rv-tx"><b>' + esc(s) + '</b>' + (notes[s] ? '<small>' + esc(notes[s]) + '</small>' : '') + '</span></li>';
+    }).join('') + '</ol>';
+  }
+  function receiptHtml(o, open) {
+    var thumbs = (o.items || []).map(function (it) { var id = it.photo || it.thumb; return id ? '<img src="' + thumb(id) + '" alt="' + esc(it.title) + '" loading="lazy">' : ''; }).join('');
+    var hasSt = o.stages && o.stages.length;
+    var status = hasSt ? rvTimeline(o) : (o.offline ? '<div class="rc-status todo">' + icon('send') + '<span>Сервер недоступен: напишите менеджеру номер заказа.</span></div>'
+      : '<div class="rc-status ok">' + icon('check-circle') + '<span>Заказ у менеджера. Он свяжется с вами в Telegram или по телефону.</span></div>');
+    return '<div class="rv-card"><div class="rv-no"><div><span class="rv-l">Номер заказа</span><b>' + esc(o.no) + '</b></div><button class="rv-cp" type="button" data-copy="' + esc(o.no) + '">' + icon('copy') + 'Копировать</button></div>' +
+      '<p class="rv-meta">' + esc(fmtAt(o.at)) + ' · ' + (o.count || 0) + ' шт. · ' + rub(o.toPay != null ? o.toPay : o.total) + '</p>' + status + '</div>' +
+      '<details class="rv-det"' + (open ? ' open' : '') + '><summary>Что в заказе' + icon('chevron-down') + '</summary><div class="rv-in">' + (thumbs ? '<div class="rv-th">' + thumbs + '</div>' : '') +
+      '<div class="rc-row"><span>Товары · ' + (o.count || 0) + ' шт.</span><b>' + rub(o.total || 0) + '</b></div>' +
       (o.tokens ? '<div class="rc-row"><span>Ониксы · ' + num(o.tokens) + '</span><b>−' + rub(o.tokenRub) + '</b></div>' : '') +
       (o.promoRub ? '<div class="rc-row"><span>Промокод ' + esc(o.promo) + '</span><b>−' + rub(o.promoRub) + '</b></div>' : '') +
-      '<div class="rc-row total"><span>К оплате</span><b>' + rub(o.toPay != null ? o.toPay : o.total) + '</b></div></div>' + status +
-      '<div class="rc-bars">' + barcode(o.no) + '</div></div>';
+      '<div class="rc-row total"><span>К оплате</span><b>' + rub(o.toPay != null ? o.toPay : o.total) + '</b></div></div></details>';
   }
   function showReceipt(o, opt) {
     opt = opt || {};
     $('#toasts').innerHTML = '';
-    var md = openModal(modalHead(opt.fresh ? 'Заказ оформлен' : 'Заказ ' + o.no) + receiptHtml(o) +
-      (o.stages && o.stages.length ? '<div class="card tile"><div class="tile-h"><h3>Статус</h3>' + stPill(o) + '</div>' + timeline(o) + '</div>' : '') +
+    var md = openModal(modalHead(opt.fresh ? 'Заказ оформлен' : 'Заказ ' + o.no) + receiptHtml(o, !!opt.fresh) +
       '<div class="send-row">' + (o.offline ? '<a class="btn" href="https://t.me/share/url?url=' + encodeURIComponent(location.href.split('#')[0]) + '&text=' + encodeURIComponent(o.text || ('Заказ ' + o.no)) + '" target="_blank" rel="noopener">' + icon('send') + 'Отправить менеджеру</a>' : '<a class="btn" href="#orders" data-close>' + icon('receipt') + 'Мои заказы</a>') +
       '<a class="btn btn-ghost" href="' + SHOP.managerUrl + '" target="_blank" rel="noopener">' + icon('chat') + 'Написать менеджеру</a></div>', { cls: 'receipt-modal' });
     $$('a[data-close]', md).forEach(function (a) { a.addEventListener('click', function () { setTimeout(function () { go('orders'); }, 0); }); });
