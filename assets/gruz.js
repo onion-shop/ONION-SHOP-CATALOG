@@ -15,25 +15,25 @@
   var ORDER_KEYS = ['tee', 'hood', 'shoe'];
   var CLIENTS = ['Аня', 'Игорь', 'Мария', 'Олег', 'Света', 'Данил', 'Катя', 'Артём', 'Лена', 'Максим', 'Вика', 'Павел'];
   var LVL_MAX = 12, EN_MAX = 20, EN_REGEN = 30;
-  function xpNeed(l) { return Math.round(50 * Math.pow(l, 1.6)); }
+  function xpNeed(l) { return Math.round(70 * Math.pow(l, 2.3)); }
   var UNLOCK = {
     2: 'Худи на складе и в заказах', 3: 'Кроссовки, второй док, больше заказов', 4: 'Больше места и дороже заказы (сортировочный центр на подходе)',
     5: 'Рамка аватара «Накладная»', 6: 'Третий док', 7: 'Заказы крупнее', 8: 'Быстрее фуры', 9: 'Ещё больше заказов', 10: 'Рамка аватара «Грузовой хаб»', 11: 'Логистический хаб набирает силу', 12: 'Максимальный уровень хаба'
   };
   var UPS = {
-    cap: { n: 'Вместимость склада', d: 'Больше товара на хранении: +6 ящиков', max: 7, cost: function (l) { return Math.round(110 * Math.pow(1.85, l)); } },
-    dock: { n: 'Скорость приёмки', d: 'Фуры приезжают чаще', max: 6, cost: function (l) { return Math.round(160 * Math.pow(1.9, l)); } },
-    pay: { n: 'Оплата заказов', d: 'Клиенты платят на 10% больше', max: 8, cost: function (l) { return Math.round(220 * Math.pow(2, l)); } },
-    scan: { n: 'Сканер штрихкодов', d: 'Зелёная зона упаковки шире', max: 4, cost: function (l) { return Math.round(300 * Math.pow(2.1, l)); }, eq: true },
-    cart: { n: 'Погрузочная тележка', d: 'Энергия восстанавливается быстрее', max: 5, cost: function (l) { return Math.round(260 * Math.pow(2, l)); }, eq: true }
+    cap: { n: 'Вместимость склада', d: 'Больше товара на хранении: +6 ящиков', max: 7, cost: function (l) { return Math.round(240 * Math.pow(2.0, l)); } },
+    dock: { n: 'Скорость приёмки', d: 'Фуры приезжают чаще', max: 6, cost: function (l) { return Math.round(300 * Math.pow(2.1, l)); } },
+    pay: { n: 'Оплата заказов', d: 'Клиенты платят на 10% больше', max: 8, cost: function (l) { return Math.round(500 * Math.pow(2.15, l)); } },
+    scan: { n: 'Сканер штрихкодов', d: 'Зелёная зона упаковки шире', max: 4, cost: function (l) { return Math.round(520 * Math.pow(2.2, l)); }, eq: true },
+    cart: { n: 'Погрузочная тележка', d: 'Энергия восстанавливается быстрее', max: 5, cost: function (l) { return Math.round(450 * Math.pow(2.1, l)); }, eq: true }
   };
   /* сотрудники: работают сами, энергию не тратят. lvl: с какого уровня хаба доступны; уровень сотрудника растёт покупкой */
   var EMP = {
-    loader: { n: 'Грузчик', d: 'Сам разгружает фуры', lvl: 2, base: 180, max: 5, every: function (l) { return Math.max(5, 14 - 2 * l); } },
-    picker: { n: 'Комплектовщик', d: 'Сам собирает заказы, без упаковки и бонуса', lvl: 3, base: 320, max: 5, every: function (l) { return Math.max(7, 22 - 3 * l); } },
-    disp: { n: 'Диспетчер', d: 'Фуры и заказы приходят чаще', lvl: 5, base: 600, max: 5 }
+    loader: { n: 'Грузчик', d: 'Сам разгружает фуры', lvl: 2, base: 360, max: 5, every: function (l) { return Math.max(8, 22 - 2.5 * l); } },
+    picker: { n: 'Комплектовщик', d: 'Сам собирает заказы, без упаковки и бонуса', lvl: 3, base: 640, max: 5, every: function (l) { return Math.max(11, 36 - 4.5 * l); } },
+    disp: { n: 'Диспетчер', d: 'Фуры и заказы приходят чаще', lvl: 5, base: 1200, max: 5 }
   };
-  function empCost(k, l) { return Math.round(EMP[k].base * Math.pow(2.2, l)); }
+  function empCost(k, l) { return Math.round(EMP[k].base * Math.pow(2.4, l)); }
   /* сортировочный центр: три звена, пропускная способность = слабейшее звено (узкое место) */
   var CTR = {
     conv: { n: 'Конвейер', d: 'Скорость ленты', mul: 1 },
@@ -41,14 +41,15 @@
     sort: { n: 'Сортировщик', d: 'Раскладка по направлениям', mul: 1.5 }
   };
   var CTR_MAX = 5, CTR_LVL = 4;
-  function ctrCost(k, l) { return Math.round(260 * CTR[k].mul * Math.pow(2.15, l)); }
+  function ctrCost(k, l) { return Math.round(520 * CTR[k].mul * Math.pow(2.3, l)); }
   function ctrRate(st) { return Math.min(st.ctr.conv, st.ctr.scan, st.ctr.sort) * 2; }   // ящиков в минуту
   function ctrWeak(st) { var ks = Object.keys(CTR).sort(function (a, b) { return st.ctr[a] - st.ctr[b]; }); return st.ctr[ks[0]] === st.ctr[ks[2]] ? null : ks[0]; }
   var MINI = { find: { n: 'Найти коробку', d: 'Найдите нужную коробку среди похожих', lvl: 2, cd: 90 }, load: { n: 'Загрузить кузов', d: 'Разместите коробки в кузове без пустот', lvl: 3, cd: 120 } };
   var EVENTS = ['rush', 'double', 'rain', 'inspect'];
   function offlineCap(st) { return clamp(2 + .5 * st.lvl, 2, 8) * 3600; }
+  function payMul(st) { return 1.7 * (1 + .1 * (st.up.pay || 0)) * (1 + (st.lvl - 1) * .05); }
   function avgBase(st) { var it = ORDER_KEYS.filter(function (k) { return ITEMS[k].lvl <= st.lvl; }); return it.reduce(function (a, k) { return a + ITEMS[k].base; }, 0) / it.length; }
-  function avgPay(st) { return avgBase(st) * 1.9 * 1.7 * (1 + .1 * (st.up.pay || 0)) * (1 + (st.lvl - 1) * .06); }
+  function avgPay(st) { return avgBase(st) * 1.9 * payMul(st); }
   function offlineRate(st) { var p = st.emp.picker || 0, q = st.emp.loader || 0; if (!p) return 0; return Math.min(6 + 5 * p, 10 + 5 * q); }   // заказов в час
   function capOf(st) { return 12 + 6 * (st.up.cap || 0) + (st.lvl - 1) * 2; }
   function docksOf(st) { return st.lvl >= 6 ? 3 : st.lvl >= 3 ? 2 : 1; }
@@ -59,7 +60,7 @@
 
   function fresh() {
     var now = Date.now();
-    return { v: 2, coins: 120, xp: 0, lvl: 1, rating: 3.5, stock: { tee: 0, hood: 0, shoe: 0 }, up: { cap: 0, dock: 0, pay: 0, scan: 0, cart: 0 }, emp: { loader: 0, picker: 0, disp: 0 }, ctr: { conv: 0, scan: 0, sort: 0 }, cd: { find: 0, load: 0 }, nextEvent: now + 200000, bonusTruck: 0, orders: [], trucks: [{ dock: 0, k: 'tee', n: 4, s: 'wait', t: 1 }],
+    return { v: 2, coins: 120, xp: 0, lvl: 1, rating: 3.5, stock: { tee: 0, hood: 0, shoe: 0 }, up: { cap: 0, dock: 0, pay: 0, scan: 0, cart: 0 }, emp: { loader: 0, picker: 0, disp: 0 }, ctr: { conv: 0, scan: 0, sort: 0 }, cd: { find: 0, load: 0 }, seen: {}, nextEvent: now + 200000, bonusTruck: 0, orders: [], trucks: [{ dock: 0, k: 'tee', n: 4, s: 'wait', t: 1 }],
       oseq: 1, nextTruck: now + 25000, nextOrder: now + 2500, stats: { shipped: 0, perfect: 0, crates: 0, earned: 0, expired: 0 }, ms: { lvl: 1, earn: 0 }, tut: 0, en: EN_MAX, enAt: now, t0: now, lastAt: now };
   }
   function load(str) {
@@ -72,7 +73,7 @@
         st.trucks = (st.trucks || []).filter(function (t) { return t.s !== 'out'; }).map(function (t) { t.s = 'wait'; t.t = 1; return t; });
         st.lvl = clamp(+st.lvl || 1, 1, LVL_MAX);
         st.up = Object.assign({ cap: 0, dock: 0, pay: 0, scan: 0, cart: 0 }, st.up); st.emp = Object.assign({ loader: 0, picker: 0, disp: 0 }, st.emp);
-        st.ctr = Object.assign({ conv: 0, scan: 0, sort: 0 }, st.ctr); st.cd = Object.assign({ find: 0, load: 0 }, st.cd);
+        st.seen = st.seen || {}; st.ctr = Object.assign({ conv: 0, scan: 0, sort: 0 }, st.ctr); st.cd = Object.assign({ find: 0, load: 0 }, st.cd);
       }
     } catch (e) { }
     return st;
@@ -157,7 +158,7 @@
       var items = unlockedItems(st), kinds = Math.random() < .35 && items.length > 1 ? 2 : 1, picked = [], list = items.slice();
       for (var i = 0; i < kinds; i++) { var k = list.splice(Math.floor(Math.random() * list.length), 1)[0]; picked.push({ k: k, n: 1 + Math.floor(Math.random() * Math.min(3, 1 + Math.floor(st.lvl / 3))) }); }
       if (!st.stats.shipped && !st.orders.length) picked = [{ k: 'tee', n: 2 }];
-      var base = picked.reduce(function (a, p) { return a + p.n * ITEMS[p.k].base; }, 0), pay = Math.round(base * 1.7 * (1 + .1 * (st.up.pay || 0)) * (1 + (st.lvl - 1) * .06));
+      var base = picked.reduce(function (a, p) { return a + p.n * ITEMS[p.k].base; }, 0), pay = Math.round(base * payMul(st));
       return { id: st.oseq++, name: CLIENTS[Math.floor(Math.random() * CLIENTS.length)], items: picked, pay: pay, due: Date.now() + (240 + Math.floor(Math.random() * 180)) * 1000 };
     }
     function need(o) { return o.items.filter(function (p) { return (st.stock[p.k] || 0) < p.n; }); }
@@ -219,6 +220,7 @@
     }
     /* команда: сотрудники работают сами и приносят доход, даже когда вас нет (лимит по времени зависит от уровня) */
     function teamSheet() {
+      st.seen.team = 1;
       var rows = Object.keys(EMP).map(function (k) {
         var e = EMP[k], l = st.emp[k] || 0, lock = st.lvl < e.lvl, c = empCost(k, l), max = l >= e.max;
         var eff = k === 'loader' ? 'Разгрузка раз в ' + e.every(Math.max(1, l)) + ' с' : k === 'picker' ? 'Сборка заказа раз в ' + e.every(Math.max(1, l)) + ' с' : 'Фуры чаще на ' + Math.max(8, 8 * l) + '%';
@@ -235,6 +237,7 @@
     }
     /* сортировочный центр: ящики со склада (сверх нужного открытым заказам) идут по ленте и приносят монеты */
     function centerSheet() {
+      st.seen.ctr = 1;
       var rate = ctrRate(st), weak = ctrWeak(st);
       var rows = Object.keys(CTR).map(function (k) {
         var l = st.ctr[k], max = l >= CTR_MAX, c = ctrCost(k, l);
@@ -252,7 +255,7 @@
       var best = null, sur = 0; unlockedItems(st).forEach(function (k) { var s = (st.stock[k] || 0) - (res[k] || 0); if (s > sur) { sur = s; best = k; } });
       if (!best) return false;
       st.stock[best]--; addCoins(Math.round(ITEMS[best].base * .7)); addXp(1);
-      flyers.push({ t: 0, d: 2.2, kind: 'crate', k: best, from: [8.0, 2.6, 1.7], to: [14.5, 2.6, 1.7], flat: 1 }); dirty(); return true;
+      flyers.push({ t: 0, d: 2.2, kind: 'crate', k: best, from: [8.0, 2.6, 1.7], to: [14.5, 2.6, 1.7], flat: 1 }); SND.belt(); dirty(); return true;
     }
 
     /* мини-игры: срочные задания за 2 энергии с перерывом */
@@ -327,14 +330,14 @@
       else if (kind === 'double') { st.bonusTruck = 1; S.toast('Скидка поставщика: следующая фура привезёт вдвое больше', 'ok'); GK.sfx.up(); }
       else if (kind === 'rain') { st.nextTruck += 60000; S.toast('Дождь: фуры задерживаются на минуту', 'warn'); }
       else if (kind === 'inspect') { if (st.rating >= 4) { var bonus = 90 * st.lvl; addCoins(bonus); S.toast('Проверка прошла отлично: премия ' + fmt(bonus) + ' монет', 'gold'); GK.sfx.win(); } else { S.toast('Проверка: рейтинг ниже 4, премии нет. Закрывайте заказы вовремя', 'warn'); } }
-      st.nextEvent = now + (150 + Math.random() * 150) * 1000; dirty();
+      st.nextEvent = now + (150 + Math.random() * 150) * 1000; SND.event(); dirty();
     }
     /* офлайн-доход: считаем по времени сервера, не больше лимита; сервер дополнительно проверяет скорость роста */
     function offlineClaim() {
       var away = Math.max(0, (sNow() - (st.lastAt || sNow())) / 1000), cap = offlineCap(st), rate = offlineRate(st); st.lastAt = sNow();
       if (away < 120 || !rate) return;
       var secs = Math.min(away, cap), orders = Math.floor(secs / 3600 * rate); if (orders < 1) return;
-      var coins = Math.round(orders * avgPay(st) * .8), xp = orders * 14; addCoins(coins); st.stats.shipped += orders; addXp(xp);
+      var coins = Math.round(orders * avgPay(st) * .8), xp = orders * 22; addCoins(coins); st.stats.shipped += orders; addXp(xp);
       GK.sfx.coin(); dirty(true);
       S.sheet('Пока вас не было', '<p class="gk-lead">Команда работала ' + GK.dur(secs) + (away > cap ? ' (больше ' + GK.dur(cap) + ' подряд склад не работает без вас)' : '') + '.</p><div class="gk-list"><div class="gk-it"><span class="t"><b>Закрыто заказов: ' + orders + '</b><small>Заработано <i class="gz-coin"></i> ' + fmt(coins) + ' и ' + xp + ' опыта</small></span></div></div><div class="gk-row"><button class="gk-btn" data-gk="sheetx">Забрать</button></div>', { w: 400 });
     }
@@ -342,7 +345,7 @@
       function row(name, lvlNeed, mins) { var have = st.lvl >= lvlNeed, ok = (Date.now() - st.t0) / 60000 >= mins; return '<div class="gk-it' + (have ? ' done' : '') + '"><span class="t"><b>Рамка «' + name + '»</b><small>' + (have ? 'Уровень достигнут, рамка выдаётся автоматически' : 'Нужен уровень хаба ' + lvlNeed + ', сейчас ' + st.lvl) + (have && !ok ? ' (нужно ещё немного поиграть)' : '') + '</small><div class="gk-bar"><i style="width:' + Math.min(100, st.lvl / lvlNeed * 100) + '%"></i></div></span></div>'; }
       S.sheet('Награды', '<div class="gk-list">' + row('Накладная', 5, 25) + row('Грузовой хаб', 10, 120) + '</div><p class="gk-note">Рамки появляются в профиле сами. Игра пока не даёт ониксы и опыт магазина.</p>', { w: 440 });
     }
-    S.onhelp = function () { S.sheet('Как играть', '<div class="gk-list"><div class="gk-it"><span class="t"><b>1. Разгрузите фуру</b><small>Нажмите на фуру у дока. Это стоит 1 энергии.</small></span></div><div class="gk-it"><span class="t"><b>2. Откройте «Заказы»</b><small>Клиенты просят товар со склада.</small></span></div><div class="gk-it"><span class="t"><b>3. Упакуйте</b><small>Поймайте зелёную зону: заказ оплатят больше.</small></span></div><div class="gk-it"><span class="t"><b>4. Улучшайте склад</b><small>Больше места, чаще фуры, выше оплата. Растите до логистического хаба.</small></span></div></div>', { w: 440 }); };
+    S.onhelp = function () { S.sheet('Как играть', '<div class="gk-list"><div class="gk-it"><span class="t"><b>1. Разгрузите фуру</b><small>Нажмите на фуру у дока. Это стоит 1 энергии.</small></span></div><div class="gk-it"><span class="t"><b>2. Откройте «Заказы»</b><small>Клиенты просят товар со склада.</small></span></div><div class="gk-it"><span class="t"><b>3. Упакуйте</b><small>Поймайте зелёную зону: заказ оплатят больше.</small></span></div><div class="gk-it"><span class="t"><b>4. Улучшайте склад</b><small>Больше места, чаще фуры, выше оплата. Растите до логистического хаба.</small></span></div><div class="gk-it"><span class="t"><b>5. Наймите команду</b><small>Грузчик, комплектовщик и диспетчер работают сами, даже когда вас нет (не дольше лимита).</small></span></div><div class="gk-it"><span class="t"><b>6. Центр и задания</b><small>С 4 уровня центр перерабатывает лишний товар. «Срочные задания» в заказах: поиск и погрузка.</small></span></div></div>', { w: 440 }); };
 
     /* ---- обучение */
     var tutOrders = false, hasTruckWait = function () { return st.trucks.some(function (t) { return t.s === 'wait'; }); };
@@ -389,10 +392,10 @@
         st.trucks = st.trucks.filter(function (tr) { return !(tr.s === 'out' && tr.t >= 1); });
         if (now >= st.nextTruck && st.trucks.length < docksOf(st)) {
           var used = st.trucks.map(function (t) { return t.dock; }), dock = [0, 1, 2].filter(function (d) { return d < docksOf(st) && used.indexOf(d) < 0; })[0];
-          if (dock != null) { var items = unlockedItems(st), k = items[Math.floor(Math.random() * items.length)]; st.trucks.push({ dock: dock, k: k, n: (3 + Math.floor(Math.random() * 3) + Math.floor(st.lvl / 4)) * (st.bonusTruck ? 2 : 1), s: 'in', t: 0 }); st.bonusTruck = 0; st.nextTruck = now + truckEvery(st) * (.8 + Math.random() * .5); GK.sfx.truck(); dirty(); }
+          if (dock != null) { var items = unlockedItems(st), k = items[Math.floor(Math.random() * items.length)]; st.trucks.push({ dock: dock, k: k, n: (3 + Math.floor(Math.random() * 3) + Math.floor(st.lvl / 4)) * (st.bonusTruck ? 2 : 1), s: 'in', t: 0 }); st.bonusTruck = 0; st.nextTruck = now + truckEvery(st) * (.8 + Math.random() * .5); SND.horn(); dirty(); }
           else st.nextTruck = now + 5000;
         }
-        if (now >= st.nextOrder && st.orders.length < maxOrders(st)) { st.orders.push(orderGen()); st.nextOrder = now + (22 + Math.random() * 25) * 1000 * (1 - .06 * (st.emp.disp || 0)); GK.sfx.click(); dirty(); }
+        if (now >= st.nextOrder && st.orders.length < maxOrders(st)) { st.orders.push(orderGen()); st.nextOrder = now + (22 + Math.random() * 25) * 1000 * (1 - .06 * (st.emp.disp || 0)); SND.ping(); dirty(); }
         else if (now >= st.nextOrder) st.nextOrder = now + 8000;
         // сортировочный центр
         var cr = st.lvl >= CTR_LVL ? ctrRate(st) : 0; if (cr > 0) { acc.ctr += dt; if (acc.ctr >= 60 / cr) { acc.ctr = 0; ctrProcess(); } }
@@ -411,18 +414,28 @@
       }
       parts.step(dt);
       for (var i = flyers.length - 1; i >= 0; i--) { flyers[i].t += dt; if (flyers[i].t >= flyers[i].d) flyers.splice(i, 1); }
-      draw();
+      slow = slow * .95 + dt * .05; skip = slow > 1 / 38; frameN++;   // скользящее среднее длительности кадра
+      if (!(skip && (frameN & 1))) draw();
     }
     function hud() {
       var need_ = xpNeed(st.lvl);
       lvChip.querySelector('b').textContent = st.lvl; lvChip.querySelector('.bar i').style.width = (st.lvl >= LVL_MAX ? 100 : Math.min(100, st.xp / need_ * 100)) + '%'; lvChip.title = st.lvl >= LVL_MAX ? 'Максимальный уровень' : 'Опыт ' + st.xp + ' из ' + need_;
       coinChip.lastChild.textContent = fmt(st.coins); rateChip.lastChild.textContent = String(st.rating.toFixed(1)).replace('.', ','); enUI(st);
-      $('[data-gz="center"]').hidden = st.lvl < CTR_LVL;
+      $('[data-gz="center"]').hidden = st.lvl < CTR_LVL; $('[data-gz="center"]').classList.toggle('new', st.lvl >= CTR_LVL && !st.seen.ctr); $('[data-gz="team"]').classList.toggle('new', st.lvl >= 2 && !st.seen.team);
       var rd = st.orders.filter(function (o) { return !need(o).length; }).length, em = $('[data-gz="orders"] em'); em.hidden = !rd; em.textContent = rd;
     }
 
     /* ---- рисование */
     var cx = S.cx;
+    /* звуки игры: общий набор GK.sfx плюс свои, собранные из тонов */
+    var SND = {
+      horn: function () { GK.tone(196, .35, { type: 'sawtooth', vol: .05 }); GK.tone(247, .45, { type: 'sawtooth', vol: .04, at: .18 }); GK.noise(.4, { f: 300, vol: .04 }); },
+      ping: function () { GK.tone(880, .09, { type: 'triangle', vol: .05 }); GK.tone(1175, .14, { type: 'triangle', vol: .05, at: .08 }); },
+      belt: function () { GK.noise(.12, { type: 'bandpass', f: 900, vol: .035 }); GK.tone(180, .08, { type: 'square', vol: .015 }); },
+      event: function () { [660, 880, 660, 990].forEach(function (f, i) { GK.tone(f, .1, { type: 'triangle', vol: .05, at: i * .08 }); }); }
+    };
+    // чтобы не тормозить на слабых телефонах: если кадры долгие, рисуем через раз (логика идёт как обычно)
+    var slow = 0, skip = false, frameN = 0;
     function spr(name, wx, wy, wz, alpha) {
       var s = META.sprites[name], img = IMG[name]; if (!img) return; var p = w2p(wx, wy, wz || 0), q = p2s(p[0] - s.ax, p[1] - s.ay);
       if (alpha != null) cx.globalAlpha = alpha; cx.drawImage(img, q[0], q[1], s.w * cam.z, s.h * cam.z); if (alpha != null) cx.globalAlpha = 1;
@@ -509,7 +522,7 @@
       '.gz-ord .no{color:#ff8a80}.gz-ord.hot{border-color:rgba(255,138,128,.6)}.gz-pay{display:inline-flex;align-items:center;gap:3px;color:#ffd34d;font-size:.82rem;margin-left:8px}.gz-pay .gz-coin{width:13px;height:13px}' +
       '.gz-crate{display:block;width:28px;height:28px;border-radius:7px;background:var(--c);box-shadow:inset 0 0 0 3px rgba(0,0,0,.14),inset 0 -6px 0 rgba(0,0,0,.12)}.gz-h{margin:6px 0 0;font-size:.95rem}' +
       '.gz-meter{position:relative;height:40px;border-radius:12px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);overflow:hidden;touch-action:manipulation}.gz-meter .z{position:absolute;top:0;bottom:0;background:linear-gradient(180deg,#5ef08a,#1fae55);opacity:.9}.gz-meter .p{position:absolute;top:-2px;bottom:-2px;width:8px;margin-left:-4px;border-radius:6px;background:#fff;box-shadow:0 0 12px rgba(255,255,255,.8)}' +
-      '.gz-d[hidden]{display:none}@media (max-width:480px){.gz-d{padding:0 9px;font-size:.78rem}.gz-dock{gap:4px;padding:5px;max-width:calc(100vw - 10px)}}' +
+      '.gz-d.new::after{content:"";position:absolute;top:-4px;right:-3px;width:11px;height:11px;border-radius:50%;background:#ffd34d;box-shadow:0 0 0 3px rgba(255,211,77,.35);animation:gzpulse 1.2s ease-in-out infinite}@keyframes gzpulse{50%{transform:scale(1.3)}}.gz-d[hidden]{display:none}@media (max-width:480px){.gz-d{padding:0 9px;font-size:.78rem}.gz-dock{gap:4px;padding:5px;max-width:calc(100vw - 10px)}}' +
       '.gz-weak{margin-left:6px;padding:2px 7px;border-radius:8px;background:rgba(255,138,128,.22);color:#ff8a80;font-size:.7rem;font-weight:800;vertical-align:1px;white-space:nowrap;display:inline-block}' +
       '.gz-grid5{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}.gz-cell{height:46px;border-radius:10px;border:1px solid rgba(255,255,255,.2);background:hsl(var(--h) 55% 38%);font-weight:800;font-size:.95rem;color:#fff}.gz-cell.bad{opacity:.35;background:#444}.gz-tg{color:#ffd34d;font-size:1.2rem}' +
       '.gz-truck{display:grid;grid-template-columns:repeat(var(--gw),1fr);gap:3px;padding:8px;border-radius:14px;background:rgba(255,255,255,.08);border:2px solid rgba(255,255,255,.25)}.gz-lc{aspect-ratio:1;border-radius:6px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06)}.gz-lc.f{background:hsl(var(--h) 60% 48%);border-color:rgba(255,255,255,.4)}' +
@@ -517,5 +530,8 @@
       '.gz .gk-tut{z-index:25}';
     document.head.appendChild(s);
   }
-  W.Gruz = { open: open };
+  /* чистая модель правил: её же использует симулятор баланса scripts/gz_sim.js, чтобы цифры не расходились с игрой */
+  var model = { ITEMS: ITEMS, ORDER_KEYS: ORDER_KEYS, UPS: UPS, EMP: EMP, CTR: CTR, CTR_MAX: CTR_MAX, CTR_LVL: CTR_LVL, MINI: MINI, LVL_MAX: LVL_MAX, EN_MAX: EN_MAX, EN_REGEN: EN_REGEN, xpNeed: xpNeed, capOf: capOf, docksOf: docksOf, maxOrders: maxOrders, truckEvery: truckEvery,
+    unlockedItems: unlockedItems, stockTotal: stockTotal, offlineCap: offlineCap, offlineRate: offlineRate, payMul: payMul, avgPay: avgPay, ctrRate: ctrRate, ctrCost: ctrCost, empCost: empCost, fresh: fresh };
+  W.Gruz = { open: open, model: model };
 })(window);

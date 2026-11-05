@@ -875,7 +875,7 @@ var OnionCore = (function () {
   var GAMES = {
     /* rate: сколько монет в час игра может честно заработать на уровне хаба; burst: запас на одно сохранение.
        Если ms.earn вырос быстрее, сохранение принимается, но рост обрезается и рамки в этот раз не выдаются (подделка сохранения). */
-    gruz: { name: 'Грузомания', rate: function (lvl) { return 30000 * Math.max(1, Math.min(12, lvl)); }, burst: 60000, frames: [{ id: 'gz-1', key: 'lvl', need: 5, minMin: 25 }, { id: 'gz-2', key: 'lvl', need: 10, minMin: 120 }] },
+    gruz: { name: 'Грузомания', rate: function (lvl) { return 45000 * Math.max(1, Math.min(12, lvl)); }, burst: 80000, frames: [{ id: 'gz-1', key: 'lvl', need: 5, minMin: 25 }, { id: 'gz-2', key: 'lvl', need: 10, minMin: 120 }] },
     rub: { name: 'Последний рубеж', frames: [{ id: 'rb-1', key: 'bosses', need: 1, minMin: 15 }, { id: 'rb-2', key: 'bosses', need: 6, minMin: 180 }] }
   };
   var GAME_MAX = 150000;
