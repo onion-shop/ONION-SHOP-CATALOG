@@ -224,7 +224,8 @@
 
   function saveCart() { store.set('cart', cart); updateCounts(true); if (draftReady) saveDraft(); }
   function lineKey(l) { return [l.id, l.size || '', l.color || '', l.photo || '', l.note || ''].join('|'); }
-  function cartLines() { return cart.filter(function (l) { return BY_ID[l.id]; }); }
+  function orderable(p) { return !!p && p.status !== 'out' && p.status !== 'sold'; }
+  function cartLines() { return cart.filter(function (l) { return orderable(BY_ID[l.id]); }); }   // товар без наличия из корзины пропадает сам
   function cartCount() { return cartLines().reduce(function (s, l) { return s + l.qty; }, 0); }
   function updateCounts(bumpIt) {
     var n = cartCount(), f = favs.filter(function (id) { return BY_ID[id]; }).length;
@@ -234,8 +235,14 @@
   // ранний доступ: первые сутки новинка доступна уровню «Золото» и выше (сервер тоже проверяет)
   function earlyLock(p) { var left = CORE.earlyLeft(p, Date.now()); if (!left) return 0; var u = acct.user; return u && u.level && u.level.index >= RULES.early.level ? 0 : left; }
   function earlyH(ms) { return Math.max(1, Math.ceil(ms / 3600000)); }
+  // товар, которого нет в наличии, в корзину не попадает никак: предлагаем избранное и уведомление о поступлении
+  function offerFav(p) {
+    var isF = isFav(p.id);
+    toast(p.status === 'sold' ? 'Этот товар уже продан' : 'Сейчас нет в наличии, заказать нельзя. ' + (isF ? 'Он уже в избранном: сообщим, когда появится.' : 'Добавьте в избранное, мы подскажем, когда он появится.'), isF ? null : { label: 'В избранное', run: function () { toggleFav(p.id); } }, 'warn');
+  }
   function addToCart(line) {
     var ep = BY_ID[line.id], el = ep ? earlyLock(ep) : 0;
+    if (ep && !orderable(ep)) { offerFav(ep); return false; }
     if (el) { toast('Новинка откроется для всех через ' + earlyH(el) + ' ч. Первые сутки: ранний доступ для уровня «Золото» и выше', null, 'warn'); return false; }
     var key = lineKey(line), ex = cart.find(function (l) { return lineKey(l) === key; });
     if (ex) ex.qty = Math.min(10, ex.qty + line.qty); else cart.push(line);
@@ -370,7 +377,6 @@
     if (current === 'account') renderAccount();
     else if (current === 'roulette') updateRoulBalance();
     else if (current === 'cart' && !$('#checkout :focus')) renderCart();
-    if (u && /^(gruz|rub)$/.test(location.hash.slice(1)) && typeof openGame === 'function') openGame(location.hash.slice(1));
   }
   var checkinHinted = false;
   function refreshMe() {
@@ -655,7 +661,7 @@
     var L = u.level, p = L.next ? Math.min(100, Math.round((u.xp - L.min) / (L.next.min - L.min) * 100)) : 100;
     return '<div class="strip" id="tok-strip"><span class="ic">' + lvlImg(L.key, 44) + '</span><div><h3>' + num(u.balance) + ' ' + tokWord(u.balance) + ' · ' + esc(L.name) + ' · ' + num(u.xp) + ' XP</h3>' +
       '<div class="bar"><i data-w="' + p + '%"></i></div><p class="small" style="margin-top:6px">' + (L.next ? 'Ещё ' + num(L.next.left) + ' XP до «' + esc(L.next.name) + '»' : (L.fixed ? 'Уровень закреплён менеджером' : 'Максимальный уровень месяца')) + '</p></div>' +
-      '<div class="acts"><a class="btn btn-sm" href="#games">' + icon('sparkles') + 'Игры</a><a class="btn btn-ghost btn-sm" href="#account">Кабинет</a></div></div>';
+      '<div class="acts"><a class="btn btn-sm" href="#roulette">' + icon('sparkles') + 'Игра</a><a class="btn btn-ghost btn-sm" href="#account">Кабинет</a></div></div>';
   }
   function growBars(root) { requestAnimationFrame(function () { $$('[data-w]', root).forEach(function (b) { b.style.width = b.getAttribute('data-w'); }); }); }
 
@@ -797,7 +803,7 @@
   // быстрое добавление из карточки: размер/цвет: в окне выбора
   function quickAdd(id) {
     var p = BY_ID[id]; if (!p) return;
-    if (p.status === 'sold') { toast('Этот товар уже продан', null, 'warn'); return; }
+    if (!orderable(p)) { offerFav(p); return; }
     var sel = { size: p.sizes.length === 1 ? p.sizes[0] : null, color: p.colors.length === 1 ? p.colors[0] : null };
     function put() {
       if (addToCart({ id: p.id, size: sel.size, color: sel.color, photo: (sel.color && p.colorPhoto && p.colorPhoto[sel.color]) || null, qty: 1, note: '' }) === false) return;
@@ -1015,7 +1021,7 @@
     related = related.slice(0, 4);
 
     v.innerHTML =
-      '<div class="back-row"><button class="back-btn" type="button" id="back-btn" aria-label="Назад">' + icon('arrow-right') + 'Назад</button><span class="cr">' + (p.status === 'preorder' ? 'Предзаказ' : 'В наличии') + ' · ' + esc(p.categoryLabel) + '</span></div>' +
+      '<div class="back-row"><button class="back-btn" type="button" id="back-btn" aria-label="Назад">' + icon('arrow-right') + 'Назад</button><span class="cr">' + (p.status === 'preorder' ? 'Предзаказ' : p.status === 'sold' ? 'Продано' : p.status === 'out' ? 'Нет в наличии' : 'В наличии') + ' · ' + esc(p.categoryLabel) + '</span></div>' +
       '<div class="product">' +
       '<div class="gallery"><div class="stage"><div class="slides" id="slides" tabindex="0" aria-label="Фотографии товара. Нажмите, чтобы увеличить">' +
       p.photos.map(function (ph, i) { return '<figure data-i="' + i + '" style="--bg:url(\'' + thumb(ph.id) + '\')"><img src="' + full(ph.id) + '" alt="' + esc(p.title) + ', фото ' + (i + 1) + '" ' + (i ? 'loading="lazy" ' : '') + 'decoding="async" width="' + ph.w + '" height="' + ph.ht + '"></figure>'; }).join('') + '</div>' +
@@ -1035,13 +1041,14 @@
         ? '<div class="notice notice-pre">' + icon('plane') + '<div><b>Предзаказ из Китая.</b> Стоимость доставки из Китая уже включена в стоимость. <a href="#info">Условия</a></div></div>'
         : p.status === 'out' ? ''
         : '') +
+      '<div class="no-buy"' + (orderable(p) ? '' : ' hidden') + '>' +
       (p.sizes.length ? '<div class="opt" id="opt-size"><div class="opt-head"><b>Размер' + (p.sizes.length > 1 ? ' <span class="req">*</span>' : '') + '</b><span class="val"><span id="size-val">' + (sel.size ? esc(sel.size) : 'не выбран') + '</span>' + '</span></div><div class="choices">' +
         p.sizes.map(function (s) { return '<button class="choice" type="button" data-size="' + esc(s) + '" aria-pressed="' + (sel.size === s) + '">' + esc(s) + '</button>'; }).join('') + '</div>' + (tbl ? '<div class="size-meas" id="size-meas" hidden></div>' : '') + '<span class="msg" hidden>Выберите размер</span></div>' : '') +
       (p.colors.length ? '<div class="opt" id="opt-color"><div class="opt-head"><b>Цвет' + (p.colors.length > 1 ? ' <span class="req">*</span>' : '') + '</b><span class="val" id="color-val">' + (sel.color ? esc(cap(sel.color)) : 'не выбран') + '</span></div><div class="choices">' +
         p.colors.map(function (c) { return '<button class="choice color" type="button" data-color="' + esc(c) + '" aria-pressed="' + (sel.color === c) + '"><i class="sw" style="' + swatch(c) + '"></i>' + esc(cap(c)) + '</button>'; }).join('') + '</div><span class="msg" hidden>Выберите цвет</span></div>' : '') +
       '<div class="opt"><label for="p-note"><b style="font-size:14.5px">' + (p.status === 'preorder' ? 'Пожелания к товару' : 'Комментарий') + '</b> <span class="small">· по желанию</span></label><textarea id="p-note" maxlength="300" placeholder="' + (p.status === 'preorder' ? 'Например: посадка oversize, проверить швы, фото бирки' : 'Например: хочу примерить перед покупкой') + '"></textarea></div>' +
       '<div class="buy"><div class="qty" aria-label="Количество"><button type="button" id="q-minus" aria-label="Меньше" disabled>' + icon('minus') + '</button><output id="q-val">1</output><button type="button" id="q-plus" aria-label="Больше">' + icon('plus') + '</button></div>' +
-      '<button class="btn" type="button" id="add-btn">' + icon('bag') + '<span id="add-lbl">В корзину · ' + rub(p.price) + '</span></button></div>' +
+      '<button class="btn" type="button" id="add-btn">' + icon('bag') + '<span id="add-lbl">В корзину · ' + rub(p.price) + '</span></button></div></div>' +
       '<div class="acc">' +
       ((specs.length || p.notes.length) ? '<details><summary>Характеристики' + icon('chevron-down') + '</summary><div class="acc-body">' + (specs.length ? '<dl class="specs">' + specs.map(function (r) { return '<div><dt>' + esc(r[0]) + '</dt><dd>' + esc(r[1]) + '</dd></div>'; }).join('') + '</dl>' : '') + (p.notes.length ? '<div class="notes">' + p.notes.map(function (n) { return '<span>' + icon('check') + esc(n) + '</span>'; }).join('') + '</div>' : '') + '</div></details>' : '') +
       (hasMeas ? '<details id="meas-det"><summary>Замеры изделия' + icon('chevron-down') + '</summary><div class="acc-body">' + (tbl ? measTable(tbl, sel.size) : (p.sizes.length === 1 ? '<p class="small" style="margin:0 0 8px">Размер ' + esc(p.sizes[0]) + '</p>' : '') + '<dl class="specs">' + measures.map(function (r) { return '<div><dt>' + esc(mlab(r[0])) + '</dt><dd>' + esc(r[1]) + '</dd></div>'; }).join('') + '</dl>') + '</div></details>' : '') +
@@ -1159,7 +1166,7 @@
     // липкая кнопка на телефоне
     var bb = $('#buybar');
     function updBuybar() { var pr = $('.price', bb); if (pr) pr.textContent = rub(p.price * sel.qty); }
-    bb.innerHTML = '<div class="bb-info"><b class="price">' + rub(p.price) + '</b><span>' + esc(p.title) + '</span></div><button class="btn" type="button" id="bb-add"' + (p.status === 'sold' ? ' disabled' : '') + '>' + icon('bag') + (p.status === 'sold' ? 'Продано' : 'В корзину') + '</button>';
+    bb.innerHTML = '<div class="bb-info"><b class="price">' + rub(p.price) + '</b><span>' + esc(p.title) + '</span></div><button class="btn" type="button" id="bb-add"' + (!orderable(p) ? ' disabled' : '') + '>' + icon('bag') + (p.status === 'sold' ? 'Продано' : p.status === 'out' ? 'Нет в наличии' : 'В корзину') + '</button>';
     bb.hidden = false;
     $('#bb-add', bb).addEventListener('click', function () { addBtn.click(); });
     if ('IntersectionObserver' in window) {
@@ -1311,12 +1318,12 @@
   }
   function renderCart() {
     var v = $('#v-cart');
-    var gone = cart.filter(function (l) { return !BY_ID[l.id]; });
-    if (gone.length) { cart = cartLines(); saveCart(); }
+    var gone = cart.filter(function (l) { return !orderable(BY_ID[l.id]); });
+    if (gone.length) { cart = cartLines(); saveCart(); toast('Из корзины убраны товары, которых сейчас нет в наличии', null, 'warn'); }
     var lines = cartLines();
     if (!lines.length) {
       v.innerHTML = '<div class="view-head"><div><span class="eyebrow">Корзина</span><h1>Корзина пуста</h1></div></div>' +
-        (gone.length ? '<div class="notice notice-info" style="margin-bottom:12px">' + icon('alert') + '<div>Часть товаров уже продана и убрана из корзины.</div></div>' : '') +
+        (gone.length ? '<div class="notice notice-info" style="margin-bottom:12px">' + icon('alert') + '<div>Часть товаров сейчас недоступна (нет в наличии или продана) и убрана из корзины.</div></div>' : '') +
         '<div class="empty"><span class="ico">' + icon('bag') + '</span><h3>Здесь появятся выбранные вещи</h3><p>Откройте каталог, выберите размер и цвет и нажмите «В корзину».</p><div class="acts" style="justify-content:center"><a class="btn" href="#catalog">' + icon('grid') + 'Перейти в каталог</a>' + (favs.length ? '<a class="btn btn-ghost" href="#favorites">' + icon('heart') + 'Избранное</a>' : '') + '</div></div>';
       return;
     }
@@ -1619,8 +1626,8 @@
       var rv = $('[data-review]', el); if (rv) rv.addEventListener('click', function () { reviewModal(o); });
       $('[data-repeat]', el).addEventListener('click', function () {
         var added = 0, missing = 0;
-        (o.items || []).forEach(function (it) { if (BY_ID[it.id]) { addToCart({ id: it.id, size: it.size || null, color: it.color || null, photo: it.photo || null, qty: it.qty, note: '' }); added++; } else missing++; });
-        if (added) { toast(missing ? 'Добавлено. Уже проданы: ' + missing : 'Товары снова в корзине'); go('cart'); } else toast('Этих товаров уже нет в продаже', null, 'warn');
+        (o.items || []).forEach(function (it) { if (orderable(BY_ID[it.id])) { addToCart({ id: it.id, size: it.size || null, color: it.color || null, photo: it.photo || null, qty: it.qty, note: '' }); added++; } else missing++; });
+        if (added) { toast(missing ? 'Добавлено. Сейчас недоступны: ' + missing : 'Товары снова в корзине'); go('cart'); } else toast('Этих товаров сейчас нет в наличии', null, 'warn');
       });
     });
   }
@@ -1851,7 +1858,7 @@
     el.innerHTML = '<div class="dr-bg" data-dr-close></div><aside class="dr-p" role="dialog" aria-modal="true" aria-label="Меню"><div class="dr-h"><b>Меню</b><button class="icon-btn" type="button" data-dr-close aria-label="Закрыть">' + icon('x') + '</button></div><div class="dr-b">' +
       '<div class="dr-g">' + link('home', 'Главная', 'href="#home" data-go="home"') + link('grid', 'Каталог', 'href="#catalog" data-go="catalog" data-reset="1"') + link('box', 'В наличии', 'href="#stock" data-go="stock"') + link('plane', 'Предзаказ из Китая', 'href="#preorder" data-go="preorder"') + link('percent', 'Товары со скидкой', 'href="#catalog" data-go="catalog" data-sale="1"', nSale ? nSale + ' ' + plural(nSale, 'товар', 'товара', 'товаров') : '') + '</div>' +
       '<div class="dr-s">Категории</div><div class="dr-cats">' + cats.map(function (c) { return '<a class="dr-c' + (c.n ? '' : ' empty') + '" href="#catalog" data-go="catalog" data-cat="' + c.key + '"><img class="lt" src="assets/cat/' + c.key + '.svg" alt=""><img class="dk" src="assets/cat/dark/' + c.key + '.svg" alt=""><span>' + esc(c.label) + '</span></a>'; }).join('') + '</div>' +
-      '<div class="dr-s">Мои покупки</div><div class="dr-g">' + link('heart', 'Избранное', 'href="#favorites" data-go="favorites"') + link('bag', 'Корзина', 'href="#cart" data-go="cart"') + link('user', u ? 'Кабинет' : 'Войти', 'href="#account" data-go="account"', u ? esc(u.name || u.login || '') : '') + (API.enabled ? link('receipt', 'Мои заказы', 'href="#orders" data-go="orders"') + link('gift', 'Игры', 'href="#games" data-go="games"') : '') + '</div>' +
+      '<div class="dr-s">Мои покупки</div><div class="dr-g">' + link('heart', 'Избранное', 'href="#favorites" data-go="favorites"') + link('bag', 'Корзина', 'href="#cart" data-go="cart"') + link('user', u ? 'Кабинет' : 'Войти', 'href="#account" data-go="account"', u ? esc(u.name || u.login || '') : '') + (API.enabled ? link('receipt', 'Мои заказы', 'href="#orders" data-go="orders"') + link('gift', 'Игра', 'href="#roulette" data-go="roulette"') : '') + '</div>' +
       '<div class="dr-s">Информация</div><div class="dr-g">' + link('info', 'Частые вопросы', 'href="#info" data-go="info"', 'заказ, сроки, доставка, оплата') + link('truck', 'Как работает предзаказ', 'href="' + SHOP.preorderUrl + '" target="_blank" rel="noopener"') + link('pin', 'Магазин и контакты', 'href="#info" data-go="info"', esc(SHOP.address)) + '</div>' +
       '<div class="dr-s">Оформление</div><div class="dr-th" id="dr-th">' + ['auto', 'light', 'dark'].map(function (k) { return '<button type="button" data-th="' + k + '" aria-pressed="' + (themeMode() === k) + '">' + (k === 'auto' ? 'Авто' : THEME_NAMES[k]) + '</button>'; }).join('') + '</div>' +
       '<div class="dr-s">Связь</div><div class="dr-g">' + link('send', 'Менеджер в Telegram', 'href="' + SHOP.managerUrl + '" target="_blank" rel="noopener"', '@' + SHOP.manager) + link('megaphone', 'Канал магазина', 'href="' + SHOP.channelUrl + '" target="_blank" rel="noopener"') + link('star', 'Отзывы покупателей', 'href="' + SHOP.reviewsUrl + '" target="_blank" rel="noopener"') + link('play', 'TikTok', 'href="' + SHOP.tiktokUrl + '" target="_blank" rel="noopener"') + '</div>' +
@@ -2073,7 +2080,7 @@
       '<div style="min-width:0"><h1>' + esc(u.name) + '</h1>' +
       '<div class="meta"><span>@' + esc(u.login) + '</span>' + (u.email ? '<span>' + esc(u.email) + '</span>' : '') + '<button class="idb" type="button" data-copy="' + esc(u.code) + '">ID ' + esc(u.code) + icon('copy') + '</button><span>с нами с ' + esc(since) + '</span></div></div></div>' +
       '<div class="ptiles"><div class="ptile"><small>Ониксы</small><b>' + tk() + num(u.balance) + '</b></div><div class="ptile"><small>Это скидка до</small><b>' + rub(u.balanceRub) + '</b></div><div class="ptile"><small>Серия входов</small><b>' + u.streak + ' ' + plural(u.streak, 'день', 'дня', 'дней') + '</b></div><div class="ptile"><small>Активные заказы</small><b>' + active.length + '</b></div></div>' +
-      '<div class="acts"><a class="btn" href="#games">' + icon('gift') + 'Игры</a><a class="btn btn-white" href="#cart">' + icon('bag') + 'Потратить ониксы</a></div></div>' +
+      '<div class="acts"><a class="btn" href="#roulette">' + icon('gift') + 'Игра</a><a class="btn btn-white" href="#cart">' + icon('bag') + 'Потратить ониксы</a></div></div>' +
 
       '<div class="card tile c6 loyal lv-' + L.key + '"><div class="tile-h"><h3>Программа лояльности</h3><button class="link-btn" type="button" id="all-levels">Все уровни</button></div>' +
       '<div class="lh lh-row lv-' + L.key + '">' + emblem(L.key, 68, 3) + '<div class="lh-t"><span class="small">Ваш уровень' + (L.fixed ? ' · закреплён менеджером' : '') + '</span><b class="loyal-name">' + esc(L.name) + '</b><span class="xp-num">' + num(u.xp) + ' XP <span class="small">за месяц</span></span></div></div>' +
@@ -2167,63 +2174,13 @@
     var fbd = $('#roul-free'); if (fbd) fbd.textContent = u.freeSpins ? 'Бесплатных посылок: ' + u.freeSpins : 'Раз в день бесплатно';
     var pbtn = $('#spin-paid'); if (pbtn) { pbtn.disabled = spinning || u.balance < RULES.spinCost; pbtn.querySelector('span').textContent = spinning ? 'Сканируем…' : 'Открыть за ' + RULES.spinCost; }
   }
-  /* ------------------------------------------------------------ «Игры»
-     Раздел с выбором игры. «Грузомания» и «Последний рубеж» подгружаются по требованию
-     (assets/gamekit.js + assets/gruz.js или assets/rub.js), открываются на весь экран, прогресс хранится на сервере. */
-  var GAME_LIST = [
-    { id: 'gruz', file: 'gruz2', glob: 'Gruz2', name: 'Грузомания', tag: 'Открытый район и логистика', d: 'Целый район в вашем распоряжении: закупайте товар, возите его на тележке и фурах, стройте склад и продавайте. Ходите по улицам, заходите в здания, нанимайте команду.' },
-    { id: 'rub', file: 'rub', glob: 'Rub', name: 'Последний рубеж', tag: 'Выживание', d: 'Мир после катастрофы. Исследуйте шесть биомов, добывайте ресурсы, сражайтесь с мутантами и боссами, стройте лагерь и защищайте его ночью.' }
-  ];
-  var gameNow = null, gameBusy = false;
-  function gameCover(id) {
-    if (id === 'gruz') return '<svg class="gm-cv" viewBox="0 0 320 170" aria-hidden="true"><defs><linearGradient id="gzbg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#43c9e3"/><stop offset="1" stop-color="#1a5fb8"/></linearGradient></defs><rect width="320" height="170" fill="url(#gzbg)"/><g opacity=".18" fill="#fff"><circle cx="270" cy="30" r="60"/></g><path d="M60 120 160 70 260 120 160 170Z" fill="#e9eef6"/><path d="M60 120 160 170V150L60 100Z" fill="#b9c5d8"/><path d="M260 120 160 170V150L260 100Z" fill="#cfd8e6"/><path d="M60 100 160 50 260 100 160 150Z" fill="#f4f7fb"/><g><path d="M95 95l22-11 22 11-22 11z" fill="#d8a865"/><path d="M95 95v14l22 11V106z" fill="#b8844a"/><path d="M139 95v14l-22 11V106z" fill="#c9965a"/></g><g><path d="M150 78l18-9 18 9-18 9z" fill="#ff5a6e"/><path d="M150 78v12l18 9V87z" fill="#d6404f"/><path d="M186 78v12l-18 9V87z" fill="#e84d5c"/></g><g><path d="M190 100l16-8 16 8-16 8z" fill="#ffb02e"/><path d="M190 100v11l16 8v-11z" fill="#d68a12"/><path d="M222 100v11l-16 8v-11z" fill="#eb9b1d"/></g><circle cx="128" cy="122" r="7" fill="#1a3a6b"/><rect x="122" y="128" width="12" height="16" rx="5" fill="#1a86c0"/></svg>';
-    return '<svg class="gm-cv" viewBox="0 0 320 170" aria-hidden="true"><defs><linearGradient id="rbbg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3a2a4a"/><stop offset=".6" stop-color="#a0522d"/><stop offset="1" stop-color="#3b2a1e"/></linearGradient></defs><rect width="320" height="170" fill="url(#rbbg)"/><circle cx="240" cy="70" r="26" fill="#ffb35a" opacity=".85"/><path d="M0 120 40 96 80 112 120 84 170 110 210 90 260 108 320 88V170H0Z" fill="#2a1f1a"/><g fill="#5a3a22"><path d="M30 150V118l6-8 6 8v32zM46 150V114l6-8 6 8v36zM62 150V118l6-8 6 8v32z"/></g><g fill="#3a2a20"><rect x="150" y="104" width="10" height="46"/><path d="M140 104h30l-15-20z"/></g><circle cx="106" cy="136" r="7" fill="#e8c9a0"/><rect x="99" y="142" width="14" height="18" rx="5" fill="#4a6a3a"/><path d="M114 140l16-12" stroke="#c0c6d0" stroke-width="3" stroke-linecap="round"/><g fill="#7ad04a"><ellipse cx="210" cy="146" rx="12" ry="8"/><circle cx="205" cy="143" r="2" fill="#ff3d3d"/><circle cx="214" cy="143" r="2" fill="#ff3d3d"/></g></svg>';
-  }
-  function renderGames() {
-    var v = $('#v-games'), u = acct.user;
-    v.innerHTML = backRow('gm-back') + '<div class="pad roul-head" style="padding:0 0 10px"><div><h1>Игры</h1><p class="roul-sub">Посылки с призами и две большие игры</p></div></div>' +
-      '<div class="gm-grid3">' +
-      '<a class="gm-card gm-p" href="#roulette"><span class="gm-ic">' + icon('gift', 'lg') + '</span><h2>Посылка с сюрпризом</h2><p>Рентген показывает приз: ониксы, промокод, опыт или рамка для аватара.</p><span class="gm-tag">' + (u ? (u.freeSpins ? 'Бесплатных посылок: ' + u.freeSpins : 'Раз в день бесплатно') : 'Раз в день бесплатно') + '</span></a>' +
-      GAME_LIST.map(function (g) {
-        return '<a class="gm-card gm-big gm-' + g.id + '" href="#' + g.id + '">' + gameCover(g.id) + '<div class="gm-in"><span class="gm-kind">' + esc(g.tag) + '</span><h2>' + esc(g.name) + '</h2><p>' + esc(g.d) + '</p><span class="gm-play">' + (u ? 'Играть' : 'Войти и играть') + '</span></div></a>';
-      }).join('') + '</div>';
-    var gb = $('#gm-back', v); if (gb) gb.addEventListener('click', gamesBack);
-  }
+  /* «Игра» одна: посылка с сюрпризом (#roulette). Других игр в магазине нет. */
   // «Назад» в играх: из «Игр» туда, откуда пришли (последний экран вне игр), без истории: кабинет или главная
   function backRow(id) { return '<div class="back-row"><button class="back-btn" type="button" id="' + id + '" aria-label="Назад">' + icon('arrow-right') + 'Назад</button></div>'; }
   function gamesBack() {
     var t = lastOutside;
     if (typeof t !== 'string' || t === 'games') t = acct.user ? 'account' : '';
     location.hash = t;
-  }
-  function loadJs(src) {
-    return new Promise(function (res, rej) {
-      if (document.querySelector('script[data-src="' + src + '"]')) { res(); return; }
-      var s = document.createElement('script'); s.src = src; s.setAttribute('data-src', src); s.onload = res; s.onerror = function () { s.remove(); rej(new Error('load')); }; document.head.appendChild(s);
-    });
-  }
-  function openGame(id) {
-    var g = GAME_LIST.filter(function (x) { return x.id === id; })[0], u = acct.user;
-    if (!g || gameNow || gameBusy) return;
-    if (!API.enabled) { toast('Игры скоро появятся', null, 'warn'); silentHash('games'); return; }
-    if (!u) { if (!acct.ready) return; requireAuth(id); return; }
-    gameBusy = true;
-    var me = document.querySelector('script[src*="assets/app.js"]'), q = me && /\?v=[^"&]+/.exec(me.getAttribute('src') || ''), v = q ? q[0] : '';
-    loadJs('assets/gamekit.js' + v).then(function () { return loadJs('assets/' + g.file + '.js' + v); })
-      .then(function () { return API.call('gameLoad', { game: id }); })
-      .then(function (r) {
-        gameBusy = false;
-        if (!r.ok) { toast(r.error || 'Не удалось открыть игру', null, 'warn'); silentHash('games'); return; }
-        var api = window[g.glob].open({
-          id: id, name: g.name, data: r.data, rev: r.rev, now: r.now, user: { name: u.name },
-          save: function (data, base) { return API.call('gameSave', { game: id, data: data, base: base }); },
-          onUser: function (nu) { setUserLite(nu); },
-          toast: function (m, kind) { toast(m, null, kind === 'warn' ? 'warn' : kind === 'reward' ? 'reward' : null); },
-          onClose: function () { gameNow = null; if (location.hash.slice(1) === id) silentHash('games'); renderGames(); setNav('games'); }
-        });
-        if (api && api.fail) { toast(api.fail, null, 'warn'); silentHash('games'); return; }
-        gameNow = api;
-      }, function () { gameBusy = false; toast('Нет связи, попробуйте ещё раз', null, 'warn'); silentHash('games'); });
   }
 
   /* ------------------------------------------------------------ «Посылка на рентгене»
@@ -2498,7 +2455,7 @@
       }, function () { shown = true; fail('Нет связи, попробуйте ещё раз'); });
     }
     setState('idle', 'ГОТОВ'); updateRoulBalance(); idleOn(); put(xWait());
-    var rb = $('#rl-back', v); if (rb) rb.addEventListener('click', function () { location.hash = 'games'; });
+    var rb = $('#rl-back', v); if (rb) rb.addEventListener('click', function () { gamesBack(); });
     var g = $('#spin-guest', v); if (g) g.addEventListener('click', function () { requireAuth('roulette'); });
     var pbtn = $('#spin-paid', v); if (pbtn) pbtn.addEventListener('click', function () { doOpen(false); });
     var fb = $('#spin-free', v); if (fb) fb.addEventListener('click', function () { doOpen(true); });
@@ -2559,7 +2516,7 @@
   function silentHash(h) { if (location.hash.slice(1) === h) return; skipHash = h; location.hash = h; }
   function go(h) { if (location.hash.slice(1) === h || (!h && !location.hash)) route(); else location.hash = h; }
   function setNav(h) {
-    var key = h === '' ? 'home' : /^p-/.test(h) || h === 'stock' || h === 'preorder' ? 'catalog' : h === 'roulette' || h === 'gruz' || h === 'rub' ? 'games' : h;
+    var key = h === '' ? 'home' : /^p-/.test(h) || h === 'stock' || h === 'preorder' ? 'catalog' : h === 'roulette' || h === 'games' ? 'games' : h;
     $$('[data-route]').forEach(function (a) {
       var r = a.getAttribute('data-route'), on = r === key || (r === 'preorder' && h === 'preorder');
       if (r === 'catalog' && h === 'preorder' && !a.closest('.tabbar')) on = false;
@@ -2595,7 +2552,6 @@
     var h = decodeURIComponent(location.hash.replace(/^#/, '')); routed++;
     if (skipHash !== null && h === skipHash) { skipHash = null; return; }
     skipHash = null;
-    if (gameNow && h !== 'gruz' && h !== 'rub') gameNow.close();
     var m = h.match(/^ref=([A-Za-z0-9]{4,12})$/);
     if (m) {
       store.set('ref', m[1].toUpperCase());
@@ -2621,8 +2577,7 @@
     else if (h === 'favorites') { renderFavorites(); show('favorites'); }
     else if (h === 'account') { renderAccount(); show('account'); flushTrack(); }
     else if (h === 'roulette') { renderRoulette(); show('roulette'); }
-    else if (h === 'games') { renderGames(); show('games'); }
-    else if (h === 'gruz' || h === 'rub') { renderGames(); show('games'); openGame(h); }
+    else if (h === 'games' || h === 'gruz' || h === 'rub') { try { history.replaceState(null, '', location.pathname + location.search + '#roulette'); } catch (e) { /* */ } h = 'roulette'; renderRoulette(); show('roulette'); }   // старые ссылки на игры ведут в посылку
     else if (h === 'info') { renderInfo(); show('info'); }
     else { renderHome(); show('home'); }
     setNav(h); updFloatBack(h);
@@ -2642,7 +2597,6 @@
     if (current === 'home') { var b = $('#tok-strip'); if (b) { b.outerHTML = tokensStrip(); growBars($('#v-home')); } }
     else if (current === 'account') renderAccount();
     else if (current === 'roulette') renderRoulette();
-    else if (current === 'games') renderGames();
     else if (current === 'cart') renderCart();
     else if (current === 'orders') renderOrders();
     if (acct.user && current === 'catalog') { if (filter.tab === 'preorder') track('pre'); else if (filter.tab === 'stock') track('stock'); }
@@ -2747,19 +2701,16 @@
     if (!acct.user) return;
     var md = openModal(modalHead('Уведомления в Telegram') + '<div id="tg-body"></div>', { cls: 'sm' });
     var polls = 0;
-    var perks = [['receipt', 'Статус заказа', 'выкуплен, в пути, на складе, получен'], ['clock', 'Товар снова в продаже', 'из списка «Жду появления»'], ['star', 'Без спама', 'только про ваши заказы и товары']];
+    var perks = [['receipt', 'Статусы заказов', 'выкуплен, в пути, на складе, получен'], ['clock', 'Товар снова в продаже', 'из списка «Жду появления»'], ['percent', 'Скидки на избранное', 'подешевела вещь, за которой вы следите'], ['star', 'Новинки и акции', 'все категории, без выбора'], ['gift', 'Бонусы и подарки', 'ониксы, уровни, день рождения']];
     function hero(ic, title, sub, cls) { return '<div class="tg-hero ' + (cls || '') + '"><span class="tg-ic">' + icon(ic) + '</span><h3>' + title + '</h3><p>' + sub + '</p></div>'; }
     function draw() {
       var u = acct.user, b = $('#tg-body', md); if (!b) return;
       if (u.tgOn) {
-        b.innerHTML = hero('check-circle', 'Telegram подключён', (u.tgName ? esc(u.tgName) + ' · ' : '') + 'уведомления включены', 'ok') +
+        b.innerHTML = hero('check-circle', 'Telegram подключён', (u.tgName ? esc(u.tgName) + ' · ' : '') + 'все уведомления включены', 'ok') +
           '<ul class="tg-perks">' + perks.map(function (x) { return '<li><span class="ic">' + icon(x[0]) + '</span><span><b>' + x[1] + '</b><small>' + x[2] + '</small></span></li>'; }).join('') + '</ul>' +
-          '<h4 class="tg-sub">Сообщать о новинках</h4><div class="choices" id="tg-cats"></div><p class="small">Отметьте категории: бот напишет, когда в них появится новый товар.</p>' +
-          '<button class="btn btn-ghost" type="button" id="tg-off">Отключить уведомления</button>';
-        drawTgCats($('#tg-cats', b));
-        $('#tg-off', b).addEventListener('click', function () { API.call('tgUnlink').then(function (r) { if (r.ok) { setUser(r.user); draw(); toast('Уведомления отключены'); } }); });
+          '<p class="small">Все уведомления включены постоянно. Их нельзя отключить или выбрать выборочно: так вы ничего не пропустите.</p>';
       } else {
-        b.innerHTML = hero('send', 'Заказы: в Telegram', 'Подключите бота ONION SHOP, и не нужно заходить на сайт, чтобы узнать, где ваш заказ.') +
+        b.innerHTML = hero('send', 'Заказы: в Telegram', 'Подключите бота ONION SHOP: после этого все уведомления сайта приходят вам автоматически и всегда, их нельзя отключить.') +
           '<ul class="tg-perks">' + perks.map(function (x) { return '<li><span class="ic">' + icon(x[0]) + '</span><span><b>' + x[1] + '</b><small>' + x[2] + '</small></span></li>'; }).join('') + '</ul>' +
           '<button class="btn" type="button" id="tg-on">' + icon('send') + 'Подключить Telegram</button><div id="tg-out"></div>';
         $('#tg-on', b).addEventListener('click', function () {
@@ -2786,19 +2737,6 @@
       }
     }
     draw();
-  }
-  function drawTgCats(box) {
-    var seen = {}, cats = [];
-    PRODUCTS.forEach(function (p) { if (!seen[p.category]) { seen[p.category] = 1; cats.push([p.category, p.categoryLabel]); } });
-    var on = (acct.user.tgCats || []).slice();
-    box.innerHTML = cats.map(function (c) { return '<button class="choice" type="button" data-c="' + esc(c[0]) + '" aria-pressed="' + (on.indexOf(c[0]) >= 0) + '">' + esc(c[1]) + '</button>'; }).join('');
-    $$('[data-c]', box).forEach(function (b) {
-      b.addEventListener('click', function () {
-        var k = b.getAttribute('data-c'), i = on.indexOf(k); if (i >= 0) on.splice(i, 1); else on.push(k);
-        b.setAttribute('aria-pressed', String(on.indexOf(k) >= 0));
-        API.call('tgCats', { cats: on }).then(function (r) { if (r.ok) { acct.user = r.user; } else toast(r.error, null, 'warn'); });
-      });
-    });
   }
   var SIZE_SCALE = ['XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL', '4XL', '5XL'];
   function normSize(s) { s = String(s).trim().toUpperCase().replace(/\s/g, ''); return s === '2XL' ? 'XXL' : s === 'XXXL' ? '3XL' : s === '4XL' || s === 'XXXXL' ? '4XL' : s === 'XXS' ? 'XXS' : s; }

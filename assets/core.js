@@ -191,10 +191,6 @@ var OnionCore = (function () {
       { id: 'ach-loyal', name: 'Лавры', src: 'ach', ach: 'five' },
       { id: 'ach-critic', name: 'Пять звёзд', src: 'ach', ach: 'review5' },
       { id: 'ach-friend', name: 'Сцепка', src: 'ach', ach: 'friend' },
-      { id: 'gz-1', name: 'Накладная', src: 'game', game: 'gruz', how: 'Грузомания: склад 5 уровня' },
-      { id: 'gz-2', name: 'Грузовой хаб', src: 'game', game: 'gruz', how: 'Грузомания: склад 10 уровня' },
-      { id: 'rb-1', name: 'Застава', src: 'game', game: 'rub', how: 'Последний рубеж: победить первого босса' },
-      { id: 'rb-2', name: 'Последний рубеж', src: 'game', game: 'rub', how: 'Последний рубеж: победить всех 6 боссов' }
     ],
     rarity: [null, { name: 'Обычная', w: 40 }, { name: 'Необычная', w: 28 }, { name: 'Редкая', w: 18 }, { name: 'Эпическая', w: 10 }, { name: 'Легендарная', w: 4 }],
     // достижения: только значки и рамки, без ониксов; однажды полученные не пропадают
@@ -868,53 +864,6 @@ var OnionCore = (function () {
     return ok({ prize: result, index: idx, user: publicUser(db, u) });
   };
 
-  // ---------------------------------------------------------------- игры «Грузомания» и «Последний рубеж»
-  /* Игры считаются в браузере, сервер хранит сохранение (строка JSON) и выдаёт рамки за этапы.
-     Магазину игры пока ничего не дают: ни ониксов, ни опыта. Защита рамок: этап засчитывается не раньше
-     минимального времени игры с первого сохранения (честно так быстро не дойти). */
-  var GAMES = {
-    /* rate: сколько монет в час игра может честно заработать на уровне хаба; burst: запас на одно сохранение.
-       Если ms.earn вырос быстрее, сохранение принимается, но рост обрезается и рамки в этот раз не выдаются (подделка сохранения). */
-    gruz: { name: 'Грузомания', rate: function (lvl) { return 45000 * Math.max(1, Math.min(12, lvl)); }, burst: 80000, frames: [{ id: 'gz-1', key: 'lvl', need: 5, minMin: 25 }, { id: 'gz-2', key: 'lvl', need: 10, minMin: 120 }] },
-    rub: { name: 'Последний рубеж', frames: [{ id: 'rb-1', key: 'bosses', need: 1, minMin: 15 }, { id: 'rb-2', key: 'bosses', need: 6, minMin: 180 }] }
-  };
-  var GAME_MAX = 150000;
-  function gameMeta(u, g) { u.gm = u.gm && typeof u.gm === 'object' ? u.gm : {}; return (u.gm[g] = u.gm[g] || { first: 0, rev: 0, saves: 0, play: 0 }); }
-  A.gameLoad = function (db, p) {
-    var u = sessionUser(db, p); if (!u) return err('auth');
-    var g = String(p.game || ''); if (!GAMES[g]) return err('Нет такой игры');
-    var m = gameMeta(u, g), d = db.gameGet ? db.gameGet(u.id, g) : null;
-    return ok({ data: d || '', rev: m.rev || 0, now: db.now() });
-  };
-  A.gameSave = function (db, p) {
-    var u = sessionUser(db, p); if (!u) return err('auth');
-    var g = String(p.game || ''), G = GAMES[g]; if (!G) return err('Нет такой игры');
-    var data = String(p.data || ''); if (!data || data.length > GAME_MAX) return err('Сохранение слишком большое');
-    var st; try { st = JSON.parse(data); } catch (e) { return err('Повреждённое сохранение'); }
-    var m = gameMeta(u, g), now = db.now();
-    if ((+p.base || 0) < (m.rev || 0)) return ok({ conflict: true, data: db.gameGet(u.id, g) || '', rev: m.rev });
-    if (!m.first) m.first = now;
-    var prevAt = m.at || now;
-    m.rev = (m.rev || 0) + 1; m.saves = (m.saves || 0) + 1; m.at = now;
-    var ms = st && st.ms && typeof st.ms === 'object' ? st.ms : {}, got = [];
-    // проверка скорости роста: заработок по игре не может расти быстрее правил (по времени сервера, не телефона)
-    var earn = Math.max(0, +ms.earn || 0), prevE = m.earn || 0, dtH = Math.max(0, now - prevAt) / 3600000;
-    var lim = G.rate ? G.rate(+ms.lvl || 1) * dtH + (G.burst || 0) : Infinity, fast = G.rate && earn - prevE > lim;
-    if (G.rate) { m.earn = fast ? prevE + lim : Math.max(prevE, earn); if (fast) m.sus = (m.sus || 0) + 1; }
-    u.frames = u.frames || ['base'];
-    G.frames.forEach(function (f) {
-      if (!fast && (+ms[f.key] || 0) >= f.need && u.frames.indexOf(f.id) < 0 && now - m.first >= f.minMin * 60000 && m.saves >= 5) {
-        u.frames.push(f.id); got.push({ id: f.id, name: (RULES.frames.filter(function (x) { return x.id === f.id; })[0] || {}).name });
-      }
-    });
-    db.gameSet(u.id, g, data, now);
-    if (got.length) settle(db, u);
-    db.saveUser(u);
-    var res = { rev: m.rev, frames: got };
-    if (got.length) res.user = publicUser(db, u);
-    return ok(res);
-  };
-
   // ---------------------------------------------------------------- заказ
   function checkFields(f, hasStock, hasPre) {
     if (String(f.name || '').trim().length < 2) return 'Укажите имя';
@@ -1001,7 +950,7 @@ var OnionCore = (function () {
     (items || []).forEach(function (it) {
       var qty = Math.max(1, Math.min(10, parseInt(it.qty, 10) || 1));
       var prod = db.product ? db.product(String(it.id)) : null;
-      if (prod && prod.status === 'sold') { gone.push(prod.title || it.id); return; }
+      if (prod && (prod.status === 'sold' || prod.status === 'out')) { gone.push(prod.title || it.id); return; }   // нет в наличии или продано: заказать нельзя никак
       if (!prod) {
         if (db.catalogReady && db.catalogReady()) { gone.push(it.title || it.id); return; }
         unverified = true;
@@ -1061,7 +1010,7 @@ var OnionCore = (function () {
       f = Object.assign({}, f, { name: su.name, phone: su.phone, tg: su.tg || '' });
     }
     var built = buildLines(db, p.items);
-    if (built.gone.length) return err('Уже продано: ' + built.gone.join(', ') + '. Уберите из корзины и попробуйте снова');
+    if (built.gone.length) return err('Сейчас нельзя заказать (нет в наличии или продано): ' + built.gone.join(', ') + '. Уберите из корзины, а такой товар можно добавить в избранное');
     if (!built.lines.length) return err('Корзина пуста');
     if (!su || levelOf(su).index < RULES.early.level) {
       for (var ei = 0; ei < built.lines.length; ei++) { var ep = db.product ? db.product(built.lines[ei].id) : null, el = earlyLeft(ep, db.now());
@@ -1257,17 +1206,7 @@ var OnionCore = (function () {
     db.putCode('tg:' + code, { userId: u.id }, 3600);
     return ok({ code: code, bot: db.botUser ? (db.botUser() || '') : '', on: !!u.tgChat });
   };
-  A.tgUnlink = function (db, p) {
-    var u = sessionUser(db, p); if (!u) return err('auth');
-    u.tgChat = ''; u.tgName = ''; db.saveUser(u);
-    return ok({ user: publicUser(db, u) });
-  };
-  A.tgCats = function (db, p) {
-    var u = sessionUser(db, p); if (!u) return err('auth');
-    var l = (Array.isArray(p.cats) ? p.cats : []).map(function (c) { return String(c).replace(/[^\w-]/g, '').slice(0, 24); }).filter(Boolean).slice(0, 12);
-    u.tgCats = l.join(','); db.saveUser(u);
-    return ok({ user: publicUser(db, u) });
-  };
+  // уведомления в Telegram включены всегда: ни отключить, ни выбрать категории нельзя (после подключения приходит всё)
   // вызывается ботом (не сайтом): текст «/start T123…» из чата → привязка к клиенту
   function tgBind(db, text, chat, name) {
     var m = /^\/start(?:@\w+)?\s+(T\d{12})\s*$/.exec(String(text || '').trim());
@@ -1332,7 +1271,6 @@ var OnionCore = (function () {
     RULES: RULES, handle: handle, orderText: orderText, buildLines: buildLines, checkFields: checkFields,
     offlineNo: offlineNo, levelInfo: levelInfo, levelOf: levelOf, fixIndex: fixIndex, receive: receive, priceDrops: priceDrops, photoLinks: photoLinks, earlyLeft: earlyLeft, phoneConfirm: phoneConfirm, flag: flag, referralOnReceive: referralOnReceive, orderCanceled: orderCanceled, canonEmail: canonEmail, bdayIsToday: bdayIsToday, adjustTokens: adjustTokens, xpOfRub: xpOfRub, wheelFor: wheelFor, framesFor: framesFor, pctText: pctText, promoBase: promoBase, touch: touch, tokensToRub: tokensToRub, settings: settings, dayKey: dayKey, monthKey: monthKey,
     statusMessage: statusMessage, tgBind: tgBind,
-    GAMES: GAMES,
     cleanTg: cleanTg, cleanEmail: cleanEmail, phoneKey: phoneKey, fmtPhone: fmtPhone, digits: digits, validEmail: validEmail, taskPick: picksFor, weekKey: weekKey, stagesFor: stagesFor
   };
 })();

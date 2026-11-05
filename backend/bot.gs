@@ -1,5 +1,5 @@
 /* ====================== Telegram-бот: меню покупателя и панель менеджера ======================
-   Менеджер — только аккаунт @OnionShop_Support (свойство ADMIN_USERNAME). Все остальные — покупатели:
+   Менеджер: только аккаунт @OnionShop_Support (свойство ADMIN_USERNAME). Все остальные: покупатели:
    им доступны только их заказы, бонусы, настройки и переписка с менеджером через бота. */
 function tgApi_(method, payload) {
   try {
@@ -46,17 +46,17 @@ function claimAdmin_(m) {
 /* ---------- кнопки под уведомлениями покупателю ---------- */
 function statusKb_(no, st) {
   var kb = [[{ text: '📦 Подробнее', callback_data: 'm|' + no }, { text: '💬 Вопрос', callback_data: 'q|' + no }]];
-  if (st === 'Получен') kb.unshift([{ text: '⭐ Оставить отзыв (+токены)', url: siteUrl_('orders') }]);
+  if (st === 'Получен') kb.unshift([{ text: '⭐ Оставить отзыв (+ониксы)', url: siteUrl_('orders') }]);
   return kb;
 }
 
 /* ---------- покупатель ---------- */
 function welcome_(name, linked) {
   return '👋 <b>Привет' + (name ? ', ' + hesc_(name) : '') + '! Это бот ONION SHOP.</b>\n\n' +
-    'Одежда, обувь и аксессуары — в наличии и под заказ из Китая.\n\n' +
+    'Одежда, обувь и аксессуары, в наличии и под заказ из Китая.\n\n' +
     (linked ? '✅ Уведомления подключены.\n\n' : 'Чтобы получать сообщения о заказах, откройте на сайте кабинет → «Уведомления в Telegram» → «Подключить».\n\n') +
-    'Здесь можно:\n• следить за заказами — статусы придут сами;\n• узнать про токены и уровень;\n• задать вопрос менеджеру — просто напишите его в чат.\n\n' +
-    '⏳ <i>Бот отвечает не мгновенно — иногда до минуты. Это нормально: нажмите кнопку один раз и немного подождите, сообщение дойдёт.</i>\n\nКнопки меню — внизу 👇';
+    'Здесь можно:\n• следить за заказами, статусы придут сами;\n• узнать про ониксы и уровень;\n• задать вопрос менеджеру, просто напишите его в чат.\n\n' +
+    '⏳ <i>Бот отвечает не мгновенно, иногда до минуты. Это нормально: нажмите кнопку один раз и немного подождите, сообщение дойдёт.</i>\n\nКнопки меню: внизу 👇';
 }
 function welcomeKb_(linked) {
   return [[{ text: '🛍 Открыть каталог', url: siteUrl_('catalog') }], [{ text: 'ℹ️ Условия и сроки доставки', url: termsUrl_() }],
@@ -70,20 +70,20 @@ function custCatalog_(chat) {
   tgSend_(chat, '🛍 <b>Каталог ONION SHOP</b>\nОдежда, обувь и аксессуары. Есть товары в наличии и под заказ из Китая.', [
     [{ text: 'Весь каталог', url: siteUrl_('catalog') }],
     [{ text: 'В наличии', url: siteUrl_('stock') }, { text: 'Предзаказ', url: siteUrl_('preorder') }],
-    [{ text: '🔔 Новинки по категориям', callback_data: 'ns' }]]);
+    [{ text: '🔔 Мои уведомления', callback_data: 'ns' }]]);
 }
 function custTerms_(chat) {
   tgSend_(chat, '📦 <b>Условия и сроки</b>\n\n<b>Предзаказ из Китая.</b> Выкупаем у поставщика после заказа, проверяем на складе и отправляем.\n' +
-    '🚚 Фура — около 18–32 дней от склада. Самолётом — быстрее, по согласованию с менеджером.\n' +
+    '🚚 Фура идёт около 18-32 дней от склада. Самолётом быстрее, по согласованию с менеджером.\n' +
     'Стоимость доставки из Китая уже включена в стоимость товара.\n\n' +
-    '<b>В наличии</b> — получение в вашем городе или курьером, детали при оформлении.\n\nПолные условия, политика и порядок оформления — по кнопкам ниже.', [
+    '<b>В наличии</b>: Авито Доставка, курьер по Москве или самовывоз, способ выбирается при оформлении.\n\nПолные условия, политика и порядок оформления, по кнопкам ниже.', [
     [{ text: 'Условия предзаказа и политика', url: termsUrl_() }],
     [{ text: 'Как оформить заказ', url: siteUrl_('info') }],
     [{ text: '💬 Задать вопрос', callback_data: 'q|' }]]);
 }
 function custAsk_(chat, no) {
   cachePut_('q:' + chat, no || '-', 900);
-  tgSend_(chat, '💬 Напишите вопрос одним сообщением' + (no ? ' — передам менеджеру вместе с номером заказа <b>' + hesc_(no) + '</b>' : ' — я передам его менеджеру') + '. Можно приложить фото.\nОтвет придёт сюда же.', [[{ text: 'Или написать напрямую', url: SUPPORT_URL_ }]]);
+  tgSend_(chat, '💬 Напишите вопрос одним сообщением' + (no ? ', передам менеджеру вместе с номером заказа <b>' + hesc_(no) + '</b>' : ', я передам его менеджеру') + '. Можно приложить фото.\nОтвет придёт сюда же.', [[{ text: 'Или написать напрямую', url: SUPPORT_URL_ }]]);
 }
 function needLink_(chat) { tgSend_(chat, 'Сначала подключите уведомления: на сайте кабинет → «Уведомления в Telegram» → «Подключить». Это займёт полминуты.', [[{ text: '🔔 Открыть кабинет', url: siteUrl_('account') }]]); }
 function custOrders_(chat, msgId) {
@@ -111,28 +111,21 @@ function custOrderCard_(cq, no) {
 }
 function custBonus_(chat) {
   var u = tgUserByChat_(chat); if (!u) { needLink_(chat); return; }
-  var L = OnionCore.levelOf(u), R = OnionCore.RULES, kb = [[{ text: '🎡 Рулетка и задания', url: siteUrl_('roulette') }]];
-  var text = '🎁 <b>Ваши бонусы</b>\n\n🪙 Токенов: <b>' + (u.balance || 0) + '</b> (≈ ' + Math.floor((u.balance || 0) * R.tokenRub) + ' ₽)\n⭐ Уровень: <b>' + hesc_(L.name) + '</b>\n\nТокенами можно оплатить до 15% заказа. Ежедневные задания и рулетка — в кабинете.';
+  var L = OnionCore.levelOf(u), R = OnionCore.RULES, kb = [[{ text: '📦 Посылка и задания', url: siteUrl_('roulette') }]];
+  var text = '🎁 <b>Ваши бонусы</b>\n\n🪙 Ониксов: <b>' + (u.balance || 0) + '</b> (≈ ' + Math.floor((u.balance || 0) * R.tokenRub) + ' ₽)\n⭐ Уровень: <b>' + hesc_(L.name) + '</b>\n\nОниксами и промокодом вместе можно оплатить до 12% заказа. Ежедневные задания и посылка, в кабинете.';
   if (u.refCode) {
     var link = siteUrl_('ref=' + u.refCode);
-    text += '\n\n👥 <b>Пригласите друга</b>: ему +' + R.reward.refFriend + ' токенов при регистрации, вам +' + R.reward.referrer + ' после его первого заказа от ' + R.refMinOrder + ' ₽.\nВаша ссылка: ' + hesc_(link);
-    kb.push([{ text: '📤 Поделиться ссылкой', url: 'https://t.me/share/url?url=' + encodeURIComponent(link) + '&text=' + encodeURIComponent('Одежда и обувь из Китая и в наличии — ONION SHOP. По моей ссылке +' + R.reward.refFriend + ' токенов при регистрации') }]);
+    text += '\n\n👥 <b>Пригласите друга</b>: ему +' + R.reward.refFriend + ' ониксов при регистрации, вам +' + R.reward.referrer + ' после его первого заказа от ' + R.refMinOrder + ' ₽.\nВаша ссылка: ' + hesc_(link);
+    kb.push([{ text: '📤 Поделиться ссылкой', url: 'https://t.me/share/url?url=' + encodeURIComponent(link) + '&text=' + encodeURIComponent('Одежда и обувь из Китая и в наличии. ONION SHOP. По моей ссылке +' + R.reward.refFriend + ' ониксов при регистрации') }]);
   }
   kb.push([{ text: '👤 Кабинет', url: siteUrl_('account') }]);
   tgSend_(chat, text, kb);
 }
-/* настройки: новинки по категориям и отключение уведомлений */
-function catList_() {
-  var cat = DB.loadCatalog_() || {}, seen = {}, out = [], names = { shoes: 'Обувь', hoodies: 'Худи и свитеры', tees: 'Футболки', pants: 'Штаны', outerwear: 'Куртки', accessories: 'Аксессуары' };
-  Object.keys(cat).forEach(function (id) { var c = cat[id].category; if (c && !seen[c]) { seen[c] = 1; out.push([c, cat[id].cl || names[c] || c]); } });
-  return out;
-}
+/* уведомления: все категории включены всегда и отключить их нельзя, экран только показывает, что приходит */
 function custSettings_(chat, msgId) {
   var u = tgUserByChat_(chat); if (!u) { needLink_(chat); return; }
-  var on = String(u.tgCats || '').split(',').filter(Boolean);
-  var text = '⚙️ <b>Настройки уведомлений</b>\n\n✅ Статусы заказов и напоминания — включены всегда.\n\n🆕 <b>Новинки</b> — отметьте категории, о новых товарах в которых написать:';
-  var kb = catList_().map(function (c) { return [{ text: (on.indexOf(c[0]) >= 0 ? '✅ ' : '▫️ ') + c[1], callback_data: 'nc|' + c[0] }]; });
-  kb.push([{ text: '🔕 Отключить все уведомления', callback_data: 'noff' }]);
+  var text = '🔔 <b>Уведомления ONION SHOP</b>\n\nПока бот подключён, вам всегда приходит всё, что связано с сайтом:\n✅ статусы заказов и напоминания\n✅ товар из «Жду появления» снова в продаже\n✅ скидки на вещи из избранного\n✅ новинки и акции\n✅ бонусы, ониксы, уровни и подарки\n\nОтключить их нельзя: так вы ничего не пропустите.';
+  var kb = [[{ text: '📦 Мои заказы', callback_data: 'mo' }], [{ text: '🛍 Каталог', url: siteUrl_('catalog') }]];
   if (msgId) tgEdit_(chat, msgId, text, kb); else tgSend_(chat, text, kb);
 }
 function custCallback_(cq, a) {
@@ -142,18 +135,6 @@ function custCallback_(cq, a) {
   if (a[0] === 'q') { tgAnswer_(cq.id, ''); custAsk_(chat, a[1] || ''); return true; }
   if (a[0] === 'bn') { tgAnswer_(cq.id, ''); custBonus_(chat); return true; }
   if (a[0] === 'ns') { tgAnswer_(cq.id, ''); custSettings_(chat); return true; }
-  if (a[0] === 'nc') {
-    var u = tgUserByChat_(chat); if (!u) { tgAnswer_(cq.id, 'Подключите уведомления'); return true; }
-    var on = String(u.tgCats || '').split(',').filter(Boolean), k = String(a[1] || '').replace(/[^\w-]/g, '').slice(0, 24), i = on.indexOf(k);
-    if (i >= 0) on.splice(i, 1); else if (k) on.push(k);
-    u.tgCats = on.slice(0, 12).join(','); DB.saveUser(u);
-    tgAnswer_(cq.id, i >= 0 ? 'Не буду писать о новинках этой категории' : 'Напишу, когда появятся новинки'); custSettings_(chat, mid); return true;
-  }
-  if (a[0] === 'noff') { tgAnswer_(cq.id, ''); tgEdit_(chat, mid, 'Отключить все уведомления? Статусы заказов перестанут приходить. Включить снова можно в кабинете на сайте.', [[{ text: 'Да, отключить', callback_data: 'noffy' }, { text: 'Оставить', callback_data: 'ns' }]]); return true; }
-  if (a[0] === 'noffy') {
-    var uu = tgUserByChat_(chat); if (uu) { uu.tgChat = ''; uu.tgName = ''; DB.saveUser(uu); }
-    tgAnswer_(cq.id, 'Отключено'); tgEdit_(chat, mid, '🔕 Уведомления отключены. Меню бота продолжает работать. Включить снова — кабинет → «Уведомления в Telegram».', [[{ text: '👤 Кабинет', url: siteUrl_('account') }]]); return true;
-  }
   return false;
 }
 /* вопрос покупателя → менеджеру. В конце сообщения метка #c<чат>: менеджер отвечает «ответом» на него или кнопкой */
@@ -179,22 +160,22 @@ function tgAnswer_(id, text) { tgApi_('answerCallbackQuery', { callback_query_id
 
 /* ---------- менеджер ---------- */
 function adminMenu_(chat) {
-  tgSend_(chat, '🛠 <b>Панель менеджера ONION SHOP</b>\nЗаказы, клиенты, токены, вопросы и рассылка — прямо здесь.', [
+  tgSend_(chat, '🛠 <b>Панель менеджера ONION SHOP</b>\nЗаказы, клиенты, ониксы, вопросы и рассылка, прямо здесь.', [
     [{ text: '📦 Активные заказы', callback_data: 'ml|a' }, { text: '💳 Неоплаченные', callback_data: 'ml|u' }],
     [{ text: '👤 Найти клиента', callback_data: 'cf' }, { text: '📊 Сводка', callback_data: 'st' }],
     [{ text: '📣 Рассылка', callback_data: 'bcs' }]]);
-  tgSend_(chat, 'Кнопки внизу — быстрый доступ 👇', adminKb_());
+  tgSend_(chat, 'Кнопки внизу: быстрый доступ 👇', adminKb_());
 }
 function adminHelp_(chat) {
   tgSend_(chat, '<b>Как работать с ботом</b>\n\n' +
-    '📦 <b>Заказы.</b> Новый заказ приходит с кнопками статусов. Список — «Заказы» (есть фильтры по статусу и «неоплаченные»). Номер заказа (OS-26-00012 или 26-00012) — сразу карточка. Смена статуса тут же уходит клиенту.\n\n' +
+    '📦 <b>Заказы.</b> Новый заказ приходит с кнопками статусов. Список: «Заказы» (есть фильтры по статусу и «неоплаченные»). Номер заказа (OS-26-00012 или 26-00012): сразу карточка. Смена статуса тут же уходит клиенту.\n\n' +
     '💬 <b>Вопросы покупателей</b> приходят сюда. Ответить: свайпните сообщение → «Ответить» и напишите текст (или фото), либо кнопка «✍️ Ответить».\n\n' +
-    '👤 <b>Клиенты:</b> /client логин | ID | @telegram | телефон. В карточке: +/− токены, написать, удалить.\n' +
-    '🪙 /tokens логин +50 причина — начислить (минус — списать), клиенту придёт уведомление.\n' +
-    '🗑 /delete логин — удалить (с подтверждением, заказы остаются).\n' +
-    '📣 /broadcast текст — рассылка, можно с фото: отправьте фото с подписью (всем или только клиентам с активными заказами, сначала предпросмотр).\n' +
-    '📝 В карточке заказа — заметка для себя (колонка «Заметка»).\n\n' +
-    '☀️ Каждый день в 10:00 — сводка и неоплаченные заказы. ⭐ Новые отзывы тоже приходят сюда.\n/cancel — отменить ввод.');
+    '👤 <b>Клиенты:</b> /client логин | ID | @telegram | телефон. В карточке: +/− ониксы, написать, удалить.\n' +
+    '🪙 /tokens логин +50 причина, начислить (минус: списать), клиенту придёт уведомление.\n' +
+    '🗑 /delete логин: удалить (с подтверждением, заказы остаются).\n' +
+    '📣 /broadcast текст: рассылка. Можно с фото, отправьте фото с подписью (всем или только клиентам с активными заказами, сначала предпросмотр).\n' +
+    '📝 В карточке заказа, заметка для себя (колонка «Заметка»).\n\n' +
+    '☀️ Каждый день в 10:00: сводка и неоплаченные заказы. ⭐ Новые отзывы тоже приходят сюда.\n/cancel: отменить ввод.');
 }
 function ordersAll_() { return orderRows_().map(function (r) { var o = rowToObj_(r, ORDER_COLS); o.no = String(o.no).trim(); return o; }).filter(function (o) { return o.no; }); }
 function isDone_(st) { return st === 'Получен' || st === 'Отменён'; }
@@ -265,8 +246,8 @@ function findClient_(q) {
 function clientCard_(chat, u, msgId) {
   var L = OnionCore.levelOf(u), mine = orderRows_().filter(function (r) { return normId_(r[ci_(ORDER_COLS, 'userId')]) === u.id; });
   var last = mine.slice(-3).reverse().map(function (r) { return String(r[ci_(ORDER_COLS, 'no')]).trim(); });
-  var text = '👤 <b>@' + hesc_(u.login) + '</b> · ID ' + hesc_(u.id) + '\n' + hesc_(u.name || '') + (u.phone ? ' · ' + hesc_(u.phone) : '') + (u.tg ? ' · ' + hesc_(u.tg) : '') +
-    '\nУровень: ' + hesc_(L.name) + ' · 🪙 ' + (u.balance || 0) + ' токенов · заказов: ' + mine.length + '\nБот: ' + (u.tgChat ? 'подключён ' + hesc_(u.tgName || '') : 'не подключён');
+  var text = '👤 <b>@' + hesc_(u.login) + '</b> · ID ' + hesc_(u.id) + '\n' + hesc_(u.name || '') + (u.phone ? ' · ' + hesc_(u.phone) + (u.phoneOk === false ? ' (не подтверждён)' : ' ✅') : '') + (u.tg ? ' · ' + hesc_(u.tg) : '') +
+    '\nУровень: ' + hesc_(L.name) + ' · 🪙 ' + (u.balance || 0) + ' ониксов · заказов: ' + mine.length + '\nБот: ' + (u.tgChat ? 'подключён ' + hesc_(u.tgName || '') : 'не подключён');
   var kb = [[{ text: '+50', callback_data: 't|' + u.id + '|50' }, { text: '+100', callback_data: 't|' + u.id + '|100' }, { text: '−50', callback_data: 't|' + u.id + '|-50' }]];
   last.forEach(function (no) { kb.push([{ text: '🧾 ' + no, callback_data: 'o|' + no }]); });
   var r2 = []; if (u.tgChat) r2.push({ text: '✉️ Написать', callback_data: 'rp|' + u.tgChat }); r2.push({ text: '🗑 Удалить', callback_data: 'd|' + u.id }); kb.push(r2);
@@ -277,7 +258,7 @@ function adjustClient_(u, d, reason) {
   u.balance = Math.max(0, (u.balance || 0) + d);
   DB.log({ at: Date.now(), userId: u.id, login: u.login, delta: d, reason: reason || 'Менеджер (Telegram)', balance: u.balance });
   DB.saveUser(u);
-  DB.userNotify(u, (d > 0 ? '🪙 Вам начислено ' + d + ' токенов' : '🪙 Списано ' + (-d) + ' токенов') + (reason && reason !== 'Менеджер (Telegram)' ? ' — ' + reason : '') + '.\nБаланс: ' + u.balance, [[{ text: '🎁 Мои бонусы', callback_data: 'bn' }]]);
+  DB.userNotify(u, (d > 0 ? '🪙 Вам начислено ' + d + ' ониксов' : '🪙 Списано ' + (-d) + ' ониксов') + (reason && reason !== 'Менеджер (Telegram)' ? ': ' + reason : '') + '.\nБаланс: ' + u.balance, [[{ text: '🎁 Мои бонусы', callback_data: 'bn' }]]);
   return u;
 }
 function removeClient_(u) {
@@ -326,9 +307,9 @@ function adminCallback_(cq) {
   if (a[0] === 'ml') { tgAnswer_(cq.id, ''); adminOrders_(chat, mid, a[1] === '0' ? 'a' : a[1], a[2]); return; }
   if (a[0] === 'st') { tgAnswer_(cq.id, ''); adminStats_(chat); return; }
   if (a[0] === 'cf') { p.setProperty('adminAwait', 'client'); tgAnswer_(cq.id, ''); tgSend_(chat, 'Отправьте логин, ID, @telegram или телефон клиента.'); return; }
-  if (a[0] === 'bcs') { p.setProperty('adminAwait', 'broadcast'); tgAnswer_(cq.id, ''); tgSend_(chat, 'Отправьте текст рассылки одним сообщением — или фото с подписью. Увидите предпросмотр и выберете, кому отправить. /cancel — отмена.'); return; }
-  if (a[0] === 'rp') { p.setProperty('adminAwait', 'reply|' + a[1]); tgAnswer_(cq.id, ''); var ru = tgUserByChat_(a[1]); tgSend_(chat, '✍️ Напишите ответ' + (ru ? ' для @' + hesc_(ru.login) : '') + ' одним сообщением (можно фото). /cancel — отмена.'); return; }
-  if (a[0] === 'nt') { p.setProperty('adminAwait', 'note|' + a[1]); tgAnswer_(cq.id, ''); tgSend_(chat, '📝 Заметка к заказу ' + hesc_(a[1]) + ' (видите только вы). Отправьте текст, «-» — очистить. /cancel — отмена.'); return; }
+  if (a[0] === 'bcs') { p.setProperty('adminAwait', 'broadcast'); tgAnswer_(cq.id, ''); tgSend_(chat, 'Отправьте текст рассылки одним сообщением, или фото с подписью. Увидите предпросмотр и выберете, кому отправить. /cancel: отмена.'); return; }
+  if (a[0] === 'rp') { p.setProperty('adminAwait', 'reply|' + a[1]); tgAnswer_(cq.id, ''); var ru = tgUserByChat_(a[1]); tgSend_(chat, '✍️ Напишите ответ' + (ru ? ' для @' + hesc_(ru.login) : '') + ' одним сообщением (можно фото). /cancel: отмена.'); return; }
+  if (a[0] === 'nt') { p.setProperty('adminAwait', 'note|' + a[1]); tgAnswer_(cq.id, ''); tgSend_(chat, '📝 Заметка к заказу ' + hesc_(a[1]) + ' (видите только вы). Отправьте текст, «-», очистить. /cancel: отмена.'); return; }
   if (a[0] === 'bc') {
     var txt = p.getProperty('bcText') || '', ph = p.getProperty('bcPhoto') || ''; p.deleteProperty('bcText'); p.deleteProperty('bcPhoto');
     if ((a[1] !== 'y' && a[1] !== 'a') || (!txt && !ph)) { tgAnswer_(cq.id, 'Отменено'); tgSend_(chat, 'Рассылка отменена.'); return; }
@@ -343,14 +324,14 @@ function adminCallback_(cq) {
   }
   if (a[0] === 'd') {
     var du = DB.getUser(a[1]); if (!du) { tgAnswer_(cq.id, 'Клиент не найден'); return; }
-    tgAnswer_(cq.id, ''); tgEdit_(chat, mid, '⚠️ <b>Удалить @' + hesc_(du.login) + '?</b>\nТокенов: ' + (du.balance || 0) + '. Аккаунт и вход исчезнут, заказы останутся в таблице как история.', [[{ text: 'Да, удалить', callback_data: 'dy|' + du.id }, { text: 'Отмена', callback_data: 'c|' + du.id }]]); return;
+    tgAnswer_(cq.id, ''); tgEdit_(chat, mid, '⚠️ <b>Удалить @' + hesc_(du.login) + '?</b>\nОниксов: ' + (du.balance || 0) + '. Аккаунт и вход исчезнут, заказы останутся в таблице как история.', [[{ text: 'Да, удалить', callback_data: 'dy|' + du.id }, { text: 'Отмена', callback_data: 'c|' + du.id }]]); return;
   }
   if (a[0] === 'dy') {
     var yu = DB.getUser(a[1]); if (!yu) { tgAnswer_(cq.id, 'Уже удалён'); return; }
     removeClient_(yu); tgAnswer_(cq.id, 'Удалён'); tgEdit_(chat, mid, '🗑 Клиент @' + hesc_(yu.login) + ' удалён. Заказы сохранены в таблице.', []); return;
   }
   if (a[0] === 'o') { tgAnswer_(cq.id, ''); orderCard_(chat, a[1], /^🧾|^📦/.test(String(cq.message.text || '')) ? mid : null); return; }
-  // p|no — оплачен, s|no|i — статус
+  // p|no: оплачен, s|no|i, статус
   var f = orderIdx_(a[1]), sh = ss_().getSheetByName(SHEET.orders);
   if (!f || !sh) { tgAnswer_(cq.id, 'Заказ ' + a[1] + ' не найден'); return; }
   var isCard = /^🧾/.test(String(cq.message.text || ''));
@@ -385,11 +366,11 @@ function adminText_(m, text) {
   if (text === BTN_.aSum || /^\/stats/i.test(text)) { adminStats_(chat); return; }
   if (text === BTN_.aHelp || /^\/help/i.test(text)) { adminHelp_(chat); return; }
   if (text === BTN_.aCli) { p.setProperty('adminAwait', 'client'); tgSend_(chat, 'Отправьте логин, ID, @telegram или телефон клиента.'); return; }
-  if (text === BTN_.aBc) { p.setProperty('adminAwait', 'broadcast'); tgSend_(chat, 'Отправьте текст рассылки одним сообщением — или фото с подписью. /cancel — отмена.'); return; }
+  if (text === BTN_.aBc) { p.setProperty('adminAwait', 'broadcast'); tgSend_(chat, 'Отправьте текст рассылки одним сообщением, или фото с подписью. /cancel: отмена.'); return; }
   if ((mm = text.match(/^\/client\s+(.+)/i))) { var cu = findClient_(mm[1]); if (cu) clientCard_(chat, cu); else tgSend_(chat, 'Клиент не найден.'); return; }
   if ((mm = text.match(/^\/tokens\s+(\S+)\s+([+-]?\d+)\s*(.*)$/i))) {
     var tu = findClient_(mm[1]); if (!tu) { tgSend_(chat, 'Клиент не найден.'); return; }
-    var nu = adjustClient_(tu, parseInt(mm[2], 10), mm[3] || 'Менеджер (Telegram)'); tgSend_(chat, '✅ @' + hesc_(nu.login) + ': баланс ' + nu.balance + ' токенов'); return;
+    var nu = adjustClient_(tu, parseInt(mm[2], 10), mm[3] || 'Менеджер (Telegram)'); tgSend_(chat, '✅ @' + hesc_(nu.login) + ': баланс ' + nu.balance + ' ониксов'); return;
   }
   if ((mm = text.match(/^\/delete\s+(\S+)/i))) { var du = findClient_(mm[1]); if (!du) { tgSend_(chat, 'Клиент не найден.'); return; } tgSend_(chat, '⚠️ <b>Удалить @' + hesc_(du.login) + '?</b> Заказы останутся в таблице.', [[{ text: 'Да, удалить', callback_data: 'dy|' + du.id }, { text: 'Отмена', callback_data: 'c|' + du.id }]]); return; }
   if ((mm = text.match(/^\/broadcast\s+([\s\S]+)/i))) { askBroadcast_(chat, mm[1].trim()); return; }
@@ -398,7 +379,7 @@ function adminText_(m, text) {
   if (aw === 'client' || text.length < 40) {
     var fu = findClient_(text);
     if (fu) { p.deleteProperty('adminAwait'); clientCard_(chat, fu); return; }
-    if (aw === 'client') { tgSend_(chat, 'Не нашёл. Проверьте логин, ID или телефон и отправьте ещё раз. /cancel — отмена.'); return; }
+    if (aw === 'client') { tgSend_(chat, 'Не нашёл. Проверьте логин, ID или телефон и отправьте ещё раз. /cancel: отмена.'); return; }
   }
   adminMenu_(chat);
 }
@@ -413,10 +394,11 @@ function tgHandle_(updates) {
       var text = String(m.text || '').trim(), who = m.chat.username ? '@' + m.chat.username : (m.chat.first_name || ''), c = m.chat.id;
       if (/^\/start\s+T\d{12}/.test(text)) {
         var r = OnionCore.tgBind(DB, text, c, who);
-        if (r && r.ok) sendWelcome_(m, true);
+        if (r && r.ok) { if (r.user && r.user.phoneOk === false) askPhone_(c); else sendWelcome_(m, true); }
         else tgSend_(c, 'Код не подошёл или устарел. Откройте на сайте кабинет → «Уведомления в Telegram» и нажмите «Подключить» ещё раз.', [[{ text: '🔔 Открыть кабинет', url: siteUrl_('account') }]]);
         return;
       }
+      if (m.contact) { phoneContact_(m); return; }
       if (claimAdmin_(m)) return;
       if (isAdmin_(c)) { adminText_(m, text); return; }
       if (/^\/start/.test(text)) { p.setProperty('lastStart', JSON.stringify({ id: c, name: who })); sendWelcome_(m, !!tgUserByChat_(c)); }
@@ -426,17 +408,30 @@ function tgHandle_(updates) {
       else if (text === BTN_.terms || /^\/(terms|info)/.test(text)) custTerms_(c);
       else if (text === BTN_.set || /^\/settings/.test(text)) custSettings_(c);
       else if (text === BTN_.sup || text === '💬 Менеджер' || /^\/(help|support|ask)/.test(text)) custAsk_(c, '');
-      else if (/^\/menu/.test(text)) tgSend_(c, 'Меню 👇\n⏳ Бот отвечает с небольшой задержкой — до минуты, подождите, пожалуйста.', custKb_());
-      else if (/^\//.test(text)) tgSend_(c, 'Не знаю такой команды. Меню — внизу 👇', custKb_());
+      else if (/^\/menu/.test(text)) tgSend_(c, 'Меню 👇\n⏳ Бот отвечает с небольшой задержкой, до минуты, подождите, пожалуйста.', custKb_());
+      else if (/^\//.test(text)) tgSend_(c, 'Не знаю такой команды. Меню: внизу 👇', custKb_());
       else relayToManager_(m);
     } catch (e) { console.error('tg', e && e.stack || e); }
   });
   p.setProperty('tgOffset', String(off));
 }
 
-/* список команд в меню «/»: покупателям — свои, менеджеру (только его чат) — расширенный */
+/* подтверждение телефона: кнопка Telegram «Поделиться номером» (Telegram сам подтверждает, что номер владельца) */
+function askPhone_(chat) {
+  tgSend_(chat, '📱 <b>Последний шаг: подтвердите телефон</b>\n\nНажмите кнопку внизу «Поделиться номером». Telegram передаст только ваш номер, так мы защищаем бонусы от накруток.\n\nПосле подтверждения: приветственные ониксы, бонусы за друзей и подарок на день рождения.',
+    { keyboard: [[{ text: '📱 Поделиться номером', request_contact: true }]], resize_keyboard: true, one_time_keyboard: true });
+}
+function phoneContact_(m) {
+  var c = m.chat.id, u = tgUserByChat_(c);
+  if (!u) { tgSend_(c, 'Сначала откройте на сайте кабинет → «Подтвердить телефон» и нажмите кнопку, бот привяжется к вашему аккаунту.', custKb_()); return; }
+  var r = OnionCore.phoneConfirm(DB, u, m.contact, m.from && m.from.id);
+  if (!r.ok) { tgSend_(c, '⚠️ ' + hesc_(r.msg), custKb_()); return; }
+  tgSend_(c, '✅ <b>Телефон подтверждён</b>' + (r.changed ? '\nВ кабинете указан номер из Telegram.' : '') + (r.got ? '\n🎁 На баланс начислено ' + r.got + ' ониксов.' : '') + '\n\nБонусы магазина теперь доступны.', custKb_());
+}
+
+/* список команд в меню «/»: покупателям: свои, менеджеру (только его чат): расширенный */
 function setBotCommands_() {
-  tgApi_('setMyCommands', { commands: [{ command: 'menu', description: 'Меню' }, { command: 'catalog', description: 'Каталог' }, { command: 'orders', description: 'Мои заказы и статусы' }, { command: 'bonus', description: 'Токены, уровень, пригласить друга' }, { command: 'terms', description: 'Условия и сроки' }, { command: 'settings', description: 'Настройки уведомлений' }, { command: 'ask', description: 'Задать вопрос менеджеру' }] });
+  tgApi_('setMyCommands', { commands: [{ command: 'menu', description: 'Меню' }, { command: 'catalog', description: 'Каталог' }, { command: 'orders', description: 'Мои заказы и статусы' }, { command: 'bonus', description: 'Ониксы, уровень, пригласить друга' }, { command: 'terms', description: 'Условия и сроки' }, { command: 'settings', description: 'Настройки уведомлений' }, { command: 'ask', description: 'Задать вопрос менеджеру' }] });
   var a = props_().getProperty('ADMIN_CHAT_ID');
-  if (a) tgApi_('setMyCommands', { scope: { type: 'chat', chat_id: Number(a) }, commands: [{ command: 'menu', description: 'Панель менеджера' }, { command: 'orders', description: 'Активные заказы' }, { command: 'stats', description: 'Сводка' }, { command: 'client', description: '/client логин — карточка клиента' }, { command: 'tokens', description: '/tokens логин +50 причина' }, { command: 'delete', description: '/delete логин — удалить клиента' }, { command: 'broadcast', description: '/broadcast текст — рассылка' }, { command: 'cancel', description: 'Отменить ввод' }, { command: 'help', description: 'Как работать с ботом' }] });
+  if (a) tgApi_('setMyCommands', { scope: { type: 'chat', chat_id: Number(a) }, commands: [{ command: 'menu', description: 'Панель менеджера' }, { command: 'orders', description: 'Активные заказы' }, { command: 'stats', description: 'Сводка' }, { command: 'client', description: '/client логин: карточка клиента' }, { command: 'tokens', description: '/tokens логин +50 причина' }, { command: 'delete', description: '/delete логин: удалить клиента' }, { command: 'broadcast', description: '/broadcast текст: рассылка' }, { command: 'cancel', description: 'Отменить ввод' }, { command: 'help', description: 'Как работать с ботом' }] });
 }

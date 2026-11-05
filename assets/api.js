@@ -79,8 +79,6 @@ var OnionAPI = (function () {
     reviewHas: function (no, pid) { return (mem.reviews || []).some(function (r) { return r.no === no && r.productId === pid; }); },
     reviewAdd: function (r) { (mem.reviews = mem.reviews || []).push(r); save(); },
     reviewsFor: function (pid) { return (mem.reviews || []).filter(function (r) { return r.productId === pid && r.status === 'опубликован'; }).reverse().map(function (r) { var d = new Date(r.at); return { name: r.name, rating: r.rating, text: r.text, at: ('0' + d.getDate()).slice(-2) + '.' + ('0' + (d.getMonth() + 1)).slice(-2) + '.' + d.getFullYear() }; }); },
-    gameGet: function (uid, g) { return (mem.games || {})[uid + '|' + g] || null; },
-    gameSet: function (uid, g, d) { (mem.games = mem.games || {})[uid + '|' + g] = d; save(); },
     waitsOf: function (uid) { return (mem.waits || []).filter(function (w) { return w.userId === uid; }); },
     waitAdd: function (w) { (mem.waits = mem.waits || []).push(w); save(); },
     waitRemove: function (uid, pid) { mem.waits = (mem.waits || []).filter(function (w) { return !(w.userId === uid && w.productId === pid); }); save(); },
