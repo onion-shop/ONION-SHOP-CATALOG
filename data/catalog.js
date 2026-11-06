@@ -2,7 +2,7 @@
 window.ONION_CATALOG = {
  "channel": "ONION_SHOP_OFFICIAL",
  "source": "t.me",
- "updatedAt": "2026-11-02T20:13:53Z",
+ "updatedAt": "2026-11-06T09:24:12Z",
  "products": [
   {
    "title": "Джинсы Acne Studios",
@@ -457,20 +457,6 @@ window.ONION_CATALOG = {
      "w": 800,
      "ht": 800,
      "hash": "bc9d3d7e1dbe",
-     "q": 2
-    },
-    {
-     "id": 594,
-     "w": 800,
-     "ht": 800,
-     "hash": "78dc4e99b24c",
-     "q": 2
-    },
-    {
-     "id": 595,
-     "w": 800,
-     "ht": 800,
-     "hash": "dbadf9ce8f26",
      "q": 2
     }
    ],
