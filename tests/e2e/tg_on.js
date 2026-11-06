@@ -17,7 +17,7 @@ const SEED = (mk) => { sessionStorage.setItem('onion.splash', '1'); if (localSto
     const t = await p.evaluate(() => document.querySelector('#tg-body').innerText);
     ok(/Telegram подключён/.test(t) && /все уведомления включены/.test(t), 'показано, что все уведомления включены');
     ok(await p.evaluate(() => !document.querySelector('#tg-off') && !document.querySelector('#tg-cats') && !document.querySelector('[data-c]')), 'нет кнопки «Отключить» и выбора категорий');
-    ok(/нельзя отключить/.test(t), 'написано, что отключить нельзя');
+    ok(!/нельзя|навсегда/i.test(t), 'нет пугающих слов «нельзя отключить» и «навсегда»');
     await p.screenshot({ path: `shots/tg_on_${w}.png` });
     const r = await p.evaluate(async () => { try { const m = JSON.parse(localStorage.getItem('onion.shop.demo.v2')); return !!m.users[0].tgChat; } catch (e) { return false; } });
     ok(r, 'подключение осталось (отключить нечем)');

@@ -44,6 +44,9 @@ const open = async (b, w, h, th, a, extra) => { const ctx = await b.newContext(O
       await p.click('#r-frame'); await p.waitForTimeout(500); await p.click(`[data-frame="${id}"]`); await p.waitForTimeout(150); await p.click('#fr-wear'); await p.waitForFunction((i) => JSON.parse(localStorage.getItem('onion.shop.demo.v2')).users[0].frame === i, id, { timeout: 3000 }).catch(() => { }); await p.waitForTimeout(300);
       ok(await p.evaluate(() => JSON.parse(localStorage.getItem('onion.shop.demo.v2')).users[0].frame) === id, 'статусная рамка ' + id + ' надевается на своём статусе');
       await p.reload(); await p.waitForTimeout(1000); ok(await p.evaluate((i) => !!document.querySelector('.ava.f-' + i), id), id + ' на месте после перезагрузки');
+      const idx = LEVELS.findIndex(l => l[0] === id); await p.click('#r-frame'); await p.waitForSelector('.fr-it', { timeout: 3000 }); await p.waitForTimeout(300);
+      const locked = await p.evaluate((ids) => ids.map(i => !!document.querySelector('[data-frame="' + i + '"].lk')), LEVELS.map(l => l[0]));
+      ok(locked.every((lk, j) => lk === (j > idx)), 'на статусе ' + id + ' открыты рамки этого статуса и ниже, выше закрыты: ' + JSON.stringify(locked)); await p.keyboard.press('Escape');
       if (th === 'light' || id === 'lvl-diamond') await p.screenshot({ path: `shots/fr_${id}_${w}_${th}.png` });
       ok(p.errs.length === 0 && p.bad.length === 0, 'без ошибок ' + p.errs.concat(p.bad).slice(0, 2).join('|')); await ctx.close();
     }
@@ -57,13 +60,19 @@ const open = async (b, w, h, th, a, extra) => { const ctx = await b.newContext(O
   // 4. prefers-reduced-motion: у рамки с движением картинка не меняется со временем
   for (const mode of ['no-preference', 'reduce']) {
     const [ctx, p] = await open(b, 390, 844, 'light', { xp: 700, frame: 'f5', frames: ['base', 'f5'] }, { reducedMotion: mode });
-    await p.evaluate(() => document.querySelector('.ava.lg').scrollIntoView({ block: 'center' }));
-    const el = await p.$('.ava.lg'); const box = await el.boundingBox(); const clip = { x: box.x - 30, y: box.y - 30, width: box.width + 60, height: box.height + 60 };
-    const s1 = (await p.screenshot({ clip })).toString('base64'); await p.waitForTimeout(2500); const s2 = (await p.screenshot({ clip })).toString('base64');
-    ok(mode === 'reduce' ? s1 === s2 : s1 !== s2, 'движение рамки: ' + (mode === 'reduce' ? 'выключено при reduced-motion' : 'есть без reduced-motion'));
+    await p.evaluate(() => { document.querySelector('#toasts').style.display = 'none'; document.querySelector('.ava.lg').scrollIntoView({ block: 'center' }); }); await p.waitForTimeout(2500);
+    const el = await p.$('.ava.lg'); const box = await el.boundingBox(); const clip = { x: box.x - 30, y: box.y - 30, width: box.width / 2 + 30, height: box.height + 60 };
+    const shots = []; for (let k = 0; k < 4; k++) { shots.push((await p.screenshot({ clip })).toString('base64')); await p.waitForTimeout(1200); }
+    const same = shots.slice(1).some((x, k) => x === shots[k]), changing = shots.some((x) => x !== shots[0]);
+    ok(mode === 'reduce' ? same : changing, 'движение рамки: ' + (mode === 'reduce' ? 'выключено при reduced-motion' : 'есть без reduced-motion'));
     await ctx.close();
   }
   await b.close(); console.log(fails ? 'ПРОВАЛЕНО ' + fails : 'Рамки: всё хорошо'); process.exitCode = fails ? 1 : 0;
 })();
+
+
+
+
+
 
 

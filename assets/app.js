@@ -20,8 +20,8 @@
     since: 2025
   };
   var API = window.OnionAPI, CORE = window.OnionCore, RULES = CORE.RULES;
-  var CAT_ORDER = ['shoes', 'tees', 'hoodies', 'outerwear', 'shirts', 'pants', 'suits', 'dresses', 'bags', 'headwear', 'accessories', 'jewelry', 'watches', 'perfume', 'underwear', 'other'];
-  var CAT_LABELS = { shoes: 'Обувь', tees: 'Футболки и поло', hoodies: 'Худи и свитеры', outerwear: 'Куртки и пуховики', shirts: 'Рубашки', pants: 'Штаны', suits: 'Костюмы и комплекты', dresses: 'Платья и юбки', bags: 'Сумки и рюкзаки', headwear: 'Шапки и кепки', accessories: 'Аксессуары', jewelry: 'Украшения', watches: 'Часы и очки', perfume: 'Парфюм', underwear: 'Бельё и носки', other: 'Другое' };
+  var CAT_ORDER = ['shoes', 'tees', 'hoodies', 'outerwear', 'shirts', 'pants', 'jeans', 'shorts', 'suits', 'dresses', 'bags', 'headwear', 'accessories', 'jewelry', 'watches', 'perfume', 'underwear', 'other'];
+  var CAT_LABELS = { shoes: 'Обувь', tees: 'Футболки и поло', hoodies: 'Худи и свитеры', outerwear: 'Куртки и пуховики', shirts: 'Рубашки', pants: 'Штаны и брюки', jeans: 'Джинсы', shorts: 'Шорты', suits: 'Костюмы и комплекты', dresses: 'Платья и юбки', bags: 'Сумки и рюкзаки', headwear: 'Шапки и кепки', accessories: 'Аксессуары', jewelry: 'Украшения', watches: 'Часы и очки', perfume: 'Парфюм', underwear: 'Бельё и носки', other: 'Другое' };
   var CATALOG = window.ONION_CATALOG || { products: [] };
   var PRODUCTS = (CATALOG.products || []).slice();
   var BY_ID = {};
@@ -51,6 +51,8 @@
   }
   function indexProduct(p) {
     BY_ID[p.id] = p; buildSizeTable(p);
+    // страховка: джинсы и шорты, попавшие в «Штаны» при синхронизации, переносим в свои категории
+    if (p.category === 'pants' || p.category === 'other') { var ct = String((p.title || '') + ' ' + (p.subtitle || '')).toLowerCase().replace(/ё/g, 'е'); if (/шорт/.test(ct)) p.category = 'shorts'; else if (/джинс(ы|ов)|джинс /.test(ct + ' ')) p.category = 'jeans'; }
     if (CAT_LABELS[p.category]) p.categoryLabel = CAT_LABELS[p.category];
     (p.photos || []).forEach(function (ph) { if (ph.hash) PHOTO_V[ph.id] = ph.hash + (ph.q ? 'q' + ph.q : ''); });
     var raw = Object.assign({}, p.colorPhotos || {}, COLOR_PHOTOS[p.id] || {}), map = {};
@@ -283,7 +285,7 @@
   function toastCard(o) {
     var root = $('#toasts'), el = document.createElement('div');
     el.className = 'toast card ' + (o.kind || '');
-    el.innerHTML = '<span class="tc-ic">' + icon(o.icon || 'hourglass') + '</span><div class="tc-b"><b>' + esc(o.title) + '</b><p>' + esc(o.text) + '</p>' + (o.action ? '<button class="tc-btn" type="button">' + icon(o.action.icon || 'heart') + esc(o.action.label) + '</button>' : '') + '</div><button class="tc-x" type="button" aria-label="Закрыть">×</button>';
+    el.innerHTML = '<div class="tc-b"><b>' + esc(o.title) + '</b><p>' + esc(o.text) + '</p></div>' + (o.action ? '<button class="tc-btn" type="button">' + icon(o.action.icon || 'heart') + esc(o.action.label) + '</button>' : '') + '<button class="tc-x" type="button" aria-label="Закрыть">×</button>';
     root.appendChild(el);
     while (root.children.length > 3) root.firstChild.remove();
     var close = function () { el.classList.add('out'); setTimeout(function () { el.remove(); }, 300); };
@@ -292,6 +294,9 @@
     if (o.action) el.querySelector('.tc-btn').addEventListener('click', function () { clearTimeout(timer); close(); o.action.run(); });
   }
   function reward(msg) { toast(msg, null, 'reward'); }
+  // масштабирование страницы щипком отключено (iOS Safari игнорирует user-scalable, поэтому гасим жесты сами); двойное касание не увеличивает (touch-action в стилях)
+  ['gesturestart', 'gesturechange', 'gestureend'].forEach(function (t) { document.addEventListener(t, function (e) { e.preventDefault(); }, { passive: false }); });
+  document.addEventListener('touchmove', function (e) { if (e.touches && e.touches.length > 1 && !(e.target.closest && e.target.closest('#lightbox,.lightbox,.lb'))) e.preventDefault(); }, { passive: false });
   var lastFocus = null;
   function openModal(html, opts) {
     opts = opts || {};
@@ -694,6 +699,12 @@
       picks.map(function (p, i) { return '<span class="bn-th' + (i ? '' : ' on') + '"><img src="' + thumb(p.photos[0].id) + '" alt="" loading="lazy" decoding="async"></span>'; }).join('') +
       '</div><div class="bn-txt"><b>' + title + '</b>' + icon('arrow-right') + '</div></a>';
   }
+  // три компактных баннера на главной (вместо большой карусели): подборка магазина, выгодные предложения, новинки из Китая
+  function banner3(tag, title, sub, href, picks, cls) {
+    if (!picks.length) return '';
+    return '<a class="bc ' + cls + '" href="' + href + '"><span class="bc-t"><small>' + esc(tag) + '</small><b>' + esc(title) + '</b><i>' + esc(sub) + '</i><span class="bc-go">Смотреть' + icon('arrow-right') + '</span></span>' +
+      '<span class="bc-ph">' + picks.slice(0, 3).map(function (p) { return '<span><img src="' + thumb(p.photos[0].id) + '" alt="" loading="lazy" decoding="async"></span>'; }).join('') + '</span></a>';
+  }
   var DEFAULT_PICKS = ['521', '371', '321', '532'];   // выбор магазина по умолчанию (можно отметить в редакторе)
   function shopPicks() {
     var f = PRODUCTS.filter(function (p) { return p.rec && p.status !== 'sold'; });
@@ -713,7 +724,7 @@
   function etaBase(p) {
     if (p.status === 'sold') return '';
     if (p.status === 'preorder') return '<div class="eta">' + icon('truck') + '<div><b>Ориентировочно получите: ' + dateRange(24, 47) + '</b><small>Если оплатить сегодня. Выкуп до 12 часов, проверка на складе и фотоотчёт, стоимость доставки из Китая уже включена в стоимость.</small></div></div>';
-    if (p.status === 'out') return '<div class="oos"><div class="oos-h"><span class="oos-ic">' + icon('hourglass') + '</span><div><b>Сейчас нет в наличии</b><small>Менеджер уточнит срок поступления' + (API.enabled ? ' и напишет вам, как только товар появится.' : '. Напишите ему: подскажет, когда ждать.') + '</small></div></div>' + (API.enabled ? '<button class="oos-btn" type="button" id="wait-btn"></button>' : '') + '</div>';
+    if (p.status === 'out') return '<div class="oos"><div class="oos-h"><div><b>Сейчас нет в наличии</b><small>Менеджер уточнит срок поступления' + (API.enabled ? ' и напишет вам, как только товар появится.' : '. Напишите ему: подскажет, когда ждать.') + '</small></div></div>' + (API.enabled ? '<button class="oos-btn" type="button" id="wait-btn"></button>' : '') + '</div>';
     return '<div class="eta">' + icon('truck') + '<div><b>Уже в Москве</b><small>Самовывоз, курьер или Авито Доставка, способ выберете при оформлении.</small></div></div>';
   }
   function howStrip() {
@@ -803,14 +814,13 @@
     v.innerHTML =
       '<div class="cts">' + tiles + '</div>' +
       '<div id="promo-slot">' + promoHtml() + '</div>' +
-      heroHtml(slides) +
-      '<div class="bns">' + banner('Выбор магазина', '', '#catalog', picks.slice(0, 5), 'bn-rec') + banner('Лучшие предложения', '', '#stock', hot, 'bn-hot') + banner('Новинки из Китая', '', '#preorder', preL, 'bn-cn') + '</div>' +
+      '<div class="bcs">' + banner3('Подборка', 'Выбор магазина', 'Вещи, которые мы советуем', '#catalog', picks, 'bc-1') + banner3('В наличии', 'Лучшие предложения', hot.length && discount(hot[0]) >= 3 ? 'Скидки до −' + discount(hot[0]) + '%' : 'Уже в Москве', '#stock', hot, 'bc-2') + banner3('Из Китая', 'Новинки из Китая', 'Доставка уже в цене', '#preorder', preL, 'bc-3') + '</div>' +
       (favs.length ? '<div class="sec"><div class="sec-head"><h2>Избранное</h2><a class="btn btn-ghost btn-sm" href="#favorites">Все · ' + favs.length + '</a></div><div class="hscroll">' + favs.map(function (id) { return BY_ID[id]; }).filter(Boolean).slice(0, 10).map(card).join('') + '</div></div>' : '') +
       (rec.length ? '<div class="sec"><div class="sec-head"><h2>Вы смотрели</h2></div><div class="hscroll">' + rec.map(card).join('') + '</div></div>' : '') +
       '<div class="sec"><div class="sec-head"><h2>Новинки</h2><a class="btn btn-ghost btn-sm" href="#catalog">Весь каталог</a></div>' + grid(fresh, 'home-grid') + '</div>' +
       '<div class="sec"><a class="faqc" href="#info"><span class="faqc-ic">' + icon('info') + '</span><span class="faqc-t"><b>Частые вопросы</b><small>Заказ, сроки, доставка, оплата</small></span><span class="faqc-go">' + icon('arrow-right') + '</span></a></div>';
     $$('.ct[data-cat]', v).forEach(function (a) { a.addEventListener('click', function () { filter = newFilter(); filter.cat = a.getAttribute('data-cat'); }); });
-    startBanners(v); startHero(v); reveal(v); loadPromo();
+    stopHomeTimers(); reveal(v); loadPromo();
   }
 
   // быстрое добавление из карточки: размер/цвет: в окне выбора
@@ -876,7 +886,7 @@
     tees: ['майк', 'футбол', 'поло', 'тишк', 'тенниск', 'топ'], outerwear: ['пуховик', 'куртк', 'ветровк', 'парк', 'бомбер', 'пальто', 'жилет', 'дутик'],
     hoodies: ['худи', 'толстовк', 'свитер', 'свитшот', 'кофт', 'кардиган', 'джемпер', 'пуловер', 'лонгслив', 'флис', 'зип'],
     shoes: ['кросс', 'кед', 'ботинк', 'туфл', 'обув', 'лофер', 'мокасин', 'сандал', 'сланц', 'сапог', 'башмак'],
-    pants: ['штан', 'брюк', 'джинс', 'шорт', 'джоггер', 'леггинс'], shirts: ['рубашк', 'сорочк'], suits: ['костюм', 'комплект'], dresses: ['платье', 'платья', 'юбк', 'сарафан'],
+    pants: ['штан', 'брюк', 'джоггер', 'леггинс', 'карго'], jeans: ['джинс', 'деним'], shorts: ['шорт'], shirts: ['рубашк', 'сорочк'], suits: ['костюм', 'комплект'], dresses: ['платье', 'платья', 'юбк', 'сарафан'],
     bags: ['сумк', 'рюкзак', 'шопер', 'клатч', 'портфел', 'барсетк'], headwear: ['кепк', 'шапк', 'панам', 'шляп', 'бейсболк', 'бини'],
     jewelry: ['цепь', 'цепочк', 'браслет', 'кольц', 'серьг', 'кулон', 'украшен'], watches: ['часы', 'часов', 'очки', 'очков'],
     perfume: ['духи', 'парфюм', 'одеколон', 'аромат'], underwear: ['носк', 'бель', 'трус', 'боксер'], accessories: ['галстук', 'ремен', 'ремн', 'кошел', 'шарф', 'перчатк', 'платок', 'аксессуар']
@@ -1056,7 +1066,7 @@
         : '') +
       '<div class="no-buy"' + (orderable(p) ? '' : ' hidden') + '>' +
       (p.sizes.length ? '<div class="opt" id="opt-size"><div class="opt-head"><b>Размер' + (p.sizes.length > 1 ? ' <span class="req">*</span>' : '') + '</b><span class="val"><span id="size-val">' + (sel.size ? esc(sel.size) : 'не выбран') + '</span>' + '</span></div><div class="choices">' +
-        p.sizes.map(function (s) { return '<button class="choice" type="button" data-size="' + esc(s) + '" aria-pressed="' + (sel.size === s) + '">' + esc(s) + '</button>'; }).join('') + '</div>' + (tbl ? '<div class="size-meas" id="size-meas" hidden></div>' : '') + '<span class="msg" hidden>Выберите размер</span></div>' : '') +
+        p.sizes.map(function (s) { return '<button class="choice" type="button" data-size="' + esc(s) + '" aria-pressed="' + (sel.size === s) + '">' + esc(s) + '</button>'; }).join('') + '</div>' + '<span class="msg" hidden>Выберите размер</span></div>' : '') +
       (p.colors.length ? '<div class="opt" id="opt-color"><div class="opt-head"><b>Цвет' + (p.colors.length > 1 ? ' <span class="req">*</span>' : '') + '</b><span class="val" id="color-val">' + (sel.color ? esc(cap(sel.color)) : 'не выбран') + '</span></div><div class="choices">' +
         p.colors.map(function (c) { return '<button class="choice color" type="button" data-color="' + esc(c) + '" aria-pressed="' + (sel.color === c) + '"><i class="sw" style="' + swatch(c) + '"></i>' + esc(cap(c)) + '</button>'; }).join('') + '</div><span class="msg" hidden>Выберите цвет</span></div>' : '') +
       '<div class="opt"><label for="p-note"><b style="font-size:14.5px">' + (p.status === 'preorder' ? 'Пожелания к товару' : 'Комментарий') + '</b> <span class="small">· по желанию</span></label><textarea id="p-note" maxlength="300" placeholder="' + (p.status === 'preorder' ? 'Например: посадка oversize, проверить швы, фото бирки' : 'Например: хочу примерить перед покупкой') + '"></textarea></div>' +
@@ -1999,7 +2009,7 @@
     function frameOf(id) { return RULES.frames.filter(function (x) { return x.id === id; })[0] || RULES.frames[0]; }
     function own(f) { return f.id === 'base' || u.frames.indexOf(f.id) >= 0; }
     function lockText(f) {
-      if (f.src === 'level') return 'Открыта только при статусе «' + RULES.levels[f.lvl].name + '»';
+      if (f.src === 'level') return 'Откроется со статусом «' + RULES.levels[f.lvl].name + '» и выше, пока уровень не сбросился в конце месяца';
       if (f.src === 'ach') { var aa = RULES.achv.filter(function (x) { return x.id === f.ach; })[0]; return 'За достижение «' + (aa ? aa.name : '') + '»: ' + (aa ? aa.d.toLowerCase() : ''); }
       return 'Выпадает только в «Посылке с сюрпризом»';
     }
@@ -2728,9 +2738,9 @@
       if (u.tgOn) {
         b.innerHTML = hero('check-circle', 'Telegram подключён', (u.tgName ? esc(u.tgName) + ' · ' : '') + 'все уведомления включены', 'ok') +
           '<ul class="tg-perks">' + perks.map(function (x) { return '<li><span class="ic">' + icon(x[0]) + '</span><span><b>' + x[1] + '</b><small>' + x[2] + '</small></span></li>'; }).join('') + '</ul>' +
-          '<p class="small">Все уведомления включены постоянно. Их нельзя отключить или выбрать выборочно: так вы ничего не пропустите.</p>';
+          '<p class="small">Бот пришлёт всё важное: статусы заказов, возвращение товара, скидки на избранное, новинки и бонусы.</p>';
       } else {
-        b.innerHTML = hero('send', 'Заказы: в Telegram', 'Подключите бота ONION SHOP: после этого все уведомления сайта приходят вам автоматически и всегда, их нельзя отключить.') +
+        b.innerHTML = hero('send', 'Уведомления', 'Подключите бота ONION SHOP в Telegram, чтобы быть в курсе всего.') +
           '<ul class="tg-perks">' + perks.map(function (x) { return '<li><span class="ic">' + icon(x[0]) + '</span><span><b>' + x[1] + '</b><small>' + x[2] + '</small></span></li>'; }).join('') + '</ul>' +
           '<button class="btn" type="button" id="tg-on">' + icon('send') + 'Подключить Telegram</button><div id="tg-out"></div>';
         $('#tg-on', b).addEventListener('click', function () {
@@ -2851,7 +2861,7 @@
     PRODUCTS.forEach(function (p) { add(thumb(p.photos[0].id)); });
     PRODUCTS.forEach(function (p) { p.photos.forEach(function (f) { add(thumb(f.id)); }); });
     PRODUCTS.forEach(function (p) { p.photos.slice(0, 3).forEach(function (f) { add(full(f.id)); }); });
-    ['shoes', 'tees', 'hoodies', 'outerwear', 'shirts', 'pants', 'suits', 'dresses', 'bags', 'headwear', 'accessories', 'jewelry', 'watches', 'perfume', 'underwear', 'stock', 'china'].forEach(function (k) { add('assets/cat/' + k + '.svg'); add('assets/cat/dark/' + k + '.svg'); });
+    ['shoes', 'tees', 'hoodies', 'outerwear', 'shirts', 'pants', 'jeans', 'shorts', 'suits', 'dresses', 'bags', 'headwear', 'accessories', 'jewelry', 'watches', 'perfume', 'underwear', 'stock', 'china'].forEach(function (k) { add('assets/cat/' + k + '.svg'); add('assets/cat/dark/' + k + '.svg'); });
     var total = urls.length, idx = 0, cap = Date.now() + MAX, finished = false;
     var bar = document.getElementById('spl-bar'), txt = document.getElementById('spl-txt'), phb = document.getElementById('spl-ph');
     function next() {

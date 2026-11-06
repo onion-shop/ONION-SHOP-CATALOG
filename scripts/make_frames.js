@@ -20,7 +20,7 @@ const ANIM_CSS = 'svg .spin,svg .spinr,svg .pulse,svg .tw,svg .flick,svg .wob{tr
   '@media (prefers-reduced-motion:reduce){*{animation:none!important}}';
 const outDir = path.join(root, 'assets', 'fr'); fs.mkdirSync(outDir, { recursive: true });
 fs.readdirSync(outDir).forEach(f => fs.unlinkSync(path.join(outDir, f)));
-const V = 3;   // версия в ссылках на картинки (сбрасывает кэш браузера)
+const V = 4;   // версия в ссылках на картинки (сбрасывает кэш браузера)
 // в исходниках галереи бывают незакрытые теги (HTML-парсер их чинит сам, а SVG как картинка нет): закрываем недостающие
 function balance(s) {
   const stack = [], re = /<(\/?)([a-zA-Z][\w-]*)([^>]*?)(\/?)>/g; let m;
@@ -38,7 +38,7 @@ NUM.forEach(n => {
   fs.writeFileSync(path.join(outDir, id + '.svg'), svgDoc(defs, back, anim));
   if (top) fs.writeFileSync(path.join(outDir, id + 't.svg'), svgDoc(defs, top, anim));
   if (anim) { fs.writeFileSync(path.join(outDir, id + 's.svg'), svgDoc(defs, back, false)); if (top) fs.writeFileSync(path.join(outDir, id + 'ts.svg'), svgDoc(defs, top, false)); }
-  css.push('.ava.f-' + id + '{--fr:url(fr/' + id + '.svg?v=' + V + ')' + (top ? ';--fx:url(fr/' + id + 't.svg?v=' + V + ')' : '') + '}');
+  css.push('.ava.f-' + id + '{--fr:url(fr/' + id + '.svg?v=' + V + ')' + (top ? ';--fx:url(fr/' + id + 't.svg?v=' + V + ')' : '') + (anim ? ';--fr-s:url(fr/' + id + 's.svg?v=' + V + ')' + (top ? ';--fx-s:url(fr/' + id + 'ts.svg?v=' + V + ')' : '') : '') + '}');
   if (anim) reduce.push('.ava.f-' + id + '{--fr:url(fr/' + id + 's.svg?v=' + V + ')' + (top ? ';--fx:url(fr/' + id + 'ts.svg?v=' + V + ')' : '') + '}');
   list.push({ id: id, n: n, name: it.n, anim: anim, top: !!top });
 });
@@ -46,6 +46,8 @@ const block = '/* frames:begin (scripts/make_frames.js, рамки из docs/fra
   '.ava.fx{box-shadow:none}\n' +
   '.ava.fx::before,.ava.fx::after{content:"";position:absolute;inset:-38.2%;background:var(--fr) center/100% 100% no-repeat;pointer-events:none;-webkit-mask:none;mask:none;border:0;border-radius:0;filter:none;transform:none;z-index:0}\n' +
   '.ava.fx::after{background-image:var(--fx,none);z-index:2}\n' +
+  '.still.ava.fx::before,.fr-grid .ava.fx::before{background-image:var(--fr-s,var(--fr))}\n' +
+  '.still.ava.fx::after,.fr-grid .ava.fx::after{background-image:var(--fx-s,var(--fx,none))}\n' +
   '.ava .ini{font-weight:inherit}\n' +
   '.ava.fx{background:none}\n' +
   '.ava.fx>.ini,.ava.fx>img{position:relative;z-index:1;width:100%;height:100%;border-radius:50%;display:grid;place-items:center;box-sizing:border-box}\n' +

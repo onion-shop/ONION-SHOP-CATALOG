@@ -258,15 +258,17 @@ console.log('\n— 15. Статусы и рамки');
   const lvlIds = keys.map(k => 'lvl-' + k), wheelIds = C.RULES.frames.filter(f => f.src === 'wheel').map(f => f.id);
   keys.forEach((k, i) => {
     uu.xpMonth = mk; uu.xp = xps[i]; const fr = H('me', { session: S }).user.frames;
-    ok(fr.indexOf('lvl-' + k) >= 0 && lvlIds.filter(x => x !== 'lvl-' + k && fr.indexOf(x) >= 0).length === 0 && !wheelIds.some(w => fr.indexOf(w) >= 0), 'статус «' + k + '»: открыта только рамка «' + k + '», коллекционные не открыты');
+    ok(lvlIds.every((x, j) => (fr.indexOf(x) >= 0) === (j <= i)) && !wheelIds.some(w => fr.indexOf(w) >= 0), 'статус «' + k + '»: открыты рамки этого статуса и всех ниже, выше закрыты');
   });
   ok(C.RULES.frames.filter(f => f.src === 'level').length === 5, 'у каждого из 5 статусов своя рамка (включая бронзовую и платиновую)');
   uu.xpMonth = mk; uu.xp = 500; H('me', { session: S });
   ok(H('profile', { session: S, frame: 'lvl-silver' }).ok && !H('profile', { session: S, frame: 'lvl-gold' }).ok && !H('profile', { session: S, frame: 'f17' }).ok, 'на Серебре можно надеть серебряную, золотую и неоткрытую «Неон-радуга» нельзя');
-  uu.xp = 1500; const me2 = H('me', { session: S }).user; ok(me2.frame === 'base', 'после повышения до Золота серебряная рамка снимается');
+  uu.xp = 1500; const me2 = H('me', { session: S }).user; ok(me2.frame === 'lvl-silver' && me2.frames.indexOf('lvl-bronze') >= 0 && me2.frames.indexOf('lvl-gold') >= 0, 'после повышения до Золота серебряная рамка остаётся надетой, бронзовая и золотая тоже доступны');
+  uu.xp = 0; uu.xpMonth = mk; const me3 = H('me', { session: S }).user; ok(me3.frame === 'base' && me3.frames.indexOf('lvl-silver') < 0 && me3.frames.indexOf('lvl-bronze') >= 0, 'в начале месяца уровень сбросился: надетая рамка высшего статуса снимается, доступна только бронзовая');
+  uu.xp = 1500;
   uu.xp = 8000; uu.frames = ['base', 'f17']; let fr = H('me', { session: S }).user.frames;
-  ok(fr.indexOf('f17') >= 0 && fr.indexOf('f46') < 0 && fr.indexOf('lvl-gold') < 0, 'Алмаз открывает алмазную рамку; полученная из посылки «Неон-радуга» остаётся, «Хром» не открывается сам');
-  ok(!H('profile', { session: S, frame: 'f46' }).ok && !H('profile', { session: S, frame: 'lvl-silver' }).ok && H('profile', { session: S, frame: 'lvl-diamond' }).ok, 'на Алмазе нельзя надеть чужие рамки, алмазную можно');
+  ok(fr.indexOf('f17') >= 0 && fr.indexOf('f46') < 0 && ['bronze', 'silver', 'gold', 'platinum', 'diamond'].every(k => fr.indexOf('lvl-' + k) >= 0), 'Алмаз открывает все пять статусных рамок; полученная из посылки «Неон-радуга» остаётся, «Хром» не открывается сам');
+  ok(!H('profile', { session: S, frame: 'f46' }).ok && H('profile', { session: S, frame: 'lvl-silver' }).ok && H('profile', { session: S, frame: 'lvl-diamond' }).ok, 'на Алмазе нельзя надеть неоткрытую рамку, статусные все можно');
   const ids = C.RULES.achv.map(a => a.id); ok(ids.indexOf('gold') < 0 && C.RULES.achv.find(a => a.id === 'friend').name === 'Душа компании', 'достижение «Золотой статус» заменено, «Душа компании» переименована');
   ok(C.RULES.achv.every(a => a.name.length <= 20 && a.d.length <= 34), 'названия достижений до 20 знаков, описания до 34');
   ok(C.RULES.levels.every(l => l.perks.every(p => p[0] && p[1])), 'в карточках программы лояльности нет пустых текстов ни у одного статуса'); }

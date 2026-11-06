@@ -2194,62 +2194,64 @@ html.dr-open{overflow:hidden}
 .ava.fx{box-shadow:none}
 .ava.fx::before,.ava.fx::after{content:"";position:absolute;inset:-38.2%;background:var(--fr) center/100% 100% no-repeat;pointer-events:none;-webkit-mask:none;mask:none;border:0;border-radius:0;filter:none;transform:none;z-index:0}
 .ava.fx::after{background-image:var(--fx,none);z-index:2}
+.still.ava.fx::before,.fr-grid .ava.fx::before{background-image:var(--fr-s,var(--fr))}
+.still.ava.fx::after,.fr-grid .ava.fx::after{background-image:var(--fx-s,var(--fx,none))}
 .ava .ini{font-weight:inherit}
 .ava.fx{background:none}
 .ava.fx>.ini,.ava.fx>img{position:relative;z-index:1;width:100%;height:100%;border-radius:50%;display:grid;place-items:center;box-sizing:border-box}
 .ava.fx>.ini{background:linear-gradient(140deg,#2b5da0,#173a6b)}
-.ava.f-f5{--fr:url(fr/f5.svg?v=3)}
-.ava.f-f8{--fr:url(fr/f8.svg?v=3)}
-.ava.f-f15{--fr:url(fr/f15.svg?v=3)}
-.ava.f-f17{--fr:url(fr/f17.svg?v=3)}
-.ava.f-f21{--fr:url(fr/f21.svg?v=3);--fx:url(fr/f21t.svg?v=3)}
-.ava.f-f24{--fr:url(fr/f24.svg?v=3);--fx:url(fr/f24t.svg?v=3)}
-.ava.f-f27{--fr:url(fr/f27.svg?v=3)}
-.ava.f-lvl-bronze{--fr:url(fr/lvl-bronze.svg?v=3)}
-.ava.f-lvl-silver{--fr:url(fr/lvl-silver.svg?v=3)}
-.ava.f-lvl-gold{--fr:url(fr/lvl-gold.svg?v=3);--fx:url(fr/lvl-goldt.svg?v=3)}
-.ava.f-lvl-platinum{--fr:url(fr/lvl-platinum.svg?v=3);--fx:url(fr/lvl-platinumt.svg?v=3)}
-.ava.f-lvl-diamond{--fr:url(fr/lvl-diamond.svg?v=3);--fx:url(fr/lvl-diamondt.svg?v=3)}
-.ava.f-f46{--fr:url(fr/f46.svg?v=3)}
-.ava.f-f48{--fr:url(fr/f48.svg?v=3);--fx:url(fr/f48t.svg?v=3)}
-.ava.f-f52{--fr:url(fr/f52.svg?v=3)}
-.ava.f-f53{--fr:url(fr/f53.svg?v=3)}
-.ava.f-f55{--fr:url(fr/f55.svg?v=3)}
-.ava.f-f57{--fr:url(fr/f57.svg?v=3);--fx:url(fr/f57t.svg?v=3)}
-.ava.f-f63{--fr:url(fr/f63.svg?v=3);--fx:url(fr/f63t.svg?v=3)}
-.ava.f-f65{--fr:url(fr/f65.svg?v=3)}
-.ava.f-f69{--fr:url(fr/f69.svg?v=3)}
-.ava.f-f80{--fr:url(fr/f80.svg?v=3)}
-.ava.f-f81{--fr:url(fr/f81.svg?v=3)}
-.ava.f-f83{--fr:url(fr/f83.svg?v=3)}
-.ava.f-f84{--fr:url(fr/f84.svg?v=3)}
-.ava.f-f85{--fr:url(fr/f85.svg?v=3);--fx:url(fr/f85t.svg?v=3)}
-.ava.f-f87{--fr:url(fr/f87.svg?v=3);--fx:url(fr/f87t.svg?v=3)}
-.ava.f-f89{--fr:url(fr/f89.svg?v=3);--fx:url(fr/f89t.svg?v=3)}
-.ava.f-f90{--fr:url(fr/f90.svg?v=3)}
-.ava.f-f91{--fr:url(fr/f91.svg?v=3);--fx:url(fr/f91t.svg?v=3)}
-.ava.f-f94{--fr:url(fr/f94.svg?v=3)}
-.ava.f-f95{--fr:url(fr/f95.svg?v=3);--fx:url(fr/f95t.svg?v=3)}
-.ava.f-f96{--fr:url(fr/f96.svg?v=3)}
-.ava.f-f97{--fr:url(fr/f97.svg?v=3)}
-.ava.f-f98{--fr:url(fr/f98.svg?v=3)}
-.ava.f-f99{--fr:url(fr/f99.svg?v=3)}
-.ava.f-f101{--fr:url(fr/f101.svg?v=3)}
-.ava.f-f104{--fr:url(fr/f104.svg?v=3)}
-.ava.f-f105{--fr:url(fr/f105.svg?v=3)}
+.ava.f-f5{--fr:url(fr/f5.svg?v=4);--fr-s:url(fr/f5s.svg?v=4)}
+.ava.f-f8{--fr:url(fr/f8.svg?v=4);--fr-s:url(fr/f8s.svg?v=4)}
+.ava.f-f15{--fr:url(fr/f15.svg?v=4)}
+.ava.f-f17{--fr:url(fr/f17.svg?v=4);--fr-s:url(fr/f17s.svg?v=4)}
+.ava.f-f21{--fr:url(fr/f21.svg?v=4);--fx:url(fr/f21t.svg?v=4)}
+.ava.f-f24{--fr:url(fr/f24.svg?v=4);--fx:url(fr/f24t.svg?v=4)}
+.ava.f-f27{--fr:url(fr/f27.svg?v=4)}
+.ava.f-lvl-bronze{--fr:url(fr/lvl-bronze.svg?v=4)}
+.ava.f-lvl-silver{--fr:url(fr/lvl-silver.svg?v=4)}
+.ava.f-lvl-gold{--fr:url(fr/lvl-gold.svg?v=4);--fx:url(fr/lvl-goldt.svg?v=4)}
+.ava.f-lvl-platinum{--fr:url(fr/lvl-platinum.svg?v=4);--fx:url(fr/lvl-platinumt.svg?v=4)}
+.ava.f-lvl-diamond{--fr:url(fr/lvl-diamond.svg?v=4);--fx:url(fr/lvl-diamondt.svg?v=4);--fr-s:url(fr/lvl-diamonds.svg?v=4);--fx-s:url(fr/lvl-diamondts.svg?v=4)}
+.ava.f-f46{--fr:url(fr/f46.svg?v=4)}
+.ava.f-f48{--fr:url(fr/f48.svg?v=4);--fx:url(fr/f48t.svg?v=4)}
+.ava.f-f52{--fr:url(fr/f52.svg?v=4)}
+.ava.f-f53{--fr:url(fr/f53.svg?v=4)}
+.ava.f-f55{--fr:url(fr/f55.svg?v=4);--fr-s:url(fr/f55s.svg?v=4)}
+.ava.f-f57{--fr:url(fr/f57.svg?v=4);--fx:url(fr/f57t.svg?v=4)}
+.ava.f-f63{--fr:url(fr/f63.svg?v=4);--fx:url(fr/f63t.svg?v=4);--fr-s:url(fr/f63s.svg?v=4);--fx-s:url(fr/f63ts.svg?v=4)}
+.ava.f-f65{--fr:url(fr/f65.svg?v=4);--fr-s:url(fr/f65s.svg?v=4)}
+.ava.f-f69{--fr:url(fr/f69.svg?v=4)}
+.ava.f-f80{--fr:url(fr/f80.svg?v=4);--fr-s:url(fr/f80s.svg?v=4)}
+.ava.f-f81{--fr:url(fr/f81.svg?v=4);--fr-s:url(fr/f81s.svg?v=4)}
+.ava.f-f83{--fr:url(fr/f83.svg?v=4)}
+.ava.f-f84{--fr:url(fr/f84.svg?v=4)}
+.ava.f-f85{--fr:url(fr/f85.svg?v=4);--fx:url(fr/f85t.svg?v=4)}
+.ava.f-f87{--fr:url(fr/f87.svg?v=4);--fx:url(fr/f87t.svg?v=4)}
+.ava.f-f89{--fr:url(fr/f89.svg?v=4);--fx:url(fr/f89t.svg?v=4)}
+.ava.f-f90{--fr:url(fr/f90.svg?v=4);--fr-s:url(fr/f90s.svg?v=4)}
+.ava.f-f91{--fr:url(fr/f91.svg?v=4);--fx:url(fr/f91t.svg?v=4)}
+.ava.f-f94{--fr:url(fr/f94.svg?v=4);--fr-s:url(fr/f94s.svg?v=4)}
+.ava.f-f95{--fr:url(fr/f95.svg?v=4);--fx:url(fr/f95t.svg?v=4)}
+.ava.f-f96{--fr:url(fr/f96.svg?v=4)}
+.ava.f-f97{--fr:url(fr/f97.svg?v=4)}
+.ava.f-f98{--fr:url(fr/f98.svg?v=4)}
+.ava.f-f99{--fr:url(fr/f99.svg?v=4)}
+.ava.f-f101{--fr:url(fr/f101.svg?v=4)}
+.ava.f-f104{--fr:url(fr/f104.svg?v=4);--fr-s:url(fr/f104s.svg?v=4)}
+.ava.f-f105{--fr:url(fr/f105.svg?v=4)}
 @media (prefers-reduced-motion:reduce){
-.ava.f-f5{--fr:url(fr/f5s.svg?v=3)}
-.ava.f-f8{--fr:url(fr/f8s.svg?v=3)}
-.ava.f-f17{--fr:url(fr/f17s.svg?v=3)}
-.ava.f-lvl-diamond{--fr:url(fr/lvl-diamonds.svg?v=3);--fx:url(fr/lvl-diamondts.svg?v=3)}
-.ava.f-f55{--fr:url(fr/f55s.svg?v=3)}
-.ava.f-f63{--fr:url(fr/f63s.svg?v=3);--fx:url(fr/f63ts.svg?v=3)}
-.ava.f-f65{--fr:url(fr/f65s.svg?v=3)}
-.ava.f-f80{--fr:url(fr/f80s.svg?v=3)}
-.ava.f-f81{--fr:url(fr/f81s.svg?v=3)}
-.ava.f-f90{--fr:url(fr/f90s.svg?v=3)}
-.ava.f-f94{--fr:url(fr/f94s.svg?v=3)}
-.ava.f-f104{--fr:url(fr/f104s.svg?v=3)}
+.ava.f-f5{--fr:url(fr/f5s.svg?v=4)}
+.ava.f-f8{--fr:url(fr/f8s.svg?v=4)}
+.ava.f-f17{--fr:url(fr/f17s.svg?v=4)}
+.ava.f-lvl-diamond{--fr:url(fr/lvl-diamonds.svg?v=4);--fx:url(fr/lvl-diamondts.svg?v=4)}
+.ava.f-f55{--fr:url(fr/f55s.svg?v=4)}
+.ava.f-f63{--fr:url(fr/f63s.svg?v=4);--fx:url(fr/f63ts.svg?v=4)}
+.ava.f-f65{--fr:url(fr/f65s.svg?v=4)}
+.ava.f-f80{--fr:url(fr/f80s.svg?v=4)}
+.ava.f-f81{--fr:url(fr/f81s.svg?v=4)}
+.ava.f-f90{--fr:url(fr/f90s.svg?v=4)}
+.ava.f-f94{--fr:url(fr/f94s.svg?v=4)}
+.ava.f-f104{--fr:url(fr/f104s.svg?v=4)}
 }
 /* frames:end */
 /* v49: коллекция рамок по группам */
@@ -2370,3 +2372,48 @@ html.dr-open{overflow:hidden}
 .ph-cta2 .pc-btn:active{transform:scale(.98)}
 
 .fr-it .ava.md{margin-bottom:8px}
+
+/* без масштабирования страницы: двойное касание и щипок не увеличивают, поля ввода не заставляют Safari приближать при фокусе */
+html,body{touch-action:manipulation;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+@media (max-width:820px){input,select,textarea{font-size:16px!important}}
+/* плашка «нет в наличии»: компактная, без иконки, текст слева, кнопка справа */
+.toast.card{display:flex;align-items:center;gap:12px;padding:12px 40px 12px 16px;border-radius:18px;background:linear-gradient(150deg,#16396b,#0b1d3a);box-shadow:0 0 0 1px rgba(67,201,227,.28),var(--shadow-lg);position:relative}
+.toast.card .tc-b{flex:1 1 150px;min-width:0;padding:0}
+.toast.card .tc-b b{display:block;font-size:14.5px;font-weight:800;line-height:1.25}
+.toast.card .tc-b p{margin:2px 0 0;font-size:13px;line-height:1.35;color:rgba(255,255,255,.78)}
+.toast.card .tc-btn{flex:none;margin:0;width:auto;display:inline-flex;align-items:center;gap:6px;border:0;border-radius:12px;padding:10px 13px;background:#fff;color:#0b1d3a;font-weight:800;font-size:13.5px;white-space:nowrap;box-shadow:0 4px 12px rgba(0,0,0,.22)}
+.toast.card .tc-btn .i{width:16px;height:16px;color:#ff4d6a}
+.toast.card .tc-x{position:absolute;top:50%;right:10px;transform:translateY(-50%);width:24px;height:24px;border:0;border-radius:50%;background:rgba(255,255,255,.12);color:#fff;font-size:16px;line-height:1;padding:0;display:grid;place-items:center}
+@media (max-width:380px){.toast.card{flex-wrap:wrap;padding-right:16px}.toast.card .tc-x{top:10px;transform:none}.toast.card .tc-btn{width:100%;justify-content:center}}
+.oos-h{align-items:flex-start}.oos .oos-btn{margin-top:10px}
+
+/* три компактных баннера на главной */
+.bcs{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;margin:0 0 16px;padding:2px 0 6px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.bcs::-webkit-scrollbar{display:none}
+.bc{position:relative;flex:0 0 82%;scroll-snap-align:start;display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:132px;padding:16px 0 16px 18px;border-radius:22px;overflow:hidden;color:#fff;text-decoration:none;box-shadow:0 12px 26px -14px rgba(11,29,58,.55)}
+.bc::after{content:"";position:absolute;right:-30px;top:-40px;width:150px;height:150px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.22),transparent 68%);pointer-events:none}
+.bc-1{background:linear-gradient(135deg,#1a86c0,#0b2e63)}
+.bc-2{background:linear-gradient(135deg,#ff8a3d,#c2410c)}
+.bc-3{background:linear-gradient(135deg,#6a5cff,#2a2f8f)}
+.bc-t{position:relative;z-index:1;display:grid;gap:3px;align-content:center;min-width:0;flex:1 1 52%}
+.bc-t small{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;opacity:.82}
+.bc-t b{font:800 1.12rem/1.15 var(--f-d)}
+.bc-t i{font-style:normal;font-size:13px;opacity:.88}
+.bc-go{display:inline-flex;align-items:center;gap:6px;margin-top:8px;padding:7px 12px;border-radius:999px;background:rgba(255,255,255,.2);font-weight:700;font-size:13px;width:max-content}
+.bc-go .i{width:15px;height:15px}
+.bc-ph{position:relative;z-index:1;flex:0 0 44%;display:flex;align-items:center;padding-right:14px}
+.bc-ph span{flex:0 0 58%;aspect-ratio:3/4;border-radius:14px;overflow:hidden;border:2px solid rgba(255,255,255,.9);box-shadow:0 8px 18px rgba(0,0,0,.28);background:#fff}
+.bc-ph span img{width:100%;height:100%;object-fit:cover;display:block}
+.bc-ph span:nth-child(1){transform:rotate(-6deg);z-index:1}
+.bc-ph span:nth-child(2){transform:rotate(3deg) translateY(-6px);margin-left:-26%;z-index:2}
+.bc-ph span:nth-child(3){transform:rotate(9deg) translateY(4px);margin-left:-26%;z-index:1}
+@media (min-width:760px){.bcs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));overflow:visible}.bc{flex:none}}
+
+/* окно рамок: без лагов и обрезания. В сетке рамки без движения (стоят картинкой), движется только большое превью; фильтр на заблокированных убран, он перерисовывал анимацию на каждом кадре */
+.fr-it{padding:26px 2px 8px;overflow:visible;-webkit-tap-highlight-color:transparent}
+.fr-it .ava.md{margin:0 auto 10px}
+.fr-it.lk .ava{filter:none;opacity:.5}
+.fr-prev{padding:22px 16px 22px 42px;overflow:visible}
+.fr-prev .ava.lg{flex:none;margin:0}
+.fr-grid{gap:2px;row-gap:6px}
+.modal.fr-md .modal-body,.fr-md{overflow-x:hidden}

@@ -1,4 +1,4 @@
-/* ONION SHOP, правила магазина (один файл для сайта и для Google Таблицы).
+﻿/* ONION SHOP, правила магазина (один файл для сайта и для Google Таблицы).
    Здесь: ониксы, уровни, задания, посылка, партнёрка, номера заказов и текст заказа.
    На сервере (Google Apps Script) этот же код работает с таблицей,
    на сайте в демо-режиме, с памятью браузера. */
@@ -63,7 +63,7 @@ var OnionCore = (function () {
     // категории для промокода уровня Золото
     promoCats: [
       { key: 'shoes', label: 'Обувь', cats: ['shoes'] },
-      { key: 'clothes', label: 'Одежда', cats: ['hoodies', 'tees', 'pants'] },
+      { key: 'clothes', label: 'Одежда', cats: ['hoodies', 'tees', 'pants', 'jeans', 'shorts'] },
       { key: 'outer', label: 'Куртки', cats: ['outerwear'] },
       { key: 'acc', label: 'Аксессуары', cats: ['accessories'] }
     ],
@@ -89,7 +89,7 @@ var OnionCore = (function () {
       { per: 'd', key: 'measure', title: 'Заглянуть в замеры', hint: 'Раздел «Замеры изделия» в карточке', m: 'measure', n: 1, tk: 3, xp: 10 },
       { per: 'd', key: 'shoes', title: 'Посмотреть 2 пары обуви', hint: 'Раздел «Обувь»', m: 'viewcat', cats: ['shoes'], n: 2, tk: 3, xp: 10 },
       { per: 'd', key: 'outer', title: 'Посмотреть 2 куртки или худи', hint: 'Куртки и худи', m: 'viewcat', cats: ['outerwear', 'hoodies'], n: 2, tk: 3, xp: 10 },
-      { per: 'd', key: 'basic', title: 'Посмотреть футболки или штаны', hint: 'Две любые карточки', m: 'viewcat', cats: ['tees', 'pants'], n: 2, tk: 3, xp: 10 },
+      { per: 'd', key: 'basic', title: 'Посмотреть футболки или штаны', hint: 'Две любые карточки', m: 'viewcat', cats: ['tees', 'pants', 'jeans', 'shorts'], n: 2, tk: 3, xp: 10 },
       { per: 'd', key: 'acc', title: 'Посмотреть аксессуары', hint: 'Любой аксессуар', m: 'viewcat', cats: ['accessories'], n: 1, tk: 3, xp: 10 },
       { per: 'd', key: 'spin', title: 'Открыть посылку', hint: 'Бесплатная посылка раз в день', m: 'spin', n: 1, tk: 3, xp: 10 },
 
@@ -371,7 +371,7 @@ var OnionCore = (function () {
     var li = levelOf(u).index, own = u.frames || [];
     return RULES.frames.filter(function (f) {
       if (f.id === 'base') return true;
-      if (f.src === 'level') return li === f.lvl; // статусная рамка только своего статуса
+      if (f.src === 'level') return f.lvl <= li; // статусные рамки накапливаются: свой статус и все ниже; в начале месяца, когда уровень сбросился, лишние пропадают
       return own.indexOf(f.id) >= 0; // остальные: только выпавшие в посылке или полученные за достижение/игру
     }).map(function (f) { return f.id; });
   }
@@ -1286,3 +1286,4 @@ var OnionCore = (function () {
   };
 })();
 if (typeof module !== 'undefined') module.exports = OnionCore;
+
