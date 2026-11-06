@@ -2,14 +2,14 @@
 window.ONION_CATALOG = {
  "channel": "ONION_SHOP_OFFICIAL",
  "source": "t.me",
- "updatedAt": "2026-11-06T09:24:12Z",
+ "updatedAt": "2026-11-06T18:49:29Z",
  "products": [
   {
    "title": "Джинсы Acne Studios",
    "subtitle": "",
    "brand": "Acne Studios",
-   "category": "pants",
-   "categoryLabel": "Штаны",
+   "category": "jeans",
+   "categoryLabel": "Джинсы",
    "status": "preorder",
    "price": 5140,
    "oldPrice": null,
@@ -1603,7 +1603,7 @@ window.ONION_CATALOG = {
    "subtitle": "",
    "brand": "Supreme",
    "category": "pants",
-   "categoryLabel": "Штаны",
+   "categoryLabel": "Штаны и брюки",
    "status": "stock",
    "price": 1200,
    "oldPrice": 1300,
