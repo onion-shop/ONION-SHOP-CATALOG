@@ -2,8 +2,80 @@
 window.ONION_CATALOG = {
  "channel": "ONION_SHOP_OFFICIAL",
  "source": "t.me",
- "updatedAt": "2026-11-07T10:14:06Z",
+ "updatedAt": "2026-11-07T11:32:17Z",
  "products": [
+  {
+   "title": "Пуховик Zara Suvene",
+   "subtitle": "",
+   "brand": "Zara Suvene",
+   "category": "outerwear",
+   "categoryLabel": "Куртки и пуховики",
+   "status": "stock",
+   "price": 5890,
+   "oldPrice": null,
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL"
+   ],
+   "colors": [
+    "серый"
+   ],
+   "details": [
+    [
+     "Состояние",
+     "новое с биркой"
+    ]
+   ],
+   "notes": [],
+   "facts": [
+    [
+     "Материал",
+     "Пуховое наполнение"
+    ]
+   ],
+   "id": "651",
+   "link": "https://t.me/ONION_SHOP_OFFICIAL/651",
+   "photos": [
+    {
+     "id": 651,
+     "w": 800,
+     "ht": 800,
+     "hash": "177f657df84e",
+     "q": 2
+    },
+    {
+     "id": 652,
+     "w": 800,
+     "ht": 800,
+     "hash": "0cbe4324125e",
+     "q": 2
+    },
+    {
+     "id": 653,
+     "w": 800,
+     "ht": 800,
+     "hash": "e67e7a5adde5",
+     "q": 2
+    },
+    {
+     "id": 654,
+     "w": 800,
+     "ht": 800,
+     "hash": "3d3d64f1e187",
+     "q": 2
+    },
+    {
+     "id": 655,
+     "w": 800,
+     "ht": 800,
+     "hash": "f0f5e3b4777b",
+     "q": 2
+    }
+   ],
+   "date": "2026-11-07T11:20:35Z"
+  },
   {
    "title": "Кроссовки UGG",
    "subtitle": "",
