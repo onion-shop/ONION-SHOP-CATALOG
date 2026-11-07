@@ -2,14 +2,155 @@
 window.ONION_CATALOG = {
  "channel": "ONION_SHOP_OFFICIAL",
  "source": "t.me",
- "updatedAt": "2026-11-07T09:21:13Z",
+ "updatedAt": "2026-11-07T10:14:06Z",
  "products": [
   {
-   "title": "Isabel Marant",
+   "title": "Кроссовки UGG",
+   "subtitle": "",
+   "brand": "UGG",
+   "category": "shoes",
+   "categoryLabel": "Обувь",
+   "status": "stock",
+   "price": 5620,
+   "oldPrice": null,
+   "sizes": [
+    "36",
+    "37",
+    "38",
+    "39",
+    "40"
+   ],
+   "colors": [
+    "бежевый"
+   ],
+   "details": [
+    [
+     "Состояние",
+     "новое с биркой"
+    ]
+   ],
+   "notes": [],
+   "facts": [],
+   "id": "646",
+   "link": "https://t.me/ONION_SHOP_OFFICIAL/646",
+   "photos": [
+    {
+     "id": 646,
+     "w": 800,
+     "ht": 600,
+     "hash": "36f64d9e6198",
+     "q": 2
+    },
+    {
+     "id": 647,
+     "w": 800,
+     "ht": 678,
+     "hash": "b1e08f9f78da",
+     "q": 2
+    },
+    {
+     "id": 648,
+     "w": 800,
+     "ht": 600,
+     "hash": "fda63544f043",
+     "q": 2
+    },
+    {
+     "id": 649,
+     "w": 800,
+     "ht": 600,
+     "hash": "df6ce34b1d6c",
+     "q": 2
+    },
+    {
+     "id": 650,
+     "w": 800,
+     "ht": 600,
+     "hash": "1b9c02d6b2d0",
+     "q": 2
+    }
+   ],
+   "date": "2026-11-07T10:08:52Z"
+  },
+  {
+   "title": "Пуховик Puma x Ferrari",
+   "subtitle": "",
+   "brand": "Puma",
+   "category": "outerwear",
+   "categoryLabel": "Куртки и пуховики",
+   "status": "stock",
+   "price": 6670,
+   "oldPrice": null,
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "2XL"
+   ],
+   "colors": [
+    "черный"
+   ],
+   "details": [
+    [
+     "Состояние",
+     "новое с биркой"
+    ]
+   ],
+   "notes": [],
+   "facts": [
+    [
+     "Материал",
+     "Пуховое наполнение"
+    ]
+   ],
+   "id": "641",
+   "link": "https://t.me/ONION_SHOP_OFFICIAL/641",
+   "photos": [
+    {
+     "id": 641,
+     "w": 600,
+     "ht": 800,
+     "hash": "fcfeb1d18e81",
+     "q": 2
+    },
+    {
+     "id": 642,
+     "w": 600,
+     "ht": 800,
+     "hash": "454754ac4d12",
+     "q": 2
+    },
+    {
+     "id": 643,
+     "w": 600,
+     "ht": 800,
+     "hash": "d8a0d77d481f",
+     "q": 2
+    },
+    {
+     "id": 644,
+     "w": 600,
+     "ht": 800,
+     "hash": "50aa3af3efd8",
+     "q": 2
+    },
+    {
+     "id": 645,
+     "w": 600,
+     "ht": 800,
+     "hash": "64dd13a396c8",
+     "q": 2
+    }
+   ],
+   "date": "2026-11-07T10:01:20Z"
+  },
+  {
+   "title": "Isabel Marant ботинки",
    "subtitle": "",
    "brand": "Isabel Marant",
-   "category": "other",
-   "categoryLabel": "Другое",
+   "category": "shoes",
+   "categoryLabel": "Обувь",
    "status": "stock",
    "price": 6590,
    "oldPrice": null,
@@ -73,11 +214,11 @@ window.ONION_CATALOG = {
    "date": "2026-11-07T09:13:35Z"
   },
   {
-   "title": "Isabel Marant",
+   "title": "Isabel Marant ботинки",
    "subtitle": "",
    "brand": "Isabel Marant",
-   "category": "other",
-   "categoryLabel": "Другое",
+   "category": "shoes",
+   "categoryLabel": "Обувь",
    "status": "stock",
    "price": 6590,
    "oldPrice": null,
@@ -141,11 +282,11 @@ window.ONION_CATALOG = {
    "date": "2026-11-07T08:48:57Z"
   },
   {
-   "title": "Isabel Marant",
+   "title": "Isabel Marant ботинки",
    "subtitle": "",
    "brand": "Isabel Marant",
-   "category": "other",
-   "categoryLabel": "Другое",
+   "category": "shoes",
+   "categoryLabel": "Обувь",
    "status": "stock",
    "price": 5620,
    "oldPrice": null,
