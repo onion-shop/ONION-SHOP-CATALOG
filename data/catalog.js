@@ -2,8 +2,212 @@
 window.ONION_CATALOG = {
  "channel": "ONION_SHOP_OFFICIAL",
  "source": "t.me",
- "updatedAt": "2026-11-06T18:49:29Z",
+ "updatedAt": "2026-11-07T09:21:13Z",
  "products": [
+  {
+   "title": "Isabel Marant",
+   "subtitle": "",
+   "brand": "Isabel Marant",
+   "category": "other",
+   "categoryLabel": "Другое",
+   "status": "stock",
+   "price": 6590,
+   "oldPrice": null,
+   "sizes": [
+    "36",
+    "37",
+    "38",
+    "39",
+    "40"
+   ],
+   "colors": [
+    "белый"
+   ],
+   "details": [
+    [
+     "Состояние",
+     "новое с биркой"
+    ]
+   ],
+   "notes": [],
+   "facts": [],
+   "id": "636",
+   "link": "https://t.me/ONION_SHOP_OFFICIAL/636",
+   "photos": [
+    {
+     "id": 636,
+     "w": 800,
+     "ht": 600,
+     "hash": "deed640e15c5",
+     "q": 2
+    },
+    {
+     "id": 637,
+     "w": 800,
+     "ht": 600,
+     "hash": "c609f5c29ec2",
+     "q": 2
+    },
+    {
+     "id": 638,
+     "w": 800,
+     "ht": 600,
+     "hash": "150707b52728",
+     "q": 2
+    },
+    {
+     "id": 639,
+     "w": 800,
+     "ht": 600,
+     "hash": "d935bf8212fc",
+     "q": 2
+    },
+    {
+     "id": 640,
+     "w": 800,
+     "ht": 600,
+     "hash": "50338aa22dac",
+     "q": 2
+    }
+   ],
+   "date": "2026-11-07T09:13:35Z"
+  },
+  {
+   "title": "Isabel Marant",
+   "subtitle": "",
+   "brand": "Isabel Marant",
+   "category": "other",
+   "categoryLabel": "Другое",
+   "status": "stock",
+   "price": 6590,
+   "oldPrice": null,
+   "sizes": [
+    "36",
+    "37",
+    "38",
+    "39",
+    "40"
+   ],
+   "colors": [
+    "черный"
+   ],
+   "details": [
+    [
+     "Состояние",
+     "новое с биркой"
+    ]
+   ],
+   "notes": [],
+   "facts": [],
+   "id": "631",
+   "link": "https://t.me/ONION_SHOP_OFFICIAL/631",
+   "photos": [
+    {
+     "id": 631,
+     "w": 800,
+     "ht": 600,
+     "hash": "48e7d169e652",
+     "q": 2
+    },
+    {
+     "id": 632,
+     "w": 800,
+     "ht": 600,
+     "hash": "0529fb4844bf",
+     "q": 2
+    },
+    {
+     "id": 633,
+     "w": 800,
+     "ht": 600,
+     "hash": "ea001d13a35c",
+     "q": 2
+    },
+    {
+     "id": 634,
+     "w": 800,
+     "ht": 600,
+     "hash": "f98452434bbc",
+     "q": 2
+    },
+    {
+     "id": 635,
+     "w": 800,
+     "ht": 600,
+     "hash": "e90df25c3249",
+     "q": 2
+    }
+   ],
+   "date": "2026-11-07T08:48:57Z"
+  },
+  {
+   "title": "Isabel Marant",
+   "subtitle": "",
+   "brand": "Isabel Marant",
+   "category": "other",
+   "categoryLabel": "Другое",
+   "status": "stock",
+   "price": 5620,
+   "oldPrice": null,
+   "sizes": [
+    "36",
+    "37",
+    "38",
+    "39",
+    "40"
+   ],
+   "colors": [
+    "бежевый"
+   ],
+   "details": [
+    [
+     "Состояние",
+     "новое с биркой"
+    ]
+   ],
+   "notes": [],
+   "facts": [],
+   "id": "626",
+   "link": "https://t.me/ONION_SHOP_OFFICIAL/626",
+   "photos": [
+    {
+     "id": 626,
+     "w": 800,
+     "ht": 600,
+     "hash": "c89f51b1c90e",
+     "q": 2
+    },
+    {
+     "id": 627,
+     "w": 800,
+     "ht": 600,
+     "hash": "faa204f9921b",
+     "q": 2
+    },
+    {
+     "id": 628,
+     "w": 800,
+     "ht": 600,
+     "hash": "4d2f59404c55",
+     "q": 2
+    },
+    {
+     "id": 629,
+     "w": 800,
+     "ht": 600,
+     "hash": "09a06aacca22",
+     "q": 2
+    },
+    {
+     "id": 630,
+     "w": 800,
+     "ht": 600,
+     "hash": "9c1d087eb00d",
+     "q": 2
+    }
+   ],
+   "date": "2026-11-07T08:46:31Z"
+  },
   {
    "title": "Джинсы Acne Studios",
    "subtitle": "",
@@ -449,14 +653,14 @@ window.ONION_CATALOG = {
      "id": 592,
      "w": 600,
      "ht": 800,
-     "hash": "1bc91fd078c6",
+     "hash": "df1808019522",
      "q": 2
     },
     {
      "id": 593,
-     "w": 800,
+     "w": 600,
      "ht": 800,
-     "hash": "bc9d3d7e1dbe",
+     "hash": "0297bdb86ddb",
      "q": 2
     }
    ],
@@ -1301,60 +1505,6 @@ window.ONION_CATALOG = {
     }
    ],
    "date": "2025-09-07T16:51:18Z"
-  },
-  {
-   "title": "Футболка Paul&Shark",
-   "subtitle": "",
-   "brand": "Paul&Shark",
-   "category": "tees",
-   "categoryLabel": "Футболки и поло",
-   "status": "out",
-   "price": 2000,
-   "oldPrice": 2599,
-   "sizes": [
-    "L"
-   ],
-   "colors": [
-    "темно-синий"
-   ],
-   "details": [
-    [
-     "Состояние",
-     "новое с биркой"
-    ],
-    [
-     "Материал",
-     "натуральный хлопок"
-    ]
-   ],
-   "notes": [
-    "Товар оригинал"
-   ],
-   "facts": [
-    [
-     "Подлинность",
-     "Оригинал"
-    ]
-   ],
-   "id": "436",
-   "link": "https://t.me/ONION_SHOP_OFFICIAL/436",
-   "photos": [
-    {
-     "id": 436,
-     "w": 600,
-     "ht": 800,
-     "hash": "670eb4b5a3ca",
-     "q": 2
-    },
-    {
-     "id": 439,
-     "w": 600,
-     "ht": 800,
-     "hash": "a58c8977174b",
-     "q": 2
-    }
-   ],
-   "date": "2025-09-07T16:37:44Z"
   },
   {
    "title": "Кошелек MOSCHINO",
