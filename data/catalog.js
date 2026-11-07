@@ -2,8 +2,145 @@
 window.ONION_CATALOG = {
  "channel": "ONION_SHOP_OFFICIAL",
  "source": "t.me",
- "updatedAt": "2026-11-07T11:32:17Z",
+ "updatedAt": "2026-11-07T12:19:43Z",
  "products": [
+  {
+   "title": "Isabel Marant ботинки",
+   "subtitle": "",
+   "brand": "Isabel Marant",
+   "category": "shoes",
+   "categoryLabel": "Обувь",
+   "status": "stock",
+   "price": 5620,
+   "oldPrice": null,
+   "sizes": [
+    "36",
+    "37",
+    "38",
+    "39",
+    "40"
+   ],
+   "colors": [
+    "коричневый"
+   ],
+   "details": [
+    [
+     "Состояние",
+     "новое с биркой"
+    ]
+   ],
+   "notes": [],
+   "facts": [],
+   "id": "661",
+   "link": "https://t.me/ONION_SHOP_OFFICIAL/661",
+   "photos": [
+    {
+     "id": 661,
+     "w": 800,
+     "ht": 600,
+     "hash": "1d45230ea6e1",
+     "q": 2
+    },
+    {
+     "id": 662,
+     "w": 800,
+     "ht": 600,
+     "hash": "f9b3854ea1c6",
+     "q": 2
+    },
+    {
+     "id": 663,
+     "w": 800,
+     "ht": 600,
+     "hash": "7f941865173a",
+     "q": 2
+    },
+    {
+     "id": 664,
+     "w": 800,
+     "ht": 600,
+     "hash": "28cecc6255f3",
+     "q": 2
+    },
+    {
+     "id": 665,
+     "w": 800,
+     "ht": 600,
+     "hash": "b19db76ea9d1",
+     "q": 2
+    }
+   ],
+   "date": "2026-11-07T11:39:57Z"
+  },
+  {
+   "title": "Луноходы Moon boot",
+   "subtitle": "",
+   "brand": "Moon boot",
+   "category": "other",
+   "categoryLabel": "Другое",
+   "status": "stock",
+   "price": 7230,
+   "oldPrice": null,
+   "sizes": [
+    "36",
+    "37",
+    "38",
+    "39",
+    "40",
+    "41"
+   ],
+   "colors": [
+    "розовый"
+   ],
+   "details": [
+    [
+     "Состояние",
+     "новое с биркой"
+    ]
+   ],
+   "notes": [],
+   "facts": [],
+   "id": "656",
+   "link": "https://t.me/ONION_SHOP_OFFICIAL/656",
+   "photos": [
+    {
+     "id": 656,
+     "w": 800,
+     "ht": 600,
+     "hash": "705299ae6c8f",
+     "q": 2
+    },
+    {
+     "id": 657,
+     "w": 800,
+     "ht": 600,
+     "hash": "06de9812bb29",
+     "q": 2
+    },
+    {
+     "id": 658,
+     "w": 600,
+     "ht": 800,
+     "hash": "fa792609c2d0",
+     "q": 2
+    },
+    {
+     "id": 659,
+     "w": 600,
+     "ht": 800,
+     "hash": "edfc0ae5045d",
+     "q": 2
+    },
+    {
+     "id": 660,
+     "w": 800,
+     "ht": 600,
+     "hash": "c9f92cd8a9bc",
+     "q": 2
+    }
+   ],
+   "date": "2026-11-07T11:34:33Z"
+  },
   {
    "title": "Пуховик Zara Suvene",
    "subtitle": "",
@@ -77,9 +214,9 @@ window.ONION_CATALOG = {
    "date": "2026-11-07T11:20:35Z"
   },
   {
-   "title": "Кроссовки UGG",
+   "title": "Кроссовки UGG lowmel",
    "subtitle": "",
-   "brand": "UGG",
+   "brand": "UGG lowmel",
    "category": "shoes",
    "categoryLabel": "Обувь",
    "status": "stock",
@@ -109,15 +246,15 @@ window.ONION_CATALOG = {
     {
      "id": 646,
      "w": 800,
-     "ht": 600,
-     "hash": "36f64d9e6198",
+     "ht": 678,
+     "hash": "b1e08f9f78da",
      "q": 2
     },
     {
      "id": 647,
      "w": 800,
-     "ht": 678,
-     "hash": "b1e08f9f78da",
+     "ht": 600,
+     "hash": "20bf7bb3b3ba",
      "q": 2
     },
     {
@@ -319,14 +456,14 @@ window.ONION_CATALOG = {
      "id": 631,
      "w": 800,
      "ht": 600,
-     "hash": "48e7d169e652",
+     "hash": "98efe4f34581",
      "q": 2
     },
     {
      "id": 632,
      "w": 800,
      "ht": 600,
-     "hash": "0529fb4844bf",
+     "hash": "d9fd115fe3ce",
      "q": 2
     },
     {
@@ -387,14 +524,14 @@ window.ONION_CATALOG = {
      "id": 626,
      "w": 800,
      "ht": 600,
-     "hash": "c89f51b1c90e",
+     "hash": "7ff08973ca7c",
      "q": 2
     },
     {
      "id": 627,
      "w": 800,
      "ht": 600,
-     "hash": "faa204f9921b",
+     "hash": "8de7d835e60e",
      "q": 2
     },
     {
