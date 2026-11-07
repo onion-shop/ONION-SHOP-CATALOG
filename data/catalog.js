@@ -2,8 +2,75 @@
 window.ONION_CATALOG = {
  "channel": "ONION_SHOP_OFFICIAL",
  "source": "t.me",
- "updatedAt": "2026-11-07T12:19:43Z",
+ "updatedAt": "2026-11-07T21:46:16Z",
  "products": [
+  {
+   "title": "Свитер Dior",
+   "subtitle": "",
+   "brand": "Dior",
+   "category": "hoodies",
+   "categoryLabel": "Худи и свитеры",
+   "status": "stock",
+   "price": 4245,
+   "oldPrice": null,
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL"
+   ],
+   "colors": [
+    "черный"
+   ],
+   "details": [
+    [
+     "Состояние",
+     "новое с биркой"
+    ]
+   ],
+   "notes": [],
+   "facts": [],
+   "id": "666",
+   "link": "https://t.me/ONION_SHOP_OFFICIAL/666",
+   "photos": [
+    {
+     "id": 666,
+     "w": 792,
+     "ht": 800,
+     "hash": "e7a3d0665636",
+     "q": 2
+    },
+    {
+     "id": 667,
+     "w": 600,
+     "ht": 800,
+     "hash": "75b50e5125e4",
+     "q": 2
+    },
+    {
+     "id": 668,
+     "w": 600,
+     "ht": 800,
+     "hash": "ce7475180ab1",
+     "q": 2
+    },
+    {
+     "id": 669,
+     "w": 600,
+     "ht": 800,
+     "hash": "93861547c26c",
+     "q": 2
+    },
+    {
+     "id": 671,
+     "w": 600,
+     "ht": 800,
+     "hash": "de2abbc53f0e",
+     "q": 2
+    }
+   ],
+   "date": "2026-11-07T21:44:25Z"
+  },
   {
    "title": "Isabel Marant ботинки",
    "subtitle": "",
