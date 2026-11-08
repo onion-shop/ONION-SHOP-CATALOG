@@ -2,7 +2,7 @@
 window.ONION_CATALOG = {
  "channel": "ONION_SHOP_OFFICIAL",
  "source": "t.me",
- "updatedAt": "2026-11-08T21:54:22Z",
+ "updatedAt": "2026-11-08T22:36:24Z",
  "products": [
   {
    "title": "Пуховик Stone Island Raso Gommato",
@@ -29,12 +29,7 @@ window.ONION_CATALOG = {
     ]
    ],
    "notes": [],
-   "facts": [
-    [
-     "Материал",
-     "Пуховое наполнение"
-    ]
-   ],
+   "facts": [],
    "id": "682",
    "link": "https://t.me/ONION_SHOP_OFFICIAL/682",
    "photos": [
@@ -455,12 +450,7 @@ window.ONION_CATALOG = {
     ]
    ],
    "notes": [],
-   "facts": [
-    [
-     "Материал",
-     "Пуховое наполнение"
-    ]
-   ],
+   "facts": [],
    "id": "651",
    "link": "https://t.me/ONION_SHOP_OFFICIAL/651",
    "photos": [
@@ -596,12 +586,7 @@ window.ONION_CATALOG = {
     ]
    ],
    "notes": [],
-   "facts": [
-    [
-     "Материал",
-     "Пуховое наполнение"
-    ]
-   ],
+   "facts": [],
    "id": "641",
    "link": "https://t.me/ONION_SHOP_OFFICIAL/641",
    "photos": [
@@ -873,12 +858,7 @@ window.ONION_CATALOG = {
     ]
    ],
    "notes": [],
-   "facts": [
-    [
-     "Материал",
-     "Деним"
-    ]
-   ],
+   "facts": [],
    "sizeTable": {
     "S": [
      [
