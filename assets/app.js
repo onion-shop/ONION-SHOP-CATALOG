@@ -77,6 +77,8 @@
     // категорию всегда уточняем по названию (те же правила, что и в scripts/sync_catalog.py): сортировка верна, даже если каталог собран по старым правилам
     var ck = classifyTitle(p.title || '');
     if (ck) p.category = ck;
+    // материал не угадываем: в «Главном о товаре» его не показываем (если он указан в посте строкой «Материал:», он есть в характеристиках)
+    if (p.facts) p.facts = p.facts.filter(function (f) { return String(f[0]).toLowerCase() !== 'материал'; });
     if (CAT_LABELS[p.category]) p.categoryLabel = CAT_LABELS[p.category];
     (p.photos || []).forEach(function (ph) { if (ph.hash) PHOTO_V[ph.id] = ph.hash + (ph.q ? 'q' + ph.q : ''); });
     var raw = Object.assign({}, p.colorPhotos || {}, COLOR_PHOTOS[p.id] || {}), map = {};
@@ -104,7 +106,6 @@
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function icon(n, cls) { return '<svg class="i' + (cls ? ' ' + cls : '') + '" aria-hidden="true"><use href="#i-' + n + '"/></svg>'; }
   function tk(cls) { return '<svg class="tk' + (cls ? ' ' + cls : '') + '" aria-hidden="true"><use href="#i-token"/></svg>'; }
-  function pz(id, cls) { return '<svg class="pz' + (cls ? ' ' + cls : '') + '" aria-hidden="true"><use href="#p-' + id + '"/></svg>'; }
   var NF = new Intl.NumberFormat('ru-RU');
   function num(n) { return NF.format(n); }
   function rub(n) { return NF.format(Math.round(n)) + ' ₽'; }
@@ -316,7 +317,8 @@
   function reward(msg) { toast(msg, null, 'reward'); }
   // масштабирование страницы щипком отключено (iOS Safari игнорирует user-scalable, поэтому гасим жесты сами); двойное касание не увеличивает (touch-action в стилях)
   ['gesturestart', 'gesturechange', 'gestureend'].forEach(function (t) { document.addEventListener(t, function (e) { e.preventDefault(); }, { passive: false }); });
-  document.addEventListener('touchmove', function (e) { if (e.touches && e.touches.length > 1 && !(e.target.closest && e.target.closest('#lightbox,.lightbox,.lb'))) e.preventDefault(); }, { passive: false });
+  // (раньше здесь был блокирующий обработчик touchmove на весь документ: он задерживал начало каждой прокрутки.
+  //  Масштабирование щипком теперь запрещено стилями: touch-action:pan-x pan-y, в просмотре фото разрешено.)
   var lastFocus = null;
   function openModal(html, opts) {
     opts = opts || {};
@@ -409,7 +411,9 @@
       // избранное из аккаунта объединяем с тем, что на этом устройстве: так оно не пропадает при входе с другого телефона
       var add = (u.favIds || []).filter(function (id) { return BY_ID[id] && !isFav(id); });
       if (add.length) { favs = favs.concat(add); store.set('favs', favs); updateCounts(); }
-      if (favs.length) syncWatch();
+      // на сервер отправляем, только если список на этом устройстве отличается от сохранённого в аккаунте
+      var srv = (u.favIds || []).map(String).sort().join(','), loc = favs.map(String).sort().join(',');
+      if (favs.length && srv !== loc) syncWatch();
     }
     achvNews(u);
     if (current === 'account') renderAccount();
@@ -421,8 +425,11 @@
     if (!API.enabled || !API.getSession()) { acct.ready = true; updateAcctUI(); return Promise.resolve(); }
     return API.call('me').then(function (r) {
       acct.ready = true;
+      lastMeAt = Date.now();
       if (r.ok) setUser(r.user);
-      else { if (r.error === 'auth') API.setSession(''); setUser(null); }
+      // выходим из кабинета только если сессия действительно недействительна; при временной ошибке сервера или сети остаётся сохранённый профиль
+      else if (r.error === 'auth') { API.setSession(''); setUser(null); }
+      else updateAcctUI();
       if (acct.user && !acct.user.checkedToday && !checkinHinted) {
         checkinHinted = true;
         setTimeout(function () { toast('Заберите ' + RULES.reward.checkin + ' ' + tokWord(RULES.reward.checkin) + ' за сегодняшний вход', { label: 'Забрать', run: doCheckin }); }, 1200);
@@ -432,7 +439,7 @@
   /* Тихое обновление профиля: что поменяли в таблице (статус, ониксы, уровень), клиент видит
      в течение минуты и сразу при возвращении на вкладку. Экран не перерисовывается, если ничего
      не изменилось или клиент сейчас что-то вводит. */
-  var silentBusy = false, lastMe = '';
+  var silentBusy = false, lastMe = '', lastMeAt = 0;
   // каталог обновляется сам: раз в 10 минут тихо читаем data/catalog.js и, если появились новые товары, перерисовываем главную и каталог
   var lastCat = Date.now();
   function refreshCatalog() {
@@ -443,13 +450,14 @@
       var m = t.match(/window\.ONION_CATALOG\s*=\s*([\s\S]*?);\s*$/); if (!m) return;
       var data = JSON.parse(m[1]);
       if (!data || !data.products || data.updatedAt === CATALOG.updatedAt || !data.products.length) return;
-      CATALOG = data; PRODUCTS = data.products.slice(); BY_ID = {}; PRODUCTS.forEach(indexProduct);
+      CATALOG = data; PRODUCTS = data.products.slice(); BY_ID = {}; PRODUCTS.forEach(indexProduct); searchWords.v = null;
       if (current === 'home') renderHome(); else if (current === 'catalog') updateCatalog();
     }).catch(function () { /* без сети, оставляем как есть */ });
   }
   function silentRefresh() {
-    if (silentBusy || !API.enabled || API.mode !== 'live' || !API.getSession() || document.hidden || API.busy()) return;
-    silentBusy = true;
+    // не дублируем запрос: если профиль обновлялся меньше 20 секунд назад, сервер не дёргаем
+    if (silentBusy || !API.enabled || API.mode !== 'live' || !API.getSession() || document.hidden || API.busy() || Date.now() - lastMeAt < 20000) return;
+    silentBusy = true; lastMeAt = Date.now();
     API.call('me').then(function (r) {
       silentBusy = false;
       if (!r.ok) { if (r.error === 'auth') { API.setSession(''); setUser(null); refreshView(); } return; }
@@ -473,8 +481,9 @@
     chip.hidden = false;
     var u = acct.user;
     if (u) {
-      chip.className = 'acct-chip';
-      chip.innerHTML = '<span class="tok">' + tk() + num(u.balance) + '</span>' + ava(u);
+      // в шапке только баланс ониксов (без фото и рамки), он обновляется вместе с данными профиля
+      chip.className = 'acct-chip bal-only';
+      chip.innerHTML = '<span class="tok">' + tk() + num(u.balance) + '</span>';
       chip.setAttribute('aria-label', 'Кабинет, ' + u.balance + ' ' + tokWord(u.balance));
       tab.innerHTML = '<span class="ic">' + ava(u) + '</span><span>Кабинет</span>';
     } else {
@@ -643,11 +652,14 @@
   }
   function grid(list, cls) { return '<div class="grid' + (cls ? ' ' + cls : '') + '">' + list.map(card).join('') + '</div>'; }
   function countBy(list, fn) { var m = {}; list.forEach(function (p) { var k = fn(p); m[k] = (m[k] || 0) + 1; }); return m; }
-  // значок категории: реальное фото товара из этой категории (подбирается само, ничего отмечать вручную не нужно); если товаров нет, рисованный значок
-  var CAT_ART = { polo: 'tees', longsleeves: 'tees', sweaters: 'hoodies', puffers: 'outerwear' };
+  // картинка категории: тематическое изображение в стиле магазина (assets/cat/ph/<ключ>.jpg, создано в ChatGPT; не фото товаров из каталога);
+  // если для категории своей картинки нет, рисованный значок как раньше
+  var CAT_PH = { stock: 1, china: 1, shoes: 1, tees: 1, polo: 1, hoodies: 1, sweaters: 1, longsleeves: 1, outerwear: 1, puffers: 1, shirts: 1, pants: 1, jeans: 1, shorts: 1, suits: 1, dresses: 1, bags: 1, headwear: 1, accessories: 1, jewelry: 1, watches: 1, perfume: 1, underwear: 1, other: 1 };
+  var CAT_ART = { polo: 'tees', longsleeves: 'tees', sweaters: 'hoodies', puffers: 'outerwear', other: 'stock' };
+  function catSrc(key) { return CAT_PH[key] ? 'assets/cat/ph/' + key + '.jpg?v=' + CAT_PH[key] : 'assets/cat/' + (CAT_ART[key] || key) + '.svg'; }
   function catImg(key, art) {
-    var p = key ? PRODUCTS.filter(function (x) { return x.category === key && x.photos && x.photos[0]; })[0] : null;
-    if (p) return '<img class="cph" src="' + thumb(p.photos[0].id) + '" alt="" loading="lazy" decoding="async">';
+    key = key || art;
+    if (CAT_PH[key]) return '<img class="cph" src="' + catSrc(key) + '" alt="" decoding="async">';
     art = CAT_ART[art] || art;
     return '<img class="lt" src="assets/cat/' + art + '.svg" alt="" loading="lazy"><img class="dk" src="assets/cat/dark/' + art + '.svg" alt="" loading="lazy">';
   }
@@ -1090,7 +1102,6 @@
         p.sizes.map(function (s) { return '<button class="choice" type="button" data-size="' + esc(s) + '" aria-pressed="' + (sel.size === s) + '">' + esc(s) + '</button>'; }).join('') + '</div>' + '<span class="msg" hidden>Выберите размер</span></div>' : '') +
       (p.colors.length ? '<div class="opt" id="opt-color"><div class="opt-head"><b>Цвет' + (p.colors.length > 1 ? ' <span class="req">*</span>' : '') + '</b><span class="val" id="color-val">' + (sel.color ? esc(cap(sel.color)) : 'не выбран') + '</span></div><div class="choices">' +
         p.colors.map(function (c) { return '<button class="choice color" type="button" data-color="' + esc(c) + '" aria-pressed="' + (sel.color === c) + '"><i class="sw" style="' + swatch(c) + '"></i>' + esc(cap(c)) + '</button>'; }).join('') + '</div><span class="msg" hidden>Выберите цвет</span></div>' : '') +
-      '<div class="opt"><label for="p-note"><b style="font-size:14.5px">' + (p.status === 'preorder' ? 'Пожелания к товару' : 'Комментарий') + '</b> <span class="small">· по желанию</span></label><textarea id="p-note" maxlength="300" placeholder="' + (p.status === 'preorder' ? 'Например: посадка oversize, проверить швы, фото бирки' : 'Например: хочу примерить перед покупкой') + '"></textarea></div>' +
       '<div class="buy"><div class="qty" aria-label="Количество"><button type="button" id="q-minus" aria-label="Меньше" disabled>' + icon('minus') + '</button><output id="q-val">1</output><button type="button" id="q-plus" aria-label="Больше">' + icon('plus') + '</button></div>' +
       '<button class="btn" type="button" id="add-btn">' + icon('bag') + '<span id="add-lbl">В корзину · ' + rub(p.price) + '</span></button></div></div>' +
       '<div class="acc">' +
@@ -1186,15 +1197,15 @@
     }
     function add() {
       if (!validate()) return false;
-      if (addToCart({ id: p.id, size: sel.size, color: sel.color, photo: sel.photo, qty: sel.qty, note: $('#p-note').value.trim() }) === false) return false;
+      if (addToCart({ id: p.id, size: sel.size, color: sel.color, photo: sel.photo, qty: sel.qty, note: '' }) === false) return false;
       var img = $$('figure img', slides)[cur]; flyToCart(img);
       return true;
     }
     function showSizeMeas() {
-      var box = $('#size-meas', v); if (!box || !tbl) return;
+      var box = $('#size-meas', v); if (!tbl) return;
       var rows = sel.size && tbl[sel.size];
-      box.hidden = !rows;
-      if (rows) box.innerHTML = '<b>Замеры · ' + esc(sel.size) + '</b>' + rows.map(function (r) { return '<span>' + esc(mlab(r[0])) + ' <i>' + esc(r[1]) + '</i></span>'; }).join('');
+      if (box) box.hidden = !rows;
+      if (rows && box) box.innerHTML = '<b>Замеры · ' + esc(sel.size) + '</b>' + rows.map(function (r) { return '<span>' + esc(mlab(r[0])) + ' <i>' + esc(r[1]) + '</i></span>'; }).join('');
       $$('.mtbl [data-mz]', v).forEach(function (c) { c.classList.toggle('on', c.getAttribute('data-mz') === sel.size); });
     }
     showSizeMeas();
@@ -1222,6 +1233,8 @@
 
   // ------------------------------------------------------------ корзина, анкета, ониксы, промокод
   var form = Object.assign({ name: '', phone: '', tg: '', recv: '', recvCity: '', recvAddr: '', ship: 'truck', city: '', preRecv: '', comment: '', together: '', vip: false }, store.get('form', {}));
+  form.comment = ''; // поля комментария больше нет: ранее сохранённый текст не отправляем
+  cart.forEach(function (l) { l.note = ''; });
   var draft0 = store.get('draft', {}) || {};
   var ack = draft0.ack === 'yes' || draft0.ack === 'no' ? draft0.ack : null, tokUse = Math.max(0, +draft0.tokUse || 0), cartPromo = draft0.promo && draft0.promo.code ? draft0.promo : null; // cartPromo: {code, pct, withTokens, personal}
   draftReady = true;
@@ -1343,7 +1356,7 @@
       '<div class="cl-list">' + all.map(row).join('') + '</div>' +
       (API.enabled && !acct.user && acct.ready ? '<div class="notice notice-info" style="margin-top:12px">' + icon('user') + '<div><b>Заказ оформляется из кабинета.</b> Войдите, чтобы продолжить.</div></div>' : '') +
       '<div class="card panel vip-panel"><label class="vip"><span class="vip-t"><b>' + icon('bolt') + 'Приоритетный заказ · ' + rub(RULES.vipPrice) + '</b><small>Менеджер возьмёт заказ раньше обычных. Порядок: ' + esc(RULES.priorityOrder().join(', ')) + ', затем платный приоритет.</small></span><input type="checkbox" id="cl-vip"' + (form.vip ? ' checked' : '') + '><span class="sw-tg"></span></label></div>' +
-      '<div class="cart-bar"><div class="cb-sub">' + (st.old > st.sum ? '<span class="cb-save">Скидка −' + rub(st.old - st.sum) + '</span>' : '<span></span>') + (form.vip && st.n ? '<span class="cb-vip">⚡ Приоритет +' + rub(RULES.vipPrice) + '</span>' : '') + '</div><button class="cb-go" type="button" id="cb-go"' + (st.n ? '' : ' disabled') + '><span>' + (st.n ? 'К оформлению · ' + st.n : 'Выберите товары') + '</span><b>' + (st.n ? rub(st.sum + (form.vip ? RULES.vipPrice : 0)) : '') + '</b></button></div>';
+      '<div class="cart-bar"><div class="cb-sub"><span></span>' + (form.vip && st.n ? '<span class="cb-vip">⚡ Приоритет +' + rub(RULES.vipPrice) + '</span>' : '') + '</div><button class="cb-go" type="button" id="cb-go"' + (st.n ? '' : ' disabled') + '><span>' + (st.n ? 'К оформлению · ' + st.n : 'Выберите товары') + '</span><b>' + (st.n ? rub(st.sum + (form.vip ? RULES.vipPrice : 0)) : '') + '</b></button></div>';
     var all2 = all;
     $$('.cl', v).forEach(function (rowEl) {
       var l = all2[+rowEl.getAttribute('data-k')];
@@ -1419,7 +1432,6 @@
       (t.stock && t.pre ? '<div class="card panel"><div class="panel-head"><h2><span class="n">' + (++n) + '</span>Как получить заказ</h2></div><div class="f" data-f="together"><div class="radios">' +
         radio('together', 'together', form.together, 'Всё вместе', 'Товар из наличия дождётся предзаказа, и вы получите всё сразу') +
         radio('together', 'separate', form.together, 'Раздельно', 'Сначала получите товары в наличии, а предзаказ позже, когда приедет из Китая') + '</div><span class="err-msg" hidden></span></div></div>' : '') +
-      '<div class="card panel"><div class="panel-head"><h2><span class="n">' + (++n) + '</span>Комментарий</h2></div><div class="f"><label class="sr" for="f-comment">Комментарий к заказу</label><textarea id="f-comment" maxlength="500" placeholder="По желанию">' + esc(form.comment) + '</textarea></div></div>' +
       (API.enabled ? '<div class="card panel" id="tokpanel"><div class="panel-head"><h2><span class="n">' + (++n) + '</span>Ониксы и промокод</h2>' + (u ? '<span class="tok">' + tk() + num(u.balance) + '</span>' : '') + '</div>' +
         (u ? (t.maxTok > 0 ? '<div class="tokbox"><div class="tokrow"><span>Списать <b id="tok-n">' + num(t.tok) + '</b> <span id="tok-w">' + tokWord(t.tok) + '</span></span><b id="tok-rub">−' + rub(t.tokRub) + '</b></div>' +
             '<label class="sr" for="tok-range">Сколько ониксов списать</label><input class="range" id="tok-range" type="range" min="0" max="' + t.maxTok + '" step="1" value="' + t.tok + '">' +
@@ -2191,33 +2203,18 @@
 
   // ------------------------------------------------------------ рулетка (карусель)
   var spinning = false, rlTimer = null, rlPos = 0;
-  var RL_ORD = ['t25', 'promo', 't100', 'xp', 'none', 't200', 'frame', 't50', 're1', 'xp100', 't300', 't150', 'xp150', 'promo5', 't500', 're2', 'xp300', 't1000', 'frame2', 'xp500', 'jackpot'];
-  var RL_COL = { tok: ['#8fe8fb', '#1a86c0', '#0b4f7a', 'rgba(67,201,227,.75)'], xp: ['#cfe0ff', '#4a76ec', '#14337f', 'rgba(74,118,236,.75)'], fr: ['#ffd0f0', '#c05bf0', '#6a2fa8', 'rgba(220,110,255,.7)'], pr: ['#ffe9a0', '#ffa81c', '#a05400', 'rgba(255,170,40,.7)'], re: ['#c6ffe3', '#2bd08f', '#0b7f58', 'rgba(43,208,143,.7)'], none: ['#dbe3f0', '#8f9db6', '#5a6781', 'rgba(150,170,205,.5)'] };
   function rlInfo(id) {
     var w = RULES.wheel.filter(function (x) { return x.id === id; })[0] || { id: id };
     var c = w.tokens ? 'tok' : w.xp ? 'xp' : w.frame ? 'fr' : w.promo ? 'pr' : w.spins ? 're' : 'none';
     return { id: id, c: c, n: w.tokens || w.xp || w.promo || w.spins || 0, rare: w.frame === 'rare' };
   }
   function rlSym(p) { return p.c === 'tok' ? 'i-token' : p.c === 'xp' ? 'rl-xp' : p.c === 'fr' ? (p.rare ? 'rl-frame2' : 'rl-frame') : p.c === 'pr' ? 'rl-ticket' : p.c === 're' ? 'rl-again' : 'rl-empty'; }
-  function rlUse(id, w, cls) { return '<svg class="rl-ico ' + (cls || '') + '" style="width:' + w + 'px;height:' + w + 'px" aria-hidden="true"><use href="#' + id + '"/></svg>'; }
+  // призы посылки: картинки в стиле оникса (assets/pz, сгенерированы в ChatGPT); оникс и искры остаются из спрайта
+  var PZ_IMG = { 'rl-xp': 'xp', 'rl-ticket': 'promo', 'rl-again': 'again', 'rl-frame': 'frame', 'rl-frame2': 'frame2', 'rl-empty': 'empty' };
+  function rlUse(id, w, cls) {
+    if (PZ_IMG[id]) return '<img class="rl-ico ' + (cls || '') + '" src="assets/pz/' + PZ_IMG[id] + '.png?v=1" alt="" width="' + w + '" height="' + w + '" style="width:' + w + 'px;height:' + w + 'px" decoding="async">';
+    return '<svg class="rl-ico ' + (cls || '') + '" style="width:' + w + 'px;height:' + w + 'px" aria-hidden="true"><use href="#' + id + '"/></svg>'; }
   function rlBig(p) { return (p.c === 'tok' && p.n >= 300) || (p.c === 'xp' && p.n >= 300) || (p.c === 'fr' && p.rare) || (p.c === 'pr' && p.n >= 5) || (p.c === 're' && p.n >= 2); }
-  function rlStars() {
-    function sp(x, y, d, s) { return '<div class="rl-spk" style="left:' + x + '%;top:' + y + 'px;animation-delay:' + d + 's;width:' + s + 'px;height:' + s + 'px">' + rlUse('rl-spark', s) + '</div>'; }
-    return sp(10, 40, 0, 22) + sp(84, 36, .7, 26) + sp(88, 170, 1.3, 18) + sp(6, 190, .4, 16);
-  }
-  function rlSlide(c, inner) { return '<div class="rl-slide" style="--c1:' + c[0] + ';--c2:' + c[1] + ';--c3:' + c[2] + ';--g:' + c[3] + '"><div class="rl-art"><div class="rl-aura"></div>' + rlStars() + inner + '</div></div>'; }
-  function rlBigIc(id, sz, top) { return '<div class="rl-big" style="top:' + top + 'px">' + rlUse(id, sz) + '</div>'; }
-  function rlArt(p, pr) {
-    var c = RL_COL[p.c], h = '', n = p.n;
-    if (p.c === 'tok') h = rlBigIc('i-token', 150, 6) + '<div class="rl-num" style="top:160px;font-size:' + (n >= 1000 ? 58 : 66) + 'px">+' + n + '</div><div class="rl-cap" style="top:246px">' + tokWord(n) + '</div>';
-    else if (p.c === 'xp') h = rlBigIc('rl-xp', 146, 8) + '<div class="rl-num" style="top:160px;font-size:66px">+' + n + '</div><div class="rl-cap" style="top:246px">опыт XP</div>';
-    else if (p.c === 'pr') h = rlBigIc('rl-ticket', 146, 8) + '<div class="rl-num" style="top:160px;font-size:66px">−' + n + '%</div><div class="rl-cap" style="top:246px">скидка по промокоду</div>';
-    else if (p.c === 'fr') h = rlBigIc(p.rare ? 'rl-frame2' : 'rl-frame', 170, 10) + '<div class="rl-cap" style="top:214px">' + (pr && pr.frameName ? 'рамка «' + esc(pr.frameName) + '»' : 'рамка для аватара') + '</div>';
-    else if (p.c === 're') h = rlBigIc('rl-again', 124, 6) + '<div class="rl-num" style="top:138px;font-size:56px">×' + n + '</div><div class="rl-cap" style="top:222px">' + (n === 1 ? 'бесплатная посылка' : 'бесплатные посылки') + '</div>';
-    else h = rlBigIc('rl-empty', 150, 20) + '<div class="rl-cap" style="top:206px">Пусто, в другой раз</div>';
-    return rlSlide(c, h);
-  }
-  function rlMystery() { return rlSlide(RL_COL.tok, '<div class="rl-num" style="top:62px;font-size:130px">?</div><div class="rl-cap" style="top:226px">Крутим…</div>'); }
   function updateRoulBalance() {
     var u = acct.user, b = $('#roul-bal'); if (!b || !u) return;
     b.innerHTML = tk('lg') + '<span>' + num(u.balance) + '</span>';
@@ -2511,21 +2508,6 @@
     var pbtn = $('#spin-paid', v); if (pbtn) pbtn.addEventListener('click', function () { doOpen(false); });
     var fb = $('#spin-free', v); if (fb) fb.addEventListener('click', function () { doOpen(true); });
   }
-  function prizeTitle(p) { return p.id === 'none' ? 'Пусто' : p.tokens ? '+' + num(p.tokens) + ' ' + tokWord(p.tokens) : p.code ? 'Промокод −' + p.pct + '%' : p.xp ? '+' + p.xp + ' XP' : p.spins ? '+' + p.spins + ' ' + plural(p.spins, 'посылка', 'посылки', 'посылок') : p.frameName ? 'Рамка «' + p.frameName + '»' : p.label; }
-  function prizeSub(p) { return p.id === 'none' ? 'В этот раз не повезло, попробуйте ещё.' : p.code ? 'Код ' + p.code + ' уже в кабинете. Выберите его в корзине.' : p.xp ? 'Опыт засчитан в уровень этого месяца.' : p.spins ? 'Бесплатные посылки добавлены.' : p.frameName ? 'Новая рамка открыта.' : 'Ониксы уже на балансе.'; }
-  function showPrize(p) {
-    var win = p.id !== 'none';
-    var visual = p.frameId ? ava({ name: acct.user && acct.user.name, avatar: acct.user && acct.user.avatar, frame: p.frameId }, 'lg') : pz(p.id);
-    var title = p.id === 'none' ? 'Пусто' : p.tokens ? '+' + num(p.tokens) + ' ' + tokWord(p.tokens) : p.code ? 'Промокод −' + p.pct + '%' : p.xp ? '+' + p.xp + ' XP' : p.spins ? '+' + p.spins + ' ' + plural(p.spins, 'посылка', 'посылки', 'посылок') : p.frameName ? 'Рамка «' + p.frameName + '»' : p.label;
-    var sub = p.id === 'none' ? 'В этот раз не повезло. Следующая посылка может принести джекпот.' : p.code ? 'Код ' + p.code + ' уже в кабинете. Выберите его в корзине.' : p.xp ? 'Опыт засчитан в уровень этого месяца.' : p.spins ? 'Бесплатные посылки добавлены.' : p.frameName ? 'Новая рамка открыта: наденьте её в кабинете.' : p.id === 'jackpot' ? 'Джекпот! Ониксы уже на балансе.' : 'Ониксы уже на балансе.';
-    var md = openModal('<div class="prize-pop"><div class="burst">' + visual + '</div><span class="eyebrow">' + (win ? 'Ваш приз' : 'Результат') + '</span><h2>' + esc(title) + '</h2><p class="muted">' + esc(sub) + '</p>' +
-      '<div class="send-row" style="width:100%">' + (p.spins ? '<button class="btn" type="button" id="again-free">' + icon('sparkles') + 'Крутить бесплатно</button>' : '<button class="btn" type="button" id="again">' + icon('sparkles') + 'Ещё раз</button>') +
-      (p.frameId ? '<button class="btn btn-ghost" type="button" id="wear">Надеть рамку</button>' : '<button class="btn btn-ghost" type="button" data-close>Закрыть</button>') + '</div></div>', { cls: 'sm' });
-    if (win) confetti(p.id === 'jackpot' ? 240 : 100);
-    var a = $('#again', md); if (a) a.addEventListener('click', function () { closeModal(); spin(false); });
-    var af = $('#again-free', md); if (af) af.addEventListener('click', function () { closeModal(); spin(true); });
-    var w = $('#wear', md); if (w) w.addEventListener('click', function () { API.call('profile', { frame: p.frameId }).then(function (r) { if (r.ok) { setUser(r.user); toast('Рамка надета'); } closeModal(); }); });
-  }
 
   // ------------------------------------------------------------ информация
   function faqItem(q, body) { return '<details><summary>' + q + icon('chevron-down') + '</summary><div class="acc-body">' + body + '</div></details>'; }
@@ -2534,27 +2516,27 @@
     track('info');
     var R = RULES.reward, L = RULES.levels;
     var order = [
-      faqItem('Как заказать: по шагам', '<ol class="faq-ol"><li><b>Выберите вещь.</b> Откройте карточку, пролистайте фото, посмотрите характеристики и замеры, если они есть.</li><li><b>Размер и цвет.</b> Нажмите нужный размер. Цвет выбирайте по фото: на карточке показаны реальные оттенки.</li><li><b>«В корзину».</b> В корзине можно изменить количество, добавить пожелание к каждой вещи (например, «хочу примерить перед покупкой») или убрать лишнее.</li><li><b>Данные для связи.</b> Имя, телефон и Telegram берутся из кабинета, заполните их там, иначе заказ не уйдёт. Это нужно, чтобы менеджер мог вам написать.</li><li><b>Город и способ получения.</b> Для товаров в наличии: самовывоз, Авито Доставка или курьер. Для предзаказа: Авито, СДЭК или личная встреча.</li><li><b>Ониксы и промокод.</b> Это последний шаг перед оформлением. Скидка пересчитается сразу, итог виден в корзине.</li><li><b>«Оформить заказ».</b> Заказ получит номер, уйдёт менеджеру, а в «Моих заказах» появится его статус. Дальше менеджер пишет вам в Telegram и присылает реквизиты.</li></ol><p class="small">Важно: пока менеджер не подтвердил заказ и не пришла оплата, вещь за вами не закреплена.</p>'),
-      faqItem('Что такое предзаказ и чем он отличается от «В наличии»', '<p><b>В наличии</b>: вещь уже в Москве. Её можно забрать самому или отправить по России через Авито Доставку, обычно в течение пары дней.</p><p><b>Предзаказ</b>: вещь ещё в Китае. Мы выкупаем её у поставщика только после вашего заказа и оплаты, проверяем и привозим. Так цена ниже, а выбор шире, но ждать дольше.</p><p>Стоимость доставки из Китая <b>уже включена в стоимость</b> предзаказа: отдельно за неё платить не нужно.</p><p><a href="' + SHOP.preorderUrl + '" target="_blank" rel="noopener">Подробные условия предзаказа</a></p>'),
-      faqItem('Этапы предзаказа: что происходит с вашей вещью', '<ol class="faq-ol"><li><b>Оформлен.</b> Заказ создан и отправлен менеджеру. Он связывается с вами, уточняет размер, цвет и детали, присылает реквизиты.</li><li><b>Выкуплен (в течение 12 часов после оплаты).</b> Мы оплачиваем вещь у поставщика в Китае и закрепляем её за вами.</li><li><b>В пути до склада.</b> Поставщик отправляет вещь на склад в Китае, обычно 1-7 дней, затем 3-5 дней дорога до склада.</li><li><b>На складе в Китае.</b> Вещь приходит, её проверяют на брак и соответствие описанию. На это уходит 1-2 дня. Вам отправляют фотоотчёт, основной бесплатный.</li><li><b>Едет к нам.</b> После проверки вещь отправляется из Китая. Фурой это 18-32 дня от склада.</li><li><b>Едет к вам.</b> Вещь в России, её передают выбранным способом: СДЭК, Авито Доставка или личная встреча.</li><li><b>Получен.</b> Вы забрали заказ. Если оставите отзыв, это поможет другим покупателям.</li></ol>'),
-      faqItem('Сколько ждать предзаказ', '<p>Складывается из этапов: выкуп до 12 часов, поставщик 1-7 дней, дорога до склада 3-5 дней, проверка 1-2 дня и доставка 18-32 дня. В сумме <b>24-47 дней</b>, это от 3,5 до 6,5 недель.</p><p>Быстрее самолётом: это отдельная услуга, её условия и стоимость согласует менеджер. Прямо на сайте самолётом заказать нельзя.</p><p class="small">Сроки примерные: на них влияют праздники в Китае, загрузка перевозчика и погода. Если что-то задерживается, менеджер напишет сам.</p>'),
-      faqItem('Размеры и замеры', '<ul><li>У части товаров есть замеры, ищите раздел «Замеры изделия» в карточке. Если его нет, спросите менеджера.</li><li>Замеры показывают ширину самой вещи, а не обхват тела. Приложите к себе похожую вещь из шкафа и сравните.</li><li>Если сомневаетесь между двумя размерами, напишите менеджеру, он подскажет по вашим параметрам.</li><li>Разница в замерах до 1-2 см допустима: вещи измеряют вручную.</li></ul>'),
-      faqItem('Цвета и фото', '<ul><li>Цвета на карточке показаны реальными оттенками (болотный, кремовый, бирюзовый и т. д.).</li><li>Оттенок на экране может немного отличаться от настоящего из-за яркости и настроек телефона.</li><li>Если нужен дополнительный фотоотчёт перед отправкой, он оплачивается по тарифу логиста (15 ¥ за позицию), основной бесплатный.</li></ul>'),
-      faqItem('Доставка из Китая', '<ul><li>Фура, основной способ, занимает 18-32 дня от склада в Китае.</li><li>Стоимость доставки из Китая уже включена в стоимость товара.</li><li>Самолётом быстрее, но только через менеджера, он рассчитает и согласует.</li><li>Перед отправкой вещь проверяют на складе и фотографируют.</li></ul>'),
-      faqItem('Получение по России', '<ul><li><b>СДЭК до пункта выдачи</b>: оплачивается отдельно, по тарифу СДЭК.</li><li><b>Авито Доставка</b>: по Москве и в другой город, с минимальной стоимостью.</li><li><b>Личная встреча</b>: в Москве бесплатно, время согласуйте с менеджером.</li><li>Номер отслеживания менеджер пришлёт в Telegram.</li></ul>'),
-      faqItem('Получение товаров в наличии', '<ul><li><b>Авито Доставка</b>: по Москве и в другой город, быстрее всего.</li><li><b>Курьер по Москве</b>: не всегда доступен, согласуется с менеджером.</li><li><b>Самовывоз</b>: ' + esc(SHOP.address) + '. Время согласуйте с менеджером.</li></ul>'),
-      faqItem('Оплата', '<ul><li>Перевод: Сбербанк, Т-Банк, Альфа-Банк, СБП.</li><li>Наличными: при встрече в Москве.</li><li>На сайте оплаты нет: менеджер подтвердит заказ и пришлёт реквизиты.</li><li>До 12% заказа можно оплатить ониксами и промокодом вместе, 1 оникс = 0,3 ₽.</li><li>Предзаказ начинаем выкупать после оплаты, это ускоряет заказ.</li></ul>'),
-      faqItem('Статусы заказа', '<ul><li><b>Оформлен</b>: заказ создан, ждёт подтверждения менеджера.</li><li><b>Выкуплен</b>: вещь оплачена у поставщика.</li><li><b>В пути</b>: едет на склад в Китае.</li><li><b>На складе</b>: прошла проверку, готовится к отправке.</li><li><b>Едет к нам</b>: международная доставка.</li><li><b>Едет к вам</b>: в России, передана в доставку.</li><li><b>Получен</b>: заказ у вас.</li><li><b>Отменён</b>: заказ остановлен, подробности пришлёт менеджер.</li></ul>'),
-      faqItem('Что не зависит от магазина', '<ul><li>Задержки у поставщика, на складе или у перевозчика, праздники и погода.</li><li>Состояние вещи, которое видно только при проверке: если найдём брак, сразу напишем вам и предложим решение.</li><li>Работа пунктов выдачи и сроки СДЭК или Авито после передачи посылки.</li></ul>'),
-      faqItem('Если что-то пошло не так', '<p>Напишите менеджеру в Telegram, он отвечает в рабочее время (Пн-Пт 08:30-21:00, Сб-Вс 10:00-20:00). Бот-помощник отвечает с задержкой около минуты, это нормально, просто подождите.</p><p><a class="btn btn-sm" href="' + SHOP.managerUrl + '" target="_blank" rel="noopener">Написать менеджеру</a></p>')
+      faqItem('Как оформить заказ', '<ol class="faq-ol"><li><b>Выберите вещь.</b> В карточке можно пролистать фото и посмотреть характеристики. Если у модели есть замеры, они там же.</li><li><b>Отметьте размер и цвет.</b> Цвет удобнее выбирать по фото: оттенки на снимках настоящие.</li><li><b>Добавьте в корзину.</b> Там можно поменять количество или убрать лишнее.</li><li><b>Проверьте контакты.</b> Имя, телефон и Telegram подставляются из кабинета. Без них заказ не отправится: менеджеру нужно как-то с вами связаться.</li><li><b>Выберите, как получить заказ.</b> Вещи в наличии: самовывоз, Авито Доставка или курьер. Предзаказ: Авито, СДЭК или встреча.</li><li><b>Ониксы и промокод.</b> Это последний шаг, скидка сразу видна в итоговой сумме.</li><li><b>Нажмите «Оформить заказ».</b> Заказ получит номер и уйдёт менеджеру со всем, что вы выбрали, а его статус появится в «Моих заказах». Менеджер проверит заказ и пришлёт в Telegram реквизиты для оплаты.</li></ol><p class="small">Вещь закрепляется за вами, когда менеджер подтвердил заказ и пришла оплата.</p>'),
+      faqItem('Чем предзаказ отличается от «В наличии»', '<p><b>В наличии</b> значит, что вещь уже у нас в Москве. Её можно забрать самому или получить Авито Доставкой, обычно за пару дней.</p><p><b>Предзаказ</b> значит, что вещь пока в Китае. Мы выкупаем её у поставщика после того, как вы оформили и оплатили заказ, проверяем и привозим. Ждать дольше, зато цена ниже, а выбор больше.</p><p>Доставка из Китая <b>уже включена в цену</b>, доплачивать за неё не нужно.</p><p><a href="' + SHOP.preorderUrl + '" target="_blank" rel="noopener">Подробные условия предзаказа</a></p>'),
+      faqItem('Как проходит предзаказ', '<ol class="faq-ol"><li><b>Оформление.</b> Вы сами выбираете на сайте размер, цвет и способ получения и отправляете заказ. Менеджер получает его со всеми этими данными, переспрашивать ничего не нужно.</li><li><b>Подтверждение и оплата.</b> Менеджер проверяет заказ и присылает реквизиты для оплаты.</li><li><b>Выкуп.</b> В течение 12 часов после оплаты мы покупаем вещь у поставщика, и она закреплена за вами.</li><li><b>Дорога до склада.</b> Поставщик обычно отправляет вещь за 1-7 дней, ещё 3-5 дней она едет до нашего склада в Китае.</li><li><b>Проверка на складе.</b> За 1-2 дня вещь проверяют на брак и сверяют с описанием. Вам приходит фотоотчёт, основной бесплатно.</li><li><b>Дорога в Россию.</b> Фурой это 18-32 дня от склада.</li><li><b>Доставка вам.</b> Когда вещь в России, мы передаём её выбранным способом: СДЭК, Авито Доставка или встреча.</li><li><b>Получение.</b> Заказ у вас. Если оставите отзыв, другим будет проще выбрать.</li></ol>'),
+      faqItem('Сколько ждать предзаказ', '<p>Если сложить все этапы (выкуп до 12 часов, поставщик 1-7 дней, дорога до склада 3-5 дней, проверка 1-2 дня и доставка 18-32 дня), получится <b>24-47 дней</b>, то есть примерно от 3,5 до 6,5 недели.</p><p>Самолётом быстрее. Это отдельная услуга: стоимость и условия обсуждаются с менеджером, на сайте её не выбрать.</p><p class="small">Сроки примерные. На них влияют праздники в Китае, загрузка перевозчиков и погода. Если что-то задержится, менеджер напишет сам.</p>'),
+      faqItem('Размеры и замеры', '<ul><li>Для некоторых моделей указаны замеры: они в разделе «Замеры изделия» в карточке товара. Если такого раздела нет, спросите менеджера.</li><li>В замерах указана ширина самой вещи, а не обхват тела. Проще всего приложить похожую вещь из своего шкафа и сравнить.</li><li>Сомневаетесь между двумя размерами? Напишите менеджеру свои параметры, он подскажет.</li><li>Расхождение в 1-2 см нормально: вещи меряют вручную.</li></ul>'),
+      faqItem('Цвета и фото', '<ul><li>На фото показаны настоящие оттенки вещей.</li><li>На экране цвет может выглядеть чуть иначе: многое зависит от яркости и настроек телефона.</li><li>Основной фотоотчёт со склада бесплатный. Если перед отправкой нужны дополнительные фото, их делают по тарифу логиста: 15 ¥ за позицию.</li></ul>'),
+      faqItem('Доставка из Китая', '<ul><li>Основной способ: фура, 18-32 дня от склада в Китае.</li><li>Доставка из Китая уже входит в цену товара.</li><li>Самолётом быстрее, но такую доставку рассчитывает и согласует менеджер.</li><li>Перед отправкой вещь проверяют и фотографируют на складе.</li></ul>'),
+      faqItem('Получение по России', '<ul><li><b>СДЭК до пункта выдачи</b>: оплачивается отдельно, по тарифу СДЭК.</li><li><b>Авито Доставка</b>: по Москве и в другие города, обычно дешевле всего.</li><li><b>Встреча</b>: в Москве бесплатно, время согласуйте с менеджером.</li><li>Трек-номер менеджер пришлёт в Telegram.</li></ul>'),
+      faqItem('Получение товаров в наличии', '<ul><li><b>Авито Доставка</b>: по Москве и в другие города, самый быстрый вариант.</li><li><b>Курьер по Москве</b>: бывает не всегда, уточните у менеджера.</li><li><b>Самовывоз</b>: ' + esc(SHOP.address) + '. Время согласуйте с менеджером.</li></ul>'),
+      faqItem('Оплата', '<ul><li>Переводом: Сбербанк, Т-Банк, Альфа-Банк или СБП.</li><li>Наличными при встрече в Москве.</li><li>На самом сайте оплаты нет: после подтверждения заказа менеджер пришлёт реквизиты.</li><li>Ониксами и промокодом вместе можно оплатить до 12% заказа, 1 оникс = 0,3 ₽.</li><li>Предзаказ мы выкупаем сразу после оплаты: чем раньше оплата, тем раньше приедет вещь.</li></ul>'),
+      faqItem('Статусы заказа', '<ul><li><b>Оформлен</b>: заказ отправлен, менеджер его проверяет.</li><li><b>Выкуплен</b>: вещь оплачена у поставщика.</li><li><b>В пути</b>: едет на наш склад в Китае.</li><li><b>На складе</b>: проверена и готовится к отправке.</li><li><b>Едет к нам</b>: везём в Россию.</li><li><b>Едет к вам</b>: вещь в России и передана в доставку.</li><li><b>Получен</b>: заказ у вас.</li><li><b>Отменён</b>: заказ остановлен, причину объяснит менеджер.</li></ul>'),
+      faqItem('Что от нас не зависит', '<ul><li>Задержки у поставщика, на складе или у перевозчика, праздники и погода.</li><li>Скрытый брак, который видно только при проверке. Если найдём, сразу напишем и предложим, как поступить.</li><li>Работа пунктов выдачи и сроки СДЭК или Авито после того, как посылка передана им.</li></ul>'),
+      faqItem('Если что-то пошло не так', '<p>Напишите менеджеру в Telegram. Он на связи в рабочее время: Пн-Пт 08:30-21:00, Сб-Вс 10:00-20:00. Бот-помощник отвечает примерно через минуту, так и должно быть, просто подождите.</p><p><a class="btn btn-sm" href="' + SHOP.managerUrl + '" target="_blank" rel="noopener">Написать менеджеру</a></p>')
     ];
     var bonus = API.enabled ? [
-      faqItem('Где взять ониксы', '<ul><li>+' + R.register + ' за регистрацию</li><li>+' + R.checkin + ' за вход каждый день и от ' + L[0].streak + ' до ' + L[4].streak + ' за 7 дней подряд, зависит от уровня</li><li>Задания: ежедневные по 3 оникса, еженедельные по 25, ежемесячные от 40</li><li>Посылка</li><li>+' + R.referrer + ' за друга и +' + R.birthday + ' в день рождения</li></ul><p>Ониксы не сгорают и не передаются другим людям. Пока на балансе больше ' + num(RULES.balanceCap) + ' ониксов, вход, задания и посылка дают опыт вместо ониксов (2 оникса = 1 XP). Ониксы за заказы, отзывы, друзей и день рождения начисляются всегда.</p>'),
-      faqItem('Промокоды', '<p>Личные промокоды выпадают в посылке. С уровня «Золото» раз в месяц даётся промокод −1,5%, а на «Алмазе» ещё 3 промокода по −2,5% в месяц. Они появляются в кабинете, а в корзине выбираются последним шагом. Каждый действует на один заказ.</p><p>Промокоды магазина вводятся вручную в поле «Промокод» в корзине.</p>'),
-      faqItem('Как зарабатывается XP', '<ul><li>Полученный заказ: 1 XP за каждые 10 ₽ (когда статус «Получен»)</li><li>Ежедневный вход: +' + RULES.xpReward.checkin + ' XP</li><li>Задания: ежедневные +10 XP, еженедельные +60 XP, ежемесячные +180 XP</li><li>Посылка: призы от ' + Math.min.apply(null, RULES.wheel.filter(function (w) { return w.xp; }).map(function (w) { return w.xp; })) + ' до ' + Math.max.apply(null, RULES.wheel.filter(function (w) { return w.xp; }).map(function (w) { return w.xp; })) + ' XP</li></ul>'),
-      faqItem('Как работают уровни', '<p>Уровень зависит от XP (опыта), набранного за месяц. 1-го числа XP обнуляется, и уровень начинается заново с Бронзы.</p><p>Заказы берутся в работу по порядку: ' + esc(RULES.priorityOrder().join(', ')) + '. Затем идёт платный «Приоритетный заказ» (' + rub(RULES.vipPrice) + ') для тех, у кого такой привилегии нет, потом обычные заказы.</p><button class="btn btn-ghost btn-sm" type="button" id="info-levels">Привилегии уровней</button>'),
-      faqItem('Задания: когда обновляются', '<ul><li>Ежедневные: в 00:00 по Москве. Простые: ониксы и XP, чем выше уровень, тем их больше.</li><li>Еженедельные: в понедельник. «Оформить заказ» засчитывается сразу при оформлении.</li><li>Ежемесячные: 1-го числа. Заказы засчитываются, когда статус «Получен».</li></ul><p class="small">Сколько заданий на уровне:</p><ul>' + L.map(function (l) { return '<li><b>' + esc(l.name) + '</b>: ' + esc(l.perks[0][1]) + '</li>'; }).join('') + '</ul>'),
-      faqItem('Посылка: как это работает', '<ul><li>1 бесплатная посылка каждый день на любом уровне, на «Алмазе» их 3. Не копятся: обновляются в 00:00 по Москве.</li><li>Дальше посылка стоит ' + RULES.spinCost + ' ониксов. «Ещё раз» даёт бесплатные посылки, они не сгорают.</li><li>На «Платине» и «Алмазе» «Пусто» выпадает реже.</li><li>Призы и шансы у бесплатной и платной посылки одинаковые.</li><li>Ониксы из посылки сразу на балансе, промокод выбирается в корзине, XP идут в уровень месяца.</li></ul>')
+      faqItem('Где взять ониксы', '<ul><li>+' + R.register + ' за регистрацию</li><li>+' + R.checkin + ' за каждый день входа и от ' + L[0].streak + ' до ' + L[4].streak + ' за 7 дней подряд, в зависимости от уровня</li><li>Задания: ежедневные по 3 оникса, еженедельные по 25, ежемесячные от 40</li><li>Посылка с сюрпризом</li><li>+' + R.referrer + ' за приглашённого друга и +' + R.birthday + ' в день рождения</li></ul><p>Ониксы не сгорают, передать их другому человеку нельзя. Пока на балансе больше ' + num(RULES.balanceCap) + ' ониксов, вход, задания и посылка дают опыт вместо ониксов (2 оникса = 1 XP). За заказы, отзывы, друзей и день рождения ониксы приходят всегда.</p>'),
+      faqItem('Промокоды', '<p>Личные промокоды выпадают в посылке. С уровня «Золото» раз в месяц приходит промокод на −1,5%, а на «Алмазе» ещё три по −2,5% в месяц. Они лежат в кабинете, а в корзине их выбирают на последнем шаге. Один промокод действует на один заказ.</p><p>Промокоды магазина вводятся вручную в поле «Промокод» в корзине.</p>'),
+      faqItem('Как начисляется XP', '<ul><li>Полученный заказ: 1 XP за каждые 10 ₽, когда у заказа статус «Получен»</li><li>Вход каждый день: +' + RULES.xpReward.checkin + ' XP</li><li>Задания: ежедневные +10 XP, еженедельные +60 XP, ежемесячные +180 XP</li><li>Посылка: от ' + Math.min.apply(null, RULES.wheel.filter(function (w) { return w.xp; }).map(function (w) { return w.xp; })) + ' до ' + Math.max.apply(null, RULES.wheel.filter(function (w) { return w.xp; }).map(function (w) { return w.xp; })) + ' XP</li></ul>'),
+      faqItem('Как работают уровни', '<p>Уровень считается по XP, набранному за месяц. 1-го числа XP обнуляется, и все снова начинают с Бронзы.</p><p>Заказы берутся в работу по очереди: ' + esc(RULES.priorityOrder().join(', ')) + '. Следом идут заказы с платным «Приоритетным заказом» (' + rub(RULES.vipPrice) + ') у тех, у кого нет такой привилегии, и уже потом обычные.</p><button class="btn btn-ghost btn-sm" type="button" id="info-levels">Привилегии уровней</button>'),
+      faqItem('Когда обновляются задания', '<ul><li>Ежедневные: в 00:00 по Москве. Это простые задания за ониксы и XP, на высоких уровнях их больше.</li><li>Еженедельные: по понедельникам. «Оформить заказ» засчитывается сразу после оформления.</li><li>Ежемесячные: 1-го числа. Заказы засчитываются, когда у них статус «Получен».</li></ul><p class="small">Сколько заданий на каждом уровне:</p><ul>' + L.map(function (l) { return '<li><b>' + esc(l.name) + '</b>: ' + esc(l.perks[0][1]) + '</li>'; }).join('') + '</ul>'),
+      faqItem('Посылка с сюрпризом: как это работает', '<ul><li>Каждый день одна бесплатная посылка на любом уровне, на «Алмазе» три. Они не копятся и обновляются в 00:00 по Москве.</li><li>Дальше посылка стоит ' + RULES.spinCost + ' ониксов. Приз «Ещё раз» даёт бесплатные посылки, они не сгорают.</li><li>На «Платине» и «Алмазе» пустые посылки попадаются реже.</li><li>Призы и шансы у бесплатной и платной посылки одинаковые.</li><li>Ониксы сразу попадают на баланс, промокод выбирается в корзине, а XP идут в уровень этого месяца.</li></ul>')
     ] : [];
     var shop = [faqItem('Магазин и связь', contactsCard()), faqItem('Мы в соцсетях', socialCard())];
     $('#v-info').innerHTML = '<div class="view-head"><div><h1>Частые вопросы</h1></div></div>' +
@@ -2567,9 +2549,10 @@
   function silentHash(h) { if (location.hash.slice(1) === h) return; skipHash = h; location.hash = h; }
   function go(h) { if (location.hash.slice(1) === h || (!h && !location.hash)) route(); else location.hash = h; }
   function setNav(h) {
-    var key = h === '' ? 'home' : /^p-/.test(h) || h === 'stock' || h === 'preorder' ? 'catalog' : h === 'roulette' || h === 'games' ? 'games' : h;
+    var key = h === '' ? 'home' : /^p-/.test(h) || h === 'stock' || h === 'preorder' ? 'catalog' : h === 'roulette' || h === 'games' ? 'roulette' : h;
     $$('[data-route]').forEach(function (a) {
-      var r = a.getAttribute('data-route'), on = r === key || (r === 'preorder' && h === 'preorder');
+      var r = a.getAttribute('data-route'); if (r === 'games') r = 'roulette';
+      var on = r === key || (r === 'preorder' && h === 'preorder');
       if (r === 'catalog' && h === 'preorder' && !a.closest('.tabbar')) on = false;
       if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
     });
@@ -2600,7 +2583,10 @@
     floatBack.classList.toggle('show', floatBack._p && window.scrollY > 120);
   }
   function route() {
-    var h = decodeURIComponent(location.hash.replace(/^#/, '')); routed++;
+    // ссылка с битым «%» (бывает после пересылки в мессенджерах) не должна ломать сайт
+    var rawH = location.hash.replace(/^#/, ''), h; try { h = decodeURIComponent(rawH); } catch (e) { h = rawH; } routed++;
+    // ушли из «Посылки»: останавливаем её сцену и смену картинок, иначе они крутятся в фоне до конца сессии
+    if (h !== 'roulette' && h !== 'games') { if (pxStop) { pxStop(); pxStop = null; } clearInterval(rlTimer); rlTimer = null; }
     if (skipHash !== null && h === skipHash) { skipHash = null; return; }
     skipHash = null;
     var m = h.match(/^ref=([A-Za-z0-9]{4,12})$/);
@@ -2862,11 +2848,15 @@
     window.addEventListener('onion:neterr', function () { netBar(true); });
     window.addEventListener('onion:netok', function () { netBar(false); });
     if (navigator.onLine === false) netBar(true);
+    // сохранённый профиль подставляем до первой отрисовки: кабинет открывается сразу, без «Загружаем кабинет…»
+    try { var mc = store.get('meCache', null); if (mc && mc.u && mc.s && mc.s === API.getSession() && API.mode === 'live') { acct.user = mc.u; acct.ready = true; updateAcctUI(); } } catch (e) { /* */ }
     route();
     window.__onionBoot = true;
-    try { var mc = store.get('meCache', null); if (mc && mc.u && mc.s && mc.s === API.getSession() && API.mode === 'live') { acct.user = mc.u; acct.ready = true; updateAcctUI(); } } catch (e) { /* */ }
-    refreshMe().then(function () { lastMe = acct.user ? JSON.stringify(acct.user) : ''; refreshView(); });
-    setInterval(silentRefresh, 90000);
+    // сайт загрузился: заглушка «Магазин сейчас не открывается» (если успела показаться на медленной сети) убирается
+    var dn = document.getElementById('down'); if (dn) dn.hidden = true;
+    lastMeAt = Date.now();
+    refreshMe().then(function () { lastMe = acct.user ? JSON.stringify(acct.user) : ''; if (current !== 'account') refreshView(); });
+    setInterval(silentRefresh, 180000);
     setInterval(refreshCatalog, 10 * 60 * 1000);
     document.addEventListener('visibilitychange', function () { if (!document.hidden && Date.now() - lastCat > 5 * 60 * 1000) refreshCatalog(); });
     document.addEventListener('visibilitychange', function () { if (document.hidden) flushTrack(); else silentRefresh(); });
@@ -2876,13 +2866,16 @@
   function runSplash() {
     var sp = document.getElementById('splash'); if (!sp) return;
     try { sessionStorage.setItem('onion.splash', '1'); } catch (e) { /* */ }
-    var MIN = REDUCED ? 250 : 600, MAX = 2500, t0 = Date.now(), done = 0, urls = [], seen = {};
+    // заставка прежняя; держится, пока не загрузится всё, что видно на главной и в каталоге:
+    // картинки категорий, первое фото каждого товара, баннеры, профиль с аватаром и рамкой (но не дольше 10 с).
+    // Остальные фото (вторые, третьи и крупные) грузятся, когда их открывают: раньше заставка тянула около 27 МБ.
+    var MIN = REDUCED ? 1500 : 2400, MAX = 10000, t0 = Date.now(), done = 0, urls = [], seen = {};
     var add = function (u) { if (u && !seen[u]) { seen[u] = 1; urls.push(u); } };
-    shopPicks().forEach(function (p) { add(full(p.photos[0].id)); });
+    ['stock', 'china'].concat(CAT_ORDER).forEach(function (k) { add(catSrc(k)); });
+    shopPicks().forEach(function (p) { add(thumb(p.photos[0].id)); });
     PRODUCTS.forEach(function (p) { add(thumb(p.photos[0].id)); });
-    PRODUCTS.forEach(function (p) { p.photos.forEach(function (f) { add(thumb(f.id)); }); });
-    PRODUCTS.forEach(function (p) { p.photos.slice(0, 3).forEach(function (f) { add(full(f.id)); }); });
-    urls = urls.slice(0, 16); // сначала только то, что видно на главной; остальное грузится лениво по мере прокрутки
+    try { var mc0 = store.get('meCache', null), fr0 = mc0 && mc0.u && mc0.u.frame; if (fr0 && fr0 !== 'base') { add('assets/fr/' + fr0 + '.svg?v=4'); add('assets/fr/' + fr0 + 's.svg?v=4'); } } catch (e) { /* */ }
+    ['xp', 'promo', 'again', 'frame', 'frame2', 'empty'].forEach(function (k) { add('assets/pz/' + k + '.png?v=1'); });
     var total = urls.length, idx = 0, cap = Date.now() + MAX, finished = false;
     var bar = document.getElementById('spl-bar'), txt = document.getElementById('spl-txt'), phb = document.getElementById('spl-ph');
     function next() {
@@ -2902,7 +2895,7 @@
       if (!finished && el >= MIN && ready) {
         finished = true; clearInterval(tm);
         if (bar) bar.style.transform = 'scaleX(1)';
-        setTimeout(function () { sp.classList.add('out'); setTimeout(function () { if (sp.parentNode) sp.parentNode.removeChild(sp); }, 350); }, 60);
+        setTimeout(function () { sp.classList.add('out'); setTimeout(function () { if (sp.parentNode) sp.parentNode.removeChild(sp); }, 800); }, 250);
       }
     }, 120);
   }

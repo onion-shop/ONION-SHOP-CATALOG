@@ -2422,17 +2422,103 @@ html,body{touch-action:manipulation;-webkit-text-size-adjust:100%;text-size-adju
 .fr-grid{gap:2px;row-gap:6px}
 .modal.fr-md .modal-body,.fr-md{overflow-x:hidden}
 
-/* ---- обновление 64: значки категорий из реальных фото, баннеры, рамки ---- */
+/* ---- обновление 64-65: картинки категорий, баннеры ---- */
 .ct-i img.cph,.ctile-i img.cph{object-fit:cover!important;padding:0!important;width:100%;height:100%;border-radius:inherit;display:block}
 .ct-i:has(img.cph){padding:0!important;overflow:hidden!important}
 .ctile-i:has(img.cph){padding:0}
 .ctile-i{overflow:hidden}
 .early,.early-n{display:none!important}
-/* рамки: анимация только на крупном аватаре в кабинете, в шапке, меню и списках статичная версия (нет лагов) */
-.ava.fx:not(.lg)::before{background-image:var(--fr-s,var(--fr))}
-.ava.fx:not(.lg)::after{background-image:var(--fx-s,none)}
-.ava.fx::before,.ava.fx::after{will-change:auto;contain:none}
 /* рамка не обрезается контейнерами */
 .acct-chip,.tabbar,.tabbar a,.tabbar a .ic,.profile,.profile .who,.ava-wrap,.px-ava,.hdr-act,.hdr-in{overflow:visible!important}
 .acct-chip{margin-right:4px}
 .px-ava{display:inline-grid;padding:12px}
+
+/* ==== рамки аватара, обновление 65 ====
+   Картинка рамки всегда статичная (внутренние анимации SVG Safari перерисовывает каждый кадр: это и давало лаги).
+   Движение задаётся здесь, только transform и opacity: их считает видеокарта, анимация плавная и одинаковая везде
+   (шапка меню, кабинет, окно рамок, посылка). У каждой рамки своё движение по смыслу рисунка. */
+.ava.fx::before{background-image:var(--fr-s,var(--fr));animation:var(--fa,none);transform-origin:50% 50%;backface-visibility:hidden}
+.ava.fx::after{background-image:var(--fx-s,var(--fx,none));animation:var(--fxa,none);transform-origin:var(--fxo,50% 50%);backface-visibility:hidden}
+.fr-it.lk .ava::after{animation:var(--fxa,none)}
+@keyframes fr-spin{to{transform:rotate(360deg)}}
+@keyframes fr-spin-r{to{transform:rotate(-360deg)}}
+@keyframes fr-breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
+@keyframes fr-glow{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.72;transform:scale(1.035)}}
+@keyframes fr-sway{0%,100%{transform:rotate(-5deg)}50%{transform:rotate(5deg)}}
+@keyframes fr-bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-4%)}}
+@keyframes fr-flap{0%,100%{transform:scaleX(1)}50%{transform:scaleX(.9)}}
+@keyframes fr-wiggle{0%,82%,100%{transform:rotate(0)}86%{transform:rotate(-7deg)}90%{transform:rotate(6deg)}94%{transform:rotate(-3deg)}}
+@keyframes fr-twinkle{0%,100%{opacity:1}50%{opacity:.45}}
+@keyframes fr-flicker{0%,100%{transform:scale(1,1)}20%{transform:scale(1.02,1.05)}45%{transform:scale(.99,.98)}70%{transform:scale(1.03,1.04)}}
+@keyframes fr-bounce{0%,100%{transform:translateY(0) scale(1)}40%{transform:translateY(-5%) scale(1.06)}60%{transform:translateY(-2%) scale(1.02)}}
+@keyframes fr-tick{0%,100%{transform:rotate(0)}25%{transform:rotate(8deg)}75%{transform:rotate(-8deg)}}
+.ava.f-f5{--fa:fr-spin 14s steps(24) infinite}
+.ava.f-f8{--fa:fr-flicker 1.6s ease-in-out infinite;transform-origin:50% 70%}
+.ava.f-f15{--fa:fr-glow 3.2s ease-in-out infinite}
+.ava.f-f17{--fa:fr-spin 10s linear infinite}
+.ava.f-f21{--fa:fr-breathe 4s ease-in-out infinite;--fxa:fr-sway 3.4s ease-in-out infinite;--fxo:78% 22%}
+.ava.f-f24{--fa:fr-spin 26s linear infinite;--fxa:fr-spin 26s linear infinite}
+.ava.f-f27{--fa:fr-sway 5s ease-in-out infinite}
+.ava.f-lvl-bronze{--fa:fr-breathe 4.5s ease-in-out infinite}
+.ava.f-lvl-silver{--fa:fr-glow 4s ease-in-out infinite}
+.ava.f-lvl-gold{--fa:fr-breathe 3.6s ease-in-out infinite;--fxa:fr-twinkle 1.8s ease-in-out infinite}
+.ava.f-lvl-platinum{--fa:fr-glow 3s ease-in-out infinite;--fxa:fr-twinkle 1.5s ease-in-out infinite}
+.ava.f-lvl-diamond{--fa:fr-breathe 2.8s ease-in-out infinite;--fxa:fr-twinkle 1.2s ease-in-out infinite}
+.ava.f-f46{--fa:fr-spin 9s linear infinite}
+.ava.f-f48{--fa:fr-breathe 4s ease-in-out infinite;--fxa:fr-bob 2.4s ease-in-out infinite}
+.ava.f-f52{--fa:fr-tick 2.6s ease-in-out infinite}
+.ava.f-f53{--fa:fr-spin 22s linear infinite}
+.ava.f-f55{--fa:fr-spin-r 18s linear infinite}
+.ava.f-f57{--fa:fr-breathe 4s ease-in-out infinite;--fxa:fr-bounce 2.2s ease-in-out infinite;--fxo:50% 15%}
+.ava.f-f63{--fa:fr-spin 30s linear infinite;--fxa:fr-twinkle 2s ease-in-out infinite}
+.ava.f-f65{--fa:fr-spin 16s linear infinite}
+.ava.f-f69{--fa:fr-bob 2.8s ease-in-out infinite}
+.ava.f-f80{--fa:fr-spin 8s linear infinite}
+.ava.f-f81{--fa:fr-spin 7s linear infinite}
+.ava.f-f83{--fa:fr-spin 12s steps(36) infinite}
+.ava.f-f84{--fa:fr-breathe 2.4s steps(4) infinite}
+.ava.f-f85{--fa:fr-breathe 4s ease-in-out infinite;--fxa:fr-wiggle 3s ease-in-out infinite;--fxo:50% 30%}
+.ava.f-f87{--fa:fr-flap 1.8s ease-in-out infinite;--fxa:fr-bob 2.4s ease-in-out infinite}
+.ava.f-f89{--fa:fr-glow 3s ease-in-out infinite;--fxa:fr-wiggle 2.6s ease-in-out infinite;--fxo:50% 25%}
+.ava.f-f90{--fa:fr-spin 20s linear infinite}
+.ava.f-f91{--fa:fr-breathe 4s ease-in-out infinite;--fxa:fr-bounce 2s ease-in-out infinite;--fxo:72% 24%}
+.ava.f-f94{--fa:fr-glow 1.4s ease-in-out infinite}
+.ava.f-f95{--fa:fr-glow 3s ease-in-out infinite;--fxa:fr-bob 2.2s ease-in-out infinite}
+.ava.f-f96{--fa:fr-sway 4s ease-in-out infinite}
+.ava.f-f97{--fa:fr-spin 12s linear infinite}
+.ava.f-f98{--fa:fr-spin-r 24s linear infinite}
+.ava.f-f99{--fa:fr-spin 18s linear infinite}
+.ava.f-f101{--fa:fr-spin 20s steps(40) infinite}
+.ava.f-f104{--fa:fr-spin 12s linear infinite}
+.ava.f-f105{--fa:fr-spin-r 20s linear infinite}
+@media (prefers-reduced-motion:reduce){.ava.fx::before,.ava.fx::after{animation:none!important}}
+/* значки «надета» и «закрыта» в окне рамок поверх рисунка рамки, а не под ним */
+.fr-on,.fr-lock{z-index:5;top:62px}
+/* шапка: только баланс ониксов, без аватара */
+.acct-chip.bal-only{padding:0 14px}
+.acct-chip.bal-only .tok{display:inline-flex;align-items:center;gap:6px}
+/* ==== производительность, обновление 65 (по результатам аудита) ====
+   Всё ниже меняет только способ отрисовки, внешний вид прежний. */
+/* блик-заглушка на карточке товара: два прохода, пока грузится фото, а не бесконечно на каждой карточке */
+.pcard .ph{animation-iteration-count:2}
+/* плашки «В наличии» и т.п.: без размытия фона под каждой карточкой (вид тот же, фон чуть плотнее) */
+.badge-stock,.badge-pre,.badge-out,.badge-sold{backdrop-filter:none;-webkit-backdrop-filter:none;background:rgba(9,22,48,.9)}
+/* полоска опыта: блик двигается через transform (видеокарта), а не через background-position */
+.xp-bar .bar i::after{background:linear-gradient(100deg,transparent 30%,rgba(255,255,255,.7) 50%,transparent 70%) 0 0/100% 100% no-repeat;animation:xpSweep2 3.2s ease-in-out infinite;transform:translateX(-110%)}
+@keyframes xpSweep2{0%,35%{transform:translateX(-110%)}100%{transform:translateX(110%)}}
+/* блик на кнопке «Открыть посылку»: через transform, а не left */
+.rl-go::after{left:0;animation:rl-sweep2 3s ease-in-out infinite}
+@keyframes rl-sweep2{0%,55%{transform:translateX(-150%) skewX(-20deg)}100%{transform:translateX(330%) skewX(-20deg)}}
+/* масштабирование щипком запрещено стилями (вместо блокирующего touchmove), в просмотре фото разрешено */
+html,body{touch-action:pan-x pan-y}
+.lightbox,.lightbox *,.lb,.lb *{touch-action:auto}
+@media (hover:none){
+  /* на телефонах: затемнение под окнами без размытия всего экрана (размытие пересчитывалось каждый кадр) */
+  .overlay{backdrop-filter:none;-webkit-backdrop-filter:none;background:rgba(5,12,26,.66)}
+  /* искры вокруг значка уровня: без тени-фильтра, она перерисовывалась каждый кадр */
+  .sp-ring,.lvl-pill .sp-ring{filter:none}
+}
+@media (prefers-reduced-motion:reduce){.xp-bar .bar i::after,.rl-go::after{animation:none}}
+/* окно рамок: рамки в крайних колонках (крылья ангела, ушки) не упираются в край окна */
+.fr-grid{padding:0 10px}
+.fr-it .ava.md{width:50px;height:50px}

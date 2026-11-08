@@ -105,7 +105,10 @@ var OnionAPI = (function () {
     }
     if (mode !== 'live') return Promise.resolve({ ok: false, error: 'off' });
     if (action !== 'me') pending++;
-    return fetch(cfg.apiUrl, { method: 'POST', body: JSON.stringify(payload), redirect: 'follow' })
+    // не ждём ответа сервера вечно: через 35 с запрос считается неудачным, кнопки снова доступны
+    var ctl = window.AbortController ? new AbortController() : null, tmo = ctl ? setTimeout(function () { ctl.abort(); }, 35000) : 0;
+    return fetch(cfg.apiUrl, { method: 'POST', body: JSON.stringify(payload), redirect: 'follow', signal: ctl ? ctl.signal : undefined })
+      .then(function (r) { clearTimeout(tmo); return r; }, function (e) { clearTimeout(tmo); throw e; })
       .then(function (r) { return r.json(); })
       .then(function (r) { if (action !== 'me') pending = Math.max(0, pending - 1); return r; }, function (e) { if (action !== 'me') pending = Math.max(0, pending - 1); throw e; })
       .then(function (r) { try { window.dispatchEvent(new Event('onion:netok')); } catch (e) { /* */ } return r; })

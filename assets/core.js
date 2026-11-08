@@ -716,8 +716,8 @@ var OnionCore = (function () {
     var u = sessionUser(db, p); if (!u) return err('auth');
     // «скользящий» вход: пока клиент заходит на сайт, сессия продлевается (не чаще раза в неделю), заново вводить пароль не придётся
     try { var ss = db.getSession(p.session), full = RULES.sessionDays * 86400000; if (ss && db.renewSession && ss.exp - db.now() < full - 7 * 86400000) db.renewSession(p.session, db.now() + full); } catch (e) { /* не критично */ }
-    db.saveUser(u);
-    return ok({ user: publicUser(db, u), settings: settings() });
+    db.saveUser(u); // на сервере запись пропускается, если строка клиента не изменилась
+    return ok({ user: publicUser(db, u) }); // settings клиенту в этом ответе не нужны (сайт их не читает)
   };
 
   A.profile = function (db, p) {
@@ -1269,7 +1269,7 @@ var OnionCore = (function () {
   }
 
   function handle(action, p, db) {
-    if (!A[action]) return err('Неизвестное действие');
+    if (!Object.prototype.hasOwnProperty.call(A, action) || typeof A[action] !== 'function') return err('Неизвестное действие'); // не пускаем «constructor», «toString» и т. п.
     return A[action](db, p || {});
   }
 

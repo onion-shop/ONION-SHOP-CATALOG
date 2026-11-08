@@ -479,6 +479,7 @@ function users_() {
   rows.forEach(function (r, i) {
     if (r[0] === '' || r[0] === null) return;
     var u = rowToObj_(r, USER_COLS); u._row = i + 2; u.id = String(u.id);
+    Object.defineProperty(u, '_raw', { value: r, enumerable: false, writable: true, configurable: true }); // строка как в таблице: saveUser не пишет, если ничего не поменялось
     NUM.forEach(function (k) { u[k] = parseInt(u[k], 10) || 0; });
     STR.forEach(function (k) { u[k] = u[k] == null ? '' : String(u[k]); });
     u.refRewarded = u.refRewarded === true || String(u.refRewarded).toLowerCase() === 'true';
@@ -584,7 +585,16 @@ var DB = {
   },
   saveUser: function (u) {
     u.levelName = OnionCore.levelOf(u).name;
-    sheet_(SHEET.users, USER_COLS).getRange(u._row, 1, 1, USER_COLS.length).setValues([objToRow_(u, USER_COLS)]);
+    var row = objToRow_(u, USER_COLS);
+    // запись в таблицу самая дорогая операция: если строка клиента не изменилась (обычный «me»), не пишем.
+    // Сравнение строгое по каждой ячейке; при любом сомнении (другой тип, даты) строка записывается как раньше.
+    if (u._raw && u._raw.length === row.length) {
+      var norm = function (v) { return v instanceof Date ? 'D' + v.getTime() : (v === null || v === undefined ? '' : String(v)); }, same = true;
+      for (var i = 0; i < row.length; i++) { if (norm(row[i]) !== norm(u._raw[i])) { same = false; break; } }
+      if (same) return;
+    }
+    sheet_(SHEET.users, USER_COLS).getRange(u._row, 1, 1, USER_COLS.length).setValues([row]);
+    if (u._row) { try { Object.defineProperty(u, '_raw', { value: row, enumerable: false, writable: true, configurable: true }); } catch (e) { u._raw = row; } }
   },
   getSession: function (token) {
     var sh = sheet_(SHEET.sessions, SESSION_COLS);
@@ -1180,7 +1190,8 @@ function tgWatch_() {
     var before = JSON.stringify(u.watch), drops = OnionCore.priceDrops(DB, u);
     if (drops.length && u.tgChat) {
       var t = '📉 <b>Подешевело из вашего избранного</b>\n\n' + drops.slice(0, 5).map(function (d) { return '• ' + hesc_(d.title) + ': <s>' + d.was + ' ₽</s> → <b>' + d.now + ' ₽</b>'; }).join('\n');
-      DB.userNotify(u, t, [drops.slice(0, 3).map(function (d) { return { text: 'Открыть: ' + String(d.title).slice(0, 18), url: siteUrl_('p-' + d.id) }; })]); sent++;
+      // tgSend_ отправляет с parse_mode HTML: раньше клиент видел в сообщении теги <b>, <s> как текст
+      tgSend_(u.tgChat, t, [drops.slice(0, 3).map(function (d) { return { text: 'Открыть: ' + String(d.title).slice(0, 18), url: siteUrl_('p-' + d.id) }; })]); sent++;
     }
     if (JSON.stringify(u.watch) !== before) DB.saveUser(u);
   });
@@ -1834,7 +1845,7 @@ function setBotCommands_() {
 }
 
 
-/* ====================== Правила магазина (общие с сайтом) ====================== */
+/* ====================== РџСЂР°РІРёР»Р° РјР°РіР°Р·РёРЅР° (РѕР±С‰РёРµ СЃ СЃР°Р№С‚РѕРј) ====================== */
 /* ONION SHOP, правила магазина (один файл для сайта и для Google Таблицы).
    Здесь: ониксы, уровни, задания, посылка, партнёрка, номера заказов и текст заказа.
    На сервере (Google Apps Script) этот же код работает с таблицей,
@@ -2553,8 +2564,8 @@ var OnionCore = (function () {
     var u = sessionUser(db, p); if (!u) return err('auth');
     // «скользящий» вход: пока клиент заходит на сайт, сессия продлевается (не чаще раза в неделю), заново вводить пароль не придётся
     try { var ss = db.getSession(p.session), full = RULES.sessionDays * 86400000; if (ss && db.renewSession && ss.exp - db.now() < full - 7 * 86400000) db.renewSession(p.session, db.now() + full); } catch (e) { /* не критично */ }
-    db.saveUser(u);
-    return ok({ user: publicUser(db, u), settings: settings() });
+    db.saveUser(u); // на сервере запись пропускается, если строка клиента не изменилась
+    return ok({ user: publicUser(db, u) }); // settings клиенту в этом ответе не нужны (сайт их не читает)
   };
 
   A.profile = function (db, p) {
@@ -3106,7 +3117,7 @@ var OnionCore = (function () {
   }
 
   function handle(action, p, db) {
-    if (!A[action]) return err('Неизвестное действие');
+    if (!Object.prototype.hasOwnProperty.call(A, action) || typeof A[action] !== 'function') return err('Неизвестное действие'); // не пускаем «constructor», «toString» и т. п.
     return A[action](db, p || {});
   }
 
