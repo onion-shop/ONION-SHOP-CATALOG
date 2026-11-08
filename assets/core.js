@@ -1,4 +1,4 @@
-﻿/* ONION SHOP, правила магазина (один файл для сайта и для Google Таблицы).
+/* ONION SHOP, правила магазина (один файл для сайта и для Google Таблицы).
    Здесь: ониксы, уровни, задания, посылка, партнёрка, номера заказов и текст заказа.
    На сервере (Google Apps Script) этот же код работает с таблицей,
    на сайте в демо-режиме, с памятью браузера. */
@@ -14,8 +14,7 @@ var OnionCore = (function () {
     spinCost: 100,          // прокрут посылки
     reward: { register: 100, refFriend: 50, referrer: 100, checkin: 1, streak7: 10, task: 1, birthday: 3334, review: 5, reviewText: 15 },
     // подарок на день рождения: ониксы ≈ 1 000 ₽ (по курсу 0,3 ₽), XP, личный промокод; только аккаунтам старше 30 дней
-    early: { hours: 24, level: 2 }, // новинки первые сутки, только для Золота и выше
-    birthday: { tokens: 3334, xp: 1500, promoPct: 3.5, promoDays: 30, minAgeDays: 30 },
+      birthday: { tokens: 3334, xp: 1500, promoPct: 3.5, promoDays: 30, minAgeDays: 30 },
     refMinOrder: 1000,      // друг засчитывается после первого заказа от 1000 ₽
     refMaxPerMonth: 10,
     sessionDays: 120,
@@ -63,8 +62,8 @@ var OnionCore = (function () {
     // категории для промокода уровня Золото
     promoCats: [
       { key: 'shoes', label: 'Обувь', cats: ['shoes'] },
-      { key: 'clothes', label: 'Одежда', cats: ['hoodies', 'tees', 'pants', 'jeans', 'shorts'] },
-      { key: 'outer', label: 'Куртки', cats: ['outerwear'] },
+      { key: 'clothes', label: 'Одежда', cats: ['hoodies', 'sweaters', 'longsleeves', 'tees', 'polo', 'pants', 'jeans', 'shorts'] },
+      { key: 'outer', label: 'Куртки', cats: ['outerwear', 'puffers'] },
       { key: 'acc', label: 'Аксессуары', cats: ['accessories'] }
     ],
     // задания: d: ежедневные (простые), w, еженедельные (сложнее), m, ежемесячные (самые сложные, заказы считаются по статусу «Получен»)
@@ -88,8 +87,8 @@ var OnionCore = (function () {
       { per: 'd', key: 'zoom', title: 'Рассмотреть фото вблизи', hint: 'Нажмите на фото товара', m: 'zoom', n: 1, tk: 3, xp: 10 },
       { per: 'd', key: 'measure', title: 'Заглянуть в замеры', hint: 'Раздел «Замеры изделия» в карточке', m: 'measure', n: 1, tk: 3, xp: 10 },
       { per: 'd', key: 'shoes', title: 'Посмотреть 2 пары обуви', hint: 'Раздел «Обувь»', m: 'viewcat', cats: ['shoes'], n: 2, tk: 3, xp: 10 },
-      { per: 'd', key: 'outer', title: 'Посмотреть 2 куртки или худи', hint: 'Куртки и худи', m: 'viewcat', cats: ['outerwear', 'hoodies'], n: 2, tk: 3, xp: 10 },
-      { per: 'd', key: 'basic', title: 'Посмотреть футболки или штаны', hint: 'Две любые карточки', m: 'viewcat', cats: ['tees', 'pants', 'jeans', 'shorts'], n: 2, tk: 3, xp: 10 },
+      { per: 'd', key: 'outer', title: 'Посмотреть 2 куртки или худи', hint: 'Куртки и худи', m: 'viewcat', cats: ['outerwear', 'puffers', 'hoodies', 'sweaters'], n: 2, tk: 3, xp: 10 },
+      { per: 'd', key: 'basic', title: 'Посмотреть футболки или штаны', hint: 'Две любые карточки', m: 'viewcat', cats: ['tees', 'polo', 'longsleeves', 'pants', 'jeans', 'shorts'], n: 2, tk: 3, xp: 10 },
       { per: 'd', key: 'acc', title: 'Посмотреть аксессуары', hint: 'Любой аксессуар', m: 'viewcat', cats: ['accessories'], n: 1, tk: 3, xp: 10 },
       { per: 'd', key: 'spin', title: 'Открыть посылку', hint: 'Бесплатная посылка раз в день', m: 'spin', n: 1, tk: 3, xp: 10 },
 
@@ -508,7 +507,7 @@ var OnionCore = (function () {
     return u;
   }
   /* фотоотчёт: менеджер вставляет одну или несколько ссылок (через пробел или с новой строки); показываем только http(s) */
-  function earlyLeft(prod, now) { var t = prod && prod.date ? Date.parse(prod.date) : 0; if (!t) return 0; var left = t + RULES.early.hours * 3600000 - now; return left > 0 ? left : 0; }
+  function earlyLeft() { return 0; } // раннего доступа больше нет: любой заказ доступен всем уровням сразу
   function checkAchv(db, u, orders, reviews) {
     var have = Array.isArray(u.achv) ? u.achv.slice() : [], add = [];
     var recv = Math.max(+u.recvTotal || 0, (orders || []).filter(function (o) { return o.status === 'Получен'; }).length);
@@ -1023,10 +1022,6 @@ var OnionCore = (function () {
     var built = buildLines(db, p.items);
     if (built.gone.length) return err('Сейчас нельзя заказать (нет в наличии или продано): ' + built.gone.join(', ') + '. Уберите из корзины, а такой товар можно добавить в избранное');
     if (!built.lines.length) return err('Корзина пуста');
-    if (!su || levelOf(su).index < RULES.early.level) {
-      for (var ei = 0; ei < built.lines.length; ei++) { var ep = db.product ? db.product(built.lines[ei].id) : null, el = earlyLeft(ep, db.now());
-        if (el) return err('«' + built.lines[ei].title + '» откроется для всех через ' + Math.ceil(el / 3600000) + ' ч. Первые сутки новинки доступны уровню «Золото» и выше'); }
-    }
     var hasPre = built.lines.some(function (l) { return l.status === 'preorder'; });
     var hasStock = built.lines.some(function (l) { return l.status !== 'preorder'; });
     var hasOut = built.lines.some(function (l) { return l.status === 'out'; });

@@ -47,9 +47,9 @@ CATALOG_JS = os.path.join(DATA_DIR, "catalog.js")
 OVERRIDES_JSON = os.path.join(DATA_DIR, "overrides.json")
 REVIEWS_JSON = os.path.join(DATA_DIR, "reviews.json")
 
-FULL_MAX = 1280  # px по длинной стороне
-THUMB_MAX = 640
-IMG_Q = 2        # версия качества: при смене все фото пересобираются из оригиналов
+FULL_MAX = 1800  # px по длинной стороне
+THUMB_MAX = 800
+IMG_Q = 3       # версия качества: при смене все фото пересобираются из оригиналов
 ALBUM_GAP = 3          # секунд между фото одного альбома (выгрузка)
 ATTACH_GAP = 30 * 60   # альбом без текста прикрепляется к товару, если вышел не позже чем через 30 мин
 UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
@@ -58,10 +58,14 @@ STRIKE_L, STRIKE_R = "⟦", "⟧"   # ⟦ ⟧ — пометка зачёркн�
 
 # ---------------------------------------------------------------- категории
 CATEGORIES = [
-    ("shoes", "Обувь", ["кроссовк", "кеды", "кед ", "мокасин", "ботин", "туфл", "лофер", "слайд", "сланц", "сапог", "обувь", "air force", "dunk"]),
-    ("outerwear", "Куртки и пуховики", ["куртк", "пуховик", "пальто", "ветровк", "жилет", "бомбер", "парка"]),
-    ("hoodies", "Худи и свитеры", ["худи", "толстовк", "свитер", "свитшот", "кардиган", "джемпер", "лонгслив", "зип", "кофт", "пуловер", "флис", "олимпийк", "водолазк"]),
-    ("tees", "Футболки и поло", ["футболк", "поло", "майк", "топ "]),
+    ("shoes", "Обувь", ["кроссовк", "кеды", "кед ", "мокасин", "ботин", "туфл", "лофер", "слайд", "сланц", "сапог", "обувь", "air force", "dunk", "угги", "ugg", "луноход", "moon boot", "полуботин", "сандал", "шлёпан", "шлепан", "тапочк", "балетк", "босонож"]),
+    ("puffers", "Пуховики", ["пуховик", "дутик", "дутая куртка", "дутая курт"]),
+    ("outerwear", "Куртки", ["куртк", "пальто", "ветровк", "жилет", "бомбер", "парка", "парку", "плащ", "дубленк", "тренч", "анорак", "кожанк", "косух"]),
+    ("hoodies", "Худи", ["худи", "толстовк", "свитшот", "зип ", "зип-", "олимпийк"]),
+    ("longsleeves", "Лонгсливы", ["лонгслив", "лонг слив"]),
+    ("sweaters", "Свитеры и джемперы", ["свитер", "джемпер", "кардиган", "пуловер", "водолазк", "кофта", "кофт", "флис", "вязан"]),
+    ("polo", "Поло", ["поло"]),
+    ("tees", "Футболки", ["футболк", "майк", "топ ", "t-shirt", "tee "]),
     ("shirts", "Рубашки", ["рубашк"]),
     ("dresses", "Платья и юбки", ["платье", "платья", "юбк", "сарафан"]),
     ("suits", "Костюмы и комплекты", ["костюм", "комплект"]),
@@ -213,6 +217,13 @@ def find_brand(title: str):
 
 def find_category(title: str):
     low = " " + title.lower().replace("ё", "е") + " "
+    # слово «поло» отдельным словом («Футболка-поло», «Поло Nike»): это категория «Поло», даже если раньше стоит «футболка»
+    # (латинское Polo Ralph Lauren сюда не попадает: это бренд, а не тип вещи)
+    if re.search(r"(?<![а-яa-z])поло(?![а-яa-z])", low):
+        return "polo", "Поло"
+    # слово «лонгслив» важнее слова «футболка» («Футболка лонгслив»)
+    if "лонгслив" in low:
+        return "longsleeves", "Лонгсливы"
     best = None
     for key, label, words in CATEGORIES:
         for w in words:
@@ -447,7 +458,7 @@ def parse_post(text: str):
 
 # ---------------------------------------------------------------- «умный» разбор (по желанию)
 LLM_CACHE_PATH = os.path.join(DATA_DIR, "llm_cache.json")
-LLM_CATS = {"shoes", "outerwear", "hoodies", "tees", "pants", "jeans", "shorts", "accessories", "other"}
+LLM_CATS = {k for k, _, _ in CATEGORIES} | {"other"}
 _llm_cache = None
 
 
@@ -474,7 +485,7 @@ def llm_enrich(text: str, item: dict):
     if data is None:
         prompt = (
             "Ты разбираешь пост магазина одежды из Telegram. Верни ТОЛЬКО JSON без пояснений с ключами: "
-            "brand (строка), category (одно из: shoes, outerwear, hoodies, tees, pants, jeans, shorts, accessories, other; джинсы это jeans, шорты это shorts, штаны и брюки это pants), "
+            "brand (строка), category (одно из: shoes, puffers (пуховики), outerwear (куртки, пальто, ветровки), hoodies (худи, толстовки, свитшоты), longsleeves (лонгсливы), sweaters (свитеры, джемперы, кардиганы), polo (поло), tees (футболки), shirts, pants, jeans, shorts, suits, dresses, bags, headwear, accessories, jewelry, watches, perfume, underwear, other), "
             "colors (список названий цветов по-русски, строчными, как в посте), sizes (список размеров), "
             "size_table (объект: размер -> объект «название замера» -> «значение с единицей», только если замеры даны по размерам), "
             "measurements (список пар [название, значение] для замеров изделия без привязки к размеру), "
@@ -656,19 +667,42 @@ def build_products(posts, channel):
     return products
 
 
+def enhance_photo(im):
+    """Маркетинговая обработка фото из Telegram: чуть больше размер (мелкие фото увеличиваются),
+    мягкий автоконтраст, живее цвета и аккуратная резкость. Всё очень деликатно, чтобы вещь выглядела как в жизни."""
+    from PIL import Image, ImageOps, ImageEnhance, ImageFilter
+    w, h = im.size
+    long_side = max(w, h)
+    if long_side < 1600:  # Telegram отдаёт превью небольшого размера: увеличиваем с хорошей интерполяцией
+        k = min(2.0, 1600 / long_side)
+        im = im.resize((round(w * k), round(h * k)), Image.LANCZOS)
+    try:
+        auto = ImageOps.autocontrast(im, cutoff=0.4)
+        im = Image.blend(im, auto, 0.4)  # только 40% от автоконтраста: без пересветов и грязных теней
+    except Exception:  # noqa: BLE001
+        pass
+    im = ImageEnhance.Color(im).enhance(1.07)
+    im = ImageEnhance.Contrast(im).enhance(1.03)
+    im = im.filter(ImageFilter.UnsharpMask(radius=1.3, percent=75, threshold=3))
+    return im
+
+
 def save_image(raw: bytes, photo_id: int):
     from PIL import Image, ImageOps
     os.makedirs(IMG_FULL, exist_ok=True)
     os.makedirs(IMG_THUMB, exist_ok=True)
     im = Image.open(io.BytesIO(raw))
     im = ImageOps.exif_transpose(im).convert("RGB")
-    w, h = im.size
+    try:
+        im = enhance_photo(im)
+    except Exception as e:  # noqa: BLE001
+        print(f"  улучшение фото не удалось: {e}", file=sys.stderr)
     full = im.copy()
     full.thumbnail((FULL_MAX, FULL_MAX), Image.LANCZOS)
-    full.save(os.path.join(IMG_FULL, f"{photo_id}.jpg"), "JPEG", quality=90, optimize=True, progressive=True)
+    full.save(os.path.join(IMG_FULL, f"{photo_id}.jpg"), "JPEG", quality=94, optimize=True, progressive=True, subsampling=0)
     th = im.copy()
     th.thumbnail((THUMB_MAX, THUMB_MAX), Image.LANCZOS)
-    th.save(os.path.join(IMG_THUMB, f"{photo_id}.jpg"), "JPEG", quality=86, optimize=True, progressive=True)
+    th.save(os.path.join(IMG_THUMB, f"{photo_id}.jpg"), "JPEG", quality=90, optimize=True, progressive=True, subsampling=0)
     return full.size
 
 

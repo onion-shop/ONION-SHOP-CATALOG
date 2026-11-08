@@ -20,8 +20,31 @@
     since: 2025
   };
   var API = window.OnionAPI, CORE = window.OnionCore, RULES = CORE.RULES;
-  var CAT_ORDER = ['shoes', 'tees', 'hoodies', 'outerwear', 'shirts', 'pants', 'jeans', 'shorts', 'suits', 'dresses', 'bags', 'headwear', 'accessories', 'jewelry', 'watches', 'perfume', 'underwear', 'other'];
-  var CAT_LABELS = { shoes: 'Обувь', tees: 'Футболки и поло', hoodies: 'Худи и свитеры', outerwear: 'Куртки и пуховики', shirts: 'Рубашки', pants: 'Штаны и брюки', jeans: 'Джинсы', shorts: 'Шорты', suits: 'Костюмы и комплекты', dresses: 'Платья и юбки', bags: 'Сумки и рюкзаки', headwear: 'Шапки и кепки', accessories: 'Аксессуары', jewelry: 'Украшения', watches: 'Часы и очки', perfume: 'Парфюм', underwear: 'Бельё и носки', other: 'Другое' };
+  var CAT_ORDER = ['shoes', 'tees', 'polo', 'hoodies', 'sweaters', 'longsleeves', 'outerwear', 'puffers', 'shirts', 'pants', 'jeans', 'shorts', 'suits', 'dresses', 'bags', 'headwear', 'accessories', 'jewelry', 'watches', 'perfume', 'underwear', 'other'];
+  var CAT_RULES = [
+    ['shoes', ['кроссовк', 'кеды', 'кед ', 'мокасин', 'ботин', 'туфл', 'лофер', 'слайд', 'сланц', 'сапог', 'обувь', 'air force', 'dunk', 'угги', 'ugg', 'луноход', 'moon boot', 'полуботин', 'сандал', 'шлепан', 'тапочк', 'балетк', 'босонож']],
+    ['puffers', ['пуховик', 'дутик', 'дутая курт']],
+    ['outerwear', ['куртк', 'пальто', 'ветровк', 'жилет', 'бомбер', 'парка', 'парку', 'плащ', 'дубленк', 'тренч', 'анорак', 'кожанк', 'косух']],
+    ['hoodies', ['худи', 'толстовк', 'свитшот', 'зип ', 'зип-', 'олимпийк']],
+    ['longsleeves', ['лонгслив', 'лонг слив']],
+    ['sweaters', ['свитер', 'джемпер', 'кардиган', 'пуловер', 'водолазк', 'кофта', 'кофт', 'флис', 'вязан']],
+    ['polo', ['поло']],
+    ['tees', ['футболк', 'майк', 'топ ', 't-shirt', 'tee ']],
+    ['shirts', ['рубашк']], ['dresses', ['платье', 'платья', 'юбк', 'сарафан']], ['suits', ['костюм', 'комплект']],
+    ['shorts', ['шорты', 'шорт']], ['jeans', ['джинсы', 'джинс ', 'джинсов', 'деним']], ['pants', ['штаны', 'брюки', 'брюк', 'джоггер', 'леггинс', 'карго', 'лосин']],
+    ['bags', ['сумк', 'рюкзак', 'шопер', 'клатч', 'портфел', 'барсетк']], ['headwear', ['кепк', 'шапк', 'панам', 'бейсболк', 'бини', 'шляп']],
+    ['jewelry', ['цепь', 'цепочк', 'браслет', 'кольцо', 'серьги', 'кулон', 'подвеск']], ['watches', ['часы', 'очки']], ['perfume', ['духи', 'парфюм', 'туалетная вода', 'одеколон', 'аромат']],
+    ['underwear', ['носки', 'белье', 'боксер', 'трусы']], ['accessories', ['галстук', 'кошел', 'запонк', 'ремен', 'ремн', 'платок', 'шарф', 'набор', 'бумажник', 'портмоне', 'перчатк', 'зонт']]
+  ];
+  function classifyTitle(title) {
+    var low = ' ' + String(title).toLowerCase().replace(/ё/g, 'е') + ' ';
+    if (/(^|[^а-яa-z])поло([^а-яa-z]|$)/.test(low)) return 'polo';
+    if (low.indexOf('лонгслив') >= 0) return 'longsleeves';
+    var best = null;
+    CAT_RULES.forEach(function (r) { r[1].forEach(function (w) { var i = low.indexOf(w); if (i >= 0 && (!best || i < best[0])) best = [i, r[0]]; }); });
+    return best ? best[1] : '';
+  }
+  var CAT_LABELS = { shoes: 'Обувь', tees: 'Футболки', polo: 'Поло', hoodies: 'Худи', sweaters: 'Свитеры и джемперы', longsleeves: 'Лонгсливы', puffers: 'Пуховики', outerwear: 'Куртки', shirts: 'Рубашки', pants: 'Штаны и брюки', jeans: 'Джинсы', shorts: 'Шорты', suits: 'Костюмы и комплекты', dresses: 'Платья и юбки', bags: 'Сумки и рюкзаки', headwear: 'Шапки и кепки', accessories: 'Аксессуары', jewelry: 'Украшения', watches: 'Часы и очки', perfume: 'Парфюм', underwear: 'Бельё и носки', other: 'Другое' };
   var CATALOG = window.ONION_CATALOG || { products: [] };
   var PRODUCTS = (CATALOG.products || []).slice();
   var BY_ID = {};
@@ -51,8 +74,9 @@
   }
   function indexProduct(p) {
     BY_ID[p.id] = p; buildSizeTable(p);
-    // страховка: джинсы и шорты, попавшие в «Штаны» при синхронизации, переносим в свои категории
-    if (p.category === 'pants' || p.category === 'other') { var ct = String((p.title || '') + ' ' + (p.subtitle || '')).toLowerCase().replace(/ё/g, 'е'); if (/шорт/.test(ct)) p.category = 'shorts'; else if (/джинс(ы|ов)|джинс /.test(ct + ' ')) p.category = 'jeans'; }
+    // категорию всегда уточняем по названию (те же правила, что и в scripts/sync_catalog.py): сортировка верна, даже если каталог собран по старым правилам
+    var ck = classifyTitle(p.title || '');
+    if (ck) p.category = ck;
     if (CAT_LABELS[p.category]) p.categoryLabel = CAT_LABELS[p.category];
     (p.photos || []).forEach(function (ph) { if (ph.hash) PHOTO_V[ph.id] = ph.hash + (ph.q ? 'q' + ph.q : ''); });
     var raw = Object.assign({}, p.colorPhotos || {}, COLOR_PHOTOS[p.id] || {}), map = {};
@@ -234,9 +258,6 @@
     $$('[data-cart-count]').forEach(function (el) { el.textContent = n; if (el.closest('.tabbar')) el.hidden = !n; if (bumpIt) bump(el); });
     $$('[data-fav-count]').forEach(function (el) { el.textContent = f; el.hidden = !f; });
   }
-  // ранний доступ: первые сутки новинка доступна уровню «Золото» и выше (сервер тоже проверяет)
-  function earlyLock(p) { var left = CORE.earlyLeft(p, Date.now()); if (!left) return 0; var u = acct.user; return u && u.level && u.level.index >= RULES.early.level ? 0 : left; }
-  function earlyH(ms) { return Math.max(1, Math.ceil(ms / 3600000)); }
   // товар, которого нет в наличии, в корзину не попадает никак: предлагаем избранное и уведомление о поступлении
   function offerFav(p) {
     var isF = isFav(p.id);
@@ -244,9 +265,8 @@
     toastCard({ kind: 'oos', icon: 'hourglass', title: 'Сейчас нет в наличии', text: isF ? 'Заказать пока нельзя. Товар уже в избранном: напишем, когда он появится.' : 'Заказать пока нельзя. Добавьте в избранное, и мы подскажем, когда он появится.', action: isF ? null : { label: 'В избранное', icon: 'heart', run: function () { toggleFav(p.id); } } });
   }
   function addToCart(line) {
-    var ep = BY_ID[line.id], el = ep ? earlyLock(ep) : 0;
+    var ep = BY_ID[line.id];
     if (ep && !orderable(ep)) { offerFav(ep); return false; }
-    if (el) { toast('Новинка откроется для всех через ' + earlyH(el) + ' ч. Первые сутки: ранний доступ для уровня «Золото» и выше', null, 'warn'); return false; }
     var key = lineKey(line), ex = cart.find(function (l) { return lineKey(l) === key; });
     if (ex) ex.qty = Math.min(10, ex.qty + line.qty); else cart.push(line);
     saveCart();
@@ -610,17 +630,12 @@
       }, { passive: true });
     }
   })();
-  function earlyTag(p) {
-    if (!CORE.earlyLeft(p, Date.now())) return '';
-    var lk = earlyLock(p);
-    return '<span class="early' + (lk ? ' lk' : '') + '">' + icon(lk ? 'lock' : 'crown') + (lk ? 'Для всех через ' + earlyH(lk) + ' ч' : 'Ранний доступ') + '</span>';
-  }
   function card(p, i) {
     var a = p.photos[0], d = discount(p), id = esc(p.id);
     var sw = p.colors.length > 1 ? '<div class="sw-row">' + p.colors.slice(0, 5).map(function (c) { return '<i class="sw" style="' + swatch(c) + '" title="' + esc(c) + '"></i>'; }).join('') + (p.colors.length > 5 ? '<small>+' + (p.colors.length - 5) + '</small>' : '') + '</div>' : '';
     return '<article class="pcard" data-pid="' + id + '" style="--i:' + (i || 0) + '">' +
       '<a class="ph" href="#p-' + id + '" tabindex="-1" aria-hidden="true">' + phTrack(p) +
-      '<div class="tags">' + badge(p) + '</div>' + phDots(p) + earlyTag(p) + '</a>' +
+      '<div class="tags">' + badge(p) + '</div>' + phDots(p) + '</a>' +
       '<button class="fav" type="button" data-fav="' + id + '" aria-pressed="' + isFav(p.id) + '" aria-label="Избранное: ' + esc(p.title) + '">' + icon('heart') + '</button>' +
       '<a class="body" href="#p-' + id + '"><span class="brand-l">' + esc(p.brand || p.categoryLabel) + '</span><span class="t">' + esc(p.title) + '</span>' + sw +
       '<div class="prices"><span class="price">' + rub(p.price) + '</span>' + (p.oldPrice ? '<span class="old">' + rub(p.oldPrice) + '</span>' + dscChip(p) : '') + '</div></a>' +
@@ -628,6 +643,14 @@
   }
   function grid(list, cls) { return '<div class="grid' + (cls ? ' ' + cls : '') + '">' + list.map(card).join('') + '</div>'; }
   function countBy(list, fn) { var m = {}; list.forEach(function (p) { var k = fn(p); m[k] = (m[k] || 0) + 1; }); return m; }
+  // значок категории: реальное фото товара из этой категории (подбирается само, ничего отмечать вручную не нужно); если товаров нет, рисованный значок
+  var CAT_ART = { polo: 'tees', longsleeves: 'tees', sweaters: 'hoodies', puffers: 'outerwear' };
+  function catImg(key, art) {
+    var p = key ? PRODUCTS.filter(function (x) { return x.category === key && x.photos && x.photos[0]; })[0] : null;
+    if (p) return '<img class="cph" src="' + thumb(p.photos[0].id) + '" alt="" loading="lazy" decoding="async">';
+    art = CAT_ART[art] || art;
+    return '<img class="lt" src="assets/cat/' + art + '.svg" alt="" loading="lazy"><img class="dk" src="assets/cat/dark/' + art + '.svg" alt="" loading="lazy">';
+  }
   function categories(list) {
     var c = countBy(list, function (p) { return p.category; });
     return CAT_ORDER.filter(function (k) { return k !== 'other' || c.other; }).map(function (k) { return { key: k, label: CAT_LABELS[k], n: c[k] || 0 }; });
@@ -717,8 +740,6 @@
     return a.mo === b.mo ? a.d + '-' + b.d + ' ' + MONTHS[b.mo - 1] : a.d + ' ' + MONTHS[a.mo - 1] + ' - ' + b.d + ' ' + MONTHS[b.mo - 1];
   }
   function etaBlock(p) {
-    var el = CORE.earlyLeft(p, Date.now());
-    if (el) { var lk = earlyLock(p); return '<div class="eta early-n">' + icon(lk ? 'lock' : 'crown') + '<div><b>' + (lk ? 'Ранний доступ: для всех через ' + earlyH(lk) + ' ч' : 'Ранний доступ для вас') + '</b><small>' + (lk ? 'Первые сутки новинку могут купить клиенты уровня «Золото» и выше.' : 'Новинка видна всем, но купить её первые сутки можете только вы и другие клиенты «Золота» и выше.') + '</small></div></div>' + etaBase(p); }
     return etaBase(p);
   }
   function etaBase(p) {
@@ -797,7 +818,7 @@
     stockL.forEach(function (p) { if (hot.length < 5 && hot.indexOf(p) < 0) hot.push(p); });
     var preL = PRODUCTS.filter(function (p) { return p.status === 'preorder'; }).slice(0, 5);
     var catTile = function (href, label, art, key) {
-      return '<a class="ct" href="' + href + '"' + (key ? ' data-cat="' + key + '"' : '') + '><span class="ct-i"><img class="lt" src="assets/cat/' + art + '.svg" alt="" loading="lazy"><img class="dk" src="assets/cat/dark/' + art + '.svg" alt="" loading="lazy"></span><span class="ct-l">' + esc(label) + '</span></a>';
+      return '<a class="ct" href="' + href + '"' + (key ? ' data-cat="' + key + '"' : '') + '><span class="ct-i">' + catImg(key, art) + '</span><span class="ct-l">' + esc(label) + '</span></a>';
     };
     var tiles = catTile('#stock', 'В наличии', 'stock') + catTile('#preorder', 'Из Китая', 'china');
     categories(PRODUCTS).forEach(function (c) { if (c.key !== 'other') tiles += catTile('#catalog', c.label, c.key, c.key); });
@@ -883,8 +904,8 @@
   }
   // поиск «по смыслу»: слово из запроса подтягивает всю категорию (майка → футболки и поло, пуховик → куртки)
   var SYN = {
-    tees: ['майк', 'футбол', 'поло', 'тишк', 'тенниск', 'топ'], outerwear: ['пуховик', 'куртк', 'ветровк', 'парк', 'бомбер', 'пальто', 'жилет', 'дутик'],
-    hoodies: ['худи', 'толстовк', 'свитер', 'свитшот', 'кофт', 'кардиган', 'джемпер', 'пуловер', 'лонгслив', 'флис', 'зип'],
+    tees: ['майк', 'футбол', 'тишк', 'тенниск', 'топ'], polo: ['поло'], outerwear: ['куртк', 'ветровк', 'парк', 'бомбер', 'пальто', 'жилет'], puffers: ['пуховик', 'дутик'],
+    hoodies: ['худи', 'толстовк', 'свитшот', 'зип'], sweaters: ['свитер', 'кофт', 'кардиган', 'джемпер', 'пуловер', 'флис', 'водолазк'], longsleeves: ['лонгслив'],
     shoes: ['кросс', 'кед', 'ботинк', 'туфл', 'обув', 'лофер', 'мокасин', 'сандал', 'сланц', 'сапог', 'башмак'],
     pants: ['штан', 'брюк', 'джоггер', 'леггинс', 'карго'], jeans: ['джинс', 'деним'], shorts: ['шорт'], shirts: ['рубашк', 'сорочк'], suits: ['костюм', 'комплект'], dresses: ['платье', 'платья', 'юбк', 'сарафан'],
     bags: ['сумк', 'рюкзак', 'шопер', 'клатч', 'портфел', 'барсетк'], headwear: ['кепк', 'шапк', 'панам', 'шляп', 'бейсболк', 'бини'],
@@ -944,7 +965,7 @@
     $$('button', tEl).forEach(function (b) { b.addEventListener('click', function () { filter.tab = b.getAttribute('data-tab'); silentHash(filter.tab === 'all' ? 'catalog' : filter.tab); updateCatalog(); setNav(location.hash.slice(1)); if (filter.tab === 'preorder') track('pre'); else if (filter.tab === 'stock') track('stock'); }); });
     var forCats = PRODUCTS.filter(function (p) { return matches(p, f, 'cat'); }), cats = categories(forCats);
     var cEl = $('#cat-cats');
-    var tile = function (key, label, n, art) { return '<button type="button" class="ctile' + (n ? '' : ' empty') + '" aria-pressed="' + (f.cat === key) + '" data-cat="' + key + '"><span class="ctile-i">' + (art ? '<img class="lt" src="assets/cat/' + art + '.svg" alt="" loading="lazy"><img class="dk" src="assets/cat/dark/' + art + '.svg" alt="" loading="lazy">' : '<span class="ctile-all">' + icon('grid') + '</span>') + '</span><span class="ctile-l">' + esc(label) + '</span><span class="ctile-n">' + n + '</span></button>'; };
+    var tile = function (key, label, n, art) { return '<button type="button" class="ctile' + (n ? '' : ' empty') + '" aria-pressed="' + (f.cat === key) + '" data-cat="' + key + '"><span class="ctile-i">' + (art ? catImg(key === 'other' ? '' : key, art) : '<span class="ctile-all">' + icon('grid') + '</span>') + '</span><span class="ctile-l">' + esc(label) + '</span><span class="ctile-n">' + n + '</span></button>'; };
     cEl.className = 'cat-rail';
     cEl.innerHTML = tile('all', 'Все', forCats.length, '') +  cats.map(function (c) { return tile(c.key, c.label, c.n, c.key === 'other' ? 'stock' : c.key); }).join('');
     var qEl = $('#cat-qchip');
@@ -2427,7 +2448,7 @@
         an.oncancel = function () { res(); };
       });
     }
-    function arrive() { put(xIn()); return slide(xWait(), 800, 'cubic-bezier(.25,.55,.4,1)'); }
+    function arrive() { put(xIn()); return slide(xWait(), 420, 'cubic-bezier(.25,.55,.4,1)'); }
     function idleShow() { var info = rlInfo(IDLE[idleI++ % IDLE.length]); item.className = 'px-item ghost'; item.innerHTML = pxIcon(info); }
     function idleOn() { clearInterval(rlTimer); idleShow(); rlTimer = setInterval(function () { if (!$('#px')) { clearInterval(rlTimer); return; } if (!busyNow && !document.hidden) idleShow(); }, 2600); }
     function setState(s, t) { px.setAttribute('data-s', s); st.textContent = t; }
@@ -2446,10 +2467,10 @@
         if (r.prize.frameId) toast('Рамка «' + (r.prize.frameName || '') + '» в кабинете, раздел «Рамка аватара»');
         else if (r.prize.code) toast('Промокод ' + r.prize.code + ' уже в кабинете');
         /* проверенная коробка едет дальше и уходит за край, следом слева выезжает новая */
-        slide(xOut(), 950, 'cubic-bezier(.45,0,.85,.55)').then(function () {
+        slide(xOut(), 500, 'cubic-bezier(.45,0,.85,.55)').then(function () {
           if (!$('#px')) return;
           parcel.style.visibility = 'hidden';
-          return new Promise(function (res) { setTimeout(res, REDUCED ? 0 : 450); });
+          return new Promise(function (res) { setTimeout(res, REDUCED ? 0 : 120); });
         }).then(function () {
           if (!$('#px')) return;
           return arrive();
@@ -2458,10 +2479,10 @@
           busyNow = false; spinning = false; updateRoulBalance();
           setTimeout(function () { if (!busyNow && $('#px')) { stamp.className = 'px-stamp'; idleOn(); } }, 2800);
         });
-      }, REDUCED ? 50 : 280);
+      }, REDUCED ? 50 : 120);
     }
     function fail(msg) {
-      slide(xWait(), 500, 'ease-out').then(function () { busyNow = false; spinning = false; setState('idle', 'ГОТОВ'); cap.innerHTML = CAP0; updateRoulBalance(); idleOn(); });
+      slide(xWait(), 300, 'ease-out').then(function () { busyNow = false; spinning = false; setState('idle', 'ГОТОВ'); cap.innerHTML = CAP0; updateRoulBalance(); idleOn(); });
       toast(msg, null, 'warn');
     }
     function doOpen(free) {
@@ -2471,12 +2492,12 @@
       stamp.className = 'px-stamp'; item.className = 'px-item'; item.innerHTML = '';
       cap.innerHTML = '<b>Сканируем…</b><span>Посылка едет в рентген</span>';
       setState('in', 'ПРИЁМ');
-      var res = null, scanned = false, scanAt = 0, shown = false, SCAN = REDUCED ? 80 : 600;
+      var res = null, scanned = false, scanAt = 0, shown = false, SCAN = REDUCED ? 60 : 250;
       function tryShow() {
         if (shown || !scanned || !res) return; shown = true;
         setTimeout(function () { spinning = false; reveal(res.r, res.real); }, Math.max(0, SCAN - (Date.now() - scanAt)));
       }
-      slide(xMid(), 900, 'cubic-bezier(.2,.5,.4,1)').then(function () { if (!busyNow) return; setState('scan', 'СКАН'); scanned = true; scanAt = Date.now(); tryShow(); });
+      slide(xMid(), 380, 'cubic-bezier(.2,.5,.4,1)').then(function () { if (!busyNow) return; setState('scan', 'СКАН'); scanned = true; scanAt = Date.now(); tryShow(); });
       API.call('spin', { free: free }).then(function (r) {
         if (!r.ok) { shown = true; fail(r.error); return; }
         var sh = Object.assign({}, acct.user, { balance: acct.user.balance - (free ? 0 : RULES.spinCost), freeSpins: acct.user.freeSpins - (free ? 1 : 0) });
@@ -2855,13 +2876,13 @@
   function runSplash() {
     var sp = document.getElementById('splash'); if (!sp) return;
     try { sessionStorage.setItem('onion.splash', '1'); } catch (e) { /* */ }
-    var MIN = REDUCED ? 1500 : 3600, MAX = 10000, t0 = Date.now(), done = 0, urls = [], seen = {};
+    var MIN = REDUCED ? 250 : 600, MAX = 2500, t0 = Date.now(), done = 0, urls = [], seen = {};
     var add = function (u) { if (u && !seen[u]) { seen[u] = 1; urls.push(u); } };
     shopPicks().forEach(function (p) { add(full(p.photos[0].id)); });
     PRODUCTS.forEach(function (p) { add(thumb(p.photos[0].id)); });
     PRODUCTS.forEach(function (p) { p.photos.forEach(function (f) { add(thumb(f.id)); }); });
     PRODUCTS.forEach(function (p) { p.photos.slice(0, 3).forEach(function (f) { add(full(f.id)); }); });
-    ['shoes', 'tees', 'hoodies', 'outerwear', 'shirts', 'pants', 'jeans', 'shorts', 'suits', 'dresses', 'bags', 'headwear', 'accessories', 'jewelry', 'watches', 'perfume', 'underwear', 'stock', 'china'].forEach(function (k) { add('assets/cat/' + k + '.svg'); add('assets/cat/dark/' + k + '.svg'); });
+    urls = urls.slice(0, 16); // сначала только то, что видно на главной; остальное грузится лениво по мере прокрутки
     var total = urls.length, idx = 0, cap = Date.now() + MAX, finished = false;
     var bar = document.getElementById('spl-bar'), txt = document.getElementById('spl-txt'), phb = document.getElementById('spl-ph');
     function next() {
@@ -2881,7 +2902,7 @@
       if (!finished && el >= MIN && ready) {
         finished = true; clearInterval(tm);
         if (bar) bar.style.transform = 'scaleX(1)';
-        setTimeout(function () { sp.classList.add('out'); setTimeout(function () { if (sp.parentNode) sp.parentNode.removeChild(sp); }, 800); }, 250);
+        setTimeout(function () { sp.classList.add('out'); setTimeout(function () { if (sp.parentNode) sp.parentNode.removeChild(sp); }, 350); }, 60);
       }
     }, 120);
   }
