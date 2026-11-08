@@ -2,8 +2,230 @@
 window.ONION_CATALOG = {
  "channel": "ONION_SHOP_OFFICIAL",
  "source": "t.me",
- "updatedAt": "2026-11-07T21:46:16Z",
+ "updatedAt": "2026-11-08T16:29:56Z",
  "products": [
+  {
+   "title": "Пуховик Stone Island Raso Gommato",
+   "subtitle": "",
+   "brand": "Stone Island",
+   "category": "outerwear",
+   "categoryLabel": "Куртки и пуховики",
+   "status": "stock",
+   "price": 4350,
+   "oldPrice": null,
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL"
+   ],
+   "colors": [
+    "белый"
+   ],
+   "details": [
+    [
+     "Состояние",
+     "новое с биркой"
+    ]
+   ],
+   "notes": [],
+   "facts": [
+    [
+     "Материал",
+     "Пуховое наполнение"
+    ]
+   ],
+   "id": "682",
+   "link": "https://t.me/ONION_SHOP_OFFICIAL/682",
+   "photos": [
+    {
+     "id": 682,
+     "w": 680,
+     "ht": 800,
+     "hash": "9a7c9fc35706",
+     "q": 2
+    },
+    {
+     "id": 683,
+     "w": 642,
+     "ht": 800,
+     "hash": "bdc7e324d87e",
+     "q": 2
+    },
+    {
+     "id": 684,
+     "w": 600,
+     "ht": 800,
+     "hash": "d62d986ac29a",
+     "q": 2
+    },
+    {
+     "id": 685,
+     "w": 600,
+     "ht": 800,
+     "hash": "4cd23773ffa6",
+     "q": 2
+    },
+    {
+     "id": 686,
+     "w": 600,
+     "ht": 800,
+     "hash": "d82df68bef7e",
+     "q": 2
+    },
+    {
+     "id": 687,
+     "w": 600,
+     "ht": 800,
+     "hash": "2ebfb71d538c",
+     "q": 2
+    },
+    {
+     "id": 688,
+     "w": 600,
+     "ht": 800,
+     "hash": "93e88930da70",
+     "q": 2
+    }
+   ],
+   "date": "2026-11-08T16:22:25Z"
+  },
+  {
+   "title": "Кроссовки UGG lowmel",
+   "subtitle": "",
+   "brand": "UGG lowmel",
+   "category": "shoes",
+   "categoryLabel": "Обувь",
+   "status": "stock",
+   "price": 5620,
+   "oldPrice": null,
+   "sizes": [
+    "36",
+    "37",
+    "38",
+    "39",
+    "40"
+   ],
+   "colors": [
+    "серый"
+   ],
+   "details": [
+    [
+     "Состояние",
+     "новое с биркой"
+    ]
+   ],
+   "notes": [],
+   "facts": [],
+   "id": "677",
+   "link": "https://t.me/ONION_SHOP_OFFICIAL/677",
+   "photos": [
+    {
+     "id": 677,
+     "w": 800,
+     "ht": 600,
+     "hash": "7c3c1ea50c22",
+     "q": 2
+    },
+    {
+     "id": 678,
+     "w": 800,
+     "ht": 600,
+     "hash": "7c891ba7f645",
+     "q": 2
+    },
+    {
+     "id": 679,
+     "w": 800,
+     "ht": 600,
+     "hash": "21fce1ff2f12",
+     "q": 2
+    },
+    {
+     "id": 680,
+     "w": 800,
+     "ht": 600,
+     "hash": "b9ef6d4bb9a0",
+     "q": 2
+    },
+    {
+     "id": 681,
+     "w": 800,
+     "ht": 600,
+     "hash": "08a5d2ba5461",
+     "q": 2
+    }
+   ],
+   "date": "2026-11-08T16:12:52Z"
+  },
+  {
+   "title": "Кроссовки UGG lowmel",
+   "subtitle": "",
+   "brand": "UGG lowmel",
+   "category": "shoes",
+   "categoryLabel": "Обувь",
+   "status": "stock",
+   "price": 5620,
+   "oldPrice": null,
+   "sizes": [
+    "36",
+    "37",
+    "38",
+    "39",
+    "40"
+   ],
+   "colors": [
+    "черный"
+   ],
+   "details": [
+    [
+     "Состояние",
+     "новое с биркой"
+    ]
+   ],
+   "notes": [],
+   "facts": [],
+   "id": "672",
+   "link": "https://t.me/ONION_SHOP_OFFICIAL/672",
+   "photos": [
+    {
+     "id": 672,
+     "w": 800,
+     "ht": 600,
+     "hash": "d9011c5f7c8c",
+     "q": 2
+    },
+    {
+     "id": 673,
+     "w": 800,
+     "ht": 600,
+     "hash": "1a085c7b8f90",
+     "q": 2
+    },
+    {
+     "id": 674,
+     "w": 800,
+     "ht": 600,
+     "hash": "2b095d50dbba",
+     "q": 2
+    },
+    {
+     "id": 675,
+     "w": 800,
+     "ht": 600,
+     "hash": "de38b9db30c7",
+     "q": 2
+    },
+    {
+     "id": 676,
+     "w": 800,
+     "ht": 600,
+     "hash": "7462f41348f9",
+     "q": 2
+    }
+   ],
+   "date": "2026-11-08T16:09:55Z"
+  },
   {
    "title": "Свитер Dior",
    "subtitle": "",
