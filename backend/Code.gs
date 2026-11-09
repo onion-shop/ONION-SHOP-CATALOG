@@ -332,13 +332,13 @@ function styleSummary_() {
   sh.getRange(1, 1, sh.getMaxRows(), sh.getMaxColumns()).breakApart();
   if (sh.getMaxColumns() > 5) sh.deleteColumns(6, sh.getMaxColumns() - 5);
   if (sh.getMaxColumns() < 5) sh.insertColumnsAfter(sh.getMaxColumns(), 5 - sh.getMaxColumns());
-  if (sh.getMaxRows() < 90) sh.insertRowsAfter(sh.getMaxRows(), 90 - sh.getMaxRows());
+  if (sh.getMaxRows() < 100) sh.insertRowsAfter(sh.getMaxRows(), 100 - sh.getMaxRows());
   var R_ = function (name, cols, k) { var l = colL_(ci_(cols, k) + 1); return "'" + name + "'!" + l + '2:' + l; };
   var O = function (k) { return R_(SHEET.orders, ORDER_COLS, k); }, U = function (k) { return R_(SHEET.users, USER_COLS, k); };
   var today = '">="&TODAY()', tomorrow = '"<"&TODAY()+1', month = '">="&EOMONTH(TODAY(),-1)+1';
   // ширины рассчитаны на экран телефона: две карточки в ряд помещаются без прокрутки
   [10, 168, 8, 168, 10].forEach(function (w, i) { sh.setColumnWidth(i + 1, w); });
-  sh.getRange(1, 1, 90, 5).setFontFamily('Arial').setVerticalAlignment('middle');
+  sh.getRange(1, 1, 100, 5).setFontFamily('Arial').setVerticalAlignment('middle');
   sh.getRange('B2:D2').merge().setValue('ONION SHOP: сводка').setFontSize(18).setFontWeight('bold').setFontColor(C.navy);
   sh.getRange('B3:D3').merge().setFormula('=NOW()').setNumberFormat('"Обновлено: "dd.MM.yyyy HH:mm" МСК"').setHorizontalAlignment('left').setFontColor('#6b7280').setFontSize(9);
   // быстрые переходы по листам, удобно на телефоне
@@ -382,27 +382,29 @@ function styleSummary_() {
            ['Это скидок на', '=SUM(' + U('balance') + ')*' + Math.round(OnionCore.settings().tokenRub * 100) + '/100', '#,##0" ₽"']);
   // списки: каждый в своём блоке с запасом строк, чтобы не наезжали друг на друга
   var line = function (row, formula) { sh.getRange(row, 2).setFormula(F_(formula)).setFontColor('#1b2333').setFontSize(10).setWrap(false); };
-  var unpaidN = 'COUNTIFS(' + O('no') + ',"<>",' + O('paid') + ',FALSE,' + O('status') + ',"<>Отменён")', allN = 'COUNTIFS(' + O('no') + ',"<>")';
-  section(33, 'Ждут оплаты (сначала самые давние)');
-  line(34, '=IFERROR(ARRAYFORMULA(INDEX(ARRAYFORMULA(FILTER(' + O('no') + '&"  ·  "&' + O('name') + '&"  ·  "&TEXT(' + O('toPay') + ',"# ##0")&" ₽",' + O('no') + '<>"",' + O('paid') + '=FALSE,' + O('status') + '<>"Отменён")),SEQUENCE(MIN(8,' + unpaidN + ')))),"Все заказы оплачены")');
-  section(44, 'Заказы по статусам');
+  var allN = 'COUNTIFS(' + O('no') + ',"<>")', rowsOf = function (cond) { return 'FILTER(ROW(' + O('no') + '),' + cond + ')'; };
+  section(33, 'Заказы по статусам');
   ALL_STAGES_().forEach(function (s, i) {
-    var r = 45 + i;
+    var r = 34 + i;
     sh.getRange(r, 2).setValue(s).setFontColor('#1b2333');
     sh.getRange(r, 4).setFormula(F_('=COUNTIFS(' + O('status') + ',"' + s + '")')).setHorizontalAlignment('right').setFontWeight('bold').setFontColor(C.navy);
     sh.getRange(r, 2, 1, 3).setBorder(false, false, true, false, false, false, C.line, SpreadsheetApp.BorderStyle.SOLID);
   });
-  section(55, 'Последние заказы (сначала новые)');
-  line(56, '=IFERROR(ARRAYFORMULA(INDEX(ARRAYFORMULA(FILTER(' + O('no') + '&"  ·  "&' + O('status') + '&"  ·  "&TEXT(' + O('toPay') + ',"# ##0")&" ₽",' + O('no') + '<>"")),SEQUENCE(MIN(5,' + allN + '),1,MIN(5,' + allN + ')*0+' + allN + ',-1))),"Заказов пока нет")');
-  section(63, 'Дни рождения в ближайшие 14 дней');
+  var lineText = O('no') + '&"  ·  "&' + O('name') + '&"  ·  "&TEXT(' + O('toPay') + ',"# ##0")&" ₽"';
+  var lastCond = O('no') + '<>"",ROW(' + O('no') + ')-1>' + allN + '-5';
+  section(43, 'Последние заказы (сначала новые)');
+  line(44, '=IFERROR(SORT(ARRAYFORMULA(FILTER(' + lineText + ',' + lastCond + ')),ARRAYFORMULA(' + rowsOf(lastCond) + '),FALSE),"Заказов пока нет")');
+  section(50, 'Ждут оплаты (сначала самые давние)');
+  line(51, '=IFERROR(ARRAYFORMULA(FILTER(' + lineText + ',' + O('no') + '<>"",' + O('paid') + '=FALSE,' + O('status') + '<>"Отменён")),"Все заказы оплачены")');
+  section(77, 'Дни рождения в ближайшие 14 дней');
   var bd = U('birthday');
-  line(64, '=IFERROR(ARRAYFORMULA(FILTER(' + U('name') + '&" ("&' + U('login') + '&")  ·  "&' + bd + ',' + bd + '<>"",IFERROR(MOD(DATE(YEAR(TODAY()),VALUE(LEFT(' + bd + ',2)),VALUE(RIGHT(' + bd + ',2)))-TODAY(),365),999)<=14)),"Никого")');  section(72, 'Как пользоваться');
-  sh.getRange('B73:D73').merge().setValue('Заказы: меняйте «Статус» из списка, клиент видит его на сайте. Отметьте «Оплачен», когда клиент заплатил. Красный номер: заказ не оплачен больше суток. Редкие колонки свёрнуты значком «+» над таблицей.');
-  sh.getRange('B74:D74').merge().setValue('Клиенты: колонки с синим заголовком можно править (ониксы, уровень, XP, контакты), клиент видит это сразу.');
-  sh.getRange('B75:D75').merge().setValue('Если что-то сбилось: меню ONION SHOP → «Оформить таблицу заново».');
-  sh.getRange('B73:D75').setWrap(true).setFontColor('#374151').setFontSize(9).setVerticalAlignment('top');
-  sh.setRowHeight(73, 62); sh.setRowHeight(74, 40); sh.setRowHeight(75, 28);
-  sh.setTabColor(C.cyan);
+  line(78, '=IFERROR(ARRAYFORMULA(FILTER(' + U('name') + '&" ("&' + U('login') + '&")  ·  "&' + bd + ',' + bd + '<>"",IFERROR(MOD(DATE(YEAR(TODAY()),VALUE(LEFT(' + bd + ',2)),VALUE(RIGHT(' + bd + ',2)))-TODAY(),365),999)<=14)),"Никого")');
+  section(92, 'Как пользоваться');
+  sh.getRange('B93:D93').merge().setValue('Заказы: меняйте «Статус» из списка, клиент видит его на сайте. Отметьте «Оплачен», когда клиент заплатил. Красный номер: заказ не оплачен больше суток. Редкие колонки свёрнуты значком «+» над таблицей.');
+  sh.getRange('B94:D94').merge().setValue('Клиенты: колонки с синим заголовком можно править (ониксы, уровень, XP, контакты), клиент видит это сразу.');
+  sh.getRange('B95:D95').merge().setValue('Если что-то сбилось: меню ONION SHOP → «Оформить таблицу заново».');
+  sh.getRange('B93:D95').setWrap(true).setFontColor('#374151').setFontSize(9).setVerticalAlignment('top');
+  sh.setRowHeight(93, 62); sh.setRowHeight(94, 40); sh.setRowHeight(95, 28);  sh.setTabColor(C.cyan);
   sh.setFrozenRows(0);
 }
 function styleReviews_() {
