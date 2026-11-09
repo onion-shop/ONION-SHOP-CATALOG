@@ -2,8 +2,201 @@
 window.ONION_CATALOG = {
  "channel": "ONION_SHOP_OFFICIAL",
  "source": "t.me",
- "updatedAt": "2026-11-08T22:36:24Z",
+ "updatedAt": "2026-11-09T09:37:16Z",
  "products": [
+  {
+   "title": "Пуховик Canada Goose Crofton",
+   "subtitle": "",
+   "brand": "Canada Goose",
+   "category": "puffers",
+   "categoryLabel": "Пуховики",
+   "status": "stock",
+   "price": 4820,
+   "oldPrice": null,
+   "sizes": [
+    "XL"
+   ],
+   "colors": [
+    "черный"
+   ],
+   "details": [
+    [
+     "Состояние",
+     "новое с биркой"
+    ]
+   ],
+   "notes": [],
+   "facts": [],
+   "id": "698",
+   "link": "https://t.me/ONION_SHOP_OFFICIAL/698",
+   "photos": [
+    {
+     "id": 698,
+     "w": 1600,
+     "ht": 1600,
+     "hash": "ee958a9341f7",
+     "q": 3
+    },
+    {
+     "id": 699,
+     "w": 1600,
+     "ht": 1600,
+     "hash": "426a819cd8c1",
+     "q": 3
+    },
+    {
+     "id": 700,
+     "w": 1200,
+     "ht": 1600,
+     "hash": "052cfd2c8032",
+     "q": 3
+    },
+    {
+     "id": 701,
+     "w": 1600,
+     "ht": 1598,
+     "hash": "480786bace31",
+     "q": 3
+    },
+    {
+     "id": 702,
+     "w": 1540,
+     "ht": 1600,
+     "hash": "e3d9d5191d9d",
+     "q": 3
+    },
+    {
+     "id": 703,
+     "w": 1600,
+     "ht": 1598,
+     "hash": "f7de3a3496c8",
+     "q": 3
+    }
+   ],
+   "date": "2026-11-09T09:18:36Z"
+  },
+  {
+   "title": "Ботинки Timberland с мехом",
+   "subtitle": "",
+   "brand": "Timberland",
+   "category": "shoes",
+   "categoryLabel": "Обувь",
+   "status": "stock",
+   "price": 6480,
+   "oldPrice": null,
+   "sizes": [
+    "41",
+    "42",
+    "43",
+    "44",
+    "45"
+   ],
+   "colors": [
+    "песочный"
+   ],
+   "details": [
+    [
+     "Состояние",
+     "новое с биркой"
+    ]
+   ],
+   "notes": [],
+   "facts": [],
+   "id": "693",
+   "link": "https://t.me/ONION_SHOP_OFFICIAL/693",
+   "photos": [
+    {
+     "id": 693,
+     "w": 1600,
+     "ht": 1200,
+     "hash": "dd2f34393c19",
+     "q": 3
+    },
+    {
+     "id": 694,
+     "w": 1600,
+     "ht": 1200,
+     "hash": "f0ec43cd8085",
+     "q": 3
+    },
+    {
+     "id": 695,
+     "w": 1600,
+     "ht": 1200,
+     "hash": "f7170dc68abe",
+     "q": 3
+    },
+    {
+     "id": 696,
+     "w": 1600,
+     "ht": 1200,
+     "hash": "75dba0509939",
+     "q": 3
+    },
+    {
+     "id": 697,
+     "w": 1600,
+     "ht": 1200,
+     "hash": "733cd4366707",
+     "q": 3
+    }
+   ],
+   "date": "2026-11-09T09:08:15Z"
+  },
+  {
+   "title": "Пуховик Canada Goose",
+   "subtitle": "",
+   "brand": "Canada Goose",
+   "category": "puffers",
+   "categoryLabel": "Пуховики",
+   "status": "stock",
+   "price": 4820,
+   "oldPrice": null,
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL"
+   ],
+   "colors": [
+    "серый"
+   ],
+   "details": [
+    [
+     "Состояние",
+     "новое с биркой"
+    ]
+   ],
+   "notes": [],
+   "facts": [],
+   "id": "689",
+   "link": "https://t.me/ONION_SHOP_OFFICIAL/689",
+   "photos": [
+    {
+     "id": 689,
+     "w": 1600,
+     "ht": 1600,
+     "hash": "a20ff4222c46",
+     "q": 3
+    },
+    {
+     "id": 690,
+     "w": 1600,
+     "ht": 1600,
+     "hash": "0e5e84db5912",
+     "q": 3
+    },
+    {
+     "id": 691,
+     "w": 1600,
+     "ht": 1600,
+     "hash": "14aa53adb9b7",
+     "q": 3
+    }
+   ],
+   "date": "2026-11-09T09:05:01Z"
+  },
   {
    "title": "Пуховик Stone Island Raso Gommato",
    "subtitle": "",
