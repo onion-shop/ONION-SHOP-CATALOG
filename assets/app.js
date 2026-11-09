@@ -141,7 +141,7 @@
   function ava(u, cls) {
     var f = esc((u && u.frame) || 'base');
     // у рамок с «живым» движением по орбите (планета, Пакман) есть слой орбиты: он крутится, а планета остаётся ровной
-    var orb = f === 'f83' ? '<i class="orb"><i class="o1"></i><i class="o2"></i></i>' : f === 'f63' ? '<i class="orb"><i class="o1"></i><i class="o3"></i></i><i class="orb orb-b"><i class="o2"></i></i>' : '';
+    var orb = f === 'f83' ? '<i class="orb"><i class="o1"></i><i class="o2"></i></i>' : f === 'f63' ? '<i class="orb"><i class="o1"></i><i class="o2"></i><i class="o3"></i></i>' : '';
     return '<span class="ava f-' + f + (f !== 'base' ? ' fx' : '') + (cls ? ' ' + cls : '') + '">' + (u && u.avatar ? '<img src="' + esc(u.avatar) + '" alt="">' : '<b class="ini">' + esc(initials(u && u.name)) + '</b>') + orb + '</span>';
   }
 
