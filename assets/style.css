@@ -2642,5 +2642,11 @@ html,body{touch-action:pan-x pan-y}
 .cats-price .pr-chips::after{content:"";flex:none;width:1px}
 /* подсказки «0» и «любая» в полях цены убраны: подписи «От» и «До» и так понятны */
 .cats-price .pr-in input::placeholder{color:transparent;opacity:0}
+/* рамки: плитки не лезут на подписи соседних, корона и свечение не перекрывают текст */
+.fr-grid{row-gap:20px;padding-top:6px}
+.fr-it{padding:30px 2px 10px}
+.fr-it>span:not(.ava){margin-top:2px;position:relative;z-index:1}
+.fr-prev{margin-bottom:18px;padding-top:30px;padding-bottom:26px}
+.fr-t .fr-acts{margin-top:6px}
 /* плитки категорий: выделенная «Все» не прилипает к краю экрана */
 .cat-rail{padding-left:16px;padding-right:16px;scroll-padding-inline:16px}

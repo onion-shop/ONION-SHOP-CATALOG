@@ -2118,8 +2118,7 @@
       prev = id; var f = frameOf(id), ok = own(f), wearing = (u.frame || 'base') === f.id;
       $$('[data-frame]', md).forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-frame') === id)); });
       $('#fr-prev', md).innerHTML = ava({ name: u.name, avatar: u.avatar, frame: f.id }, 'lg') + '<div class="fr-t"><b>' + esc(f.name) + '</b><span class="small">' + (ok ? (wearing ? 'Сейчас надета' : 'Открыта') : esc(lockText(f))) + '</span>' +
-        '<div class="fr-acts"><button class="btn btn-sm" type="button" id="fr-wear"' + (ok && !wearing ? '' : ' disabled') + '>' + (wearing ? 'Надета' : ok ? 'Надеть' : 'Пока закрыта') + '</button>' +
-        ((u.frame || 'base') !== 'base' ? '<button class="btn btn-sm btn-ghost" type="button" id="fr-off">Снять</button>' : '') + '</div></div>';
+        '<div class="fr-acts">' + (!ok ? '<button class="btn btn-sm" type="button" id="fr-wear" disabled>Пока закрыта</button>' : !wearing ? '<button class="btn btn-sm" type="button" id="fr-wear">Надеть</button>' : f.id !== 'base' ? '<button class="btn btn-sm btn-ghost" type="button" id="fr-off">Снять</button>' : '') + '</div></div>';
       var w = $('#fr-wear', md); if (w) w.addEventListener('click', function () { wear(f.id, 'Рамка «' + f.name + '» надета'); });
       var o = $('#fr-off', md); if (o) o.addEventListener('click', function () { wear('base', 'Рамка снята'); });
     }
