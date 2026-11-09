@@ -2,8 +2,130 @@
 window.ONION_CATALOG = {
  "channel": "ONION_SHOP_OFFICIAL",
  "source": "t.me",
- "updatedAt": "2026-11-09T20:55:36Z",
+ "updatedAt": "2026-11-09T21:11:31Z",
  "products": [
+  {
+   "title": "Свитер Polo Ralph Lauren USA flag",
+   "subtitle": "",
+   "brand": "Polo Ralph Lauren",
+   "category": "sweaters",
+   "categoryLabel": "Свитеры и джемперы",
+   "status": "stock",
+   "price": 3500,
+   "oldPrice": null,
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL"
+   ],
+   "colors": [
+    "белый"
+   ],
+   "details": [
+    [
+     "Состояние",
+     "новое с биркой"
+    ]
+   ],
+   "notes": [],
+   "facts": [],
+   "id": "726",
+   "link": "https://t.me/ONION_SHOP_OFFICIAL/726",
+   "photos": [
+    {
+     "id": 726,
+     "w": 1600,
+     "ht": 1200,
+     "hash": "fa4ae26ab29a",
+     "q": 3
+    },
+    {
+     "id": 727,
+     "w": 1600,
+     "ht": 1200,
+     "hash": "fe6715849f0c",
+     "q": 3
+    },
+    {
+     "id": 728,
+     "w": 1600,
+     "ht": 1200,
+     "hash": "0d2cc1146c77",
+     "q": 3
+    },
+    {
+     "id": 729,
+     "w": 1600,
+     "ht": 1200,
+     "hash": "4600ed25d540",
+     "q": 3
+    }
+   ],
+   "date": "2026-11-09T20:57:14Z"
+  },
+  {
+   "title": "Свитер Polo Ralph Lauren USA flag",
+   "subtitle": "",
+   "brand": "Polo Ralph Lauren",
+   "category": "sweaters",
+   "categoryLabel": "Свитеры и джемперы",
+   "status": "stock",
+   "price": 3500,
+   "oldPrice": null,
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL"
+   ],
+   "colors": [
+    "черный"
+   ],
+   "details": [
+    [
+     "Состояние",
+     "новое с биркой"
+    ]
+   ],
+   "notes": [],
+   "facts": [],
+   "id": "722",
+   "link": "https://t.me/ONION_SHOP_OFFICIAL/722",
+   "photos": [
+    {
+     "id": 722,
+     "w": 1600,
+     "ht": 1600,
+     "hash": "71a6a0df14a8",
+     "q": 3
+    },
+    {
+     "id": 723,
+     "w": 1600,
+     "ht": 1600,
+     "hash": "86e65bf4bf4d",
+     "q": 3
+    },
+    {
+     "id": 724,
+     "w": 1600,
+     "ht": 1600,
+     "hash": "11f8b30f5618",
+     "q": 3
+    },
+    {
+     "id": 725,
+     "w": 1600,
+     "ht": 1600,
+     "hash": "a096c175ec9b",
+     "q": 3
+    }
+   ],
+   "date": "2026-11-09T20:56:05Z"
+  },
   {
    "title": "Зип худи Polo Ralph Lauren big logo",
    "subtitle": "",
