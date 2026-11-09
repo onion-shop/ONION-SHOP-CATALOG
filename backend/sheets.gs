@@ -9,7 +9,7 @@ function allowMail() { Logger.log('Можно отправить писем се
    =================================================================== */
 
 var CATALOG_URL_DEFAULT = 'https://onion-shop.github.io/ONION-SHOP-CATALOG/data/catalog.js';
-var LAYOUT_VER = '13';
+var LAYOUT_VER = '14';
 
 var SHEET = { orders: 'Заказы', users: 'Клиенты', promos: 'Промокоды', log: 'Журнал ониксов', summary: 'Сводка', sessions: 'Сессии', reviews: 'Отзывы', waits: 'Лист ожидания', ledger: 'Учёт бонусов', flags: 'Подозрительное' };
 
@@ -24,7 +24,6 @@ var ORDER_COLS = [
   ['name', 'Имя', { w: 120 }],
   ['contact', 'Связаться', { w: 100 }],
   ['itemsText', 'Товары', { w: 300 }],
-  ['photo', 'Фото', { w: 80 }],
   ['at', 'Дата (МСК)', { w: 120, t: 'date' }],
   ['count', 'Шт.', { w: 45, t: 'num' }],
   ['priority', 'Приоритет', { w: 105, t: 'text' }],
@@ -97,7 +96,7 @@ var USER_COLS = [
   ['state', 'служебное: привилегии', { svc: true, t: 'text' }]
 ];
 /* в колонке «служебное: привилегии» хранится JSON с этими полями клиента */
-var STATE_KEYS = ['spinDay', 'daySpins', 'daySpinsMax', 'perkDiaMonth', 'perkDiaN', 'perkDiaAt', 'packMonth', 'frameAnim', 'cnRecv', 'tgChat', 'tgName', 'tgCats', 'phoneOk', 'bonusDone', 'emailCanon', 'achv', 'watch', 'recvTotal', 'bdayOpen', 'gm', 'city'];
+var STATE_KEYS = ['spinDay', 'daySpins', 'daySpinsMax', 'perkDiaMonth', 'perkDiaN', 'perkDiaAt', 'packMonth', 'frameAnim', 'cnRecv', 'tgChat', 'tgName', 'tgCats', 'phoneOk', 'bonusDone', 'emailCanon', 'achv', 'watch', 'recvTotal', 'bdayOpen', 'gm', 'city', 'lastPush', 'lastNudge'];
 var JSON_COLS = { tasks: 1, promos: 1, frames: 1 };
 var PROMO_COLS = [
   ['code', 'Промокод', { w: 130, t: 'text', edit: true }],
@@ -711,8 +710,6 @@ var DB = {
     row.at = new Date(o.at);
     row.paid = false; row.status = o.status || 'Оформлен';
     if (!row.tg || row.tg === '@') row.tg = '';
-    var first = o.items[0], ph = first && (first.photo || first.thumb);
-    row.photo = ph ? F_('=IMAGE("' + siteBase_() + 'img/thumb/' + ph + '.jpg")') : '';
     var tgName = String(row.tg || '').replace(/^@/, ''), digits = String(o.phone || '').replace(/\D/g, '');
     if (digits.length === 10) digits = '7' + digits;
     row.contact = tgName ? F_('=HYPERLINK("https://t.me/' + tgName + '","Telegram ↗")') : digits ? F_('=HYPERLINK("https://t.me/+' + digits + '","По номеру ↗")') : '';
@@ -771,7 +768,7 @@ var DB = {
       if (res.getResponseCode() !== 200) { DB.catalog_ = false; return false; }
       var s = res.getContentText(), data = JSON.parse(s.slice(s.indexOf('{'), s.lastIndexOf('}') + 1));
       var slim = {};
-      (data.products || []).forEach(function (p) { slim[p.id] = { id: p.id, title: p.title, date: p.date || '', price: p.price, oldPrice: p.oldPrice || 0, category: p.category || '', cl: p.categoryLabel || '', status: p.status, link: p.link, photos: (p.photos || []).map(function (x) { return { id: x.id }; }) }; });
+      (data.products || []).forEach(function (p) { slim[p.id] = { id: p.id, title: p.title, date: p.date || '', price: p.price, oldPrice: p.oldPrice || 0, category: p.category || '', cl: p.categoryLabel || '', status: p.status, link: p.link, sizes: p.sizes || [], colors: p.colors || [], details: p.details || [], photos: (p.photos || []).map(function (x) { return { id: x.id }; }) }; });
       var str = JSON.stringify(slim);
       if (str.length < 95000) cache.put('catalog', str, 600);
       DB.catalog_ = slim;
@@ -787,6 +784,7 @@ var DB = {
     if (meta && meta.no) DB.hot(10);
     if (meta && meta.no) payload.reply_markup = JSON.stringify({ inline_keyboard: adminKeyboard_(meta.no, meta.kind) });
     var res = UrlFetchApp.fetch('https://api.telegram.org/bot' + token + '/sendMessage', { method: 'post', muteHttpExceptions: true, payload: payload });
+    if (meta && meta.no) { try { orderPhotos_(chat, meta.no); } catch (e) { } }
     return res.getResponseCode() === 200;
   },
   // «горячее окно»: несколько минут бот слушает Telegram почти без задержки (клиент подключает бота, пришёл новый заказ)
@@ -1081,6 +1079,7 @@ function doGet() { return out_({ ok: true, shop: 'ONION SHOP', settings: OnionCo
 function doPost(e) {
   var p;
   try { p = JSON.parse((e && e.postData && e.postData.contents) || '{}'); } catch (x) { return out_({ ok: false, error: 'Неверный запрос' }); }
+  if (p && p.update_id !== undefined && !p.action) return tgWebhook_(e, p); // сообщение от Telegram (webhook): отвечаем сразу
   if (p.action === 'settings') return out_(OnionCore.handle('settings', p, DB));
   if (p.action === 'reviews') { try { DB.catalog_ = null; return out_(OnionCore.handle('reviews', p, DB)); } catch (x) { return out_({ ok: false, error: 'Не удалось загрузить отзывы' }); } }
   var lock = LockService.getScriptLock();
@@ -1107,6 +1106,61 @@ function doPost(e) {
   }
 }
 
+/* ---------- мгновенные ответы бота: Telegram сам присылает каждое сообщение сюда (webhook) ---------- */
+function tgWebhook_(e, up) {
+  var p = props_(), secret = p.getProperty('TG_SECRET');
+  if (!secret || !e || !e.parameter || String(e.parameter.tg) !== secret) return out_({ ok: false });
+  var cache = CacheService.getScriptCache(), key = 'upd:' + up.update_id;
+  if (cache.get(key)) return out_({ ok: true, dup: true }); // Telegram мог повторить доставку
+  cache.put(key, '1', 3600);
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(25000)) { cache.remove(key); return out_({ ok: false }); }
+  try {
+    USERS_CACHE_ = null; DB.catalog_ = null; DB.ledger_ = null;
+    ensureLayout_();
+    tgHandle_([up]);
+    try { syncXp_(); } catch (x) { console.error(x && x.stack || x); }
+    try { tgStatuses_(); } catch (x) { console.error(x && x.stack || x); }
+  } catch (x) { console.error('webhook', x && x.stack || x); }
+  finally { lock.releaseLock(); }
+  return out_({ ok: true });
+}
+function webAppUrl_() {
+  var u = props_().getProperty('WEBAPP_URL'); if (u) return u;
+  try {
+    var s = UrlFetchApp.fetch(siteBase_() + 'assets/config.js?t=' + Date.now(), { muteHttpExceptions: true }).getContentText();
+    var m = /apiUrl:\s*"(https:\/\/script\.google\.com\/macros\/s\/[^"]+)"/.exec(s);
+    if (m) { props_().setProperty('WEBAPP_URL', m[1]); return m[1]; }
+  } catch (x) { }
+  return '';
+}
+/* Включает webhook: Telegram шлёт сообщения сюда сразу, без минутного ожидания. Ответ: '' или текст ошибки. */
+function enableWebhook_() {
+  var p = props_(), token = p.getProperty('BOT_TOKEN'), url = webAppUrl_();
+  if (!token) return 'Нет токена бота';
+  if (!url) return 'Не нашёл адрес веб-приложения (assets/config.js)';
+  var secret = p.getProperty('TG_SECRET');
+  if (!secret) { secret = Utilities.getUuid().replace(/-/g, '').slice(0, 24); p.setProperty('TG_SECRET', secret); }
+  var r = tgApi_('setWebhook', { url: url + '?tg=' + secret, allowed_updates: ['message', 'callback_query'], max_connections: 8, drop_pending_updates: false });
+  if (!r || !r.ok) return 'Telegram не принял webhook: ' + (r && r.description || 'нет ответа');
+  p.setProperty('tgWebhook', '1');
+  return '';
+}
+function enableWebhook() {
+  var err = enableWebhook_();
+  Logger.log(err ? 'ОШИБКА: ' + err : 'Webhook включён');
+  try { SpreadsheetApp.getUi().alert(err ? 'Не получилось: ' + err : 'Готово: бот теперь отвечает сразу.'); } catch (x) { }
+}
+function disableWebhook() {
+  tgApi_('deleteWebhook', {}); props_().deleteProperty('tgWebhook');
+  Logger.log('Webhook выключен, бот снова читает сообщения раз в минуту');
+}
+/* Диагностика: что Telegram думает о webhook (ошибки доставки, очередь) */
+function webhookInfo() {
+  var r = tgApi_('getWebhookInfo', {}), i = r && r.result || {};
+  Logger.log('url=' + String(i.url || '').replace(/\?tg=.*/, '?tg=***') + ' | в очереди: ' + i.pending_update_count + ' | последняя ошибка: ' + (i.last_error_message || 'нет') + ' | когда: ' + (i.last_error_date ? new Date(i.last_error_date * 1000) : '-'));
+}
+
 /* ------------------------------------------------------------------ меню в таблице */
 function onOpen() {
   SpreadsheetApp.getUi().createMenu('ONION SHOP')
@@ -1115,6 +1169,8 @@ function onOpen() {
     .addItem('3. Привязать чат (после /start боту)', 'linkChat')
     .addSeparator()
     .addItem('4. Включить Telegram-уведомления клиентам', 'enableTelegram')
+    .addItem('5. Бот отвечает мгновенно (webhook)', 'enableWebhook')
+    .addItem('Примеры сообщений бота (мне)', 'botDemo')
     .addSeparator()
     .addItem('Начислить или списать ониксы', 'adminTokens')
     .addItem('Удалить клиента…', 'deleteClient')
@@ -1191,8 +1247,8 @@ function setupTelegram_() {
   var bot = DB.botUser();
   if (!bot) return '';
   var tg = function (m, o) { try { UrlFetchApp.fetch('https://api.telegram.org/bot' + p.getProperty('BOT_TOKEN') + '/' + m, { method: 'post', muteHttpExceptions: true, contentType: 'application/json', payload: JSON.stringify(o) }); } catch (e) { } };
-  tg('deleteWebhook', {});
-  tg('setMyDescription', { description: 'ONION SHOP: одежда, обувь и аксессуары в наличии и под заказ из Китая.\n\nЯ пришлю сообщение, когда заказ меняет статус или нужный товар снова в продаже. Бот отвечает с задержкой до минуты, это нормально, просто подождите. Нажмите «Старт», чтобы начать.' });
+  if (!p.getProperty('tgWebhook')) tg('deleteWebhook', {});
+  tg('setMyDescription', { description: 'ONION SHOP: одежда, обувь и аксессуары в наличии и под заказ из Китая.\n\nЯ пришлю сообщение, когда заказ меняет статус или нужный товар снова в продаже. Нажмите «Старт», чтобы начать.' });
   setBotCommands_();
   tg('setMyShortDescription', { short_description: 'Статусы заказов ONION SHOP и новости о товарах' });
   ScriptApp.getProjectTriggers().forEach(function (t) { if (t.getHandlerFunction() === 'telegramTick') ScriptApp.deleteTrigger(t); });
@@ -1210,7 +1266,7 @@ function telegramPass_(onlyPoll) {
   try {
     USERS_CACHE_ = null; DB.catalog_ = null; DB.ledger_ = null;
     if (!props_().getProperty('BOT_TOKEN')) return;
-    try { tgPoll_(); } catch (e) { console.error('poll', e && e.stack || e); }
+    if (!props_().getProperty('tgWebhook')) { try { tgPoll_(); } catch (e) { console.error('poll', e && e.stack || e); } }
     try { syncXp_(); } catch (e) { console.error('xp', e && e.stack || e); }
     try { tgStatuses_(); } catch (e) { console.error('status', e && e.stack || e); }
     try { tgPhotos_(); } catch (e) { console.error('photos', e && e.stack || e); }
@@ -1220,6 +1276,7 @@ function telegramPass_(onlyPoll) {
     try { tgReminders_(); } catch (e) { console.error('remind', e && e.stack || e); }
     try { tgNew_(); } catch (e) { console.error('new', e && e.stack || e); }
     try { tgPromo_(); } catch (e) { console.error('promo', e && e.stack || e); }
+    try { tgNudge_(); } catch (e) { console.error('nudge', e && e.stack || e); }
     try { adminDigest_(); } catch (e) { console.error('digest', e && e.stack || e); }
   } finally { lock.releaseLock(); }
 }
@@ -1228,6 +1285,7 @@ function telegramPass_(onlyPoll) {
 function telegramTick() {
   telegramPass_(false);
   var p = props_();
+  if (p.getProperty('tgWebhook')) return; // webhook включён: сообщения приходят сами, слушать не нужно
   if (!p.getProperty('BOT_TOKEN') || +(p.getProperty('tgHot') || 0) < Date.now()) return;
   var end = Date.now() + (+(p.getProperty('tgBurstMs') || 45000));
   while (Date.now() < end) {
@@ -1271,14 +1329,14 @@ function tgPhotos_() {
 }
 /* снижение цены на вещи из избранного, раз в 3 часа */
 function tgWatch_() {
-  var c = CacheService.getScriptCache(); if (c.get('watchAt')) return; c.put('watchAt', '1', 10800);
+  var c = CacheService.getScriptCache(); if (c.get('watchAt') || !autoCfg_().drop) return; c.put('watchAt', '1', 10800);
   if (!DB.catalogReady()) return;
   var sent = 0;
   users_().forEach(function (u) {
     if (!u.watch || sent >= 40) return;
     var before = JSON.stringify(u.watch), drops = OnionCore.priceDrops(DB, u);
     if (drops.length && u.tgChat) {
-      var t = '📉 <b>Подешевело из вашего избранного</b>\n\n' + drops.slice(0, 5).map(function (d) { return '• ' + hesc_(d.title) + ': <s>' + d.was + ' ₽</s> → <b>' + d.now + ' ₽</b>'; }).join('\n');
+      var t = '📉 ' + pick_(V_.drop) + '\n\n' + drops.slice(0, 5).map(function (d) { return '•<i>' + hesc_(d.title) + '</i>: <s>' + d.was + '</s> <b>' + d.now + '</b>'; }).join('\n');
       // tgSend_ отправляет с parse_mode HTML: раньше клиент видел в сообщении теги <b>, <s> как текст
       tgSend_(u.tgChat, t, [drops.slice(0, 3).map(function (d) { return { text: 'Открыть: ' + String(d.title).slice(0, 18), url: siteUrl_('p-' + d.id) }; })]); sent++;
     }
@@ -1293,10 +1351,10 @@ function tgStatuses_() {
     if (!no || !st || nt === st || sent >= 25) return;
     var uid = normId_(r[iU]), u = uid ? DB.getUser(uid) : null;
     if (nt && u && u.tgChat) {
-      var text = OnionCore.statusMessage(no, st), photo = '';
-      if (st === 'На складе') { try { var it = JSON.parse(r[iIt] || '[]')[0]; if (it && (it.photo || it.thumb)) photo = siteBase_() + 'img/full/' + (it.photo || it.thumb) + '.jpg'; } catch (e) { } }
+      var text = statusText_(no, st), photo = '';
+      if (st === 'На складе' || st === 'Получен') { try { var it = JSON.parse(r[iIt] || '[]')[0]; if (it && (it.photo || it.thumb)) photo = photoUrl_(it.photo || it.thumb); } catch (e) { } }
       var kb = statusKb_(no, st);
-      if (photo) DB.userPhoto(u, photo, text, kb); else DB.userNotify(u, text, kb);
+      sendPostTo_(u, { text: text, photo: photo, kb: kb });
       sent++;
     }
     var c = sh.getRange(i + 2, iN + 1); c.setNumberFormat('@'); c.setValue(st);
@@ -1319,55 +1377,64 @@ function tgReminders_() {
     var st = String(r[I('status')]).trim(), rm = {}; try { rm = r[I('remind')] ? JSON.parse(r[I('remind')]) : {}; } catch (e) { rm = {}; }
     var at = r[I('at')] instanceof Date ? r[I('at')].getTime() : 0;
     if (st === 'Оформлен' && !isTrue_(r[I('paid')]) && !rm.pay && at && now - at > 86400000) {
-      DB.userNotify(u, '💳 Заказ ' + no + ' ждёт оплаты: ' + money_(r[I('toPay')]) + ' ₽.\nЕсли вы уже оплатили, ничего делать не нужно, менеджер отметит. Есть вопрос: просто напишите его сюда.', [[{ text: '📦 Заказ', callback_data: 'm|' + no }, { text: '💬 Вопрос по оплате', callback_data: 'q|' + no }]]);
+      if (autoCfg_().remind) notifyHtml_(u, '💳 ' + fill_(pick_(V_.pay), { no: '<b>' + hesc_(no) + '</b>', sum: money_(r[I('toPay')]) }), [[{ text: '📦 Заказ', callback_data: 'm|' + no }, { text: '💬 Вопрос по оплате', callback_data: 'q|' + no }]]);
       setRemind_(sh, i + 2, I('remind'), r[I('remind')], { pay: 1 }); sent++;
     } else if (st === 'Получен' && rm.got && !rm.rev && now - rm.got > 3 * 86400000) {
       var items = []; try { items = JSON.parse(r[I('items')] || '[]'); } catch (e) { }
       var done = DB.reviewKeys(u.id), left = items.filter(function (it) { return done.indexOf(no + '|' + it.id) < 0; });
-      if (left.length) { DB.userNotify(u, '⭐ Как вам заказ ' + no + '? Оставьте отзыв на сайте, оценка +' + OnionCore.RULES.reward.review + ' ониксов, отзыв с текстом, +' + OnionCore.RULES.reward.reviewText + '.', [[{ text: '⭐ Оставить отзыв', url: siteUrl_('orders') }]]); sent++; }
+      if (left.length && autoCfg_().remind) { notifyHtml_(u, '⭐ ' + fill_(pick_(V_.review), { no: '<b>' + hesc_(no) + '</b>', r: OnionCore.RULES.reward.review, rt: OnionCore.RULES.reward.reviewText }), [[{ text: '⭐ Оставить отзыв', url: siteUrl_('orders') }]]); sent++; }
       setRemind_(sh, i + 2, I('remind'), r[I('remind')], { rev: 1 });
     }
   });
 }
-/* акция-напоминание в Telegram: раз в 3 дня, около 18:00 по Москве, тем, кто включил новости (🔔 Новинки). */
+/* скидки: раз в 3 дня около 18:00 по Москве, тем, у кого подключён бот; каждый раз новыми словами */
 function tgPromo_() {
-  var p = props_(), now = Date.now();
-  var h = +Utilities.formatDate(new Date(now), 'Europe/Moscow', 'H');
-  if (h < 18 || h > 19) return;
-  var last = +p.getProperty('promoAt') || 0;
-  if (now - last < 3 * 86400000 - 3600000) return;
-  var cat = DB.loadCatalog_(); if (!cat) return;
-  var mx = 0, best = [];
-  Object.keys(cat).forEach(function (id) {
-    var c = cat[id]; if (c.status !== 'preorder' || !c.oldPrice || c.oldPrice <= c.price) return;
-    var d = Math.round((1 - c.price / c.oldPrice) * 100); if (d > mx) mx = d;
-    best.push({ id: id, d: d });
-  });
+  var p = props_(), now = Date.now(), h = mskHour_();
+  if (h < 18 || h > 19 || !autoCfg_().sale) return;
+  if (now - (+p.getProperty('promoAt') || 0) < 3 * 86400000 - 3600000) return;
+  var b = bcBuild_({ t: 'sale', iv: Math.floor(Math.random() * 20) });
   p.setProperty('promoAt', String(now));
-  if (mx < 5 || !best.length) return;
-  best.sort(function (a, b) { return b.d - a.d; });
-  var text = '🔥 Товары из Китая со скидками до ' + Math.floor(mx / 5) * 5 + '%\nСамое время оформить заказ. Стоимость доставки из Китая уже включена в стоимость.';
-  var kb = best.slice(0, 3).map(function (b) { return [{ text: String(cat[b.id].title).slice(0, 36) + ' · −' + b.d + '%', url: siteUrl_('p-' + b.id) }]; })
-    .concat([[{ text: '🛍 Все товары из Китая', url: siteUrl_('preorder') }]]);
+  if (!b) return;
   var sent = 0;
-  users_().forEach(function (u) { if (sent < 60 && u.tgChat) { if (DB.userNotify(u, text, kb)) sent++; } });
+  users_().forEach(function (u) { if (u.tgChat && sent < 100 && canPush_(u, 20)) { if (sendPostTo_(u, b)) { sent++; markPush_(u); } } });
 }
-/* новинки: всем, у кого подключён Telegram (все категории, отключить нельзя) */
+/* новинки: как только появились в каталоге (днём, с 10 до 21 по Москве), всем с подключённым ботом */
 function tgNew_() {
   var cat = DB.loadCatalog_(); if (!cat) return;
   var p = props_(), seen = p.getProperty('seenIds'), ids = Object.keys(cat);
   if (seen === null) { p.setProperty('seenIds', ids.join(',').slice(-8500)); return; }
   var S = {}; seen.split(',').forEach(function (x) { S[x] = 1; });
   var fresh = ids.filter(function (id) { return !S[id] && cat[id].status !== 'out' && cat[id].status !== 'sold'; });
-  if (fresh.length) users_().forEach(function (u) {
-    if (!u.tgChat) return;
-    var mine = fresh.slice(0, 5);
-    if (mine.length) DB.userNotify(u, '🆕 Новинки ONION SHOP:\n' + mine.map(function (id) { return '• ' + cat[id].title + ': ' + cat[id].price + ' ₽'; }).join('\n'),
-      mine.map(function (id) { return [{ text: String(cat[id].title).slice(0, 40) + ' · ' + cat[id].price + ' ₽', url: siteUrl_('p-' + id) }]; }));
-  });
+  if (!fresh.length) { if (ids.join(',').slice(-8500) !== seen) p.setProperty('seenIds', ids.join(',').slice(-8500)); return; }
+  var h = mskHour_(); if (h < 10 || h >= 21) return; // ночью не беспокоим, отправим утром
+  if (!autoCfg_().fresh) { p.setProperty('seenIds', ids.join(',').slice(-8500)); return; }
+  fresh.sort(function (a, b) { return b - a; });
+  var b = fresh.length === 1 ? bcBuild_({ t: 'prod', id: fresh[0], iv: Math.floor(Math.random() * 20) }) : (function () {
+    var L = fresh.slice(0, 5).map(function (id) { return cat[id]; });
+    return { text: fill_(pick_(V_.freshN), { n: fresh.length }) + '\n\n' + L.map(function (c) { return '•<i>' + hesc_(c.title) + '</i>: ' + c.price; }).join('\n'), photo: prodPhoto_(L[0]), kb: L.map(function (c) { return [{ text: String(c.title).slice(0, 34) + ' · ' + c.price, url: siteUrl_('p-' + c.id) }]; }) };
+  })();
   p.setProperty('seenIds', ids.join(',').slice(-8500));
+  if (!b) return;
+  var sent = 0;
+  users_().forEach(function (u) { if (u.tgChat && sent < 150 && canPush_(u, 3)) { if (sendPostTo_(u, b)) { sent++; markPush_(u); } } });
 }
-function tgWaits_() {
+/* «давно не заходили»: раз в день около 12:00 пишем тем, кто не заказывал больше месяца (не чаще раза в 3 недели) */
+function tgNudge_() {
+  var p = props_(), now = Date.now(), h = mskHour_(), day = Utilities.formatDate(new Date(now), 'Europe/Moscow', 'yyyy-MM-dd');
+  if (h < 12 || h > 14 || p.getProperty('nudgeDay') === day || !autoCfg_().nudge) return;
+  p.setProperty('nudgeDay', day);
+  var L = freshList_(1); if (!L.length) return;
+  var last = {};
+  ordersAll_().forEach(function (o) { var uid = normId_(o.userId), t = o.at instanceof Date ? o.at.getTime() : 0; if (uid && t > (last[uid] || 0)) last[uid] = t; });
+  var sent = 0;
+  users_().forEach(function (u) {
+    if (!u.tgChat || sent >= 20) return;
+    var reg = u.createdAt ? new Date(u.createdAt).getTime() : 0, lo = Math.max(last[u.id] || 0, reg);
+    if (!lo || now - lo < 30 * 86400000 || (u.lastNudge && now - u.lastNudge < 21 * 86400000) || !canPush_(u, 20)) return;
+    var b = { text: pick_(V_.winback) + '\n\n' + postCaption_(L[0]), photo: prodPhoto_(L[0]), kb: [[{ text: '🛍 Открыть товар', url: siteUrl_('p-' + L[0].id) }], [{ text: '🛍 Весь каталог', url: siteUrl_('catalog') }]] };
+    if (sendPostTo_(u, b)) { u.lastNudge = now; markPush_(u); sent++; }
+  });
+}function tgWaits_() {
   var sh = ss_().getSheetByName(SHEET.waits); if (!sh) return;
   var iS = ci_(WAIT_COLS, 'sent'), sent = 0;
   DB.waitRows_().forEach(function (w) {
@@ -1375,7 +1442,10 @@ function tgWaits_() {
     var pr = DB.product(w.productId);
     if (!pr || pr.status === 'out' || pr.status === 'sold') return;
     var u = DB.getUser(w.userId);
-    if (u && u.tgChat) { DB.userNotify(u, '🛍 «' + w.title + '» снова можно заказать!', [[{ text: '🛍 Открыть товар', url: siteUrl_('p-' + w.productId) }]]); sent++; }
+    if (u && u.tgChat) {
+      var b = { text: '🛍 ' + fill_(pick_(V_.restock), { t: hesc_(w.title) }) + (pr ? '\n\n' + postCaption_(pr) : ''), photo: prodPhoto_(pr), kb: [[{ text: '🛍 Открыть товар', url: siteUrl_('p-' + w.productId) }]] };
+      sendPostTo_(u, b); sent++;
+    }
     var c = sh.getRange(w._row, iS + 1); c.setNumberFormat('@'); c.setValue(mskText_(Date.now()));
   });
 }
