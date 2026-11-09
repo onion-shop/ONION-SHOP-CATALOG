@@ -2640,5 +2640,7 @@ html,body{touch-action:pan-x pan-y}
 .cats-price .pr-in input{font-size:16px;width:100%}
 .cats-price .pr-chips{display:flex;max-width:100%;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;touch-action:pan-x pan-y;margin:0;padding:0 0 2px}
 .cats-price .pr-chips::after{content:"";flex:none;width:1px}
+/* подсказки «0» и «любая» в полях цены убраны: подписи «От» и «До» и так понятны */
+.cats-price .pr-in input::placeholder{color:transparent;opacity:0}
 /* плитки категорий: выделенная «Все» не прилипает к краю экрана */
 .cat-rail{padding-left:16px;padding-right:16px;scroll-padding-inline:16px}
