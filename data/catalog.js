@@ -2,14 +2,14 @@
 window.ONION_CATALOG = {
  "channel": "ONION_SHOP_OFFICIAL",
  "source": "t.me",
- "updatedAt": "2026-11-09T11:36:45Z",
+ "updatedAt": "2026-11-09T18:25:01Z",
  "products": [
   {
    "title": "Сникерсы Puma wedge x Alexander McQueen",
    "subtitle": "",
    "brand": "Puma",
-   "category": "other",
-   "categoryLabel": "Другое",
+   "category": "shoes",
+   "categoryLabel": "Обувь",
    "status": "stock",
    "price": 6990,
    "oldPrice": null,
@@ -1525,8 +1525,8 @@ window.ONION_CATALOG = {
    "title": "Утепленная кофта GAP на молнии",
    "subtitle": "",
    "brand": "GAP",
-   "category": "sweaters",
-   "categoryLabel": "Свитеры и джемперы",
+   "category": "hoodies",
+   "categoryLabel": "Худи",
    "status": "preorder",
    "price": 3280,
    "oldPrice": null,
