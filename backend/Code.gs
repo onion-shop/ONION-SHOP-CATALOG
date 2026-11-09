@@ -1110,9 +1110,11 @@ function doPost(e) {
 function tgWebhook_(e, up) {
   var p = props_(), secret = p.getProperty('TG_SECRET');
   if (!secret || !e || !e.parameter || String(e.parameter.tg) !== secret) return out_({ ok: false });
-  var cache = CacheService.getScriptCache(), key = 'upd:' + up.update_id;
-  if (cache.get(key)) return out_({ ok: true, dup: true }); // Telegram мог повторить доставку
-  cache.put(key, '1', 3600);
+  var cache = CacheService.getScriptCache(), key = 'upd:' + up.update_id, lastId = +(p.getProperty('tgLastUpd') || 0);
+  // Google отвечает Telegram редиректом 302, поэтому Telegram повторяет доставку: каждое сообщение обрабатываем один раз
+  if (cache.get(key) || (lastId && up.update_id < lastId - 300)) return out_({ ok: true, dup: true });
+  cache.put(key, '1', 21600);
+  if (up.update_id > lastId) p.setProperty('tgLastUpd', String(up.update_id));
   var lock = LockService.getScriptLock();
   if (!lock.tryLock(25000)) { cache.remove(key); return out_({ ok: false }); }
   try {
@@ -1336,7 +1338,7 @@ function tgWatch_() {
     if (!u.watch || sent >= 40) return;
     var before = JSON.stringify(u.watch), drops = OnionCore.priceDrops(DB, u);
     if (drops.length && u.tgChat) {
-      var t = '📉 ' + pick_(V_.drop) + '\n\n' + drops.slice(0, 5).map(function (d) { return '•<i>' + hesc_(d.title) + '</i>: <s>' + d.was + '</s> <b>' + d.now + '</b>'; }).join('\n');
+      var t = '📉 <b>' + pick_(V_.drop) + '</b>\n———\n' + drops.slice(0, 5).map(function (d) { return '•<i>' + hesc_(d.title) + '</i>: <s>' + d.was + '</s> <b>' + d.now + '</b>'; }).join('\n');
       // tgSend_ отправляет с parse_mode HTML: раньше клиент видел в сообщении теги <b>, <s> как текст
       tgSend_(u.tgChat, t, [drops.slice(0, 3).map(function (d) { return { text: 'Открыть: ' + String(d.title).slice(0, 18), url: siteUrl_('p-' + d.id) }; })]); sent++;
     }
@@ -1377,12 +1379,12 @@ function tgReminders_() {
     var st = String(r[I('status')]).trim(), rm = {}; try { rm = r[I('remind')] ? JSON.parse(r[I('remind')]) : {}; } catch (e) { rm = {}; }
     var at = r[I('at')] instanceof Date ? r[I('at')].getTime() : 0;
     if (st === 'Оформлен' && !isTrue_(r[I('paid')]) && !rm.pay && at && now - at > 86400000) {
-      if (autoCfg_().remind) notifyHtml_(u, '💳 ' + fill_(pick_(V_.pay), { no: '<b>' + hesc_(no) + '</b>', sum: money_(r[I('toPay')]) }), [[{ text: '📦 Заказ', callback_data: 'm|' + no }, { text: '💬 Вопрос по оплате', callback_data: 'q|' + no }]]);
+      if (autoCfg_().remind) notifyHtml_(u, payText_(no, money_(r[I('toPay')])), [[{ text: '📦 Заказ', callback_data: 'm|' + no }, { text: '💬 Вопрос по оплате', callback_data: 'q|' + no }]]);
       setRemind_(sh, i + 2, I('remind'), r[I('remind')], { pay: 1 }); sent++;
     } else if (st === 'Получен' && rm.got && !rm.rev && now - rm.got > 3 * 86400000) {
       var items = []; try { items = JSON.parse(r[I('items')] || '[]'); } catch (e) { }
       var done = DB.reviewKeys(u.id), left = items.filter(function (it) { return done.indexOf(no + '|' + it.id) < 0; });
-      if (left.length && autoCfg_().remind) { notifyHtml_(u, '⭐ ' + fill_(pick_(V_.review), { no: '<b>' + hesc_(no) + '</b>', r: OnionCore.RULES.reward.review, rt: OnionCore.RULES.reward.reviewText }), [[{ text: '⭐ Оставить отзыв', url: siteUrl_('orders') }]]); sent++; }
+      if (left.length && autoCfg_().remind) { notifyHtml_(u, reviewText_(no, OnionCore.RULES.reward.review, OnionCore.RULES.reward.reviewText), [[{ text: '⭐ Оставить отзыв', url: siteUrl_('orders') }]]); sent++; }
       setRemind_(sh, i + 2, I('remind'), r[I('remind')], { rev: 1 });
     }
   });
@@ -1411,7 +1413,7 @@ function tgNew_() {
   fresh.sort(function (a, b) { return b - a; });
   var b = fresh.length === 1 ? bcBuild_({ t: 'prod', id: fresh[0], iv: Math.floor(Math.random() * 20) }) : (function () {
     var L = fresh.slice(0, 5).map(function (id) { return cat[id]; });
-    return { text: fill_(pick_(V_.freshN), { n: fresh.length }) + '\n\n' + L.map(function (c) { return '•<i>' + hesc_(c.title) + '</i>: ' + c.price; }).join('\n'), photo: prodPhoto_(L[0]), kb: L.map(function (c) { return [{ text: String(c.title).slice(0, 34) + ' · ' + c.price, url: siteUrl_('p-' + c.id) }]; }) };
+    return { text: '🆕 <b>' + fill_(pick_(V_.freshN), { n: fresh.length }) + '</b>\n———\n' + L.map(function (c) { return '•<i>' + hesc_(c.title) + '</i>: ' + c.price; }).join('\n'), photo: prodPhoto_(L[0]), kb: L.map(function (c) { return [{ text: String(c.title).slice(0, 34) + ' · ' + c.price, url: siteUrl_('p-' + c.id) }]; }) };
   })();
   p.setProperty('seenIds', ids.join(',').slice(-8500));
   if (!b) return;
@@ -1431,7 +1433,7 @@ function tgNudge_() {
     if (!u.tgChat || sent >= 20) return;
     var reg = u.createdAt ? new Date(u.createdAt).getTime() : 0, lo = Math.max(last[u.id] || 0, reg);
     if (!lo || now - lo < 30 * 86400000 || (u.lastNudge && now - u.lastNudge < 21 * 86400000) || !canPush_(u, 20)) return;
-    var b = { text: pick_(V_.winback) + '\n\n' + postCaption_(L[0]), photo: prodPhoto_(L[0]), kb: [[{ text: '🛍 Открыть товар', url: siteUrl_('p-' + L[0].id) }], [{ text: '🛍 Весь каталог', url: siteUrl_('catalog') }]] };
+    var b = { text: '👋 <b>' + pick_(V_.winback) + '</b>\n\n' + postCaption_(L[0]), photo: prodPhoto_(L[0]), kb: [[{ text: '🛍 Открыть товар', url: siteUrl_('p-' + L[0].id) }], [{ text: '🛍 Весь каталог', url: siteUrl_('catalog') }]] };
     if (sendPostTo_(u, b)) { u.lastNudge = now; markPush_(u); sent++; }
   });
 }function tgWaits_() {
@@ -1443,7 +1445,7 @@ function tgNudge_() {
     if (!pr || pr.status === 'out' || pr.status === 'sold') return;
     var u = DB.getUser(w.userId);
     if (u && u.tgChat) {
-      var b = { text: '🛍 ' + fill_(pick_(V_.restock), { t: hesc_(w.title) }) + (pr ? '\n\n' + postCaption_(pr) : ''), photo: prodPhoto_(pr), kb: [[{ text: '🛍 Открыть товар', url: siteUrl_('p-' + w.productId) }]] };
+      var b = { text: '🛍 <b>' + fill_(pick_(V_.restock), { t: hesc_(w.title) }) + '</b>' + (pr ? '\n\n' + postCaption_(pr) : ''), photo: prodPhoto_(pr), kb: [[{ text: '🛍 Открыть товар', url: siteUrl_('p-' + w.productId) }]] };
       sendPostTo_(u, b); sent++;
     }
     var c = sh.getRange(w._row, iS + 1); c.setNumberFormat('@'); c.setValue(mskText_(Date.now()));
@@ -1620,7 +1622,7 @@ function statusKb_(no, st) {
 /* ---------- покупатель ---------- */
 function welcome_(name, linked) {
   return '👋 <b>Привет' + (name ? ', ' + hesc_(name) : '') + '! Это бот ONION SHOP</b>\n———\n' +
-    '•<b>что у нас:</b> одежда, обувь и аксессуары\n•<b>как:</b> в наличии и под заказ из Китая\n•<b>здесь:</b> статусы заказов, новинки, скидки и бонусы\n\n' +
+    '•<b>что у нас:</b> одежда, обувь и аксессуары\n•<b>как:</b> в наличии и под заказ из Китая\n•<b>тут:</b> статусы заказов, новинки, скидки, бонусы\n\n' +
     (linked ? '✅ Уведомления подключены, всё важное придёт сюда сразу.' : '🔔 Чтобы заказы и новинки приходили сюда, откройте на сайте кабинет → «Уведомления в Telegram» → «Подключить».') +
     '\n\nЕсли что-то непонятно, просто напишите, я передам менеджеру.';
 }
@@ -2056,38 +2058,38 @@ function pick_(a) { return a[Math.floor(Math.random() * a.length)]; }
 function pickAt_(a, i) { return a[(i || 0) % a.length]; }
 function fill_(s, o) { return String(s).replace(/\{(\w+)\}/g, function (m, k) { return o && o[k] !== undefined ? o[k] : m; }); }
 var V_ = {
-  fresh1: ['Смотрите, что у нас появилось 👀', 'Короче, пополнение! Свежая вещь уже в каталоге', 'Привет! Приехало кое-что интересное, глянете?', 'Новинка, прям то, что надо к сезону', 'Только выложили, вдруг как раз для вас', 'Заглянули на склад и не удержались, показываем 🔥', 'Есть новинка. Количество ограничено, поэтому лучше не тянуть', 'Пополнение подъехало. Смотрите, что понравится'],
-  freshN: ['Короче, у нас пополнение: {n} новых вещей. Смотрите ниже 👇', 'Привет! Выложили {n} новинок, листайте', 'Свежая подборка из {n} вещей, заглядывайте', 'Новинки подъехали, {n} штук. Что-то точно зацепит', 'Пополнение на {n} позиций. Всё уже в каталоге'],
-  sale: ['Скидки на вещи, пока они действуют 🔥', 'Короче, цены просели. Самое время оформить заказ', 'Подборка со скидкой: смотрите, что подешевело', 'Скидки до {pct}%. Заказы из Китая уже с доставкой в цене', 'Хорошая цена на эти вещи, долго такая не продержится'],
-  feat: ['Короче, на сайте новая штука: {f}. Загляните, посмотрите сами 👇', 'Мы кое-что добавили: {f}. Пробуйте, получится удобнее', 'Новое у нас: {f}. Открывайте и смотрите', 'Привет! Теперь есть {f}. Загляните, должно понравиться'],
-  drop: ['Подешевело то, что вы отложили в избранное 📉', 'Смотрите, цена на вещь из избранного стала ниже', 'Хорошая новость: вещь из вашего избранного подешевела'],
-  restock: ['Вы ждали, и вот «{t}» снова можно заказать!', 'Новость для вас: «{t}» снова в продаже', '«{t}» вернулась в каталог. Забирайте, пока есть'],
-  pay: ['Заказ {no} ждёт оплаты: {sum} ₽. Если уже оплатили, ничего делать не нужно, менеджер отметит.', 'Напоминаем про заказ {no}, к оплате {sum} ₽. Вопросы по оплате: просто напишите сюда.', 'Заказ {no} пока не оплачен ({sum} ₽). Если что-то непонятно, напишите, быстро всё решим.'],
-  review: ['Как вам заказ {no}? Оставьте отзыв на сайте: +{r} ониксов за оценку, +{rt} с текстом.', 'Заказ {no} у вас. Расскажите, как вам вещь: это важно для нас, а вам ониксы (+{r}, с текстом +{rt}).'],
-  winback: ['Давно не виделись! Пока вас не было, у нас появилось новое, загляните 👇', 'Привет! Скучаем. Мы тут добавили новинки, вот одна из них', 'Давно вас не было. Смотрите, что у нас сейчас в каталоге'],
-  welcomeBack: ['Привет! Рады видеть 👋', 'Привет! Чем помочь?', 'Здравствуйте! Что подсказать?'],
-  asked: ['✅ Передал менеджеру. Ответ придёт сюда же, обычно в течение рабочего дня.', '✅ Всё, менеджер уже в курсе. Ответ придёт прямо в этот чат.', '✅ Принял, отправил менеджеру. Как только ответит, сообщение придёт сюда.']
+  fresh1: ['Свежая вещь в каталоге 👀', 'Короче, пополнение. Смотрите, что приехало', 'Новинка. Таких у нас обычно немного', 'Выложили новую вещь, глянете?', 'Привет! Вот что у нас новенького', 'Прям то, что надо к сезону'],
+  freshN: ['Пополнение: {n} новых вещей', 'Короче, у нас {n} новинок', 'Выложили {n} новых вещей, смотрите ниже'],
+  sale: ['Цены просели, пока действует 🔥', 'Скидки до {pct}%', 'Подборка со скидкой, смотрите', 'Хорошая цена на эти вещи, долго не продержится'],
+  feat: ['Новое у нас: {f}. Загляните, должно быть удобнее', 'Короче, добавили {f}. Попробуйте', 'Теперь есть {f}. Открывайте и смотрите'],
+  drop: ['Подешевело то, что вы отложили 📉', 'Цена на вещь из избранного стала ниже', 'Хорошая новость: из избранного подешевело'],
+  restock: ['«{t}» снова в продаже', 'Вы ждали: «{t}» вернулась в каталог', 'Новость: «{t}» снова можно заказать'],
+  payTail: ['Если уже оплатили, ничего делать не нужно: менеджер отметит.', 'Оплатили? Тогда всё в порядке, менеджер скоро отметит.', 'Есть вопрос по оплате? Просто напишите сюда.'],
+  reviewTail: ['Расскажите, как вам вещь: это важно и нам, и другим покупателям.', 'Займёт минуту, а ониксы останутся у вас.', 'Нам правда важно ваше мнение.'],
+  winback: ['Давно не виделись! Смотрите, что у нас сейчас', 'Привет! Скучаем. Вот что появилось, пока вас не было', 'Заглядывайте, у нас много нового'],
+  welcomeBack: ['Привет! Рад видеть 👋', 'Привет! Чем помочь?', 'Здравствуйте! Что подсказать?'],
+  asked: ['✅ Передал менеджеру. Ответ придёт сюда же.', '✅ Принял, менеджер уже в курсе. Ответ придёт в этот чат.', '✅ Всё, отправил менеджеру. Как только ответит, напишу сюда.']
 };
-var ST_V_ = {
-  'Оформлен': ['Заказ принят, менеджер скоро свяжется', 'Приняли ваш заказ, уже занимаемся'],
-  'Выкуплен': ['Выкупили у поставщика, всё идёт по плану', 'Ваш заказ выкуплен, дальше отправка'],
-  'В пути': ['Заказ в пути, едет к нам из Китая', 'Поехали! Заказ уже в дороге'],
-  'На складе': ['Заказ приехал на наш склад, сейчас всё проверим', 'Он уже у нас на складе'],
-  'Едет к нам': ['Заказ едет к нам, осталось чуть-чуть', 'Заказ в пути к нам, скоро будет'],
-  'Едет к вам': ['Заказ уже едет к вам, скоро будет', 'Передали в доставку, скоро он будет у вас'],
-  'Получен': ['Заказ у вас, спасибо, что выбрали нас 🤍', 'Заказ получен. Надеемся, всё понравилось!'],
-  'Отменён': ['Заказ отменён', 'Заказ отменили']
+var ST_ = {
+  'Оформлен': ['🧾', 'Заказ принят', ['Менеджер скоро свяжется с вами.', 'Уже занимаемся, скоро напишем.']],
+  'Выкуплен': ['✅', 'Заказ выкуплен', ['Выкупили у поставщика, всё идёт по плану.', 'Дальше отправка, держим в курсе.']],
+  'В пути': ['🚚', 'Заказ в пути', ['Уже едет к нам из Китая.', 'Поехали! Следующий шаг: склад.']],
+  'На складе': ['📦', 'Заказ на складе', ['Приехал к нам, сейчас всё проверим.', 'Он уже у нас, смотрим состояние.']],
+  'Едет к нам': ['✈️', 'Заказ едет к нам', ['Осталось чуть-чуть.', 'Скоро будет на месте.']],
+  'Едет к вам': ['🚚', 'Заказ едет к вам', ['Передали в доставку, скоро будет у вас.', 'Скоро он будет у вас.']],
+  'Получен': ['🎉', 'Заказ получен', ['Спасибо, что выбрали нас 🤍', 'Надеемся, всё понравилось!']],
+  'Отменён': ['❌', 'Заказ отменён', ['Если это ошибка, просто напишите сюда.', 'Если есть вопросы, напишите сюда.']]
 };
 function statusText_(no, st) {
-  var E = { 'Оформлен': '🧾', 'Выкуплен': '✅', 'В пути': '🚚', 'На складе': '📦', 'Едет к нам': '✈️', 'Едет к вам': '🚚', 'Получен': '🎉', 'Отменён': '❌' };
-  var note = OnionCore.RULES.stageNotes && OnionCore.RULES.stageNotes[st] || '';
-  var t = (E[st] || '🔔') + ' <b>Заказ ' + hesc_(no) + '</b>: ' + hesc_(st) + '\n' + (ST_V_[st] ? pick_(ST_V_[st]) + '.' : '');
+  var s = ST_[st] || ['🔔', st, ['']], note = OnionCore.RULES.stageNotes && OnionCore.RULES.stageNotes[st] || '';
+  var t = s[0] + ' <b>' + s[1] + '</b>\n———\n•<b>заказ:</b> ' + hesc_(no) + '\n•<b>статус:</b> ' + hesc_(st) + '\n\n' + pick_(s[2]);
   if (note) t += '\n\nℹ️ ' + hesc_(note);
-  if (st === 'Получен') t += '\n\nОставьте отзыв на сайте, получите ониксы.';
-  if (st === 'Отменён') t += '\n\nОниксы, если вы их тратили, вернутся на баланс.';
+  if (st === 'Получен') t += '\nОставьте отзыв на сайте, получите ониксы.';
+  if (st === 'Отменён') t += '\nОниксы, если вы их тратили, вернутся на баланс.';
   return t;
 }
-function IMG_(n) { return siteBase_() + 'assets/bot/' + n + '.jpg'; }
+function payText_(no, sum) { return '💳 <b>Заказ ждёт оплаты</b>\n———\n•<b>заказ:</b> ' + hesc_(no) + '\n•<b>к оплате:</b> ' + hesc_(sum) + ' ₽\n\n' + pick_(V_.payTail); }
+function reviewText_(no, r, rt) { return '⭐ <b>Как вам заказ?</b>\n———\n•<b>заказ:</b> ' + hesc_(no) + '\n•<b>за отзыв:</b> +' + r + ' ониксов, с текстом +' + rt + '\n\n' + pick_(V_.reviewTail); }function IMG_(n) { return siteBase_() + 'assets/bot/' + n + '.jpg'; }
 function photoUrl_(id) { return siteBase_() + 'img/full/' + id + '.jpg'; }
 function prodPhoto_(c) { return c && c.photos && c.photos.length ? photoUrl_(c.photos[0].id) : ''; }
 function detailOf_(c, key) { var d = (c.details || []).filter(function (x) { return String(x[0]).toLowerCase() === key; })[0]; return d ? d[1] : ''; }
@@ -2154,25 +2156,25 @@ function bcBuild_(d) {
   var cat = DB.loadCatalog_() || {}, out = { text: '', photo: '', kb: [] }, iv = d.iv || 0;
   if (d.t === 'prod') {
     var c = cat[d.id]; if (!c) return null;
-    out.text = pickAt_(V_.fresh1, iv) + '\n\n' + postCaption_(c); out.photo = prodPhoto_(c);
+    out.text = '<b>' + pickAt_(V_.fresh1, iv) + '</b>\n\n' + postCaption_(c); out.photo = prodPhoto_(c);
     out.kb = [[{ text: '🛍 Открыть товар', url: siteUrl_('p-' + c.id) }], [{ text: '💬 Спросить менеджера', callback_data: 'q|' }]];
     return out;
   }
   if (d.t === 'fresh') {
     var L = freshList_(d.n || 3, cat); if (!L.length) return null;
     if (L.length === 1) return bcBuild_({ t: 'prod', id: L[0].id, iv: iv });
-    out.text = fill_(pickAt_(V_.freshN, iv), { n: L.length }) + '\n\n' + L.map(function (c) { return '•<i>' + hesc_(c.title) + '</i>: ' + c.price; }).join('\n');
+    out.text = '🆕 <b>' + fill_(pickAt_(V_.freshN, iv), { n: L.length }) + '</b>\n———\n' + L.map(function (c) { return '•<i>' + hesc_(c.title) + '</i>: ' + c.price; }).join('\n');
     out.photo = prodPhoto_(L[0]); out.kb = L.map(function (c) { return [{ text: String(c.title).slice(0, 34) + ' · ' + c.price, url: siteUrl_('p-' + c.id) }]; });
     return out;
   }
   if (d.t === 'sale') {
     var S = saleList_(3); if (!S.length) return null;
-    out.text = fill_(pickAt_(V_.sale, iv), { pct: Math.max(5, Math.floor(S[0].d / 5) * 5) }) + '\n\n' + S.map(function (x) { return '•<i>' + hesc_(x.c.title) + '</i>\n   <s>' + x.c.oldPrice + '</s> <b>' + x.c.price + '</b> (−' + x.d + '%)'; }).join('\n');
+    out.text = '🔥 <b>' + fill_(pickAt_(V_.sale, iv), { pct: Math.max(5, Math.floor(S[0].d / 5) * 5) }) + '</b>\n———\n' + S.map(function (x) { return '•<i>' + hesc_(x.c.title) + '</i>\n   <s>' + x.c.oldPrice + '</s> <b>' + x.c.price + '</b> (−' + x.d + '%)'; }).join('\n');
     out.photo = prodPhoto_(S[0].c); out.kb = S.map(function (x) { return [{ text: String(x.c.title).slice(0, 30) + ' · −' + x.d + '%', url: siteUrl_('p-' + x.c.id) }]; });
     return out;
   }
   if (d.t === 'feat') {
-    out.text = fill_(pickAt_(V_.feat, iv), { f: '<b>' + hesc_(d.f) + '</b>' }); out.photo = IMG_('feature');
+    out.text = '🚀 ' + fill_(pickAt_(V_.feat, iv), { f: '<b>' + hesc_(d.f) + '</b>' }); out.photo = IMG_('feature');
     out.kb = [[{ text: '🚀 Посмотреть на сайте', url: siteUrl_('') }]];
     return out;
   }
@@ -2244,8 +2246,10 @@ function botDemo_(chat) {
   var b3 = bcBuild_({ t: 'sale', iv: Math.floor(Math.random() * 20) }); if (b3) tgPhoto_(chat, b3.photo, b3.text, b3.kb);
   var b4 = bcBuild_({ t: 'feat', f: 'подборка образов', iv: Math.floor(Math.random() * 20) }); tgPhoto_(chat, b4.photo, b4.text, b4.kb);
   tgSend_(chat, statusText_('OS-26-00001', 'В пути'));
-  tgSend_(chat, '💳 ' + fill_(pick_(V_.pay), { no: 'OS-26-00001', sum: '26 564' }));
-  if (L.length) tgPhoto_(chat, prodPhoto_(L[0]), pick_(V_.winback) + '\n\n' + postCaption_(L[0]), [[{ text: '🛍 Открыть товар', url: siteUrl_('p-' + L[0].id) }]]);
+  tgSend_(chat, payText_('OS-26-00001', '26 564'));
+  tgSend_(chat, reviewText_('OS-26-00001', 5, 15), [[{ text: '⭐ Оставить отзыв', url: siteUrl_('orders') }]]);
+  tgSend_(chat, statusText_('OS-26-00001', 'Получен'));
+  if (L.length) tgPhoto_(chat, prodPhoto_(L[0]), '👋 <b>' + pick_(V_.winback) + '</b>\n\n' + postCaption_(L[0]), [[{ text: '🛍 Открыть товар', url: siteUrl_('p-' + L[0].id) }]]);
 }
 function botDemo() { var a = props_().getProperty('ADMIN_CHAT_ID'); if (a) botDemo_(a); else Logger.log('Менеджер ещё не привязан: напишите боту /start с аккаунта @' + adminUser_()); }
 

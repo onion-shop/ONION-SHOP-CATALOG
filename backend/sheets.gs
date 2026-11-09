@@ -1110,9 +1110,11 @@ function doPost(e) {
 function tgWebhook_(e, up) {
   var p = props_(), secret = p.getProperty('TG_SECRET');
   if (!secret || !e || !e.parameter || String(e.parameter.tg) !== secret) return out_({ ok: false });
-  var cache = CacheService.getScriptCache(), key = 'upd:' + up.update_id;
-  if (cache.get(key)) return out_({ ok: true, dup: true }); // Telegram мог повторить доставку
-  cache.put(key, '1', 3600);
+  var cache = CacheService.getScriptCache(), key = 'upd:' + up.update_id, lastId = +(p.getProperty('tgLastUpd') || 0);
+  // Google отвечает Telegram редиректом 302, поэтому Telegram повторяет доставку: каждое сообщение обрабатываем один раз
+  if (cache.get(key) || (lastId && up.update_id < lastId - 300)) return out_({ ok: true, dup: true });
+  cache.put(key, '1', 21600);
+  if (up.update_id > lastId) p.setProperty('tgLastUpd', String(up.update_id));
   var lock = LockService.getScriptLock();
   if (!lock.tryLock(25000)) { cache.remove(key); return out_({ ok: false }); }
   try {
@@ -1336,7 +1338,7 @@ function tgWatch_() {
     if (!u.watch || sent >= 40) return;
     var before = JSON.stringify(u.watch), drops = OnionCore.priceDrops(DB, u);
     if (drops.length && u.tgChat) {
-      var t = '📉 ' + pick_(V_.drop) + '\n\n' + drops.slice(0, 5).map(function (d) { return '•<i>' + hesc_(d.title) + '</i>: <s>' + d.was + '</s> <b>' + d.now + '</b>'; }).join('\n');
+      var t = '📉 <b>' + pick_(V_.drop) + '</b>\n———\n' + drops.slice(0, 5).map(function (d) { return '•<i>' + hesc_(d.title) + '</i>: <s>' + d.was + '</s> <b>' + d.now + '</b>'; }).join('\n');
       // tgSend_ отправляет с parse_mode HTML: раньше клиент видел в сообщении теги <b>, <s> как текст
       tgSend_(u.tgChat, t, [drops.slice(0, 3).map(function (d) { return { text: 'Открыть: ' + String(d.title).slice(0, 18), url: siteUrl_('p-' + d.id) }; })]); sent++;
     }
@@ -1377,12 +1379,12 @@ function tgReminders_() {
     var st = String(r[I('status')]).trim(), rm = {}; try { rm = r[I('remind')] ? JSON.parse(r[I('remind')]) : {}; } catch (e) { rm = {}; }
     var at = r[I('at')] instanceof Date ? r[I('at')].getTime() : 0;
     if (st === 'Оформлен' && !isTrue_(r[I('paid')]) && !rm.pay && at && now - at > 86400000) {
-      if (autoCfg_().remind) notifyHtml_(u, '💳 ' + fill_(pick_(V_.pay), { no: '<b>' + hesc_(no) + '</b>', sum: money_(r[I('toPay')]) }), [[{ text: '📦 Заказ', callback_data: 'm|' + no }, { text: '💬 Вопрос по оплате', callback_data: 'q|' + no }]]);
+      if (autoCfg_().remind) notifyHtml_(u, payText_(no, money_(r[I('toPay')])), [[{ text: '📦 Заказ', callback_data: 'm|' + no }, { text: '💬 Вопрос по оплате', callback_data: 'q|' + no }]]);
       setRemind_(sh, i + 2, I('remind'), r[I('remind')], { pay: 1 }); sent++;
     } else if (st === 'Получен' && rm.got && !rm.rev && now - rm.got > 3 * 86400000) {
       var items = []; try { items = JSON.parse(r[I('items')] || '[]'); } catch (e) { }
       var done = DB.reviewKeys(u.id), left = items.filter(function (it) { return done.indexOf(no + '|' + it.id) < 0; });
-      if (left.length && autoCfg_().remind) { notifyHtml_(u, '⭐ ' + fill_(pick_(V_.review), { no: '<b>' + hesc_(no) + '</b>', r: OnionCore.RULES.reward.review, rt: OnionCore.RULES.reward.reviewText }), [[{ text: '⭐ Оставить отзыв', url: siteUrl_('orders') }]]); sent++; }
+      if (left.length && autoCfg_().remind) { notifyHtml_(u, reviewText_(no, OnionCore.RULES.reward.review, OnionCore.RULES.reward.reviewText), [[{ text: '⭐ Оставить отзыв', url: siteUrl_('orders') }]]); sent++; }
       setRemind_(sh, i + 2, I('remind'), r[I('remind')], { rev: 1 });
     }
   });
@@ -1411,7 +1413,7 @@ function tgNew_() {
   fresh.sort(function (a, b) { return b - a; });
   var b = fresh.length === 1 ? bcBuild_({ t: 'prod', id: fresh[0], iv: Math.floor(Math.random() * 20) }) : (function () {
     var L = fresh.slice(0, 5).map(function (id) { return cat[id]; });
-    return { text: fill_(pick_(V_.freshN), { n: fresh.length }) + '\n\n' + L.map(function (c) { return '•<i>' + hesc_(c.title) + '</i>: ' + c.price; }).join('\n'), photo: prodPhoto_(L[0]), kb: L.map(function (c) { return [{ text: String(c.title).slice(0, 34) + ' · ' + c.price, url: siteUrl_('p-' + c.id) }]; }) };
+    return { text: '🆕 <b>' + fill_(pick_(V_.freshN), { n: fresh.length }) + '</b>\n———\n' + L.map(function (c) { return '•<i>' + hesc_(c.title) + '</i>: ' + c.price; }).join('\n'), photo: prodPhoto_(L[0]), kb: L.map(function (c) { return [{ text: String(c.title).slice(0, 34) + ' · ' + c.price, url: siteUrl_('p-' + c.id) }]; }) };
   })();
   p.setProperty('seenIds', ids.join(',').slice(-8500));
   if (!b) return;
@@ -1431,7 +1433,7 @@ function tgNudge_() {
     if (!u.tgChat || sent >= 20) return;
     var reg = u.createdAt ? new Date(u.createdAt).getTime() : 0, lo = Math.max(last[u.id] || 0, reg);
     if (!lo || now - lo < 30 * 86400000 || (u.lastNudge && now - u.lastNudge < 21 * 86400000) || !canPush_(u, 20)) return;
-    var b = { text: pick_(V_.winback) + '\n\n' + postCaption_(L[0]), photo: prodPhoto_(L[0]), kb: [[{ text: '🛍 Открыть товар', url: siteUrl_('p-' + L[0].id) }], [{ text: '🛍 Весь каталог', url: siteUrl_('catalog') }]] };
+    var b = { text: '👋 <b>' + pick_(V_.winback) + '</b>\n\n' + postCaption_(L[0]), photo: prodPhoto_(L[0]), kb: [[{ text: '🛍 Открыть товар', url: siteUrl_('p-' + L[0].id) }], [{ text: '🛍 Весь каталог', url: siteUrl_('catalog') }]] };
     if (sendPostTo_(u, b)) { u.lastNudge = now; markPush_(u); sent++; }
   });
 }function tgWaits_() {
@@ -1443,7 +1445,7 @@ function tgNudge_() {
     if (!pr || pr.status === 'out' || pr.status === 'sold') return;
     var u = DB.getUser(w.userId);
     if (u && u.tgChat) {
-      var b = { text: '🛍 ' + fill_(pick_(V_.restock), { t: hesc_(w.title) }) + (pr ? '\n\n' + postCaption_(pr) : ''), photo: prodPhoto_(pr), kb: [[{ text: '🛍 Открыть товар', url: siteUrl_('p-' + w.productId) }]] };
+      var b = { text: '🛍 <b>' + fill_(pick_(V_.restock), { t: hesc_(w.title) }) + '</b>' + (pr ? '\n\n' + postCaption_(pr) : ''), photo: prodPhoto_(pr), kb: [[{ text: '🛍 Открыть товар', url: siteUrl_('p-' + w.productId) }]] };
       sendPostTo_(u, b); sent++;
     }
     var c = sh.getRange(w._row, iS + 1); c.setNumberFormat('@'); c.setValue(mskText_(Date.now()));
