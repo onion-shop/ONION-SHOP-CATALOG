@@ -2601,3 +2601,22 @@ html,body{touch-action:pan-x pan-y}
 @keyframes orb-keep-r{from{transform:translate(-50%,-50%) rotate(0)}to{transform:translate(-50%,-50%) rotate(360deg)}}
 /* галерея товара: свайп вверх и вниз прокручивает страницу даже когда палец на фото, вправо и влево листает фото */
 .slides,.slides figure,.slides img,.gallery,.gal{touch-action:pan-x pan-y}
+
+/* ==== обновление 74 ==== */
+/* сердечки избранного везде неподвижные: без пульсации при открытии разделов */
+.fav,.fav-big,.fav .i,.fav-big .i,.fav.pop,.fav-big.pop,.fav[aria-pressed="true"] .i{animation:none!important;transition:none!important;transform:none!important}
+/* цена в каталоге: поля «От» и «До» и быстрые варианты */
+.cats-price{display:grid!important;gap:10px;overflow:visible!important}
+.cats-price .pr-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.cats-price .pr-in{display:flex;align-items:center;gap:8px;height:44px;padding:0 14px;border-radius:12px;background:var(--card);box-shadow:inset 0 0 0 1.5px var(--line-2);color:var(--ink-2);font-weight:700;font-size:14px}
+.cats-price .pr-in:focus-within{box-shadow:inset 0 0 0 2px var(--accent)}
+.cats-price .pr-in span{color:var(--ink-3);font-weight:600}
+.cats-price .pr-in input{flex:1;min-width:0;border:0;background:transparent;color:var(--ink);font:inherit;font-weight:800;font-size:16px;outline:none;padding:0}
+.cats-price .pr-in i{font-style:normal;color:var(--ink-3)}
+.cats-price .pr-chips{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+.cats-price .pr-chips::-webkit-scrollbar{display:none}
+.cats-price .pr-chips button{flex:none}
+/* рамки: Сакура (вместо Шахматки) и Праздник (вместо Банта) */
+.ava.f-f101{--fr:url(fr/f101.svg?v=8);--fr-s:url(fr/f101.svg?v=8);--fx:none;--fx-s:none;--fa:fr-sway2 7s ease-in-out infinite;--fxa:none}
+.ava.f-f91{--fr:url(fr/f91.svg?v=8);--fr-s:url(fr/f91.svg?v=8);--fx:url(fr/f91t.svg?v=8);--fx-s:url(fr/f91t.svg?v=8);--fa:none;--fxa:fr-twinkle 1.5s ease-in-out infinite;--fxo:50% 50%}
+.ava.f-f85{--fx:url(fr/f85t.svg?v=8);--fx-s:url(fr/f85t.svg?v=8)}

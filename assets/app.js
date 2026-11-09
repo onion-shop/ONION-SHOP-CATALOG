@@ -22,7 +22,7 @@
   var API = window.OnionAPI, CORE = window.OnionCore, RULES = CORE.RULES;
   var CAT_ORDER = ['shoes', 'tees', 'polo', 'hoodies', 'sweaters', 'longsleeves', 'outerwear', 'puffers', 'shirts', 'pants', 'jeans', 'shorts', 'suits', 'dresses', 'bags', 'headwear', 'accessories', 'jewelry', 'watches', 'perfume', 'underwear', 'other'];
   var CAT_RULES = [
-    ['shoes', ['кроссовк', 'кеды', 'кед ', 'мокасин', 'ботин', 'туфл', 'лофер', 'слайд', 'сланц', 'сапог', 'обувь', 'air force', 'dunk', 'угги', 'ugg', 'луноход', 'moon boot', 'полуботин', 'сандал', 'шлепан', 'тапочк', 'балетк', 'босонож']],
+    ['shoes', ['кроссовк', 'кеды', 'кед ', 'мокасин', 'ботин', 'туфл', 'лофер', 'слайд', 'сланц', 'сапог', 'обувь', 'air force', 'dunk', 'угги', 'ugg', 'луноход', 'moon boot', 'полуботин', 'сникер', 'снекер', 'sneaker', 'wedge', 'кроссы', 'jordan', 'yeezy', 'samba', 'gazelle', 'campus', 'сандал', 'шлепан', 'тапочк', 'балетк', 'босонож']],
     ['puffers', ['пуховик', 'дутик', 'дутая курт']],
     ['outerwear', ['куртк', 'пальто', 'ветровк', 'жилет', 'бомбер', 'парка', 'парку', 'плащ', 'дубленк', 'тренч', 'анорак', 'кожанк', 'косух']],
     ['hoodies', ['худи', 'толстовк', 'свитшот', 'зип ', 'зип-', 'олимпийк']],
@@ -40,6 +40,8 @@
     var low = ' ' + String(title).toLowerCase().replace(/ё/g, 'е') + ' ';
     if (/(^|[^а-яa-z])поло([^а-яa-z]|$)/.test(low)) return 'polo';
     if (low.indexOf('лонгслив') >= 0) return 'longsleeves';
+    // кофта, толстовка или свитер на молнии это худи (зип-худи), а не свитер
+    if (/(на молнии|зип|zip)/.test(low) && /(кофт|свитер|толстовк|худи)/.test(low)) return 'hoodies';
     var best = null;
     CAT_RULES.forEach(function (r) { r[1].forEach(function (w) { var i = low.indexOf(w); if (i >= 0 && (!best || i < best[0])) best = [i, r[0]]; }); });
     return best ? best[1] : '';
@@ -882,14 +884,16 @@
   }
 
   // ------------------------------------------------------------ каталог
-  function newFilter() { return { tab: 'all', cat: 'all', brand: 'all', q: '', sort: 'new', price: 'all', sale: false }; }
+  function newFilter() { return { tab: 'all', cat: 'all', brand: 'all', q: '', sort: 'new', pmin: '', pmax: '', sale: false }; }
   var filter = newFilter();
-  var PRICE = { lt2: [0, 2000, 'До 2 000 ₽'], mid: [2000, 5000, '2-5 тыс. ₽'], gt5: [5000, 1e9, 'От 5 000 ₽'] };
+  // быстрые варианты цены: [от, до, подпись]; можно ввести свою сумму в поля «От» и «До»
+  var PRICE = [[0, 1000, 'До 1 000'], [1000, 3000, '1-3 тыс.'], [3000, 5000, '3-5 тыс.'], [5000, 10000, '5-10 тыс.'], [10000, '', 'От 10 000']];
   function matches(p, f, skip) {
     if (skip !== 'tab' && f.tab !== 'all' && (f.tab === 'stock' ? !inStockTab(p) : p.status !== f.tab)) return false;
     if (skip !== 'cat' && f.cat !== 'all' && p.category !== f.cat) return false;
     if (f.brand !== 'all' && norm(p.brand) !== f.brand) return false;
-    if (f.price !== 'all') { var r = PRICE[f.price]; if (p.price < r[0] || p.price >= r[1]) return false; }
+    if (f.pmin !== '' && p.price < +f.pmin) return false;
+    if (f.pmax !== '' && p.price > +f.pmax) return false;
     if (f.sale && !p.oldPrice) return false;
     if (f.q && !qMatch(p, f.q, f._fz || 0)) return false;
     return true;
@@ -987,9 +991,19 @@
     var qx = $('#qchip-x'); if (qx) qx.addEventListener('click', function () { filter.q = ''; var hq = $('#hdr-q'); if (hq) hq.value = ''; updateCatalog(); });
     $$('button[data-cat]', cEl).forEach(function (b) { b.addEventListener('click', function () { filter.cat = b.getAttribute('data-cat'); updateCatalog(); }); });
     var pEl = $('#cat-price');
-    pEl.innerHTML = Object.keys(PRICE).map(function (k) { return '<button type="button" aria-pressed="' + (f.price === k) + '" data-price="' + k + '">' + PRICE[k][2] + '</button>'; }).join('') + '<span class="sep"></span><button type="button" aria-pressed="' + f.sale + '" data-sale="1">' + icon('percent') + 'Со скидкой</button>';
-    $$('[data-price]', pEl).forEach(function (b) { b.addEventListener('click', function () { var k = b.getAttribute('data-price'); filter.price = filter.price === k ? 'all' : k; if (filter.price !== 'all') track('price'); updateCatalog(); }); });
-    $('[data-sale]', pEl).addEventListener('click', function () { filter.sale = !filter.sale; updateCatalog(); });
+    // блок цены строится один раз (чтобы поля ввода не теряли фокус при каждом нажатии), дальше обновляются только нажатые кнопки
+    if (!pEl.querySelector('[data-pr]')) {
+      pEl.innerHTML = '<div class="pr-row"><label class="pr-in"><span>От</span><input id="pr-min" type="text" inputmode="numeric" autocomplete="off" placeholder="0"><i>₽</i></label><label class="pr-in"><span>До</span><input id="pr-max" type="text" inputmode="numeric" autocomplete="off" placeholder="любая"><i>₽</i></label></div><div class="pr-chips">' +
+        PRICE.map(function (r, i) { return '<button type="button" data-pr="' + i + '">' + r[2] + '</button>'; }).join('') + '<button type="button" data-sale="1">' + icon('percent') + 'Со скидкой</button></div>';
+      var applyIn = function () { var a = $('#pr-min').value.replace(/\D/g, ''), b = $('#pr-max').value.replace(/\D/g, ''); filter.pmin = a; filter.pmax = b; if (a || b) track('price'); updateCatalog(); };
+      var tmr; ['#pr-min', '#pr-max'].forEach(function (s) { $(s, pEl).addEventListener('input', function () { this.value = this.value.replace(/\D/g, '').slice(0, 7); clearTimeout(tmr); tmr = setTimeout(applyIn, 450); }); });
+      $$('[data-pr]', pEl).forEach(function (b) { b.addEventListener('click', function () { var r = PRICE[+b.getAttribute('data-pr')], on = String(filter.pmin) === String(r[0]) && String(filter.pmax) === String(r[1]); filter.pmin = on ? '' : String(r[0]); filter.pmax = on ? '' : String(r[1]); if (!on) track('price'); updateCatalog(); }); });
+      $('[data-sale]', pEl).addEventListener('click', function () { filter.sale = !filter.sale; updateCatalog(); });
+    }
+    $$('[data-pr]', pEl).forEach(function (b) { var r = PRICE[+b.getAttribute('data-pr')]; b.setAttribute('aria-pressed', String(String(f.pmin) === String(r[0]) && String(f.pmax) === String(r[1]))); });
+    $('[data-sale]', pEl).setAttribute('aria-pressed', String(!!f.sale));
+    var imin = $('#pr-min', pEl), imax = $('#pr-max', pEl);
+    if (document.activeElement !== imin) imin.value = f.pmin; if (document.activeElement !== imax) imax.value = f.pmax;
     var list = PRODUCTS.filter(function (p) { return matches(p, f); });
     if (f.sort === 'cheap') list.sort(function (a, b) { return a.price - b.price; });
     else if (f.sort === 'exp') list.sort(function (a, b) { return b.price - a.price; });
@@ -998,7 +1012,7 @@
     list.sort(function (a, b) { return rk(a) - rk(b); });
     $('#cat-title').textContent = f.tab === 'stock' ? 'В наличии' : f.tab === 'preorder' ? 'Предзаказ из Китая' : 'Все товары';
     $('#cat-count').textContent = 'Найдено: ' + list.length + ' ' + plural(list.length, 'товар', 'товара', 'товаров');
-    $('#cat-reset').hidden = !(f.cat !== 'all' || f.brand !== 'all' || f.q || f.price !== 'all' || f.sale);
+    $('#cat-reset').hidden = !(f.cat !== 'all' || f.brand !== 'all' || f.q || f.pmin !== '' || f.pmax !== '' || f.sale);
     var fzNote = f._fz === 1 ? '<div class="notice notice-info fz-note">' + icon('search') + '<div>Точных совпадений нет: показали похожие на «' + esc(f.q) + '».</div></div>' : f._fz === 2 ? '<div class="notice notice-info fz-note">' + icon('search') + '<div>Исправили раскладку: искали «' + esc(swapLayout(norm(f.q))) + '».</div></div>' : '';
     var dym = f.q && !f._fz ? didYouMean(f.q) : '';
     var soon = f.cat !== 'all' && !f.q && !PRODUCTS.some(function (p) { return p.category === f.cat; });
@@ -2186,7 +2200,7 @@
       '<div class="dash">' +
       '<div class="profile c12"><div class="who"><div class="ava-wrap">' + ava(u, 'lg') + '<button class="ava-cam" type="button" id="ava-cam" aria-label="Изменить фото">' + icon('camera') + '</button></div>' +
       '<div style="min-width:0"><h1>' + esc(u.name) + '</h1>' +
-      '<div class="meta"><span>@' + esc(u.login) + '</span>' + (u.email ? '<span>' + esc(u.email) + '</span>' : '') + '<button class="idb" type="button" data-copy="' + esc(u.code) + '">ID ' + esc(u.code) + icon('copy') + '</button><span>с нами с ' + esc(since) + '</span></div></div></div>' +
+      '<div class="meta"><span>@' + esc(u.login) + '</span>' + (u.email ? '<span>' + esc(u.email) + '</span>' : '') + '<button class="idb" type="button" data-copy="' + esc(u.code) + '">ID ' + esc(u.code) + icon('copy') + '</button><span>С нами с ' + esc(since) + '</span></div></div></div>' +
       '<div class="ptiles"><div class="ptile"><small>Ониксы</small><b>' + tk() + num(u.balance) + '</b></div><div class="ptile"><small>Это скидка до</small><b>' + rub(u.balanceRub) + '</b></div><div class="ptile"><small>Серия входов</small><b>' + u.streak + ' ' + plural(u.streak, 'день', 'дня', 'дней') + '</b></div><div class="ptile"><small>Активные заказы</small><b>' + active.length + '</b></div></div>' +
       '<div class="acts"><a class="btn" href="#roulette">' + icon('gift') + 'Игра</a><a class="btn btn-white" href="#cart">' + icon('bag') + 'Потратить ониксы</a></div></div>' +
 
