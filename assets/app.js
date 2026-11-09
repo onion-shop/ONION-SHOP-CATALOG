@@ -141,7 +141,7 @@
   function ava(u, cls) {
     var f = esc((u && u.frame) || 'base');
     // у рамок с «живым» движением по орбите (планета, Пакман) есть слой орбиты: он крутится, а планета остаётся ровной
-    var orb = (f === 'f63' || f === 'f83') ? '<i class="orb"><i class="o1"></i><i class="o2"></i></i>' : '';
+    var orb = f === 'f83' ? '<i class="orb"><i class="o1"></i><i class="o2"></i></i>' : f === 'f63' ? '<i class="orb"><i class="o1"></i><i class="o3"></i></i><i class="orb orb-b"><i class="o2"></i></i>' : '';
     return '<span class="ava f-' + f + (f !== 'base' ? ' fx' : '') + (cls ? ' ' + cls : '') + '">' + (u && u.avatar ? '<img src="' + esc(u.avatar) + '" alt="">' : '<b class="ini">' + esc(initials(u && u.name)) + '</b>') + orb + '</span>';
   }
 
@@ -2087,7 +2087,7 @@
     function frameOf(id) { return RULES.frames.filter(function (x) { return x.id === id; })[0] || RULES.frames[0]; }
     function own(f) { return f.id === 'base' || u.frames.indexOf(f.id) >= 0; }
     function lockText(f) {
-      if (f.src === 'level') return 'Откроется со статусом «' + RULES.levels[f.lvl].name + '» и выше, пока уровень не сбросился в конце месяца';
+      if (f.src === 'level') return f.lvl >= RULES.levels.length - 1 ? 'Доступна со статусом «' + RULES.levels[f.lvl].name + '»' : 'Доступна со статусом «' + RULES.levels[f.lvl].name + '» и выше';
       if (f.src === 'ach') { var aa = RULES.achv.filter(function (x) { return x.id === f.ach; })[0]; return 'За достижение «' + (aa ? aa.name : '') + '»: ' + (aa ? aa.d.toLowerCase() : ''); }
       return 'Выпадает только в «Посылке с сюрпризом»';
     }

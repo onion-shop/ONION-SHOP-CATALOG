@@ -2585,3 +2585,19 @@ html,body{touch-action:pan-x pan-y}
 /* Роза: только сверху, кольцо неподвижно, роза с листьями плавно покачивается вдоль кольца */
 .ava.f-f21{--fr:url(fr/f21.svg?v=5);--fr-s:url(fr/f21.svg?v=5);--fx:url(fr/f21t.svg?v=6);--fx-s:url(fr/f21t.svg?v=6);--fa:none;--fxa:fr-sway2 5s ease-in-out infinite;--fxo:50% 50%}
 @media (prefers-reduced-motion:reduce){.ava .orb,.ava .orb i{animation:none!important}}
+/* ==== рамки, обновление 71 ==== */
+/* статусные рамки: тот же металл и та же корона, что у значков программы лояльности; рамка неподвижна */
+.ava.f-lvl-bronze{--fr:url(fr/lvl-bronze.svg?v=7);--fr-s:url(fr/lvl-bronze.svg?v=7);--fx:none;--fx-s:none;--fa:none;--fxa:none}
+.ava.f-lvl-silver{--fr:url(fr/lvl-silver.svg?v=7);--fr-s:url(fr/lvl-silver.svg?v=7);--fx:none;--fx-s:none;--fa:none;--fxa:none}
+.ava.f-lvl-gold{--fr:url(fr/lvl-gold.svg?v=7);--fr-s:url(fr/lvl-gold.svg?v=7);--fx:none;--fx-s:none;--fa:none;--fxa:none}
+.ava.f-lvl-platinum{--fr:url(fr/lvl-platinum.svg?v=7);--fr-s:url(fr/lvl-platinum.svg?v=7);--fx:none;--fx-s:none;--fa:none;--fxa:none}
+.ava.f-lvl-diamond{--fr:url(fr/lvl-diamond.svg?v=7);--fr-s:url(fr/lvl-diamond.svg?v=7);--fx:none;--fx-s:none;--fa:none;--fxa:none}
+/* роза: стебель с листьями и шипами, розы и бутон сверху справа, лёгкое покачивание вдоль кольца */
+.ava.f-f21{--fr:url(fr/f21.svg?v=7);--fr-s:url(fr/f21.svg?v=7);--fx:url(fr/f21t.svg?v=7);--fx-s:url(fr/f21t.svg?v=7);--fa:none;--fxa:fr-sway2 6s ease-in-out infinite}
+/* космос: туманности, звёзды, созвездие, Сатурн и Марс по одной орбите, Земля с Луной по другой */
+.ava.f-f63{--fr:url(fr/f63.svg?v=7);--fr-s:url(fr/f63s.svg?v=7)}
+.ava.f-f63 .orb .o3{left:13.4%;top:50%;width:9%;height:9%;background:url(fr/f63m.svg?v=7) center/100% 100% no-repeat;animation:orb-keep 15s linear infinite}
+.ava.f-f63 .orb.orb-b{animation:orb-spin 26s linear infinite reverse}
+.ava.f-f63 .orb-b .o2{display:block;left:50%;top:87.4%;width:15%;height:15%;background:url(fr/f63e.svg?v=7) center/100% 100% no-repeat;animation:orb-keep-r 26s linear infinite}
+.ava.f-f63 .orb-b .o2::before{content:"";position:absolute;inset:-45%;border-radius:50%;background:radial-gradient(circle at 50% 5%,#f2f3f7 0 7%,#9aa0ad 9%,rgba(0,0,0,0) 11%);animation:orb-spin 5s linear infinite}
+@keyframes orb-keep-r{from{transform:translate(-50%,-50%) rotate(0)}to{transform:translate(-50%,-50%) rotate(360deg)}}
