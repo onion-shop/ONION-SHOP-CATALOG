@@ -20,32 +20,41 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Onest:wght@500;600;700;800&display=swap">
 <script>(function(){try{var t=localStorage.getItem('onion.shop.theme');if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
-<link rel="stylesheet" href="assets/style.css?v=ad35e603">
+<link rel="stylesheet" href="assets/style.css?v=8056efc7">
 </head>
 <body>
 <div id="splash" aria-hidden="true">
 <style>
-/* заставка: белый фон, по центру ONION SHOP, внизу полоса загрузки; шары плавают по краям и не заходят к центру */
+/* заставка: белый фон, ONION SHOP по центру, под ним полоса и подпись о загрузке; объёмные шары ходят по краям и не заходят к центру */
 #splash{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;overflow:hidden;background:#fff;transition:opacity .6s ease,visibility .6s;font-family:Onest,Inter,system-ui,sans-serif}
 #splash.out{opacity:0;visibility:hidden}
-#splash .dot{position:absolute;border-radius:50%;background:radial-gradient(circle at 32% 30%,#9fe6f5,#43c9e3 45%,#1a86c0);opacity:.22;will-change:transform}
-#splash .d1{width:46vmax;height:46vmax;left:-26vmax;top:-24vmax;animation:spl-a 9s ease-in-out infinite}
-#splash .d2{width:34vmax;height:34vmax;right:-20vmax;bottom:-16vmax;opacity:.18;animation:spl-b 11s ease-in-out infinite}
-#splash .d3{width:14vmax;height:14vmax;right:-4vmax;top:8%;opacity:.16;animation:spl-c 8s ease-in-out infinite}
-/* движение только вдоль краёв экрана, от центра в сторону */
-@keyframes spl-a{0%,100%{transform:translate(0,0)}50%{transform:translate(5vmax,-2vmax)}}
-@keyframes spl-b{0%,100%{transform:translate(0,0)}50%{transform:translate(-5vmax,2vmax)}}
-@keyframes spl-c{0%,100%{transform:translate(0,0)}50%{transform:translate(1.5vmax,5vmax)}}
-#splash .word{position:relative;margin:0;font-weight:900;font-size:clamp(2.4rem,11vw,4rem);letter-spacing:.02em;line-height:1;color:#0b1d3a;animation:spl-in .8s cubic-bezier(.2,1,.3,1) both}
+#splash .dot{position:absolute;border-radius:50%;will-change:transform;opacity:.62;
+  background:radial-gradient(circle at 30% 26%,rgba(255,255,255,.7) 0,rgba(255,255,255,0) 22%),radial-gradient(circle at 50% 48%,#4aa6e8 0,#2379c2 58%,#14589e 100%);
+  box-shadow:inset -1.4vmax -1.8vmax 3.2vmax rgba(4,36,86,.38),inset 1vmax 1vmax 2vmax rgba(255,255,255,.25),0 2.2vmax 4vmax rgba(24,90,170,.16)}
+#splash .d1{width:30vmax;height:30vmax;left:-14vmax;top:-9vmax;animation:spl-a 9s ease-in-out infinite}
+#splash .d2{width:22vmax;height:22vmax;right:-11vmax;top:22%;animation:spl-b 10s ease-in-out infinite}
+#splash .d3{width:34vmax;height:34vmax;right:-14vmax;bottom:-16vmax;animation:spl-a 12s ease-in-out infinite reverse}
+#splash .d4{width:16vmax;height:16vmax;left:-8vmax;bottom:16%;animation:spl-b 8s ease-in-out infinite reverse}
+#splash .d5{width:10vmax;height:10vmax;right:6vmax;top:-5vmax;animation:spl-c 7s ease-in-out infinite}
+/* только вдоль края и в сторону от центра, к центру не приближаются */
+@keyframes spl-a{0%,100%{transform:translate(0,0)}50%{transform:translate(-3vmax,3vmax)}}
+@keyframes spl-b{0%,100%{transform:translate(0,0)}50%{transform:translate(-2.5vmax,-4vmax)}}
+@keyframes spl-c{0%,100%{transform:translate(0,0)}50%{transform:translate(3vmax,-1vmax)}}
+#splash .box{position:relative;display:grid;justify-items:center;gap:14px;text-align:center}
+#splash .word{margin:0;font-weight:900;font-size:clamp(2.4rem,11vw,4rem);letter-spacing:.02em;line-height:1;color:#0a45c2;animation:spl-in .8s cubic-bezier(.2,1,.3,1) both}
 #splash .word em{font-style:normal;color:#2bb3e0}
 @keyframes spl-in{from{transform:translateY(12px);opacity:0}to{transform:none;opacity:1}}
-#splash .bar{position:absolute;left:50%;bottom:calc(64px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);width:min(260px,64vw);height:6px;border-radius:99px;background:#e4eef7;overflow:hidden}
+#splash .bar{width:min(240px,62vw);height:6px;border-radius:99px;background:#e4eef7;overflow:hidden}
 #splash .bar b{display:block;height:100%;width:100%;border-radius:99px;background:linear-gradient(90deg,#1a86c0,#43c9e3);transform-origin:left;transform:scaleX(.02);transition:transform .25s linear}
+#splash small{color:#5a6b82;font-size:13px;font-weight:600;min-height:1.2em}
 @media (prefers-reduced-motion: reduce){#splash *{animation:none!important}}
 </style>
-<span class="dot d1"></span><span class="dot d2"></span><span class="dot d3"></span>
+<span class="dot d1"></span><span class="dot d2"></span><span class="dot d3"></span><span class="dot d4"></span><span class="dot d5"></span>
+<div class="box">
 <h1 class="word">ONION <em>SHOP</em></h1>
 <div class="bar"><b id="spl-bar"></b></div>
+<small id="spl-txt">Загружаем данные…</small>
+</div>
 <script>try{if(sessionStorage.getItem('onion.splash')){var s=document.getElementById('splash');s.parentNode.removeChild(s)}}catch(e){}</script>
 </div>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><defs><linearGradient id="gTok" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6be3f4"/><stop offset="1" stop-color="#1470c0"/></linearGradient><linearGradient id="gVio" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8fd0ff"/><stop offset="1" stop-color="#1d4fb8"/></linearGradient><linearGradient id="gCy" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#43c9e3"/><stop offset="1" stop-color="#1a86c0"/></linearGradient><symbol id="i-home" viewBox="0 0 24 24"><path d="M3.5 10.2 12 3.5l8.5 6.7V19a1.5 1.5 0 0 1-1.5 1.5h-4.2v-5.8H9.2v5.8H5A1.5 1.5 0 0 1 3.5 19z"/></symbol><symbol id="i-plane" viewBox="0 0 24 24"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/></symbol><symbol id="i-list" viewBox="0 0 24 24"><rect x="4.5" y="4" width="15" height="17.5" rx="2.4"/><path d="M9 4V3.2c0-.4.3-.7.7-.7h4.6c.4 0 .7.3.7.7V4"/><path d="M8.5 10h7M8.5 13.8h7M8.5 17.6h4.2"/></symbol><symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4.5 20.5a7.5 7.5 0 0 1 15 0"/></symbol><symbol id="i-box" viewBox="0 0 24 24"><path d="M12 2.8 20.5 7.4v9.2L12 21.2l-8.5-4.6V7.4z"/><path d="M3.5 7.4 12 12l8.5-4.6M12 12v9.2"/><path d="m7.8 5.1 8.5 4.6"/></symbol><symbol id="i-truck" viewBox="0 0 24 24"><path d="M2.8 16.8V6.5c0-.6.5-1 1-1h9.7c.6 0 1 .4 1 1v10.3"/><path d="M14.5 9h3.6l3.1 3.6v4.2h-1.6"/><path d="M9.2 16.8h5.3"/><circle cx="6.8" cy="17.2" r="2"/><circle cx="17.4" cy="17.2" r="2"/></symbol><symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.6 2H4.4L6 16.5z"/><path d="M10 21a2.2 2.2 0 0 0 4 0"/></symbol><symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.3"/><path d="M12 7v5l3.2 2"/></symbol><symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="2.6"/><path d="M3.5 10h17M8 3v4M16 3v4"/><path d="M8 14h.01M12 14h.01M16 14h.01M8 17.2h.01M12 17.2h.01" stroke-width="2.3"/></symbol><symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.6"/><path d="m20.2 20.2-4.4-4.4"/></symbol><symbol id="i-camera" viewBox="0 0 24 24"><path d="M3.5 8.6c0-1.1.9-2 2-2h2.1l1.5-2.4h5.8l1.5 2.4h2.1c1.1 0 2 .9 2 2v8.9c0 1.1-.9 2-2 2h-13c-1.1 0-2-.9-2-2z"/><circle cx="12" cy="12.8" r="3.4"/></symbol><symbol id="i-card" viewBox="0 0 24 24"><rect x="2.5" y="5" width="19" height="14" rx="2.6"/><path d="M2.5 9.8h19M6.3 15h4"/></symbol><symbol id="i-edit" viewBox="0 0 24 24"><path d="M12.8 3.5H6.2c-1.1 0-2 .9-2 2v13c0 1.1.9 2 2 2h11.6c1.1 0 2-.9 2-2v-6.6"/><path d="M18.3 2.9a2 2 0 0 1 2.8 2.8l-7.6 7.6-3.6.8.8-3.6z"/></symbol><symbol id="i-check-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.3"/><path d="m8 12.3 2.7 2.7 5.4-5.5"/></symbol><symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol><symbol id="i-alert" viewBox="0 0 24 24"><path d="M10.3 4 2.6 17.6a2 2 0 0 0 1.7 3h15.4a2 2 0 0 0 1.7-3L13.7 4a2 2 0 0 0-3.4 0z"/><path d="M12 9.4v4.2"/><path d="M12 17h.01" stroke-width="2.4"/></symbol><symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.3"/><path d="M12 11v5.6"/><path d="M12 7.6h.01" stroke-width="2.4"/></symbol><symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 2.6 4.6 5.6v5.9c0 4.6 3.1 8.3 7.4 9.9 4.3-1.6 7.4-5.3 7.4-9.9V5.6z"/><path d="m8.8 12 2.2 2.2 4.3-4.4"/></symbol><symbol id="i-lock" viewBox="0 0 24 24"><rect x="4.5" y="10.5" width="15" height="10.5" rx="2.6"/><path d="M8 10.5V7.6a4 4 0 0 1 8 0v2.9"/><path d="M12 14.6v2.4"/></symbol><symbol id="i-key" viewBox="0 0 24 24"><circle cx="7.8" cy="15.6" r="4.4"/><path d="m10.9 12.5 8.6-8.6M16.6 6.8l2.6 2.6M14.2 9.2l2.1 2.1"/></symbol><symbol id="i-logout" viewBox="0 0 24 24"><path d="M9.5 20.5H5.6c-1.1 0-2-.9-2-2v-13c0-1.1.9-2 2-2h3.9"/><path d="m15.8 16.6 4.7-4.6-4.7-4.6M20.5 12H9.3"/></symbol><symbol id="i-gift" viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="4.6" rx="1.2"/><path d="M5 12.6v6.9c0 .6.4 1 1 1h12c.6 0 1-.4 1-1v-6.9M12 8v12.5"/><path d="M12 8c-1.4-3.6-5.6-4.6-5.6-1.9C6.4 7.5 8.8 8 12 8zm0 0c1.4-3.6 5.6-4.6 5.6-1.9 0 1.4-2.4 1.9-5.6 1.9z"/></symbol><symbol id="i-ticket" viewBox="0 0 24 24"><path d="M3 8.6V6.6c0-.8.7-1.5 1.5-1.5h15c.8 0 1.5.7 1.5 1.5v2a3.4 3.4 0 0 0 0 6.8v2c0 .8-.7 1.5-1.5 1.5h-15c-.8 0-1.5-.7-1.5-1.5v-2a3.4 3.4 0 0 0 0-6.8z"/><path d="M14.6 5.6v1.6M14.6 11.2v1.6M14.6 16.8v1.6"/></symbol><symbol id="i-percent" viewBox="0 0 24 24"><path d="M18.5 5.5 5.5 18.5"/><circle cx="7" cy="7" r="2.4"/><circle cx="17" cy="17" r="2.4"/></symbol><symbol id="i-crown" viewBox="0 0 24 24"><path d="m3.2 8 4.6 3.9L12 5.5l4.2 6.4L20.8 8l-1.9 10.2H5.1z"/><path d="M5.6 21h12.8"/></symbol><symbol id="i-star" viewBox="0 0 24 24"><path d="m12 3.2 2.7 5.5 6 .9-4.3 4.3 1 6-5.4-2.9-5.4 2.9 1-6-4.3-4.3 6-.9z"/></symbol><symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13.2 2.6 4.6 13.6H12l-1.2 7.8 8.6-11H12z"/></symbol><symbol id="i-copy" viewBox="0 0 24 24"><rect x="8.6" y="8.6" width="12.4" height="12.4" rx="2.6"/><path d="M15.4 8.6V5.6c0-1.1-.9-2-2-2H5.6c-1.1 0-2 .9-2 2v7.8c0 1.1.9 2 2 2h3"/></symbol><symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M4.6 4.6 6 6M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4 6 18M18 6l1.4-1.4"/></symbol><symbol id="i-moon" viewBox="0 0 24 24"><path d="M20.3 14.6A8.4 8.4 0 0 1 9.4 3.7a8.4 8.4 0 1 0 10.9 10.9z"/></symbol><symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.2 12S5.6 5.2 12 5.2 21.8 12 21.8 12 18.4 18.8 12 18.8 2.2 12 2.2 12z"/><circle cx="12" cy="12" r="3"/></symbol><symbol id="i-eye-off" viewBox="0 0 24 24"><path d="M10.6 5.3c.5-.1.9-.1 1.4-.1 6.4 0 9.8 6.8 9.8 6.8a17 17 0 0 1-2.3 3.2M6.6 6.7A16.7 16.7 0 0 0 2.2 12s3.4 6.8 9.8 6.8c1.9 0 3.6-.6 5-1.5"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2M3 3l18 18"/></symbol><symbol id="i-chat" viewBox="0 0 24 24"><path d="M20.8 11.8a8.6 8.6 0 0 1-12.7 7.6L3 20.9l1.6-4.9A8.6 8.6 0 1 1 20.8 11.8z"/><path d="M8.4 11.9h.01M12.1 11.9h.01M15.8 11.9h.01" stroke-width="2.4"/></symbol><symbol id="i-send" viewBox="0 0 24 24"><path d="M21.2 3.2 2.8 10.4l7 2.6 2.6 7z"/><path d="m9.8 13 5.6-5.4"/></symbol><symbol id="i-phone" viewBox="0 0 24 24"><path d="M5.1 3.5h3.4l1.8 4.5-2.3 1.5a11 11 0 0 0 6.5 6.5l1.5-2.3 4.5 1.8v3.4c0 .9-.7 1.6-1.6 1.6A16.6 16.6 0 0 1 3.5 5.1c0-.9.7-1.6 1.6-1.6z"/></symbol><symbol id="i-megaphone" viewBox="0 0 24 24"><path d="M3.6 10.2v3.6c0 .6.4 1 1 1h2.6l7.3 4.6V4.6L7.2 9.2H4.6c-.6 0-1 .4-1 1z"/><path d="M18 9a4.2 4.2 0 0 1 0 6M7.4 14.8 9 20.4h2.6"/></symbol><symbol id="i-play" viewBox="0 0 24 24"><rect x="2.8" y="4.6" width="18.4" height="14.8" rx="3.4"/><path d="m10 9 5 3-5 3z"/></symbol><symbol id="i-arrow-right" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol><symbol id="i-arrow-up-right" viewBox="0 0 24 24"><path d="M7 17 17 7M9 7h8v8"/></symbol><symbol id="i-chevron-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol><symbol id="i-chevron-right" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></symbol><symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol><symbol id="i-more" viewBox="0 0 24 24"><circle cx="12" cy="5" r="2" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="2" fill="currentColor" stroke="none"/><circle cx="12" cy="19" r="2" fill="currentColor" stroke="none"/></symbol>
@@ -155,8 +164,8 @@
 <script src="assets/config.js?v=a8e2c443"></script>
 <script src="data/catalog.js"></script>
 <script src="data/colors.js?v=d2416c99"></script>
-<script src="assets/core.js?v=c317ec47"></script>
+<script src="assets/core.js?v=40121fe1"></script>
 <script src="assets/api.js?v=68ffca9f"></script>
-<script src="assets/app.js?v=47c14900"></script>
+<script src="assets/app.js?v=98d90015"></script>
 </body>
 </html>

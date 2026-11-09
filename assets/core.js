@@ -542,7 +542,7 @@ var OnionCore = (function () {
     var waits = (db.waitsOf ? db.waitsOf(u.id) : []).map(function (w) { var pr = db.product ? db.product(w.productId) : null; return { id: w.productId, title: w.title, ready: !!(pr && pr.status !== 'out' && pr.status !== 'sold') }; });
     return {
       favIds: Object.keys(u.watch && typeof u.watch === 'object' ? u.watch : {}), tgOn: !!u.tgChat, tgName: u.tgName || '', tgCats: String(u.tgCats || '').split(',').filter(Boolean), waits: waits, reviewCount: rk.length,
-      id: u.id, code: 'OS' + u.id, login: u.login, name: u.name, phone: u.phone, tg: u.tg, email: u.email || '', avatar: u.avatar || '',
+      id: u.id, code: 'OS' + u.id, login: u.login, name: u.name, phone: u.phone, tg: u.tg, email: u.email || '', city: u.city || '', avatar: u.avatar || '',
       board: boardFor(u, db.now()), taskNews: ((u.tasks && u.tasks.news) || []).slice(),
       balance: u.balance || 0, balanceRub: tokensToRub(u.balance || 0),
       xp: u.xp || 0, level: levelOf(u), spent: u.spent || 0, ordersCount: u.ordersCount || 0, wheel: wheelFor(levelOf(u).index), balanceCap: RULES.balanceCap, pack: packInfo(db, u),
@@ -737,6 +737,7 @@ var OnionCore = (function () {
       }
       u.tg = tg; u.tgKey = tg ? tg.toLowerCase() : '';
     }
+    if (p.city != null) { u.city = String(p.city).replace(/\s+/g, ' ').trim().slice(0, 60); }
     if (p.avatar != null) {
       var av = String(p.avatar);
       if (av && (av.length > 45000 || !/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+\/=]+$/.test(av))) return err('Фото не подошло. Выберите другое (JPG или PNG)');
@@ -879,12 +880,13 @@ var OnionCore = (function () {
     if (String(f.name || '').trim().length < 2) return 'Укажите имя';
     var d = digits(f.phone); if (d.length < 10 || d.length > 15) return 'Укажите телефон';
     var tgv = cleanTg(f.tg); if (tgv && !validTg(tgv)) return 'Проверьте username в Telegram или оставьте поле пустым';
-    if (hasStock) { if (!RECV[f.recv]) return 'Выберите способ получения'; if (f.recv === 'city' && String(f.recvCity || '').trim().length < 2) return 'Укажите город'; }
+    if (hasStock) { if (!RECV[f.recv]) return 'Выберите способ получения'; if (f.recv === 'city' && String(f.recvCity || '').trim().length < 2) return 'Укажите город'; if (f.recv === 'courier' && String(f.recvAddr || '').trim().length < 5) return 'Укажите полный адрес для курьера'; }
     if (hasStock && hasPre && f.together !== 'together' && f.together !== 'separate') return 'Выберите: получить всё вместе или раздельно';
     if (hasPre) {
       if (!SHIP[f.ship]) return 'Выберите способ отправки из Китая';
-      if (String(f.city || '').trim().length < 2) return 'Укажите город для предзаказа';
       if (!PRE_RECV[f.preRecv]) return 'Выберите способ получения предзаказа';
+      if (f.preRecv !== 'meet' && String(f.city || '').trim().length < 2) return 'Укажите город';
+      if (f.preRecv === 'cdek' && String(f.preAddr || '').trim().length < 5) return 'Укажите полный адрес для СДЭК';
       if (f.ack !== true) return 'Подтвердите, что прочитали условия предзаказа';
     }
     return null;
@@ -946,7 +948,7 @@ var OnionCore = (function () {
       L.push(r);
     }
     if (hasPre) {
-      L.push('✈️ ПРЕДЗАКАЗ, отправка из Китая: ' + SHIP[f.ship] + ', город, ' + String(f.city).trim() + ', получение, ' + PRE_RECV[f.preRecv]);
+      L.push('✈️ ПРЕДЗАКАЗ, отправка из Китая: ' + SHIP[f.ship] + (f.preRecv !== 'meet' && String(f.city || '').trim() ? ', город: ' + String(f.city).trim() : '') + ', получение: ' + PRE_RECV[f.preRecv] + (f.preRecv === 'cdek' && String(f.preAddr || '').trim() ? ', адрес: ' + String(f.preAddr).trim() : ''));
       L.push('☑️ С условиями предзаказа ознакомлен(а)');
     }
     if (hasStock && hasPre) L.push(f.together === 'together' ? '📮 ПОЛУЧЕНИЕ ЗАКАЗА: ВСЁ ВМЕСТЕ: товар в наличии дождётся предзаказа, клиент получает всё сразу' : '📮 ПОЛУЧЕНИЕ ЗАКАЗА: РАЗДЕЛЬНО: сначала товары в наличии, а предзаказ после приезда из Китая');

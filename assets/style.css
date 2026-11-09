@@ -2533,3 +2533,10 @@ html,body{touch-action:pan-x pan-y}
 /* главная: меньше пустого места между баннерами и следующим разделом */
 .bcs{margin-bottom:4px}
 .bcs + .sec{margin-top:16px}
+/* ==== обновление 68 ==== */
+/* тонкая линия по краю карточек в тёмной теме: подложка-заглушка просвечивала по краю фото */
+.pcard .ph{background:transparent!important;animation:none!important;isolation:isolate}
+.pcard .ph img{inset:-1px;width:calc(100% + 2px);height:calc(100% + 2px);max-width:none}
+/* лампа на сканере: только оранжевая лампа без тёмной рамки-квадрата */
+.px-beacon{box-shadow:none!important;background:radial-gradient(circle at 50% 70%,#ffb066,#ff8a2a 70%);border-radius:9px 9px 3px 3px;width:16px;height:11px;margin-left:-8px;top:-8px}
+.px[data-s="scan"] .px-beacon,.px[data-s="in"] .px-beacon{box-shadow:0 0 14px 4px rgba(255,138,42,.9)!important}

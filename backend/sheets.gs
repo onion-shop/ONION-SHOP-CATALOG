@@ -96,7 +96,7 @@ var USER_COLS = [
   ['state', 'служебное: привилегии', { svc: true, t: 'text' }]
 ];
 /* в колонке «служебное: привилегии» хранится JSON с этими полями клиента */
-var STATE_KEYS = ['spinDay', 'daySpins', 'daySpinsMax', 'perkDiaMonth', 'perkDiaN', 'perkDiaAt', 'packMonth', 'frameAnim', 'cnRecv', 'tgChat', 'tgName', 'tgCats', 'phoneOk', 'bonusDone', 'emailCanon', 'achv', 'watch', 'recvTotal', 'bdayOpen', 'gm'];
+var STATE_KEYS = ['spinDay', 'daySpins', 'daySpinsMax', 'perkDiaMonth', 'perkDiaN', 'perkDiaAt', 'packMonth', 'frameAnim', 'cnRecv', 'tgChat', 'tgName', 'tgCats', 'phoneOk', 'bonusDone', 'emailCanon', 'achv', 'watch', 'recvTotal', 'bdayOpen', 'gm', 'city'];
 var JSON_COLS = { tasks: 1, promos: 1, frames: 1 };
 var PROMO_COLS = [
   ['code', 'Промокод', { w: 130, t: 'text', edit: true }],

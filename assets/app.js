@@ -403,6 +403,8 @@
     acct.user = u || null;
     try { if (u && API.getSession()) store.set('meCache', { s: API.getSession(), u: u }); else store.set('meCache', null); } catch (e) { /* */ }
     if (u && localOrders.length) { localOrders = []; store.set('orders', []); } // старые заказы без входа не должны попадать в новый кабинет
+    // город из профиля подставляется в заказ сам (пока клиент не ввёл другой)
+    if (u && u.city) { var cd = false; if (!form.recvCity) { form.recvCity = u.city; cd = true; } if (!form.city) { form.city = u.city; cd = true; } if (cd) saveForm(); }
     updateAcctUI();
     showNews(u);
     if (u && u.bdayToday) setTimeout(bdayGift, 700);
@@ -841,11 +843,12 @@
     PRODUCTS.forEach(function (p) { var b = (p.brand || '').trim(), k = norm(b); if (b && !seenB[k]) { seenB[k] = 1; brands.push(b); } });
     brands = brands.slice(0, 14);
     var v = $('#v-home');
+    var favList = favs.map(function (id) { return BY_ID[id]; }).filter(Boolean); // только товары, которые есть в каталоге: пустого «Избранного» не бывает
     v.innerHTML =
       '<div class="cts">' + tiles + '</div>' +
       '<div id="promo-slot">' + promoHtml() + '</div>' +
       '<div class="bcs">' + banner3('Подборка', 'Выбор магазина', 'Вещи, которые мы советуем', '#catalog', picks, 'bc-1') + banner3('В наличии', 'Лучшие предложения', hot.length && discount(hot[0]) >= 3 ? 'Скидки до −' + discount(hot[0]) + '%' : 'Уже в Москве', '#stock', hot, 'bc-2') + banner3('Из Китая', 'Новинки из Китая', 'Доставка уже включена в стоимость товара', '#preorder', preL, 'bc-3') + '</div>' +
-      (favs.length ? '<div class="sec"><div class="sec-head"><h2>Избранное</h2><a class="btn btn-ghost btn-sm" href="#favorites">Все <span class="cnt-pill">' + favs.length + '</span></a></div><div class="hscroll">' + favs.map(function (id) { return BY_ID[id]; }).filter(Boolean).slice(0, 10).map(card).join('') + '</div></div>' : '') +
+      (favList.length ? '<div class="sec"><div class="sec-head"><h2>Избранное</h2></div><div class="hscroll">' + favList.slice(0, 10).map(card).join('') + '</div></div>' : '') +
       (rec.length ? '<div class="sec"><div class="sec-head"><h2>Вы смотрели</h2></div><div class="hscroll">' + rec.map(card).join('') + '</div></div>' : '') +
       '<div class="sec"><div class="sec-head"><h2>Новинки</h2><a class="btn btn-ghost btn-sm" href="#catalog">Весь каталог</a></div>' + grid(fresh, 'home-grid') + '</div>' +
       '<div class="sec"><a class="faqc" href="#info"><span class="faqc-ic">' + icon('info') + '</span><span class="faqc-t"><b>Частые вопросы</b><small>Заказ, сроки, доставка, оплата</small></span><span class="faqc-go">' + icon('arrow-right') + '</span></a></div>';
@@ -1229,7 +1232,7 @@
   }
 
   // ------------------------------------------------------------ корзина, анкета, ониксы, промокод
-  var form = Object.assign({ name: '', phone: '', tg: '', recv: '', recvCity: '', recvAddr: '', ship: 'truck', city: '', preRecv: '', comment: '', together: '', vip: false }, store.get('form', {}));
+  var form = Object.assign({ name: '', phone: '', tg: '', recv: '', recvCity: '', recvAddr: '', ship: 'truck', city: '', preRecv: '', preAddr: '', comment: '', together: '', vip: false }, store.get('form', {}));
   form.comment = ''; // поля комментария больше нет: ранее сохранённый текст не отправляем
   cart.forEach(function (l) { l.note = ''; });
   var draft0 = store.get('draft', {}) || {};
@@ -1409,18 +1412,19 @@
         '<div class="f full" data-f="tg"><label for="f-tg">Telegram</label><div class="prefix"><span>@</span><input class="input" id="f-tg" autocomplete="off" autocapitalize="off" value="' + esc(form.tg) + '"></div><span class="err-msg" hidden></span></div></div></div>' : '') +
       (u && !profileOk(u) ? '<div class="notice notice-warn need-prof" data-f="prof">' + icon('user') + '<div><b>Заполните данные в кабинете</b>: имя и телефон берутся из него.</div><a class="btn btn-sm" href="#account">В профиль</a></div>' : '') +
 
-      (t.stock ? '<div class="card panel"><div class="panel-head"><h2><span class="n">' + (++n) + '</span>Получение' + (t.pre ? ' · в наличии' : '') + '</h2></div>' +
+      (t.stock ? '<div class="card panel"><div class="panel-head"><h2><span class="n">' + (++n) + '</span>' + (t.pre ? 'Получение в наличии' : 'Получение') + '</h2></div>' +
         '<div class="f" data-f="recv"><span class="lbl sr">Способ получения</span><div class="radios mini">' +
         radio('recv', 'city', form.recv, 'Авито Доставка', '') +
         radio('recv', 'courier', form.recv, 'Курьер', '') +
         radio('recv', 'pickup', form.recv, 'Самовывоз', '') +
         '</div><span class="err-msg" hidden></span></div>' +
-        '<div class="f" data-f="recvCity"' + (form.recv === 'city' ? '' : ' hidden') + '><label for="f-recv-city">Город</label><input class="input" id="f-recv-city" autocomplete="address-level2" placeholder="Москва или другой город" value="' + esc(form.recvCity) + '"><span class="err-msg" hidden></span></div>' +
-        '<div class="f" data-f="recvAddr"' + (form.recv === 'courier' ? '' : ' hidden') + '><label for="f-recv-addr">Адрес или район <span class="opt-l">· по желанию</span></label><input class="input" id="f-recv-addr" autocomplete="street-address" placeholder="Уточним с менеджером" value="' + esc(form.recvAddr) + '"></div></div>' : '') +
+        '<div class="f" data-f="recvCity"' + (form.recv === 'city' ? '' : ' hidden') + '><label for="f-recv-city">Город</label><input class="input" id="f-recv-city" autocomplete="address-level2" placeholder="Например, Москва" value="' + esc(form.recvCity) + '"><span class="err-msg" hidden></span></div>' +
+        '<div class="f" data-f="recvAddr"' + (form.recv === 'courier' ? '' : ' hidden') + '><label for="f-recv-addr">Полный адрес</label><input class="input" id="f-recv-addr" autocomplete="street-address" placeholder="Город, улица, дом, квартира" value="' + esc(form.recvAddr) + '"><span class="err-msg" hidden></span></div></div>' : '') +
 
       (t.pre ? '<div class="card panel"><div class="panel-head"><h2><span class="n">' + (++n) + '</span>Предзаказ из Китая</h2><a class="link-btn" href="#info">Подробнее</a></div>' +
         '<div class="f" data-f="ship"><span class="lbl">Отправка со склада в Китае</span><div class="notice">' + icon('truck') + '<div><b>Фура</b>, 18-32 дня от склада. Стоимость доставки из Китая уже включена в стоимость.</div></div></div>' +
-        '<div class="f" data-f="city"><label for="f-city">Город, куда привезти</label><input class="input" id="f-city" autocomplete="address-level2" placeholder="Например, Москва" value="' + esc(form.city) + '"><span class="err-msg" hidden></span></div>' +
+        '<div class="f" data-f="city"' + (form.preRecv && form.preRecv !== 'meet' ? '' : ' hidden') + '><label for="f-city">Город</label><input class="input" id="f-city" autocomplete="address-level2" placeholder="Например, Москва" value="' + esc(form.city) + '"><span class="err-msg" hidden></span></div>' +
+        '<div class="f" data-f="preAddr"' + (form.preRecv === 'cdek' ? '' : ' hidden') + '><label for="f-pre-addr">Полный адрес</label><input class="input" id="f-pre-addr" autocomplete="street-address" placeholder="Город, улица, дом, квартира" value="' + esc(form.preAddr) + '"><span class="err-msg" hidden></span></div>' +
         '<div class="f" data-f="preRecv"><span class="lbl">Способ получения</span><div class="radios mini">' + radio('preRecv', 'avito', form.preRecv, 'Авито', '') + radio('preRecv', 'cdek', form.preRecv, 'СДЭК', '') + radio('preRecv', 'meet', form.preRecv, 'Встреча', '') + '</div><span class="err-msg" hidden></span></div>' +
         '<div class="f" data-f="ack"><div class="ack" id="ack"><div class="q"><span class="checkbox" id="ack-box" role="img" aria-label="Не подтверждено">' + icon('check') + '</span><div><b>Я прочитал(а) условия предзаказа</b> <a class="small" href="' + SHOP.preorderUrl + '" target="_blank" rel="noopener">Открыть</a></div></div>' +
         '<div class="ack-opts"><button type="button" class="yes" data-ack="yes" aria-pressed="' + (ack === 'yes') + '">Да, ознакомился(-ась)</button><button type="button" class="no" data-ack="no" aria-pressed="' + (ack === 'no') + '">Нет, ещё не успел(а)</button><button type="button" class="cancel" data-ack="cancel">Отказаться от оформления</button></div>' +
@@ -1509,13 +1513,14 @@
     function bind(id, key) { var el = $('#' + id, v); if (!el) return; el.addEventListener('input', function () { form[key] = el.value; saveForm(); clearF(key); }); }
     var tl = $('#to-list', v); if (tl) tl.addEventListener('click', function () { cartStep = 'list'; renderCart(); window.scrollTo(0, 0); });
     var vp = $('#f-vip', v); if (vp) vp.addEventListener('change', function () { form.vip = vp.checked; saveForm(); updSum(); });
-    bind('f-name', 'name'); bind('f-phone', 'phone'); bind('f-tg', 'tg'); bind('f-recv-city', 'recvCity'); bind('f-recv-addr', 'recvAddr'); bind('f-city', 'city'); bind('f-comment', 'comment');
+    bind('f-name', 'name'); bind('f-phone', 'phone'); bind('f-tg', 'tg'); bind('f-recv-city', 'recvCity'); bind('f-recv-addr', 'recvAddr'); bind('f-city', 'city'); bind('f-pre-addr', 'preAddr'); bind('f-comment', 'comment');
     var ph = $('#f-phone', v); if (ph) ph.addEventListener('blur', function () { var f = CORE.fmtPhone(ph.value); if (f && CORE.digits(f).length === 11) { ph.value = f; form.phone = f; saveForm(); } });
     var tg = $('#f-tg', v); if (tg) tg.addEventListener('blur', function () { var c = CORE.cleanTg(tg.value); tg.value = c; form.tg = c; saveForm(); });
     $$('input[type="radio"]', v).forEach(function (r) {
       r.addEventListener('change', function () {
         form[r.name] = r.value; saveForm(); clearF(r.name);
         if (r.name === 'recv') { var c = $('[data-f="recvCity"]', v), a = $('[data-f="recvAddr"]', v); if (c) c.hidden = r.value !== 'city'; if (a) a.hidden = r.value !== 'courier'; }
+        if (r.name === 'preRecv') { var pc = $('[data-f="city"]', v), pa = $('[data-f="preAddr"]', v); if (pc) pc.hidden = r.value === 'meet'; if (pa) pa.hidden = r.value !== 'cdek'; }
       });
     });
     function setAck(val) {
@@ -1553,7 +1558,17 @@
         toast(errs.length === 1 ? errs[0][1] : 'Заполните отмеченные поля: ' + errs.length, null, 'warn');
         return;
       }
-      submitOrder(lines, tt, $('#submit-btn', v));
+      // город должен существовать: проверяем перед отправкой
+      var cityChecks = [];
+      if (tt.stock && form.recv === 'city') cityChecks.push(['recvCity', form.recvCity]);
+      if (tt.pre && form.preRecv && form.preRecv !== 'meet') cityChecks.push(['city', form.city]);
+      var sbtn = $('#submit-btn', v); if (sbtn) sbtn.disabled = true;
+      Promise.all(cityChecks.map(function (c) { return verifyCity(c[1]); })).then(function (rs) {
+        if (sbtn) sbtn.disabled = false;
+        var bi = -1; rs.forEach(function (r, i) { if (!r.ok) { setF(cityChecks[i][0], 'Не нашли такой город. Проверьте название'); if (bi < 0) bi = i; } });
+        if (bi >= 0) { var fb = $('[data-f="' + cityChecks[bi][0] + '"]', v); if (fb) fb.scrollIntoView({ behavior: 'smooth', block: 'center' }); toast('Не нашли такой город. Проверьте название', null, 'warn'); return; }
+        submitOrder(lines, tt, sbtn);
+      });
     });
   }
   function setF(key, msg) { var f = $('[data-f="' + key + '"]'); if (!f) return; f.classList.add('err'); var m = $('.err-msg', f); if (m) { m.textContent = msg; m.hidden = false; } }
@@ -1569,11 +1584,12 @@
       var t = CORE.cleanTg(form.tg); if (t && !/^[A-Za-z0-9_]{4,32}$/.test(t)) e.push(['tg', 'Username: латиница, цифры и «_», от 4 символов']);
     }
     if (hasStock && hasPre && !form.together) e.push(['together', 'Выберите: получить всё вместе или раздельно']);
-    if (hasStock) { if (!form.recv) e.push(['recv', 'Выберите способ получения']); else if (form.recv === 'city' && form.recvCity.trim().length < 2) e.push(['recvCity', 'Укажите город (можно Москва)']); }
+    if (hasStock) { if (!form.recv) e.push(['recv', 'Выберите способ получения']); else if (form.recv === 'city' && form.recvCity.trim().length < 2) e.push(['recvCity', 'Укажите город']); else if (form.recv === 'courier' && form.recvAddr.trim().length < 5) e.push(['recvAddr', 'Укажите полный адрес']); }
     if (hasPre) {
       form.ship = 'truck';
-      if (form.city.trim().length < 2) e.push(['city', 'Укажите город']);
       if (!form.preRecv) e.push(['preRecv', 'Выберите способ получения']);
+      else if (form.preRecv !== 'meet' && form.city.trim().length < 2) e.push(['city', 'Укажите город']);
+      else if (form.preRecv === 'cdek' && form.preAddr.trim().length < 5) e.push(['preAddr', 'Укажите полный адрес']);
       if (ack !== 'yes') e.push(['ack', ack === 'no' ? 'Прочитайте условия предзаказа и подтвердите' : 'Подтвердите, что прочитали условия предзаказа']);
     }
     return e;
@@ -1897,16 +1913,46 @@
       API.call('setEmail', { email: $('#m-email', md).value.trim(), code: $('#m-code', md).value.trim() }).then(function (r) { busy(b, false); if (!r.ok) { $('#m-msg', md).innerHTML = '<div class="form-err">' + esc(r.error) + '</div>'; return; } closeModal(); setUser(r.user); toast('Почта подтверждена'); });
     });
   }
+  /* Проверка города: что город настоящий, а не набор букв. Сначала список известных городов (мгновенно),
+     если города там нет, спрашиваем справочник OpenStreetMap (Nominatim): принимаем только город или городской посёлок.
+     Если справочник недоступен (нет сети), заказ не блокируем. */
+  var CITY_LIST = ('москва,санкт-петербург,новосибирск,екатеринбург,казань,нижний новгород,красноярск,челябинск,самара,уфа,ростов-на-дону,краснодар,омск,воронеж,пермь,волгоград,саратов,тюмень,тольятти,барнаул,ижевск,махачкала,хабаровск,ульяновск,иркутск,владивосток,ярославль,севастополь,ставрополь,томск,кемерово,набережные челны,оренбург,новокузнецк,балашиха,рязань,чебоксары,калининград,пенза,липецк,киров,астрахань,тула,сочи,курск,улан-удэ,тверь,магнитогорск,сургут,брянск,иваново,якутск,владимир,белгород,нижний тагил,чита,калуга,смоленск,волжский,курган,орёл,череповец,вологда,владикавказ,саранск,мурманск,тамбов,грозный,стерлитамак,петрозаводск,кострома,нижневартовск,новороссийск,йошкар-ола,химки,таганрог,комсомольск-на-амуре,сыктывкар,нальчик,шахты,дзержинск,энгельс,орск,благовещенск,братск,королёв,мытищи,люберцы,старый оскол,великий новгород,златоуст,северодвинск,пушкино,подольск,красногорск,одинцово,домодедово,раменское,жуковский,электросталь,сергиев посад,щёлково,долгопрудный,реутов,ногинск,обнинск,дубна,видное,лобня,чехов,клин,коломна,серпухов,истра,солнечногорск,наро-фоминск,егорьевск,орехово-зуево,воскресенск,пятигорск,кисловодск,ессентуки,минеральные воды,невинномысск,армавир,анапа,геленджик,туапсе,ейск,евпатория,ялта,симферополь,керчь,феодосия,абакан,горно-алтайск,бийск,рубцовск,прокопьевск,ангарск,норильск,южно-сахалинск,петропавловск-камчатский,магадан,анадырь,салехард,ханты-мансийск,новый уренгой,ноябрьск,надым,когалым,нефтеюганск,нягань,лангепас,мегион,усинск,ухта,воркута,архангельск,котлас,великие луки,псков,выборг,гатчина,сосновый бор,тихвин,всеволожск,кингисепп,луга,димитровград,новомосковск,ефремов,алексин,елец,мичуринск,рассказово,борисоглебск,россошь,бутурлиновка,камышин,михайловка,урюпинск,балаково,вольск,маркс,пугачёв,балашов,кузнецк,заречный,каменск-уральский,первоуральск,serov,серов,асбест,березовский,верхняя пышма,полевской,ревда,новоуральск,лесной,качканар,краснотурьинск,ирбит,тавда,ишим,тобольск,ялуторовск,златоуст,миасс,копейск,озёрск,троицк,сатка,аша,чайковский,соликамск,березники,лысьва,кунгур,кудымкар,ижевск,сарапул,воткинск,глазов,можга,набережные челны,нижнекамск,альметьевск,елабуга,зеленодольск,бугульма,чистополь,салават,октябрьский,нефтекамск,кумертау,ишимбай,сибай,бирск,белебей,минск,гомель,могилёв,витебск,гродно,брест,бобруйск,барановичи,астана,нур-султан,алматы,шымкент,караганда,актобе,тараз,павлодар,усть-каменогорск,семей,костанай,атырау,актау,петропавловск,кокшетау,ташкент,самарканд,бухара,наманган,андижан,фергана,бишкек,ош,ереван,гюмри,тбилиси,батуми,кутаиси,баку,гянджа,сумгаит,кишинёв,тирасполь,бельцы,душанбе,худжанд,ашхабад,рига,вильнюс,таллин,киев,харьков,одесса,днепр,львов,запорожье,донецк,луганск,мариуполь,мелитополь,бердянск,херсон,горловка,макеевка,алчевск,стаханов,свердловск,краснодон').split(',');
+  var CITY_SET = {}; CITY_LIST.forEach(function (c) { CITY_SET[c] = 1; });
+  function cityNorm(s) { return String(s || '').toLowerCase().replace(/ё/g, 'е').replace(/^\s*(г\.?|город)\s+/, '').replace(/[.,]/g, ' ').replace(/\s+/g, ' ').trim(); }
+  var cityCache = {};
+  function verifyCity(name) {
+    var n = cityNorm(name);
+    if (n.length < 2 || !/^[а-яa-z][а-яa-z \-]+$/i.test(n) || /(.)\1\1/.test(n)) return Promise.resolve({ ok: false });
+    if (CITY_SET[n] || CITY_SET[n.replace(/ё/g, 'е')]) return Promise.resolve({ ok: true });
+    var listNoYo = CITY_LIST.some(function (c) { return cityNorm(c) === n; }); if (listNoYo) return Promise.resolve({ ok: true });
+    if (cityCache[n] != null) return Promise.resolve({ ok: cityCache[n] });
+    if (!window.fetch || (window.AbortController === undefined)) return Promise.resolve({ ok: true });
+    var ctl = new AbortController(), tm = setTimeout(function () { ctl.abort(); }, 7000);
+    return fetch('https://nominatim.openstreetmap.org/search?format=json&limit=8&accept-language=ru&q=' + encodeURIComponent(name), { signal: ctl.signal })
+      .then(function (r) { clearTimeout(tm); return r.json(); })
+      .then(function (arr) {
+        var ok = (arr || []).some(function (x) {
+          var first = cityNorm(String(x.display_name || '').split(',')[0]), nm = cityNorm(x.name || '');
+          var kind = x.addresstype || x.type;
+          return (first === n || nm === n) && /^(city|town|municipality|city_district)$/.test(kind || '');
+        });
+        cityCache[n] = ok; return { ok: ok };
+      }, function () { clearTimeout(tm); return { ok: true }; });
+  }
   function profileModal() {
     var u = acct.user;
     var md = openModal(modalHead('Имя, телефон и Telegram') + '<form id="prof-form" class="fgrid" novalidate>' +
       '<div class="f full"><label for="p-name">Имя</label><input class="input" id="p-name" value="' + esc(u.name) + '"></div>' +
       '<div class="f"><label for="p-phone">Телефон</label><input class="input" id="p-phone" type="tel" value="' + esc(u.phone) + '"></div>' +
       '<div class="f"><label for="p-tg">Telegram <span class="opt-l">· желательно</span></label><div class="prefix"><span>@</span><input class="input" id="p-tg" value="' + esc(u.tg) + '"></div></div>' +
+      '<div class="f full"><label for="p-city">Город <span class="opt-l">подставляется в заказы</span></label><input class="input" id="p-city" autocomplete="address-level2" placeholder="Например, Москва" value="' + esc(u.city || '') + '"><span class="err-msg" id="p-city-err" hidden>Не нашли такой город. Проверьте название.</span></div>' +
       '<div class="f full"><button class="btn" type="submit">Сохранить</button></div></form>', { cls: 'sm' });
     $('#prof-form', md).addEventListener('submit', function (e) {
       e.preventDefault();
-      API.call('profile', { name: $('#p-name', md).value, phone: $('#p-phone', md).value, tg: $('#p-tg', md).value }).then(function (r) { if (r.ok) { closeModal(); setUser(r.user); toast('Данные сохранены'); } else toast(r.error, null, 'warn'); });
+      var city = $('#p-city', md).value.trim(), er = $('#p-city-err', md); er.hidden = true;
+      var go = function () { API.call('profile', { name: $('#p-name', md).value, phone: $('#p-phone', md).value, tg: $('#p-tg', md).value, city: city }).then(function (r) { if (r.ok) { closeModal(); setUser(r.user); toast('Данные сохранены'); } else toast(r.error, null, 'warn'); }); };
+      if (!city) { go(); return; }
+      verifyCity(city).then(function (c) { if (c.ok) go(); else { er.hidden = false; $('#p-city', md).focus(); } });
     });
   }
 
@@ -2815,7 +2861,8 @@
   function netBar(show) {
     var el = $('#net-bar');
     if (!el) { el = document.createElement('div'); el.id = 'net-bar'; el.className = 'net-bar'; el.setAttribute('role', 'status'); el.hidden = true; el.innerHTML = '<span>Нет связи: каталог открыт, но войти и оформить заказ пока нельзя.</span><button type="button">Повторить</button>'; document.body.insertBefore(el, document.body.firstChild); $('button', el).addEventListener('click', function () { refreshMe().then(function () { refreshView(); }); }); }
-    el.hidden = !show;
+    // длинная плашка сверху больше не показывается: сайт работает с последними данными, а ошибки сети видны там, где они важны (вход, заказ)
+    el.hidden = true;
   }
 
   function init() {
@@ -2887,7 +2934,7 @@
       var el = Date.now() - t0, real = total ? done / total : 1;
       var shown = Math.min(1, Math.min(real, el / MIN));
       if (bar) bar.style.transform = 'scaleX(' + Math.max(.03, shown).toFixed(3) + ')';
-      if (txt) txt.textContent = shown < .35 ? 'Готовим магазин…' : shown < .75 ? 'Загружаем фотографии…' : shown < 1 ? 'Почти готово…' : 'Добро пожаловать!';
+      if (txt) txt.textContent = shown < .3 ? 'Загружаем данные…' : shown < .6 ? 'Загружаем фотографии…' : shown < .85 ? (profileReady() ? 'Подготавливаем каталог…' : 'Загружаем профиль…') : shown < 1 ? 'Почти готово…' : 'Добро пожаловать!';
       var ready = (real >= 1 && profileReady()) || el >= MAX;
       if (!finished && el >= MIN && ready) {
         finished = true; clearInterval(tm);
