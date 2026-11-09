@@ -9,7 +9,7 @@ function allowMail() { Logger.log('Можно отправить писем се
    =================================================================== */
 
 var CATALOG_URL_DEFAULT = 'https://onion-shop.github.io/ONION-SHOP-CATALOG/data/catalog.js';
-var LAYOUT_VER = '12';
+var LAYOUT_VER = '13';
 
 var SHEET = { orders: 'Заказы', users: 'Клиенты', promos: 'Промокоды', log: 'Журнал ониксов', summary: 'Сводка', sessions: 'Сессии', reviews: 'Отзывы', waits: 'Лист ожидания', ledger: 'Учёт бонусов', flags: 'Подозрительное' };
 
@@ -17,30 +17,30 @@ var SHEET = { orders: 'Заказы', users: 'Клиенты', promos: 'Пром
 /* Колонки: [ключ, заголовок, опции]. Опции: w: ширина, t, тип (text, money, date, check, num),
    edit: можно править вручную (светлый фон), svc, служебная (серая, свёрнута). old: прежние названия. */
 var ORDER_COLS = [
-  ['no', '№ заказа', { w: 120, t: 'text' }],
-  ['at', 'Дата (МСК)', { w: 120, t: 'date' }],
-  ['photo', 'Фото', { w: 80 }],
+  ['no', '№ заказа', { w: 110, t: 'text' }],
+  ['status', 'Статус', { w: 120, t: 'status', edit: true }],
+  ['paid', 'Оплачен', { w: 70, t: 'check', edit: true }],
+  ['toPay', 'К оплате', { w: 95, t: 'money', old: ['К оплате, ₽'] }],
+  ['name', 'Имя', { w: 120 }],
+  ['contact', 'Связаться', { w: 100 }],
   ['itemsText', 'Товары', { w: 300 }],
+  ['photo', 'Фото', { w: 80 }],
+  ['at', 'Дата (МСК)', { w: 120, t: 'date' }],
   ['count', 'Шт.', { w: 45, t: 'num' }],
+  ['priority', 'Приоритет', { w: 105, t: 'text' }],
+  ['phone', 'Телефон', { w: 130, t: 'text' }],
+  ['tg', 'Telegram', { w: 120, t: 'text' }],
+  ['kind', 'Тип', { w: 95 }],
+  ['comment', 'Комментарий', { w: 180 }],
+  ['note', 'Заметка (для себя)', { w: 180, edit: true }],
+  ['photoRep', 'Фотоотчёт (ссылки)', { w: 180, t: 'text', edit: true }],
   ['total', 'Сумма', { w: 90, t: 'money', old: ['Сумма, ₽'] }],
   ['tokens', 'Ониксов', { w: 75, t: 'num', old: ['Ониксов списано'] }],
   ['tokenRub', 'Скидка ониксами', { w: 95, t: 'money', old: ['Скидка ониксами, ₽'] }],
   ['promo', 'Промокод', { w: 95, t: 'text' }],
   ['promoRub', 'Скидка промокодом', { w: 95, t: 'money', old: ['Скидка промокодом, ₽'] }],
-  ['toPay', 'К оплате', { w: 100, t: 'money', old: ['К оплате, ₽'] }],
-  ['status', 'Статус', { w: 120, t: 'status', edit: true }],
-  ['paid', 'Оплачен', { w: 75, t: 'check', edit: true }],
-  ['priority', 'Приоритет', { w: 105, t: 'text' }],
   ['pack', 'Привилегия уровня', { w: 170, t: 'text' }],
   ['level', 'Уровень клиента', { w: 100, t: 'text' }],
-  ['name', 'Имя', { w: 120 }],
-  ['phone', 'Телефон', { w: 130, t: 'text' }],
-  ['tg', 'Telegram', { w: 120, t: 'text' }],
-  ['contact', 'Связаться', { w: 100 }],
-  ['kind', 'Тип', { w: 95 }],
-  ['comment', 'Комментарий', { w: 180 }],
-  ['note', 'Заметка (для себя)', { w: 180, edit: true }],
-  ['photoRep', 'Фотоотчёт (ссылки)', { w: 180, t: 'text', edit: true }],
   ['login', 'Логин', { w: 100, t: 'text' }],
   ['userId', 'ID клиента', { w: 80, t: 'text' }],
   ['text', 'Текст заказа', { w: 120, svc: true }],
@@ -52,31 +52,32 @@ var ORDER_COLS = [
   ['taskRew', 'служебное: награды за задания', { w: 80, svc: true, t: 'text' }],
   ['photoSent', 'служебное: фотоотчёт отправлен', { w: 80, svc: true, t: 'text' }]
 ];
-/* «Учёт бонусов»: только хэши (не телефоны и не почты), кто уже получал приветственные бонусы и подарок на ДР */
+/* колонки, которые по умолчанию свёрнуты в группу «+» (раскрываются значком над таблицей) */
+var ORDER_GROUPS = [['total', 'tokens', 'tokenRub', 'promo', 'promoRub', 'pack', 'level', 'login', 'userId']];
+var USER_GROUPS = [['levelFix', 'streak', 'frame', 'referredBy', 'refCount', 'refCode']];/* «Учёт бонусов»: только хэши (не телефоны и не почты), кто уже получал приветственные бонусы и подарок на ДР */
 var FLAG_COLS = [['at', 'Когда', { w: 125, t: 'date' }], ['level', 'Уровень', { w: 70, t: 'num' }], ['kind', 'Тип', { w: 90, t: 'text' }], ['text', 'Что случилось', { w: 420 }]];
 var LEDGER_COLS = [['key', 'Хэш', { w: 260, t: 'text' }], ['kind', 'Что получено', { w: 120, t: 'text' }], ['at', 'Когда', { w: 125, t: 'date' }], ['note', 'Примечание', { w: 200 }]];
 var USER_COLS = [
-  ['id', 'ID', { w: 60, t: 'text' }],
-  ['login', 'Логин', { w: 110, t: 'text' }],
+  ['id', 'ID', { w: 50, t: 'text' }],
+  ['login', 'Логин', { w: 100, t: 'text' }],
   ['name', 'Имя', { w: 120, t: 'text', edit: true }],
-  ['email', 'Почта', { w: 170, t: 'text', edit: true }],
-  ['phone', 'Телефон', { w: 130, t: 'text', edit: true }],
-  ['tg', 'Telegram', { w: 120, t: 'text', edit: true }],
-  ['balance', 'Ониксы', { w: 80, t: 'num', edit: true, old: ['Токены'] }],
-  ['levelName', 'Уровень', { w: 110, t: 'text', edit: true, old: ['Уровень (месяц)'] }],
-  ['levelFix', 'Уровень вручную', { w: 130, t: 'text', edit: true }],
-  ['xp', 'XP за месяц', { w: 100, t: 'num', edit: true, old: ['Покупки за месяц'] }],
-  ['spent', 'Потрачено всего', { w: 110, t: 'money', old: ['Потрачено всего, ₽'] }],
+  ['levelName', 'Уровень', { w: 100, t: 'text', edit: true, old: ['Уровень (месяц)'] }],
+  ['balance', 'Ониксы', { w: 75, t: 'num', edit: true, old: ['Токены'] }],
+  ['xp', 'XP за месяц', { w: 90, t: 'num', edit: true, old: ['Покупки за месяц'] }],
+  ['spent', 'Потрачено всего', { w: 105, t: 'money', old: ['Потрачено всего, ₽'] }],
   ['ordersCount', 'Заказов', { w: 70, t: 'num' }],
-  ['streak', 'Серия входов', { w: 85, t: 'num' }],
+  ['tg', 'Telegram', { w: 120, t: 'text', edit: true }],
+  ['phone', 'Телефон', { w: 130, t: 'text', edit: true }],
+  ['email', 'Почта', { w: 170, t: 'text', edit: true }],
   ['lastCheckin', 'Последний вход', { w: 105, t: 'text' }],
+  ['createdAt', 'Регистрация', { w: 120, t: 'date' }],
   ['birthday', 'День рождения (ММ-ДД)', { w: 110, t: 'text', edit: true }],
+  ['levelFix', 'Уровень вручную', { w: 130, t: 'text', edit: true }],
+  ['streak', 'Серия входов', { w: 85, t: 'num' }],
   ['frame', 'Рамка', { w: 80, t: 'text', edit: true }],
   ['referredBy', 'Пригласил (ID)', { w: 95, t: 'text' }],
   ['refCount', 'Друзей привёл', { w: 90, t: 'num' }],
-  ['refCode', 'Код приглашения', { w: 110, t: 'text' }],
-  ['createdAt', 'Регистрация', { w: 120, t: 'date' }],
-  ['xpMonth', 'служебное: месяц XP', { svc: true, t: 'text', old: ['Месяц XP', 'служебное: месяц покупок'] }],
+  ['refCode', 'Код приглашения', { w: 110, t: 'text' }],  ['xpMonth', 'служебное: месяц XP', { svc: true, t: 'text', old: ['Месяц XP', 'служебное: месяц покупок'] }],
   ['freeSpins', 'служебное: бесплатные прокруты', { svc: true, t: 'num', old: ['Бесплатные прокруты'] }],
   ['refMonth', 'служебное: мес. друзей', { svc: true, t: 'text', old: ['Мес. друзей'] }],
   ['refMonthCount', 'служебное: друзей в месяце', { svc: true, t: 'num', old: ['Друзей в месяце'] }],
@@ -224,6 +225,14 @@ function style_(sh, cols, opt) {
     if (o.svc) { col.setFontColor(C.svc).setWrap(false); sh.getRange(1, i + 1).setBackground('#5b6475'); }
   });
   // служебные колонки: в свёрнутую группу и под защиту с предупреждением
+  // снять прежние группы колонок (после перестановки колонок они стояли бы не там)
+  for (var gc = 1; gc <= n; gc++) { try { for (var gt = 0; gt < 3 && sh.getColumnGroupDepth(gc) > 0; gt++) sh.getRange(1, gc, 1, 1).shiftColumnGroupDepth(-1); } catch (e) {} }
+  // дополнительные свёрнутые группы: редко нужные колонки прячутся за значок «+»
+  (opt.groups || []).forEach(function (keys) {
+    var idx = keys.map(function (k) { return ci_(cols, k) + 1; }).filter(function (x) { return x > 0; }).sort(function (a, b) { return a - b; });
+    if (!idx.length) return;
+    try { var gr = sh.getRange(1, idx[0], 1, idx[idx.length - 1] - idx[0] + 1); gr.shiftColumnGroupDepth(1); sh.getColumnGroup(idx[0], 1).collapse(); } catch (e) {}
+  });
   var svc = cols.map(function (c, i) { return c[2] && c[2].svc ? i + 1 : 0; }).filter(Boolean);
   sh.getProtections(SpreadsheetApp.ProtectionType.RANGE).forEach(function (p) { if (p.getDescription() === 'ONION: служебное') p.remove(); });
   if (svc.length) {
@@ -238,7 +247,7 @@ function style_(sh, cols, opt) {
 }
 
 function styleOrders_() {
-  var sh = style_(migrate_(SHEET.orders, ORDER_COLS), ORDER_COLS, { freezeCols: 1 });
+  var sh = style_(migrate_(SHEET.orders, ORDER_COLS), ORDER_COLS, { freezeCols: 1, groups: ORDER_GROUPS });
   var maxR = sh.getMaxRows(), L = function (k) { return colL_(ci_(ORDER_COLS, k) + 1); };
   sh.getRange(L('itemsText') + '2:' + L('itemsText')).setWrap(true);
   sh.getRange(L('no') + '2:' + L('no')).setFontWeight('bold');
@@ -253,7 +262,12 @@ function styleOrders_() {
   [['№1', '#173b8f', '#ffffff'], ['№2', '#d6e4fb', '#173b8f'], ['№3', '#e8f3fc', '#0a5f8a'], ['№4', '#fff4d6', '#8a5a00']].forEach(function (x) {
     rules.push(SpreadsheetApp.newConditionalFormatRule().whenTextStartsWith(x[0]).setBackground(x[1]).setFontColor(x[2]).setBold(true).setRanges([prCol]).build());
   });
-  rules.push(SpreadsheetApp.newConditionalFormatRule().whenFormulaSatisfied('=$' + L('paid') + '2=TRUE').setBackground(C.paid).setRanges([sh.getRange(2, 1, maxR - 1, ci_(ORDER_COLS, 'status'))]).build());
+  var rowAll = sh.getRange(2, 1, maxR - 1, ORDER_COLS.length), stL = '$' + L('status') + '2', paL = '$' + L('paid') + '2', atL = '$' + L('at') + '2';
+  // отменённые: серые и зачёркнутые, полученные: приглушённые, неоплаченные дольше суток: номер красным
+  rules.push(SpreadsheetApp.newConditionalFormatRule().whenFormulaSatisfied('=' + stL + '="Отменён"').setFontColor('#9aa3b2').setStrikethrough(true).setRanges([rowAll]).build());
+  rules.push(SpreadsheetApp.newConditionalFormatRule().whenFormulaSatisfied('=' + stL + '="Получен"').setFontColor('#7c8798').setRanges([rowAll]).build());
+  rules.push(SpreadsheetApp.newConditionalFormatRule().whenFormulaSatisfied(F_('=AND($A2<>"",' + paL + '=FALSE,' + stL + '<>"Отменён",ISNUMBER(' + atL + '),NOW()-' + atL + '>1)')).setBackground('#fde8e8').setFontColor('#b42318').setBold(true).setRanges([sh.getRange(2, 1, maxR - 1, 1)]).build());
+  rules.push(SpreadsheetApp.newConditionalFormatRule().whenFormulaSatisfied('=' + paL + '=TRUE').setBackground(C.paid).setRanges([rowAll]).build());
   sh.setConditionalFormatRules(rules);
   var n = sh.getLastRow() - 1;
   if (n > 0) {
@@ -268,7 +282,7 @@ function styleOrders_() {
   sh.getRange(1, ci_(ORDER_COLS, 'contact') + 1).setNote('Ссылка открывает чат с клиентом в Telegram (по username или по номеру телефона).');
 }
 function styleUsers_() {
-  var sh = style_(migrate_(SHEET.users, USER_COLS), USER_COLS, { freezeCols: 2 });
+  var sh = style_(migrate_(SHEET.users, USER_COLS), USER_COLS, { freezeCols: 2, groups: USER_GROUPS });
   var maxR = sh.getMaxRows(), lv = sh.getRange(2, ci_(USER_COLS, 'levelName') + 1, maxR - 1, 1);
   var rules = [['Алмаз', '#173b8f', '#ffffff'], ['Платина', '#e3e9f2', '#1f2f4d'], ['Золото', '#fbf1d6', '#7a5200'], ['Серебро', '#eef1f5', '#475569'], ['Бронза', '#f7e8dd', '#86461f']];
   sh.setConditionalFormatRules(rules.map(function (r) {
@@ -310,46 +324,82 @@ function stylePromos_() {
 function styleSummary_() {
   var sh = ss_().getSheetByName(SHEET.summary) || ss_().insertSheet(SHEET.summary, 0);
   sh.clear(); sh.clearConditionalFormatRules(); sh.setHiddenGridlines(true);
-  if (sh.getMaxColumns() > 6) sh.deleteColumns(7, sh.getMaxColumns() - 6);
-  var O = function (k) { var l = colL_(ci_(ORDER_COLS, k) + 1); return "'" + SHEET.orders + "'!" + l + '2:' + l; };
-  var U = function (k) { var l = colL_(ci_(USER_COLS, k) + 1); return "'" + SHEET.users + "'!" + l + '2:' + l; };
+  sh.getRange(1, 1, sh.getMaxRows(), sh.getMaxColumns()).breakApart();
+  if (sh.getMaxColumns() > 5) sh.deleteColumns(6, sh.getMaxColumns() - 5);
+  if (sh.getMaxColumns() < 5) sh.insertColumnsAfter(sh.getMaxColumns(), 5 - sh.getMaxColumns());
+  if (sh.getMaxRows() < 90) sh.insertRowsAfter(sh.getMaxRows(), 90 - sh.getMaxRows());
+  var R_ = function (name, cols, k) { var l = colL_(ci_(cols, k) + 1); return "'" + name + "'!" + l + '2:' + l; };
+  var O = function (k) { return R_(SHEET.orders, ORDER_COLS, k); }, U = function (k) { return R_(SHEET.users, USER_COLS, k); };
   var today = '">="&TODAY()', tomorrow = '"<"&TODAY()+1', month = '">="&EOMONTH(TODAY(),-1)+1';
-  [70, 230, 150, 30, 230, 150].forEach(function (w, i) { sh.setColumnWidth(i + 1, w); });
-  sh.getRange('B2').setValue('ONION SHOP: сводка').setFontSize(18).setFontWeight('bold').setFontColor(C.navy);
-  sh.getRange('B3').setFormula('=NOW()').setNumberFormat('"Обновлено: "dd.MM.yyyy HH:mm" МСК"').setHorizontalAlignment('left').setFontColor('#6b7280');
-  var cards = [
-    ['B5', 'Заказов сегодня', '=COUNTIFS(' + O('at') + ',' + today + ',' + O('at') + ',' + tomorrow + ')', '0'],
-    ['E5', 'К оплате сегодня', '=SUMIFS(' + O('toPay') + ',' + O('at') + ',' + today + ',' + O('at') + ',' + tomorrow + ')', '#,##0" ₽"'],
-    ['B8', 'Заказов за месяц', '=COUNTIFS(' + O('at') + ',' + month + ')', '0'],
-    ['E8', 'К оплате за месяц', '=SUMIFS(' + O('toPay') + ',' + O('at') + ',' + month + ')', '#,##0" ₽"'],
-    ['B11', 'Ждут оплаты', '=COUNTIFS(' + O('no') + ',"<>",' + O('paid') + ',FALSE)', '0'],
-    ['E11', 'Активные заказы', '=COUNTIFS(' + O('no') + ',"<>",' + O('status') + ',"<>Получен",' + O('status') + ',"<>Отменён")', '0'],
-    ['B14', 'Клиентов всего', '=COUNTA(' + U('id') + ')', '0'],
-    ['E14', 'Новых за месяц', '=COUNTIFS(' + U('createdAt') + ',' + month + ')', '0'],
-    ['B17', 'Ониксов у клиентов', '=SUM(' + U('balance') + ')', '#,##0'],
-    ['E17', 'Это скидок на', '=SUM(' + U('balance') + ')*' + Math.round(OnionCore.settings().tokenRub * 100) + '/100', '#,##0" ₽"']
-  ];
-  cards.forEach(function (c) {
-    var a = sh.getRange(c[0]), r = a.getRow(), col = a.getColumn();
-    sh.getRange(r, col).setValue(c[1]).setFontColor('#6b7280').setFontSize(10);
-    sh.getRange(r + 1, col).setFormula(F_(c[2])).setNumberFormat(c[3]).setFontSize(20).setFontWeight('bold').setFontColor(C.navy).setHorizontalAlignment('left');
-    sh.getRange(r, col, 2, 2).setBackground('#f3f6fc').setBorder(true, true, true, true, false, false, C.line, SpreadsheetApp.BorderStyle.SOLID);
+  // ширины рассчитаны на экран телефона: две карточки в ряд помещаются без прокрутки
+  [10, 168, 8, 168, 10].forEach(function (w, i) { sh.setColumnWidth(i + 1, w); });
+  sh.getRange(1, 1, 90, 5).setFontFamily('Arial').setVerticalAlignment('middle');
+  sh.getRange('B2:D2').merge().setValue('ONION SHOP: сводка').setFontSize(18).setFontWeight('bold').setFontColor(C.navy);
+  sh.getRange('B3:D3').merge().setFormula('=NOW()').setNumberFormat('"Обновлено: "dd.MM.yyyy HH:mm" МСК"').setHorizontalAlignment('left').setFontColor('#6b7280').setFontSize(9);
+  // быстрые переходы по листам, удобно на телефоне
+  var go = function (cell, name) {
+    var s = ss_().getSheetByName(name); if (!s) return;
+    sh.getRange(cell).setFormula(F_('=HYPERLINK("#gid=' + s.getSheetId() + '","' + name + '  →")')).setBackground(C.navy).setFontColor('#ffffff').setFontWeight('bold').setHorizontalAlignment('center').setFontSize(11)
+      .setBorder(true, true, true, true, false, false, '#ffffff', SpreadsheetApp.BorderStyle.SOLID_THICK);
+  };
+  go('B5', SHEET.orders); go('D5', SHEET.users); go('B6', SHEET.promos); go('D6', SHEET.reviews);
+  sh.setRowHeight(5, 36); sh.setRowHeight(6, 36);
+  var section = function (row, title) {
+    sh.getRange(row, 2, 1, 3).setBorder(false, false, true, false, false, false, C.navy, SpreadsheetApp.BorderStyle.SOLID);
+    sh.getRange(row, 2).setValue(title).setFontWeight('bold').setFontColor(C.navy).setFontSize(12);
+    sh.setRowHeight(row, 28);
+  };
+  var card = function (row, col, label, formula, fmt) {
+    sh.getRange(row, col).setValue(label).setFontColor('#6b7280').setFontSize(9).setVerticalAlignment('bottom');
+    sh.getRange(row + 1, col).setFormula(F_(formula)).setNumberFormat(fmt).setFontSize(18).setFontWeight('bold').setFontColor(C.navy).setHorizontalAlignment('left').setVerticalAlignment('top');
+    sh.getRange(row, col, 2, 1).setBackground('#f3f6fc').setBorder(true, true, true, true, false, false, C.line, SpreadsheetApp.BorderStyle.SOLID);
+    sh.setRowHeight(row, 22); sh.setRowHeight(row + 1, 34);
+  };
+  var pair = function (row, a, b) { card(row, 2, a[0], a[1], a[2]); card(row, 4, b[0], b[1], b[2]); };
+  var inWork = O('no') + ',"<>",' + O('status') + ',"<>Получен",' + O('status') + ',"<>Отменён"';
+  section(8, 'Сегодня');
+  pair(9, ['Заказов сегодня', '=COUNTIFS(' + O('at') + ',' + today + ',' + O('at') + ',' + tomorrow + ')', '0'],
+          ['На сумму', '=SUMIFS(' + O('toPay') + ',' + O('at') + ',' + today + ',' + O('at') + ',' + tomorrow + ')', '#,##0" ₽"']);
+  section(12, 'Нужно сделать');
+  pair(13, ['Ждут оплаты', '=COUNTIFS(' + O('no') + ',"<>",' + O('paid') + ',FALSE,' + O('status') + ',"<>Отменён")', '0'],
+           ['Неоплачено на сумму', '=SUMIFS(' + O('toPay') + ',' + O('no') + ',"<>",' + O('paid') + ',FALSE,' + O('status') + ',"<>Отменён")', '#,##0" ₽"']);
+  pair(16, ['Заказов в работе', '=COUNTIFS(' + inWork + ')', '0'],
+           ['Ждут товар (лист ожидания)', '=COUNTIFS(\'' + SHEET.waits + '\'!B2:B,"<>",\'' + SHEET.waits + '\'!' + colL_(ci_(WAIT_COLS, 'sent') + 1) + '2:' + colL_(ci_(WAIT_COLS, 'sent') + 1) + ',"")', '0']);
+  section(19, 'Месяц');
+  pair(20, ['Заказов за месяц', '=COUNTIFS(' + O('at') + ',' + month + ')', '0'],
+           ['На сумму', '=SUMIFS(' + O('toPay') + ',' + O('at') + ',' + month + ')', '#,##0" ₽"']);
+  pair(23, ['Средний чек', '=IFERROR(ROUND(SUMIFS(' + O('toPay') + ',' + O('at') + ',' + month + ')/COUNTIFS(' + O('at') + ',' + month + ')),0)', '#,##0" ₽"'],
+           ['Новых отзывов за 7 дней', '=COUNTIFS(\'' + SHEET.reviews + '\'!A2:A,">="&TODAY()-7)', '0']);
+  section(26, 'Клиенты');
+  pair(27, ['Клиентов всего', '=COUNTA(' + U('id') + ')', '0'],
+           ['Новых за месяц', '=COUNTIFS(' + U('createdAt') + ',' + month + ')', '0']);
+  pair(30, ['Ониксов у клиентов', '=SUM(' + U('balance') + ')', '#,##0'],
+           ['Это скидок на', '=SUM(' + U('balance') + ')*' + Math.round(OnionCore.settings().tokenRub * 100) + '/100', '#,##0" ₽"']);
+  // списки: каждый в своём блоке с запасом строк, чтобы не наезжали друг на друга
+  var line = function (row, formula) { sh.getRange(row, 2).setFormula(F_(formula)).setFontColor('#1b2333').setFontSize(10).setWrap(false); };
+  section(33, 'Ждут оплаты (сначала самые давние)');
+  line(34, '=IFERROR(TAKE(ARRAYFORMULA(FILTER(' + O('no') + '&"  ·  "&' + O('name') + '&"  ·  "&TEXT(' + O('toPay') + ',"# ##0")&" ₽",' + O('no') + '<>"",' + O('paid') + '=FALSE,' + O('status') + '<>"Отменён")),8),"Все заказы оплачены")');
+  section(44, 'Заказы по статусам');
+  ALL_STAGES_().forEach(function (s, i) {
+    var r = 45 + i;
+    sh.getRange(r, 2).setValue(s).setFontColor('#1b2333');
+    sh.getRange(r, 4).setFormula('=COUNTIFS(' + O('status') + ',"' + s + '")').setHorizontalAlignment('right').setFontWeight('bold').setFontColor(C.navy);
+    sh.getRange(r, 2, 1, 3).setBorder(false, false, true, false, false, false, C.line, SpreadsheetApp.BorderStyle.SOLID);
   });
-  sh.getRange('B20').setValue('Дни рождения в ближайшие 14 дней').setFontWeight('bold').setFontColor(C.navy);
+  section(55, 'Последние заказы');
+  line(56, '=IFERROR(TAKE(CHOOSECOLS(SORT(ARRAYFORMULA(FILTER(HSTACK(' + O('at') + ',' + O('no') + '&"  ·  "&' + O('status') + '&"  ·  "&TEXT(' + O('toPay') + ',"# ##0")&" ₽"),' + O('no') + '<>"")),1,FALSE),2),5),"Заказов пока нет")');
+  section(63, 'Дни рождения в ближайшие 14 дней');
   var bd = U('birthday');
-  sh.getRange('B21').setFormula(F_('=IFERROR(SORT(FILTER(HSTACK(' + U('name') + ',' + U('login') + ',' + bd + '),' + bd + '<>"",IFERROR(MOD(DATE(YEAR(TODAY()),VALUE(LEFT(' + bd + ',2)),VALUE(RIGHT(' + bd + ',2)))-TODAY(),365),999)<=14),3,TRUE),"Никого")'));
-  sh.getRange('B21:D40').setFontColor('#1b2333');
-  sh.getRange('B43').setValue('Как пользоваться').setFontWeight('bold').setFontColor(C.navy);
-  sh.getRange('B44:B48').setValues([
-    ['• «Заказы»: выбирайте «Статус» из списка, клиент видит его на сайте. «Получен»: сумма идёт в уровень клиента.'],
-    ['• «Промокоды»: новая строка: новый промокод. Снимите «Включён», чтобы выключить.'],
-    ['• «Клиенты»: колонки с синим заголовком можно править (ониксы, уровень, XP, контакты), клиент видит сразу.'],
-    ['• «Журнал ониксов»: каждое начисление и списание.'],
-    ['• Меню ONION SHOP → «Оформить таблицу заново», если что-то сбилось.']
-  ]).setFontColor('#374151');
+  line(64, '=IFERROR(SORT(ARRAYFORMULA(FILTER(' + U('name') + '&" ("&' + U('login') + '&")  ·  "&' + bd + ',' + bd + '<>"",IFERROR(MOD(DATE(YEAR(TODAY()),VALUE(LEFT(' + bd + ',2)),VALUE(RIGHT(' + bd + ',2)))-TODAY(),365),999)<=14))),"Никого")');
+  section(72, 'Как пользоваться');
+  sh.getRange('B73:D73').merge().setValue('Заказы: меняйте «Статус» из списка, клиент видит его на сайте. Отметьте «Оплачен», когда клиент заплатил. Красный номер: заказ не оплачен больше суток. Редкие колонки свёрнуты значком «+» над таблицей.');
+  sh.getRange('B74:D74').merge().setValue('Клиенты: колонки с синим заголовком можно править (ониксы, уровень, XP, контакты), клиент видит это сразу.');
+  sh.getRange('B75:D75').merge().setValue('Если что-то сбилось: меню ONION SHOP → «Оформить таблицу заново».');
+  sh.getRange('B73:D75').setWrap(true).setFontColor('#374151').setFontSize(9).setVerticalAlignment('top');
+  sh.setRowHeight(73, 62); sh.setRowHeight(74, 40); sh.setRowHeight(75, 28);
   sh.setTabColor(C.cyan);
+  sh.setFrozenRows(0);
 }
-
 function styleReviews_() {
   var sh = style_(migrate_(SHEET.reviews, REVIEW_COLS), REVIEW_COLS, { freezeCols: 0 });
   var maxR = sh.getMaxRows();
@@ -359,6 +409,12 @@ function styleReviews_() {
   sh.getRange(1, ci_(REVIEW_COLS, 'status') + 1).setNote('Выберите «скрыт», чтобы убрать отзыв с сайта. Ониксы за отзыв остаются у клиента.');
 }
 function styleWaits_() { style_(migrate_(SHEET.waits, WAIT_COLS), WAIT_COLS, {}); }
+/* служебные листы: «Учёт бонусов» (хэши) и «Игры» (старые сохранения игр, больше не используются) */
+function SERVICE_SHEETS_() {
+  return [SHEET.ledger, 'Игры'].map(function (n) { return ss_().getSheetByName(n); }).filter(Boolean);
+}
+function showServiceSheets() { SERVICE_SHEETS_().forEach(function (s) { s.showSheet(); }); }
+function hideServiceSheets() { SERVICE_SHEETS_().forEach(function (s) { s.hideSheet(); }); }
 function layout_() {
   ss_().setSpreadsheetTimeZone('Europe/Moscow');
   styleOrders_(); styleUsers_(); stylePromos_(); styleLog_(); styleReviews_(); styleWaits_(); styleSummary_();
@@ -369,7 +425,12 @@ function layout_() {
   ss_().getSheetByName(SHEET.log).setTabColor('#64748b');
   ss_().getSheetByName(SHEET.reviews).setTabColor('#f59e0b');
   ss_().getSheetByName(SHEET.waits).setTabColor('#94a3b8');
-  var order = [SHEET.summary, SHEET.orders, SHEET.users, SHEET.promos, SHEET.reviews, SHEET.waits, SHEET.log];
+  // «Подозрительное» оставляем на виду (красная вкладка), служебные «Учёт бонусов» и старые «Игры» прячем (данные целы, показать: меню ONION SHOP → Служебные листы)
+  var fl = ss_().getSheetByName(SHEET.flags);
+  if (fl) { style_(fl, FLAG_COLS, {}); fl.setTabColor('#e11d2e'); fl.getRange(2, ci_(FLAG_COLS, 'text') + 1, fl.getMaxRows() - 1, 1).setWrap(true); }
+  var lg = ss_().getSheetByName(SHEET.ledger); if (lg) { style_(lg, LEDGER_COLS, {}); lg.setTabColor('#94a3b8'); }
+  SERVICE_SHEETS_().forEach(function (s) { try { if (ss_().getSheets().length > 1) s.hideSheet(); } catch (e) {} });
+  var order = [SHEET.summary, SHEET.orders, SHEET.users, SHEET.promos, SHEET.reviews, SHEET.waits, SHEET.log].concat(fl ? [SHEET.flags] : []);
   order.forEach(function (n, i) { var sh = ss_().getSheetByName(n); ss_().setActiveSheet(sh); ss_().moveActiveSheet(i + 1); });
   ss_().setActiveSheet(ss_().getSheetByName(SHEET.summary));
   props_().setProperty('layoutVer', LAYOUT_VER);
@@ -1044,6 +1105,9 @@ function onOpen() {
       .addSeparator()
       .addItem('Всё сразу (клиенты, заказы, журнал)', 'clearAllData'))
     .addItem('Оформить таблицу заново', 'relayout')
+    .addSubMenu(SpreadsheetApp.getUi().createMenu('Служебные листы')
+      .addItem('Показать («Учёт бонусов», «Игры»)', 'showServiceSheets')
+      .addItem('Спрятать', 'hideServiceSheets'))
     .addItem('Отправить тестовое сообщение', 'testNotify')
     .addItem('Проверить письма с кодом', 'testMail')
     .addItem('Обновить каталог (сбросить кеш)', 'resetCatalogCache')
