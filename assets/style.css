@@ -264,7 +264,7 @@ a.stat:hover{transform:translateY(-2px)}
 .product{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;align-items:start}
 .gallery{min-width:0}
 .stage{position:relative;min-width:0;border-radius:var(--r-xl);background:var(--card);box-shadow:var(--shadow);padding:6px}
-.slides{display:flex;overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;border-radius:20px;background:var(--tile);scrollbar-width:none;aspect-ratio:1/1;touch-action:pan-x pinch-zoom}
+.slides{display:flex;overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;border-radius:20px;background:var(--tile);scrollbar-width:none;aspect-ratio:1/1;touch-action:pan-x pan-y}
 .slides::-webkit-scrollbar{display:none}
 .slides figure{position:relative;flex:0 0 100%;min-width:0;height:100%;margin:0;overflow:hidden;scroll-snap-align:center;scroll-snap-stop:always;cursor:zoom-in}
 .slides figure::before{content:"";position:absolute;inset:-24px;background:var(--bg) center/cover no-repeat;filter:blur(22px) saturate(1.1);opacity:.55;transform:translateZ(0)}
@@ -2599,3 +2599,5 @@ html,body{touch-action:pan-x pan-y}
 .ava.f-f63 .orb .o3{left:82.5%;top:68.75%;width:9%;height:9%;background:url(fr/f63m.svg?v=7) center/100% 100% no-repeat;animation:orb-keep 15s linear infinite}
 .ava.f-f63 .orb .o2{display:block;left:17.5%;top:68.75%;width:15%;height:15%;background:url(fr/f63e.svg?v=7) center/100% 100% no-repeat;animation:orb-keep 15s linear infinite}
 @keyframes orb-keep-r{from{transform:translate(-50%,-50%) rotate(0)}to{transform:translate(-50%,-50%) rotate(360deg)}}
+/* галерея товара: свайп вверх и вниз прокручивает страницу даже когда палец на фото, вправо и влево листает фото */
+.slides,.slides figure,.slides img,.gallery,.gal{touch-action:pan-x pan-y}
