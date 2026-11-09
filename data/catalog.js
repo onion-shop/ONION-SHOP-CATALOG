@@ -2,8 +2,96 @@
 window.ONION_CATALOG = {
  "channel": "ONION_SHOP_OFFICIAL",
  "source": "t.me",
- "updatedAt": "2026-11-09T09:37:16Z",
+ "updatedAt": "2026-11-09T11:36:45Z",
  "products": [
+  {
+   "title": "Сникерсы Puma wedge x Alexander McQueen",
+   "subtitle": "",
+   "brand": "Puma",
+   "category": "other",
+   "categoryLabel": "Другое",
+   "status": "stock",
+   "price": 6990,
+   "oldPrice": null,
+   "sizes": [
+    "36",
+    "37",
+    "38",
+    "39",
+    "40"
+   ],
+   "colors": [
+    "голубой",
+    "розовый",
+    "красный",
+    "черный(замш)",
+    "черно-коричневый(кожа)",
+    "коричневый",
+    "серый"
+   ],
+   "details": [
+    [
+     "Состояние",
+     "новое с биркой"
+    ]
+   ],
+   "notes": [],
+   "facts": [],
+   "id": "704",
+   "link": "https://t.me/ONION_SHOP_OFFICIAL/704",
+   "photos": [
+    {
+     "id": 704,
+     "w": 1600,
+     "ht": 1164,
+     "hash": "5dd3301181ca",
+     "q": 3
+    },
+    {
+     "id": 705,
+     "w": 1334,
+     "ht": 1600,
+     "hash": "2d3fa7a68dbd",
+     "q": 3
+    },
+    {
+     "id": 706,
+     "w": 1200,
+     "ht": 1600,
+     "hash": "5846bbc4a8f1",
+     "q": 3
+    },
+    {
+     "id": 707,
+     "w": 1288,
+     "ht": 1600,
+     "hash": "f9de514378a8",
+     "q": 3
+    },
+    {
+     "id": 708,
+     "w": 1200,
+     "ht": 1600,
+     "hash": "7642029e2842",
+     "q": 3
+    },
+    {
+     "id": 709,
+     "w": 1252,
+     "ht": 1600,
+     "hash": "07cd3ce04949",
+     "q": 3
+    },
+    {
+     "id": 710,
+     "w": 1288,
+     "ht": 1600,
+     "hash": "40328fb0f3a9",
+     "q": 3
+    }
+   ],
+   "date": "2026-11-09T11:07:55Z"
+  },
   {
    "title": "Пуховик Canada Goose Crofton",
    "subtitle": "",
