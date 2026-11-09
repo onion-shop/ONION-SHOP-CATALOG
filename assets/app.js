@@ -749,6 +749,13 @@
     if (f.length) return f;
     return DEFAULT_PICKS.map(function (id) { return BY_ID[id]; }).filter(function (p) { return p && p.status !== 'sold'; });
   }
+  // яркие, цветные фото для баннеров на главной: первыми берутся самые заметные товары, остальное добирается из обычных подборок
+  function vivid(ids, rest) {
+    var out = [];
+    ids.forEach(function (id) { var p = BY_ID[id]; if (p && p.status !== 'sold' && p.status !== 'out' && p.photos && p.photos.length) out.push(p); });
+    (rest || []).forEach(function (p) { if (out.length < 3 && out.indexOf(p) < 0) out.push(p); });
+    return out;
+  }
   function isPick(p) { return shopPicks().indexOf(p) >= 0; }
   function dateRange(d1, d2) {
     var a = msk(Date.now() + d1 * 864e5), b = msk(Date.now() + d2 * 864e5);
@@ -851,7 +858,7 @@
     v.innerHTML =
       '<div class="cts">' + tiles + '</div>' +
       '<div id="promo-slot">' + promoHtml() + '</div>' +
-      '<div class="bcs">' + banner3('Подборка', 'Выбор магазина', 'Вещи, которые мы советуем', '#catalog', picks, 'bc-1') + banner3('В наличии', 'Лучшие предложения', hot.length && discount(hot[0]) >= 3 ? 'Скидки до −' + discount(hot[0]) + '%' : 'Уже в Москве', '#stock', hot, 'bc-2') + banner3('Из Китая', 'Новинки из Китая', 'Доставка уже включена в стоимость товара', '#preorder', preL, 'bc-3') + '</div>' +
+      '<div class="bcs">' + banner3('Подборка', 'Выбор магазина', 'Вещи, которые мы советуем', '#catalog', vivid(['656', '503', '325'], picks), 'bc-1') + banner3('В наличии', 'Лучшие предложения', hot.length && discount(hot[0]) >= 3 ? 'Скидки до −' + discount(hot[0]) + '%' : 'Уже в Москве', '#stock', vivid(['460', '414', '440'], hot), 'bc-2') + banner3('Из Китая', 'Новинки из Китая', 'Доставка уже включена в стоимость товара', '#preorder', vivid(['576', '563', '596'], preL), 'bc-3') + '</div>' +
       (favList.length ? '<div class="sec"><div class="sec-head"><h2>Избранное</h2></div><div class="hscroll">' + favList.slice(0, 10).map(card).join('') + '</div></div>' : '') +
       (rec.length ? '<div class="sec"><div class="sec-head"><h2>Вы смотрели</h2></div><div class="hscroll">' + rec.map(card).join('') + '</div></div>' : '') +
       '<div class="sec"><div class="sec-head"><h2>Новинки</h2><a class="btn btn-ghost btn-sm" href="#catalog">Весь каталог</a></div>' + grid(fresh, 'home-grid') + '</div>' +
