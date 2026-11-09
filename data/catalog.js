@@ -2,8 +2,181 @@
 window.ONION_CATALOG = {
  "channel": "ONION_SHOP_OFFICIAL",
  "source": "t.me",
- "updatedAt": "2026-11-09T18:25:01Z",
+ "updatedAt": "2026-11-09T20:55:36Z",
  "products": [
+  {
+   "title": "Зип худи Polo Ralph Lauren big logo",
+   "subtitle": "",
+   "brand": "Polo Ralph Lauren",
+   "category": "hoodies",
+   "categoryLabel": "Худи",
+   "status": "stock",
+   "price": 3200,
+   "oldPrice": null,
+   "sizes": [
+    "M",
+    "L",
+    "XL",
+    "XXL"
+   ],
+   "colors": [
+    "серый"
+   ],
+   "details": [
+    [
+     "Состояние",
+     "новое с биркой"
+    ]
+   ],
+   "notes": [],
+   "facts": [],
+   "id": "718",
+   "link": "https://t.me/ONION_SHOP_OFFICIAL/718",
+   "photos": [
+    {
+     "id": 718,
+     "w": 1600,
+     "ht": 1600,
+     "hash": "ff696981dc4b",
+     "q": 3
+    },
+    {
+     "id": 719,
+     "w": 1600,
+     "ht": 1600,
+     "hash": "26a4a4263a09",
+     "q": 3
+    },
+    {
+     "id": 720,
+     "w": 1600,
+     "ht": 1600,
+     "hash": "47fffa0e095c",
+     "q": 3
+    },
+    {
+     "id": 721,
+     "w": 1600,
+     "ht": 1600,
+     "hash": "281d16a672c1",
+     "q": 3
+    }
+   ],
+   "date": "2026-11-09T20:48:30Z"
+  },
+  {
+   "title": "Зип худи Polo Ralph Lauren big logo",
+   "subtitle": "",
+   "brand": "Polo Ralph Lauren",
+   "category": "hoodies",
+   "categoryLabel": "Худи",
+   "status": "stock",
+   "price": 3200,
+   "oldPrice": null,
+   "sizes": [
+    "M",
+    "L",
+    "XL",
+    "XXL"
+   ],
+   "colors": [
+    "черный"
+   ],
+   "details": [
+    [
+     "Состояние",
+     "новое с биркой"
+    ]
+   ],
+   "notes": [],
+   "facts": [],
+   "id": "714",
+   "link": "https://t.me/ONION_SHOP_OFFICIAL/714",
+   "photos": [
+    {
+     "id": 714,
+     "w": 1600,
+     "ht": 1600,
+     "hash": "a7ae5f8d38bb",
+     "q": 3
+    },
+    {
+     "id": 715,
+     "w": 1600,
+     "ht": 1600,
+     "hash": "45fb4413f4b5",
+     "q": 3
+    },
+    {
+     "id": 716,
+     "w": 1600,
+     "ht": 1600,
+     "hash": "2b2f3734a79d",
+     "q": 3
+    },
+    {
+     "id": 717,
+     "w": 1600,
+     "ht": 1600,
+     "hash": "0127eff010af",
+     "q": 3
+    }
+   ],
+   "date": "2026-11-09T20:47:44Z"
+  },
+  {
+   "title": "Зип худи Polo Ralph Lauren big logo",
+   "subtitle": "",
+   "brand": "Polo Ralph Lauren",
+   "category": "hoodies",
+   "categoryLabel": "Худи",
+   "status": "stock",
+   "price": 3200,
+   "oldPrice": null,
+   "sizes": [
+    "M",
+    "L",
+    "XL",
+    "XXL"
+   ],
+   "colors": [
+    "черный"
+   ],
+   "details": [
+    [
+     "Состояние",
+     "новое с биркой"
+    ]
+   ],
+   "notes": [],
+   "facts": [],
+   "id": "711",
+   "link": "https://t.me/ONION_SHOP_OFFICIAL/711",
+   "photos": [
+    {
+     "id": 711,
+     "w": 1600,
+     "ht": 1600,
+     "hash": "cc4a03d05471",
+     "q": 3
+    },
+    {
+     "id": 712,
+     "w": 1600,
+     "ht": 1600,
+     "hash": "01751566a471",
+     "q": 3
+    },
+    {
+     "id": 713,
+     "w": 1600,
+     "ht": 1600,
+     "hash": "ebc267b201bf",
+     "q": 3
+    }
+   ],
+   "date": "2026-11-09T20:47:11Z"
+  },
   {
    "title": "Сникерсы Puma wedge x Alexander McQueen",
    "subtitle": "",
