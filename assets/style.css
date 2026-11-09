@@ -2662,3 +2662,19 @@ html,body{touch-action:pan-x pan-y}
 .fr-t .fr-acts{margin-top:6px}
 /* плитки категорий: выделенная «Все» не прилипает к краю экрана */
 .cat-rail{padding-left:16px;padding-right:16px;scroll-padding-inline:16px}
+/* ==== обновление 83 ==== */
+/* баннеры на главной: сверху текст и кнопка, снизу три крупные фотографии во всю ширину карточки */
+.bc{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto auto auto 1fr;column-gap:10px;row-gap:3px;align-items:start;min-height:0;padding:16px 14px 14px 16px;flex:0 0 84%}
+.bc-t{display:contents}
+.bc-t small{grid-column:1;grid-row:1}
+.bc-t b{grid-column:1;grid-row:2;font-size:1.1rem}
+.bc-t i{grid-column:1;grid-row:3}
+.bc-t .bc-go{grid-column:2;grid-row:1 / span 3;align-self:start;margin:0;padding:7px 12px}
+.bc-ph{grid-column:1 / -1;grid-row:4;position:relative;z-index:1;display:flex;justify-content:center;align-items:flex-end;padding:0;margin-top:12px;flex:none;width:100%}
+.bc-ph span{flex:0 0 37%;aspect-ratio:4/5;border-radius:16px;border:2.5px solid #fff;background:#fff;overflow:hidden;box-shadow:0 10px 22px rgba(0,0,0,.3)}
+.bc-ph span img{width:100%;height:100%;object-fit:cover;object-position:center;padding:0;display:block}
+.bc-ph span:nth-child(1){transform:rotate(-5deg) translateY(6px);margin-left:0;z-index:1}
+.bc-ph span:nth-child(2){transform:scale(1.1) translateY(-6px);margin-left:-7%;z-index:3}
+.bc-ph span:nth-child(3){transform:rotate(5deg) translateY(6px);margin-left:-7%;z-index:2}
+.bc::after{display:none}
+@media (min-width:760px){.bc{flex:none}}
