@@ -28,41 +28,27 @@
 <body>
 <div id="splash" aria-hidden="true">
 <style>
-#splash{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;overflow:hidden;background:linear-gradient(160deg,#071428,#0b2a55 55%,#0f4f93);color:#fff;transition:opacity .7s ease,visibility .7s;font-family:Inter,system-ui,sans-serif}
+/* заставка: белый фон, по центру ONION SHOP, внизу полоса загрузки; шары плавают по краям и не заходят к центру */
+#splash{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;overflow:hidden;background:#fff;transition:opacity .6s ease,visibility .6s;font-family:Onest,Inter,system-ui,sans-serif}
 #splash.out{opacity:0;visibility:hidden}
-#splash .dot{position:absolute;border-radius:50%;background:radial-gradient(circle at 30% 30%,#43c9e3,#1a86c0 60%,#124a8c);opacity:.38;animation:spl-f 7s ease-in-out infinite}
-#splash .d1{width:34vmax;height:34vmax;left:-12vmax;top:-10vmax}
-#splash .d2{width:22vmax;height:22vmax;right:-6vmax;top:12%;animation-delay:-2s;opacity:.28}
-#splash .d3{width:28vmax;height:28vmax;left:18%;bottom:-16vmax;animation-delay:-4s}
-#splash .d4{width:12vmax;height:12vmax;right:14%;bottom:10%;animation-delay:-1s;opacity:.22}
-@keyframes spl-f{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(2.5vmax,-2vmax) scale(1.07)}}
-#splash .box{position:relative;display:grid;justify-items:center;gap:18px;padding:24px;text-align:center;width:min(440px,100%)}
-#splash .pill{display:inline-flex;align-items:center;gap:12px;background:#fff;color:#0b1d3a;border-radius:999px;padding:12px 26px 12px 14px;font-weight:800;font-size:clamp(1.3rem,5.5vw,1.8rem);letter-spacing:.02em;box-shadow:0 18px 50px rgba(0,0,0,.35);animation:spl-pop .8s cubic-bezier(.2,1.3,.4,1) both}
-#splash .pill img{width:52px;height:52px;border-radius:50%}
-@keyframes spl-pop{from{transform:scale(.4);opacity:0}to{transform:none;opacity:1}}
-#splash h2{margin:0;font-size:clamp(2rem,9vw,3rem);line-height:1.02;font-weight:900;letter-spacing:-.01em;animation:spl-up .8s .35s both}
-#splash h2 em{font-style:normal;color:#43c9e3}
-#splash p{margin:0;color:#bfe3f3;font-size:clamp(1rem,4vw,1.15rem);font-weight:600;animation:spl-up .8s .55s both}
-@keyframes spl-up{from{transform:translateY(16px);opacity:0}to{transform:none;opacity:1}}
-#splash .ic{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:4px}
-#splash .ic i{width:46px;height:46px;border-radius:15px;background:rgba(255,255,255,.1);display:grid;place-items:center;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);opacity:0;animation:spl-ic .6s both,spl-b 2.6s ease-in-out infinite}
-#splash .ic i img{width:34px;height:34px}
-@keyframes spl-ic{from{transform:scale(.3);opacity:0}to{transform:none;opacity:1}}
-@keyframes spl-b{0%,100%{translate:0 0}50%{translate:0 -6px}}
-#splash .bar{width:min(300px,76vw);height:8px;border-radius:99px;background:rgba(255,255,255,.16);overflow:hidden;margin-top:10px}
-#splash .bar b{display:block;height:100%;width:100%;border-radius:99px;background:linear-gradient(90deg,#43c9e3,#fff);transform-origin:left;transform:scaleX(.02);transition:transform .25s linear}
-#splash small{color:#8fb6d2;font-size:13px;min-height:1.2em}
-@media (prefers-reduced-motion: reduce){#splash *{animation:none!important}#splash .ic i{opacity:1}}
+#splash .dot{position:absolute;border-radius:50%;background:radial-gradient(circle at 32% 30%,#9fe6f5,#43c9e3 45%,#1a86c0);opacity:.22;will-change:transform}
+#splash .d1{width:46vmax;height:46vmax;left:-26vmax;top:-24vmax;animation:spl-a 9s ease-in-out infinite}
+#splash .d2{width:34vmax;height:34vmax;right:-20vmax;bottom:-16vmax;opacity:.18;animation:spl-b 11s ease-in-out infinite}
+#splash .d3{width:14vmax;height:14vmax;right:-4vmax;top:8%;opacity:.16;animation:spl-c 8s ease-in-out infinite}
+/* движение только вдоль краёв экрана, от центра в сторону */
+@keyframes spl-a{0%,100%{transform:translate(0,0)}50%{transform:translate(5vmax,-2vmax)}}
+@keyframes spl-b{0%,100%{transform:translate(0,0)}50%{transform:translate(-5vmax,2vmax)}}
+@keyframes spl-c{0%,100%{transform:translate(0,0)}50%{transform:translate(1.5vmax,5vmax)}}
+#splash .word{position:relative;margin:0;font-weight:900;font-size:clamp(2.4rem,11vw,4rem);letter-spacing:.02em;line-height:1;color:#0b1d3a;animation:spl-in .8s cubic-bezier(.2,1,.3,1) both}
+#splash .word em{font-style:normal;color:#2bb3e0}
+@keyframes spl-in{from{transform:translateY(12px);opacity:0}to{transform:none;opacity:1}}
+#splash .bar{position:absolute;left:50%;bottom:calc(64px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);width:min(260px,64vw);height:6px;border-radius:99px;background:#e4eef7;overflow:hidden}
+#splash .bar b{display:block;height:100%;width:100%;border-radius:99px;background:linear-gradient(90deg,#1a86c0,#43c9e3);transform-origin:left;transform:scaleX(.02);transition:transform .25s linear}
+@media (prefers-reduced-motion: reduce){#splash *{animation:none!important}}
 </style>
-<span class="dot d1"></span><span class="dot d2"></span><span class="dot d3"></span><span class="dot d4"></span>
-<div class="box">
-<div class="pill"><img src="assets/logo.png" alt="" width="52" height="52">ONION SHOP</div>
-<h2>Находки <em>из Китая</em><br>и вещи в наличии</h2>
-<p>Обувь · одежда · аксессуары</p>
-<div class="ic"><i style="animation-delay:.7s,1.3s"><img src="assets/cat/dark/shoes.svg" alt=""></i><i style="animation-delay:.85s,1.45s"><img src="assets/cat/dark/tees.svg" alt=""></i><i style="animation-delay:1s,1.6s"><img src="assets/cat/dark/hoodies.svg" alt=""></i><i style="animation-delay:1.15s,1.75s"><img src="assets/cat/dark/outerwear.svg" alt=""></i><i style="animation-delay:1.3s,1.9s"><img src="assets/cat/dark/bags.svg" alt=""></i><i style="animation-delay:1.45s,2.05s"><img src="assets/cat/dark/perfume.svg" alt=""></i></div>
+<span class="dot d1"></span><span class="dot d2"></span><span class="dot d3"></span>
+<h1 class="word">ONION <em>SHOP</em></h1>
 <div class="bar"><b id="spl-bar"></b></div>
-<small id="spl-txt">Готовим магазин…</small>
-</div>
 <script>try{if(sessionStorage.getItem('onion.splash')){var s=document.getElementById('splash');s.parentNode.removeChild(s)}}catch(e){}</script>
 </div>
 <!--BODY-->

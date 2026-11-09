@@ -2522,3 +2522,14 @@ html,body{touch-action:pan-x pan-y}
 /* окно рамок: рамки в крайних колонках (крылья ангела, ушки) не упираются в край окна */
 .fr-grid{padding:0 10px}
 .fr-it .ava.md{width:50px;height:50px}
+
+/* ==== обновление 67 ==== */
+/* счётчик вместо «·»: «Все 3», «К оформлению 3» */
+.cnt-pill{display:inline-grid;place-items:center;min-width:22px;height:22px;padding:0 7px;margin-left:6px;border-radius:999px;background:color-mix(in srgb,currentColor 16%,transparent);font-size:.82em;font-weight:800;line-height:1;vertical-align:middle}
+.cb-go .cnt-pill{background:rgba(255,255,255,.24)}
+/* карточка товара: выбор цвета не прилипает к количеству и кнопке «В корзину» */
+.no-buy > .opt + .opt{margin-top:8px}
+.no-buy > .buy{margin-top:18px}
+/* главная: меньше пустого места между баннерами и следующим разделом */
+.bcs{margin-bottom:4px}
+.bcs + .sec{margin-top:16px}

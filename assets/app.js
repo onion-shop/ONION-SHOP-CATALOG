@@ -652,16 +652,13 @@
   }
   function grid(list, cls) { return '<div class="grid' + (cls ? ' ' + cls : '') + '">' + list.map(card).join('') + '</div>'; }
   function countBy(list, fn) { var m = {}; list.forEach(function (p) { var k = fn(p); m[k] = (m[k] || 0) + 1; }); return m; }
-  // картинка категории: тематическое изображение в стиле магазина (assets/cat/ph/<ключ>.jpg, создано в ChatGPT; не фото товаров из каталога);
-  // если для категории своей картинки нет, рисованный значок как раньше
-  var CAT_PH = { stock: 1, china: 1, shoes: 1, tees: 1, polo: 1, hoodies: 1, sweaters: 1, longsleeves: 1, outerwear: 1, puffers: 1, shirts: 1, pants: 1, jeans: 1, shorts: 1, suits: 1, dresses: 1, bags: 1, headwear: 1, accessories: 1, jewelry: 1, watches: 1, perfume: 1, underwear: 1, other: 1 };
-  var CAT_ART = { polo: 'tees', longsleeves: 'tees', sweaters: 'hoodies', puffers: 'outerwear', other: 'stock' };
-  function catSrc(key) { return CAT_PH[key] ? 'assets/cat/ph/' + key + '.jpg?v=' + CAT_PH[key] : 'assets/cat/' + (CAT_ART[key] || key) + '.svg'; }
+  // картинка категории: рисованная иконка (assets/cat/<ключ>.svg, для тёмной темы assets/cat/dark/), одна и та же на главной, в каталоге и в меню
+  var CAT_V = '2'; // меняется, когда перерисовываются иконки: телефон сразу берёт новые, а не старые из кеша
+  var CAT_ART = { other: 'stock' };
+  function catSrc(key) { return 'assets/cat/' + (CAT_ART[key] || key) + '.svg?v=' + CAT_V; }
   function catImg(key, art) {
-    key = key || art;
-    if (CAT_PH[key]) return '<img class="cph" src="' + catSrc(key) + '" alt="" decoding="async">';
-    art = CAT_ART[art] || art;
-    return '<img class="lt" src="assets/cat/' + art + '.svg" alt="" loading="lazy"><img class="dk" src="assets/cat/dark/' + art + '.svg" alt="" loading="lazy">';
+    art = CAT_ART[art || key] || art || key;
+    return '<img class="lt" src="assets/cat/' + art + '.svg?v=' + CAT_V + '" alt="" loading="lazy"><img class="dk" src="assets/cat/dark/' + art + '.svg?v=' + CAT_V + '" alt="" loading="lazy">';
   }
   function categories(list) {
     var c = countBy(list, function (p) { return p.category; });
@@ -848,7 +845,7 @@
       '<div class="cts">' + tiles + '</div>' +
       '<div id="promo-slot">' + promoHtml() + '</div>' +
       '<div class="bcs">' + banner3('Подборка', 'Выбор магазина', 'Вещи, которые мы советуем', '#catalog', picks, 'bc-1') + banner3('В наличии', 'Лучшие предложения', hot.length && discount(hot[0]) >= 3 ? 'Скидки до −' + discount(hot[0]) + '%' : 'Уже в Москве', '#stock', hot, 'bc-2') + banner3('Из Китая', 'Новинки из Китая', 'Доставка уже включена в стоимость товара', '#preorder', preL, 'bc-3') + '</div>' +
-      (favs.length ? '<div class="sec"><div class="sec-head"><h2>Избранное</h2><a class="btn btn-ghost btn-sm" href="#favorites">Все · ' + favs.length + '</a></div><div class="hscroll">' + favs.map(function (id) { return BY_ID[id]; }).filter(Boolean).slice(0, 10).map(card).join('') + '</div></div>' : '') +
+      (favs.length ? '<div class="sec"><div class="sec-head"><h2>Избранное</h2><a class="btn btn-ghost btn-sm" href="#favorites">Все <span class="cnt-pill">' + favs.length + '</span></a></div><div class="hscroll">' + favs.map(function (id) { return BY_ID[id]; }).filter(Boolean).slice(0, 10).map(card).join('') + '</div></div>' : '') +
       (rec.length ? '<div class="sec"><div class="sec-head"><h2>Вы смотрели</h2></div><div class="hscroll">' + rec.map(card).join('') + '</div></div>' : '') +
       '<div class="sec"><div class="sec-head"><h2>Новинки</h2><a class="btn btn-ghost btn-sm" href="#catalog">Весь каталог</a></div>' + grid(fresh, 'home-grid') + '</div>' +
       '<div class="sec"><a class="faqc" href="#info"><span class="faqc-ic">' + icon('info') + '</span><span class="faqc-t"><b>Частые вопросы</b><small>Заказ, сроки, доставка, оплата</small></span><span class="faqc-go">' + icon('arrow-right') + '</span></a></div>';
@@ -1356,7 +1353,7 @@
       '<div class="cl-list">' + all.map(row).join('') + '</div>' +
       (API.enabled && !acct.user && acct.ready ? '<div class="notice notice-info" style="margin-top:12px">' + icon('user') + '<div><b>Заказ оформляется из кабинета.</b> Войдите, чтобы продолжить.</div></div>' : '') +
       '<div class="card panel vip-panel"><label class="vip"><span class="vip-t"><b>' + icon('bolt') + 'Приоритетный заказ · ' + rub(RULES.vipPrice) + '</b><small>Менеджер возьмёт заказ раньше обычных. Порядок: ' + esc(RULES.priorityOrder().join(', ')) + ', затем платный приоритет.</small></span><input type="checkbox" id="cl-vip"' + (form.vip ? ' checked' : '') + '><span class="sw-tg"></span></label></div>' +
-      '<div class="cart-bar"><div class="cb-sub"><span></span>' + (form.vip && st.n ? '<span class="cb-vip">⚡ Приоритет +' + rub(RULES.vipPrice) + '</span>' : '') + '</div><button class="cb-go" type="button" id="cb-go"' + (st.n ? '' : ' disabled') + '><span>' + (st.n ? 'К оформлению · ' + st.n : 'Выберите товары') + '</span><b>' + (st.n ? rub(st.sum + (form.vip ? RULES.vipPrice : 0)) : '') + '</b></button></div>';
+      '<div class="cart-bar"><div class="cb-sub"><span></span>' + (form.vip && st.n ? '<span class="cb-vip">⚡ Приоритет +' + rub(RULES.vipPrice) + '</span>' : '') + '</div><button class="cb-go" type="button" id="cb-go"' + (st.n ? '' : ' disabled') + '><span>' + (st.n ? 'К оформлению <span class="cnt-pill">' + st.n + '</span>' : 'Выберите товары') + '</span><b>' + (st.n ? rub(st.sum + (form.vip ? RULES.vipPrice : 0)) : '') + '</b></button></div>';
     var all2 = all;
     $$('.cl', v).forEach(function (rowEl) {
       var l = all2[+rowEl.getAttribute('data-k')];
@@ -1396,7 +1393,7 @@
       '<div class="view-head"><div><button class="back-btn" id="to-list" type="button">' + icon('arrow-right') + 'К корзине</button><h1>Оформление заказа</h1><p class="muted">' + t.cnt + ' ' + plural(t.cnt, 'товар', 'товара', 'товаров') + ' · ' + rub(t.total) + '</p></div></div>' +
       (API.enabled && !u && acct.ready ? '<div class="notice notice-info need-acc" style="margin-bottom:12px">' + icon('user') + '<div><b>Заказ оформляется из кабинета.</b><div class="acts" style="margin-top:10px"><button class="btn btn-sm" type="button" id="need-acc">' + icon('user') + 'Войти или создать кабинет</button></div></div></div>' : '') +
       '<form class="checkout" id="checkout" novalidate><div class="col">' +
-      '<div class="card panel"><div class="panel-head"><h2><span class="n">' + (++n) + '</span>Товары · ' + t.cnt + ' шт.</h2><button class="link-btn" type="button" id="cart-clear">Очистить</button></div><div class="lines">' +
+      '<div class="card panel"><div class="panel-head"><h2><span class="n">' + (++n) + '</span>Товары: ' + t.cnt + ' шт.</h2><button class="link-btn" type="button" id="cart-clear">Очистить</button></div><div class="lines">' +
       lines.map(function (l, i) {
         var p = BY_ID[l.id], ph = p.photos.find(function (x) { return x.id === l.photo; }) || p.photos[0];
         return '<div class="line" data-k="' + i + '"><a class="ph" href="#p-' + esc(p.id) + '"><img src="' + thumb(ph.id) + '" alt="" loading="lazy"></a>' +
@@ -1921,7 +1918,7 @@
     var el = document.createElement('div'); el.id = 'drawer'; el.className = 'drawer';
     el.innerHTML = '<div class="dr-bg" data-dr-close></div><aside class="dr-p" role="dialog" aria-modal="true" aria-label="Меню"><div class="dr-h"><b>Меню</b><button class="icon-btn" type="button" data-dr-close aria-label="Закрыть">' + icon('x') + '</button></div><div class="dr-b">' +
       '<div class="dr-g">' + link('home', 'Главная', 'href="#home" data-go="home"') + link('grid', 'Каталог', 'href="#catalog" data-go="catalog" data-reset="1"') + link('box', 'В наличии', 'href="#stock" data-go="stock"') + link('plane', 'Предзаказ из Китая', 'href="#preorder" data-go="preorder"') + link('percent', 'Товары со скидкой', 'href="#catalog" data-go="catalog" data-sale="1"', nSale ? nSale + ' ' + plural(nSale, 'товар', 'товара', 'товаров') : '') + '</div>' +
-      '<div class="dr-s">Категории</div><div class="dr-cats">' + cats.map(function (c) { return '<a class="dr-c' + (c.n ? '' : ' empty') + '" href="#catalog" data-go="catalog" data-cat="' + c.key + '"><img class="lt" src="assets/cat/' + c.key + '.svg" alt=""><img class="dk" src="assets/cat/dark/' + c.key + '.svg" alt=""><span>' + esc(c.label) + '</span></a>'; }).join('') + '</div>' +
+      '<div class="dr-s">Категории</div><div class="dr-cats">' + cats.map(function (c) { return '<a class="dr-c' + (c.n ? '' : ' empty') + '" href="#catalog" data-go="catalog" data-cat="' + c.key + '">' + catImg(c.key) + '<span>' + esc(c.label) + '</span></a>'; }).join('') + '</div>' +
       '<div class="dr-s">Мои покупки</div><div class="dr-g">' + link('heart', 'Избранное', 'href="#favorites" data-go="favorites"') + link('bag', 'Корзина', 'href="#cart" data-go="cart"') + link('user', u ? 'Кабинет' : 'Войти', 'href="#account" data-go="account"', u ? esc(u.name || u.login || '') : '') + (API.enabled ? link('receipt', 'Мои заказы', 'href="#orders" data-go="orders"') + link('gift', 'Игра', 'href="#roulette" data-go="roulette"') : '') + '</div>' +
       '<div class="dr-s">Информация</div><div class="dr-g">' + link('info', 'Частые вопросы', 'href="#info" data-go="info"', 'заказ, сроки, доставка, оплата') + link('truck', 'Как работает предзаказ', 'href="' + SHOP.preorderUrl + '" target="_blank" rel="noopener"') + link('pin', 'Магазин и контакты', 'href="#info" data-go="info"', esc(SHOP.address)) + '</div>' +
       '<div class="dr-s">Оформление</div><div class="dr-th" id="dr-th">' + ['auto', 'light', 'dark'].map(function (k) { return '<button type="button" data-th="' + k + '" aria-pressed="' + (themeMode() === k) + '">' + (k === 'auto' ? 'Авто' : THEME_NAMES[k]) + '</button>'; }).join('') + '</div>' +
@@ -2445,7 +2442,7 @@
         an.oncancel = function () { res(); };
       });
     }
-    function arrive() { put(xIn()); return slide(xWait(), 420, 'cubic-bezier(.25,.55,.4,1)'); }
+    function arrive() { put(xIn()); return slide(xWait(), 800, 'cubic-bezier(.25,.55,.4,1)'); }
     function idleShow() { var info = rlInfo(IDLE[idleI++ % IDLE.length]); item.className = 'px-item ghost'; item.innerHTML = pxIcon(info); }
     function idleOn() { clearInterval(rlTimer); idleShow(); rlTimer = setInterval(function () { if (!$('#px')) { clearInterval(rlTimer); return; } if (!busyNow && !document.hidden) idleShow(); }, 2600); }
     function setState(s, t) { px.setAttribute('data-s', s); st.textContent = t; }
@@ -2464,10 +2461,10 @@
         if (r.prize.frameId) toast('Рамка «' + (r.prize.frameName || '') + '» в кабинете, раздел «Рамка аватара»');
         else if (r.prize.code) toast('Промокод ' + r.prize.code + ' уже в кабинете');
         /* проверенная коробка едет дальше и уходит за край, следом слева выезжает новая */
-        slide(xOut(), 500, 'cubic-bezier(.45,0,.85,.55)').then(function () {
+        slide(xOut(), 950, 'cubic-bezier(.45,0,.85,.55)').then(function () {
           if (!$('#px')) return;
           parcel.style.visibility = 'hidden';
-          return new Promise(function (res) { setTimeout(res, REDUCED ? 0 : 120); });
+          return new Promise(function (res) { setTimeout(res, REDUCED ? 0 : 450); });
         }).then(function () {
           if (!$('#px')) return;
           return arrive();
@@ -2476,10 +2473,10 @@
           busyNow = false; spinning = false; updateRoulBalance();
           setTimeout(function () { if (!busyNow && $('#px')) { stamp.className = 'px-stamp'; idleOn(); } }, 2800);
         });
-      }, REDUCED ? 50 : 120);
+      }, REDUCED ? 50 : 280);
     }
     function fail(msg) {
-      slide(xWait(), 300, 'ease-out').then(function () { busyNow = false; spinning = false; setState('idle', 'ГОТОВ'); cap.innerHTML = CAP0; updateRoulBalance(); idleOn(); });
+      slide(xWait(), 500, 'ease-out').then(function () { busyNow = false; spinning = false; setState('idle', 'ГОТОВ'); cap.innerHTML = CAP0; updateRoulBalance(); idleOn(); });
       toast(msg, null, 'warn');
     }
     function doOpen(free) {
@@ -2489,12 +2486,12 @@
       stamp.className = 'px-stamp'; item.className = 'px-item'; item.innerHTML = '';
       cap.innerHTML = '<b>Сканируем…</b><span>Посылка едет в рентген</span>';
       setState('in', 'ПРИЁМ');
-      var res = null, scanned = false, scanAt = 0, shown = false, SCAN = REDUCED ? 60 : 250;
+      var res = null, scanned = false, scanAt = 0, shown = false, SCAN = REDUCED ? 80 : 600;
       function tryShow() {
         if (shown || !scanned || !res) return; shown = true;
         setTimeout(function () { spinning = false; reveal(res.r, res.real); }, Math.max(0, SCAN - (Date.now() - scanAt)));
       }
-      slide(xMid(), 380, 'cubic-bezier(.2,.5,.4,1)').then(function () { if (!busyNow) return; setState('scan', 'СКАН'); scanned = true; scanAt = Date.now(); tryShow(); });
+      slide(xMid(), 900, 'cubic-bezier(.2,.5,.4,1)').then(function () { if (!busyNow) return; setState('scan', 'СКАН'); scanned = true; scanAt = Date.now(); tryShow(); });
       API.call('spin', { free: free }).then(function (r) {
         if (!r.ok) { shown = true; fail(r.error); return; }
         var sh = Object.assign({}, acct.user, { balance: acct.user.balance - (free ? 0 : RULES.spinCost), freeSpins: acct.user.freeSpins - (free ? 1 : 0) });
