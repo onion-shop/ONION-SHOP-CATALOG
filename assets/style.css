@@ -2627,4 +2627,18 @@ html,body{touch-action:pan-x pan-y}
 .px-beacon{top:-11px!important}
 /* рамки: Хэллоуин и Гирлянда */
 .ava.f-f95{--fr:url(fr/f95.svg?v=9);--fr-s:url(fr/f95.svg?v=9);--fx:url(fr/f95t.svg?v=9);--fx-s:url(fr/f95t.svg?v=9);--fa:none;--fxa:fr-sway2 4.5s ease-in-out infinite;--fxo:50% 50%}
-.ava.f-f94{--fr:url(fr/f94a.svg?v=9);--fr-s:url(fr/f94a.svg?v=9);--fx:url(fr/f94b.svg?v=9);--fx-s:url(fr/f94b.svg?v=9)}
+.ava.f-f94{--fr:url(fr/f94a.svg?v=10);--fr-s:url(fr/f94a.svg?v=10);--fx:url(fr/f94b.svg?v=10);--fx-s:url(fr/f94b.svg?v=10);--fa:fr-onoff 1.3s steps(1,end) infinite;--fxa:fr-onoff 1.3s steps(1,end) -.65s infinite;--fxo:50% 50%}
+@keyframes fr-onoff{0%{opacity:1}50%{opacity:0}100%{opacity:0}}
+@media (prefers-reduced-motion:reduce){.ava.f-f94{--fa:none;--fxa:none}}
+
+/* ==== обновление 76 ==== */
+/* каталог: блок цены не шире экрана, быстрые варианты листаются пальцем */
+.cats-price{grid-template-columns:minmax(0,1fr);min-width:0;max-width:100%}
+.cats-price>*{min-width:0}
+.cats-price .pr-row{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.cats-price .pr-in{height:40px;padding:0 10px;gap:5px;font-size:13px;min-width:0}
+.cats-price .pr-in input{font-size:16px;width:100%}
+.cats-price .pr-chips{display:flex;max-width:100%;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;touch-action:pan-x pan-y;margin:0;padding:0 0 2px}
+.cats-price .pr-chips::after{content:"";flex:none;width:1px}
+/* плитки категорий: выделенная «Все» не прилипает к краю экрана */
+.cat-rail{padding-left:16px;padding-right:16px;scroll-padding-inline:16px}
