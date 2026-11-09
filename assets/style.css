@@ -2562,3 +2562,26 @@ html,body{touch-action:pan-x pan-y}
 /* Гирлянда: рамка неподвижна, лампочки двух групп мигают по очереди */
 .ava.f-f94{--fr:url(fr/f94a.svg?v=5);--fr-s:url(fr/f94a.svg?v=5);--fx:url(fr/f94b.svg?v=5);--fx-s:url(fr/f94b.svg?v=5);--fa:fr-blink 1.1s ease-in-out infinite;--fxa:fr-blink 1.1s ease-in-out -.55s infinite;--fxo:50% 50%}
 @media (prefers-reduced-motion:reduce){.ava.f-f94,.ava.f-f83,.ava.f-f69,.ava.f-f85{--fa:none;--fxa:none}}
+/* ==== рамки, обновление 70 ==== */
+@keyframes orb-spin{to{transform:rotate(360deg)}}
+@keyframes orb-keep{from{transform:translate(-50%,-50%) rotate(0)}to{transform:translate(-50%,-50%) rotate(-360deg)}}
+@keyframes pac-chomp{from{clip-path:polygon(50% 50%,100% 18%,100% 0,0 0,0 100%,100% 100%,100% 82%)}to{clip-path:polygon(50% 50%,100% 49%,100% 0,0 0,0 100%,100% 100%,100% 51%)}}
+@keyframes fr-sway2{0%,100%{transform:rotate(-4deg)}50%{transform:rotate(4deg)}}
+@keyframes ear-l{0%,70%,100%{transform:rotate(0)}76%{transform:rotate(-7deg)}84%{transform:rotate(2deg)}}
+.ava .orb{position:absolute;inset:-38.2%;pointer-events:none;z-index:3;transform-origin:50% 50%;display:block}
+.ava .orb i{position:absolute;display:block;transform:translate(-50%,-50%)}
+/* Космос: звёзды неподвижны, планета едет по кругу и всегда остаётся ровной (её кольцо горизонтально) */
+.ava.f-f63{--fa:none;--fx:none;--fx-s:none;--fxa:none}
+.ava.f-f63 .orb{animation:orb-spin 15s linear infinite}
+.ava.f-f63 .orb .o1{left:50%;top:12.6%;width:23.3%;height:15%;background:url(fr/f63p.svg?v=6) center/100% 100% no-repeat;animation:orb-keep 15s linear infinite}
+.ava.f-f63 .orb .o2{display:none}
+/* Аркада: Пакман идёт по кольцу и жуёт, съеденные точки сразу возвращаются за ним, привидение догоняет */
+.ava.f-f83{--fr:url(fr/f83.svg?v=6);--fr-s:url(fr/f83.svg?v=6);--fx:none;--fx-s:none;--fa:none;--fxa:none}
+.ava.f-f83 .orb{animation:orb-spin 10s linear infinite;background:url(fr/f83e.svg?v=6) center/100% 100% no-repeat}
+.ava.f-f83 .orb .o1{left:50%;top:16.7%;width:14%;height:14%;border-radius:50%;background:#ffd31a;animation:pac-chomp .3s steps(3) infinite alternate;box-shadow:inset -1px -1px 2px rgba(150,90,0,.35)}
+.ava.f-f83 .orb .o2{left:30.2%;top:24.2%;width:10.6%;height:10.6%;background:url(fr/f83g.svg?v=6) center/100% 100% no-repeat;animation:orb-keep 10s linear infinite}
+/* Кошка: белая шерсть с рыжим, серым и чёрным пятнами; ушки реалистичные, дёргаются по очереди */
+.ava.f-f85{--fr:url(fr/f85.svg?v=6);--fr-s:url(fr/f85.svg?v=6);--fx:url(fr/f85t.svg?v=6);--fx-s:url(fr/f85t.svg?v=6);--fa:none;--fxa:ear-l 5s ease-in-out infinite;--fxo:50% 30%}
+/* Роза: только сверху, кольцо неподвижно, роза с листьями плавно покачивается вдоль кольца */
+.ava.f-f21{--fr:url(fr/f21.svg?v=5);--fr-s:url(fr/f21.svg?v=5);--fx:url(fr/f21t.svg?v=6);--fx-s:url(fr/f21t.svg?v=6);--fa:none;--fxa:fr-sway2 5s ease-in-out infinite;--fxo:50% 50%}
+@media (prefers-reduced-motion:reduce){.ava .orb,.ava .orb i{animation:none!important}}

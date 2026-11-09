@@ -140,7 +140,9 @@
   function promoLine(p) { var d = p.until ? new Date(+p.until + 3 * 3600000) : null; return (p.cat ? 'только «' + esc(p.catLabel) + '»' : esc(p.from || '')) + (p.exp ? ' · до конца месяца' : d ? ' · до ' + String(d.getUTCDate()).padStart(2, '0') + '.' + String(d.getUTCMonth() + 1).padStart(2, '0') : ''); }
   function ava(u, cls) {
     var f = esc((u && u.frame) || 'base');
-    return '<span class="ava f-' + f + (f !== 'base' ? ' fx' : '') + (cls ? ' ' + cls : '') + '">' + (u && u.avatar ? '<img src="' + esc(u.avatar) + '" alt="">' : '<b class="ini">' + esc(initials(u && u.name)) + '</b>') + '</span>';
+    // у рамок с «живым» движением по орбите (планета, Пакман) есть слой орбиты: он крутится, а планета остаётся ровной
+    var orb = (f === 'f63' || f === 'f83') ? '<i class="orb"><i class="o1"></i><i class="o2"></i></i>' : '';
+    return '<span class="ava f-' + f + (f !== 'base' ? ' fx' : '') + (cls ? ' ' + cls : '') + '">' + (u && u.avatar ? '<img src="' + esc(u.avatar) + '" alt="">' : '<b class="ini">' + esc(initials(u && u.name)) + '</b>') + orb + '</span>';
   }
 
   // ------------------------------------------------------------ время (Москва)
