@@ -186,6 +186,8 @@ function migrate_(name, cols) {
     try { var bk = sh.copyTo(ss_()); bk.setName(name + ' (резерв ' + Utilities.formatDate(new Date(), 'Europe/Moscow', 'dd.MM HH:mm:ss') + ')'); bk.hideSheet(); } catch (e) { }
   }
   sh.clear(); sh.clearConditionalFormatRules();
+  // старые списки и галочки привязаны к прежним колонкам: без очистки они мешали бы записи данных после перестановки
+  sh.getRange(1, 1, sh.getMaxRows(), sh.getMaxColumns()).clearDataValidations().clearNote();
   sh.getBandings().forEach(function (b) { b.remove(); });
   writeHeader_(sh, cols);
   if (rows.length) sh.getRange(2, 1, rows.length, cols.length).setValues(rows);
@@ -269,7 +271,10 @@ function styleOrders_() {
   rules.push(SpreadsheetApp.newConditionalFormatRule().whenFormulaSatisfied(F_('=AND($A2<>"",' + paL + '=FALSE,' + stL + '<>"Отменён",ISNUMBER(' + atL + '),NOW()-' + atL + '>1)')).setBackground('#fde8e8').setFontColor('#b42318').setBold(true).setRanges([sh.getRange(2, 1, maxR - 1, 1)]).build());
   rules.push(SpreadsheetApp.newConditionalFormatRule().whenFormulaSatisfied('=' + paL + '=TRUE').setBackground(C.paid).setRanges([rowAll]).build());
   sh.setConditionalFormatRules(rules);
-  var n = sh.getLastRow() - 1;
+  // высота 64 только у строк с заказами (чекбоксы «Оплачен» заполняют лист до конца, раньше из-за них все пустые строки были высокими)
+  var n = 0, last = sh.getLastRow();
+  if (last >= 2) { var nn = sh.getRange(2, 1, last - 1, 1).getValues(); for (var q = nn.length - 1; q >= 0; q--) if (String(nn[q][0]).trim() !== '') { n = q + 1; break; } }
+  if (maxR - 1 > n) sh.setRowHeights(2 + n, maxR - 1 - n, 21);
   if (n > 0) {
     sh.setRowHeights(2, n, 64);
     var sr = sh.getRange(2, ci_(ORDER_COLS, 'status') + 1, n, 1), sv = sr.getValues(), nr = sh.getRange(2, 1, n, 1).getValues();
@@ -377,21 +382,21 @@ function styleSummary_() {
            ['Это скидок на', '=SUM(' + U('balance') + ')*' + Math.round(OnionCore.settings().tokenRub * 100) + '/100', '#,##0" ₽"']);
   // списки: каждый в своём блоке с запасом строк, чтобы не наезжали друг на друга
   var line = function (row, formula) { sh.getRange(row, 2).setFormula(F_(formula)).setFontColor('#1b2333').setFontSize(10).setWrap(false); };
+  var unpaidN = 'COUNTIFS(' + O('no') + ',"<>",' + O('paid') + ',FALSE,' + O('status') + ',"<>Отменён")', allN = 'COUNTIFS(' + O('no') + ',"<>")';
   section(33, 'Ждут оплаты (сначала самые давние)');
-  line(34, '=IFERROR(TAKE(ARRAYFORMULA(FILTER(' + O('no') + '&"  ·  "&' + O('name') + '&"  ·  "&TEXT(' + O('toPay') + ',"# ##0")&" ₽",' + O('no') + '<>"",' + O('paid') + '=FALSE,' + O('status') + '<>"Отменён")),8),"Все заказы оплачены")');
+  line(34, '=IFERROR(INDEX(ARRAYFORMULA(FILTER(' + O('no') + '&"  ·  "&' + O('name') + '&"  ·  "&TEXT(' + O('toPay') + ',"# ##0")&" ₽",' + O('no') + '<>"",' + O('paid') + '=FALSE,' + O('status') + '<>"Отменён")),SEQUENCE(MIN(8,' + unpaidN + '))),"Все заказы оплачены")');
   section(44, 'Заказы по статусам');
   ALL_STAGES_().forEach(function (s, i) {
     var r = 45 + i;
     sh.getRange(r, 2).setValue(s).setFontColor('#1b2333');
-    sh.getRange(r, 4).setFormula('=COUNTIFS(' + O('status') + ',"' + s + '")').setHorizontalAlignment('right').setFontWeight('bold').setFontColor(C.navy);
+    sh.getRange(r, 4).setFormula(F_('=COUNTIFS(' + O('status') + ',"' + s + '")')).setHorizontalAlignment('right').setFontWeight('bold').setFontColor(C.navy);
     sh.getRange(r, 2, 1, 3).setBorder(false, false, true, false, false, false, C.line, SpreadsheetApp.BorderStyle.SOLID);
   });
-  section(55, 'Последние заказы');
-  line(56, '=IFERROR(TAKE(CHOOSECOLS(SORT(ARRAYFORMULA(FILTER(HSTACK(' + O('at') + ',' + O('no') + '&"  ·  "&' + O('status') + '&"  ·  "&TEXT(' + O('toPay') + ',"# ##0")&" ₽"),' + O('no') + '<>"")),1,FALSE),2),5),"Заказов пока нет")');
+  section(55, 'Последние заказы (сначала новые)');
+  line(56, '=IFERROR(INDEX(ARRAYFORMULA(FILTER(' + O('no') + '&"  ·  "&' + O('status') + '&"  ·  "&TEXT(' + O('toPay') + ',"# ##0")&" ₽",' + O('no') + '<>"")),SEQUENCE(MIN(5,' + allN + '),1,MIN(5,' + allN + ')*0+' + allN + ',-1)),"Заказов пока нет")');
   section(63, 'Дни рождения в ближайшие 14 дней');
   var bd = U('birthday');
-  line(64, '=IFERROR(SORT(ARRAYFORMULA(FILTER(' + U('name') + '&" ("&' + U('login') + '&")  ·  "&' + bd + ',' + bd + '<>"",IFERROR(MOD(DATE(YEAR(TODAY()),VALUE(LEFT(' + bd + ',2)),VALUE(RIGHT(' + bd + ',2)))-TODAY(),365),999)<=14))),"Никого")');
-  section(72, 'Как пользоваться');
+  line(64, '=IFERROR(ARRAYFORMULA(FILTER(' + U('name') + '&" ("&' + U('login') + '&")  ·  "&' + bd + ',' + bd + '<>"",IFERROR(MOD(DATE(YEAR(TODAY()),VALUE(LEFT(' + bd + ',2)),VALUE(RIGHT(' + bd + ',2)))-TODAY(),365),999)<=14)),"Никого")');  section(72, 'Как пользоваться');
   sh.getRange('B73:D73').merge().setValue('Заказы: меняйте «Статус» из списка, клиент видит его на сайте. Отметьте «Оплачен», когда клиент заплатил. Красный номер: заказ не оплачен больше суток. Редкие колонки свёрнуты значком «+» над таблицей.');
   sh.getRange('B74:D74').merge().setValue('Клиенты: колонки с синим заголовком можно править (ониксы, уровень, XP, контакты), клиент видит это сразу.');
   sh.getRange('B75:D75').merge().setValue('Если что-то сбилось: меню ONION SHOP → «Оформить таблицу заново».');
@@ -409,10 +414,27 @@ function styleReviews_() {
   sh.getRange(1, ci_(REVIEW_COLS, 'status') + 1).setNote('Выберите «скрыт», чтобы убрать отзыв с сайта. Ониксы за отзыв остаются у клиента.');
 }
 function styleWaits_() { style_(migrate_(SHEET.waits, WAIT_COLS), WAIT_COLS, {}); }
+/* Аварийно: вернуть лист из последней резервной копии («Заказы (резерв …)», скрытый лист), если перестройка прервалась.
+   Запускать вручную из редактора скриптов, потом выполнить «Оформить таблицу заново». */
+function restoreFromBackup(name) {
+  name = name || SHEET.orders;
+  var list = ss_().getSheets().filter(function (s) { return s.getName().indexOf(name + ' (резерв ') === 0; });
+  if (!list.length) throw new Error('Нет резервной копии листа «' + name + '»');
+  var bk = list[list.length - 1], sh = ss_().getSheetByName(name);
+  var r = bk.getLastRow(), c = bk.getLastColumn();
+  sh.clear(); sh.clearConditionalFormatRules();
+  sh.getRange(1, 1, sh.getMaxRows(), sh.getMaxColumns()).clearDataValidations().clearNote();
+  if (sh.getMaxColumns() < c) sh.insertColumnsAfter(sh.getMaxColumns(), c - sh.getMaxColumns());
+  if (sh.getMaxRows() < r) sh.insertRowsAfter(sh.getMaxRows(), r - sh.getMaxRows());
+  bk.getRange(1, 1, r, c).copyTo(sh.getRange(1, 1));
+  Logger.log('Лист «' + name + '» возвращён из «' + bk.getName() + '», строк: ' + (r - 1));
+}
+function restoreOrders() { restoreFromBackup(SHEET.orders); }
 /* служебные листы: «Учёт бонусов» (хэши) и «Игры» (старые сохранения игр, больше не используются) */
 function SERVICE_SHEETS_() {
   return [SHEET.ledger, 'Игры'].map(function (n) { return ss_().getSheetByName(n); }).filter(Boolean);
 }
+function refreshSummary() { styleSummary_(); }
 function showServiceSheets() { SERVICE_SHEETS_().forEach(function (s) { s.showSheet(); }); }
 function hideServiceSheets() { SERVICE_SHEETS_().forEach(function (s) { s.hideSheet(); }); }
 function layout_() {
@@ -1104,6 +1126,7 @@ function onOpen() {
       .addItem('Выйти всем из аккаунтов', 'clearSessions')
       .addSeparator()
       .addItem('Всё сразу (клиенты, заказы, журнал)', 'clearAllData'))
+    .addItem('Обновить сводку', 'refreshSummary')
     .addItem('Оформить таблицу заново', 'relayout')
     .addSubMenu(SpreadsheetApp.getUi().createMenu('Служебные листы')
       .addItem('Показать («Учёт бонусов», «Игры»)', 'showServiceSheets')
