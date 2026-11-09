@@ -2540,3 +2540,25 @@ html,body{touch-action:pan-x pan-y}
 /* лампа на сканере: только оранжевая лампа без тёмной рамки-квадрата */
 .px-beacon{box-shadow:none!important;background:radial-gradient(circle at 50% 70%,#ffb066,#ff8a2a 70%);border-radius:9px 9px 3px 3px;width:16px;height:11px;margin-left:-8px;top:-8px}
 .px[data-s="scan"] .px-beacon,.px[data-s="in"] .px-beacon{box-shadow:0 0 14px 4px rgba(255,138,42,.9)!important}
+/* ==== рамки, обновление 69: у тяжёлых рамок подвижные детали вынесены в отдельные слои ==== */
+@keyframes fr-out{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
+@keyframes fr-blink{0%,100%{opacity:1}50%{opacity:.3}}
+/* Воксельный огонь: языки пламени сверху (в картинке), мерцание то же */
+.ava.f-f8{--fr:url(fr/f8.svg?v=5);--fr-s:url(fr/f8s.svg?v=5);--fa:fr-flicker 1.6s ease-in-out infinite}
+/* Роза: листья и розы лежат на кольце; оба слоя крутятся одинаково, поэтому не расходятся */
+.ava.f-f21{--fr:url(fr/f21.svg?v=5);--fr-s:url(fr/f21.svg?v=5);--fx:url(fr/f21t.svg?v=5);--fx-s:url(fr/f21t.svg?v=5);--fa:fr-spin 40s linear infinite;--fxa:fr-spin 40s linear infinite;--fxo:50% 50%}
+/* Луковица: росток и кольцо двигаются вместе */
+.ava.f-f48{--fx:url(fr/f48t.svg?v=5);--fx-s:url(fr/f48t.svg?v=5);--fa:fr-breathe 4.5s ease-in-out infinite;--fxa:fr-breathe 4.5s ease-in-out infinite;--fxo:50% 50%}
+/* Космос: планета постоянно видна и едет по кругу */
+.ava.f-f63{--fa:fr-spin 60s linear infinite;--fxa:fr-spin 14s linear infinite;--fxo:50% 50%}
+/* Шестерёнки: большая крутится по часовой, жёлтая быстрее и в обратную сторону вокруг своей оси */
+.ava.f-f81{--fr:url(fr/f81.svg?v=5);--fr-s:url(fr/f81s.svg?v=5);--fx:url(fr/f81t.svg?v=5);--fx-s:url(fr/f81t.svg?v=5);--fa:fr-spin 16s linear infinite;--fxa:fr-spin-r 4.5s linear infinite;--fxo:78.3% 23.3%}
+/* Аркада: рамка неподвижна, Пакман идёт по кольцу лицом по ходу движения */
+.ava.f-f83{--fr:url(fr/f83.svg?v=5);--fr-s:url(fr/f83.svg?v=5);--fx:url(fr/f83t.svg?v=5);--fx-s:url(fr/f83t.svg?v=5);--fa:none;--fxa:fr-spin 9s linear infinite;--fxo:50% 50%}
+/* Капли: рамка неподвижна, капли чуть отходят от неё и возвращаются */
+.ava.f-f69{--fr:url(fr/f69.svg?v=5);--fr-s:url(fr/f69.svg?v=5);--fx:url(fr/f69t.svg?v=5);--fx-s:url(fr/f69t.svg?v=5);--fa:none;--fxa:fr-out 3.2s ease-in-out infinite;--fxo:50% 50%}
+/* Кошачьи уши: новые острые ушки, рамка неподвижна, ушки слегка дёргаются */
+.ava.f-f85{--fx:url(fr/f85t.svg?v=5);--fx-s:url(fr/f85t.svg?v=5);--fa:none;--fxa:fr-wiggle 3.4s ease-in-out infinite;--fxo:50% 34%}
+/* Гирлянда: рамка неподвижна, лампочки двух групп мигают по очереди */
+.ava.f-f94{--fr:url(fr/f94a.svg?v=5);--fr-s:url(fr/f94a.svg?v=5);--fx:url(fr/f94b.svg?v=5);--fx-s:url(fr/f94b.svg?v=5);--fa:fr-blink 1.1s ease-in-out infinite;--fxa:fr-blink 1.1s ease-in-out -.55s infinite;--fxo:50% 50%}
+@media (prefers-reduced-motion:reduce){.ava.f-f94,.ava.f-f83,.ava.f-f69,.ava.f-f85{--fa:none;--fxa:none}}
