@@ -384,7 +384,7 @@ function styleSummary_() {
   var line = function (row, formula) { sh.getRange(row, 2).setFormula(F_(formula)).setFontColor('#1b2333').setFontSize(10).setWrap(false); };
   var unpaidN = 'COUNTIFS(' + O('no') + ',"<>",' + O('paid') + ',FALSE,' + O('status') + ',"<>Отменён")', allN = 'COUNTIFS(' + O('no') + ',"<>")';
   section(33, 'Ждут оплаты (сначала самые давние)');
-  line(34, '=IFERROR(INDEX(ARRAYFORMULA(FILTER(' + O('no') + '&"  ·  "&' + O('name') + '&"  ·  "&TEXT(' + O('toPay') + ',"# ##0")&" ₽",' + O('no') + '<>"",' + O('paid') + '=FALSE,' + O('status') + '<>"Отменён")),SEQUENCE(MIN(8,' + unpaidN + '))),"Все заказы оплачены")');
+  line(34, '=IFERROR(ARRAYFORMULA(INDEX(ARRAYFORMULA(FILTER(' + O('no') + '&"  ·  "&' + O('name') + '&"  ·  "&TEXT(' + O('toPay') + ',"# ##0")&" ₽",' + O('no') + '<>"",' + O('paid') + '=FALSE,' + O('status') + '<>"Отменён")),SEQUENCE(MIN(8,' + unpaidN + ')))),"Все заказы оплачены")');
   section(44, 'Заказы по статусам');
   ALL_STAGES_().forEach(function (s, i) {
     var r = 45 + i;
@@ -393,7 +393,7 @@ function styleSummary_() {
     sh.getRange(r, 2, 1, 3).setBorder(false, false, true, false, false, false, C.line, SpreadsheetApp.BorderStyle.SOLID);
   });
   section(55, 'Последние заказы (сначала новые)');
-  line(56, '=IFERROR(INDEX(ARRAYFORMULA(FILTER(' + O('no') + '&"  ·  "&' + O('status') + '&"  ·  "&TEXT(' + O('toPay') + ',"# ##0")&" ₽",' + O('no') + '<>"")),SEQUENCE(MIN(5,' + allN + '),1,MIN(5,' + allN + ')*0+' + allN + ',-1)),"Заказов пока нет")');
+  line(56, '=IFERROR(ARRAYFORMULA(INDEX(ARRAYFORMULA(FILTER(' + O('no') + '&"  ·  "&' + O('status') + '&"  ·  "&TEXT(' + O('toPay') + ',"# ##0")&" ₽",' + O('no') + '<>"")),SEQUENCE(MIN(5,' + allN + '),1,MIN(5,' + allN + ')*0+' + allN + ',-1))),"Заказов пока нет")');
   section(63, 'Дни рождения в ближайшие 14 дней');
   var bd = U('birthday');
   line(64, '=IFERROR(ARRAYFORMULA(FILTER(' + U('name') + '&" ("&' + U('login') + '&")  ·  "&' + bd + ',' + bd + '<>"",IFERROR(MOD(DATE(YEAR(TODAY()),VALUE(LEFT(' + bd + ',2)),VALUE(RIGHT(' + bd + ',2)))-TODAY(),365),999)<=14)),"Никого")');  section(72, 'Как пользоваться');
