@@ -166,7 +166,7 @@ var OnionCore = (function () {
        level: статусные пять, надеваются только при своём статусе; wheel: выпадают только в «Посылке с сюрпризом»
        (поровну среди неоткрытых); ach: рамка за достижение магазина (одна на достижение). Рамка не даёт никаких привилегий. */
     frames: [
-      { id: 'base', name: 'Без рамки' },
+      { id: 'base', name: 'Обычная' },
       { id: 'lvl-bronze', name: 'Бронза', src: 'level', lvl: 0 },
       { id: 'lvl-silver', name: 'Серебро', src: 'level', lvl: 1 },
       { id: 'lvl-gold', name: 'Золото', src: 'level', lvl: 2 },
@@ -174,14 +174,14 @@ var OnionCore = (function () {
       { id: 'lvl-diamond', name: 'Алмаз', src: 'level', lvl: 4 },
       { id: 'f5', name: 'Пиксельная радуга', src: 'wheel' },
       { id: 'f8', name: 'Воксельный огонь', src: 'ach', ach: 'streak' },
-      { id: 'f15', name: 'Неон закат', src: 'wheel' },
+      { id: 'f15', name: 'Неон-закат', src: 'wheel' },
       { id: 'f17', name: 'Неон-радуга', src: 'wheel' },
       { id: 'f21', name: 'Роза', src: 'wheel' },
       { id: 'f24', name: 'Ромашки', src: 'ach', ach: 'review' },
       { id: 'f27', name: 'Лавровый венок', src: 'ach', ach: 'five' },
       { id: 'f46', name: 'Хром', src: 'ach', ach: 'collector' },
       { id: 'f48', name: 'Луковица', src: 'ach', ach: 'first' },
-      { id: 'f52', name: 'Дальний рейс', src: 'ach', ach: 'china' },
+      { id: 'f52', name: 'Осторожно', src: 'ach', ach: 'china' },
       { id: 'f53', name: 'Гардероб', src: 'ach', ach: 'ten' },
       { id: 'f55', name: 'Штрихкод', src: 'wheel' },
       { id: 'f57', name: 'Подарочная лента', src: 'wheel' },

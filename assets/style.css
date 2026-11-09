@@ -2620,3 +2620,11 @@ html,body{touch-action:pan-x pan-y}
 .ava.f-f101{--fr:url(fr/f101.svg?v=8);--fr-s:url(fr/f101.svg?v=8);--fx:none;--fx-s:none;--fa:fr-sway2 7s ease-in-out infinite;--fxa:none}
 .ava.f-f91{--fr:url(fr/f91.svg?v=8);--fr-s:url(fr/f91.svg?v=8);--fx:url(fr/f91t.svg?v=8);--fx-s:url(fr/f91t.svg?v=8);--fa:none;--fxa:fr-twinkle 1.5s ease-in-out infinite;--fxo:50% 50%}
 .ava.f-f85{--fx:url(fr/f85t.svg?v=8);--fx-s:url(fr/f85t.svg?v=8)}
+/* ==== обновление 75 ==== */
+/* стандартная аватарка (когда фото не загружено) */
+.ava>img.def{object-fit:cover;background:#1d4fb8}
+/* лампа на сканере стоит на полосе туннеля, а не внутри неё */
+.px-beacon{top:-11px!important}
+/* рамки: Хэллоуин и Гирлянда */
+.ava.f-f95{--fr:url(fr/f95.svg?v=9);--fr-s:url(fr/f95.svg?v=9);--fx:url(fr/f95t.svg?v=9);--fx-s:url(fr/f95t.svg?v=9);--fa:none;--fxa:fr-sway2 4.5s ease-in-out infinite;--fxo:50% 50%}
+.ava.f-f94{--fr:url(fr/f94a.svg?v=9);--fr-s:url(fr/f94a.svg?v=9);--fx:url(fr/f94b.svg?v=9);--fx-s:url(fr/f94b.svg?v=9)}

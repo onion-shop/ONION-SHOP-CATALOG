@@ -144,7 +144,7 @@
     var f = esc((u && u.frame) || 'base');
     // у рамок с «живым» движением по орбите (планета, Пакман) есть слой орбиты: он крутится, а планета остаётся ровной
     var orb = f === 'f83' ? '<i class="orb"><i class="o1"></i><i class="o2"></i></i>' : f === 'f63' ? '<i class="orb"><i class="o1"></i><i class="o2"></i><i class="o3"></i></i>' : '';
-    return '<span class="ava f-' + f + (f !== 'base' ? ' fx' : '') + (cls ? ' ' + cls : '') + '">' + (u && u.avatar ? '<img src="' + esc(u.avatar) + '" alt="">' : '<b class="ini">' + esc(initials(u && u.name)) + '</b>') + orb + '</span>';
+    return '<span class="ava f-' + f + (f !== 'base' ? ' fx' : '') + (cls ? ' ' + cls : '') + '">' + (u && u.avatar ? '<img src="' + esc(u.avatar) + '" alt="">' : '<img class="def" src="assets/ava-default.svg?v=1" alt="">') + orb + '</span>';
   }
 
   // ------------------------------------------------------------ время (Москва)
@@ -2097,7 +2097,7 @@
     });
   }
   function framesModal() {
-    var u = acct.user, prev = u.frame && u.frame !== 'base' ? u.frame : 'lvl-' + u.level.key;
+    var u = acct.user, prev = u.frame || 'base'; // по умолчанию открыта обычная аватарка
     function frameOf(id) { return RULES.frames.filter(function (x) { return x.id === id; })[0] || RULES.frames[0]; }
     function own(f) { return f.id === 'base' || u.frames.indexOf(f.id) >= 0; }
     function lockText(f) {
@@ -2110,14 +2110,14 @@
       return '<button type="button" class="fr-it' + (ok ? '' : ' lk') + (on ? ' on' : '') + '" data-frame="' + f.id + '" aria-pressed="false" aria-label="' + esc(f.name) + (ok ? '' : ', закрыта') + '">' + ava({ name: u.name, avatar: u.avatar, frame: f.id }, 'md') + (ok ? '' : '<i class="fr-lock">' + icon('lock') + '</i>') + (on ? '<i class="fr-on">' + icon('check') + '</i>' : '') + '<span>' + esc(f.name) + '</span></button>';
     }
     // одна общая коллекция: все рамки подряд, без разделов и пометок редкости
-    var all = RULES.frames.filter(function (f) { return f.id !== 'base'; });
+    var all = RULES.frames.filter(function (f) { return f.id !== 'base'; }), withBase = [frameOf('base')].concat(all);
     var md = openModal(modalHead('Рамка аватара') + '<div class="fr-prev" id="fr-prev"></div>' +
       '<div class="fr-h"><b>Коллекция</b><span>' + all.filter(own).length + ' из ' + all.length + '</span></div>' +
-      '<div class="fr-grid">' + all.map(tile).join('') + '</div>', { cls: 'sm fr-md' });
+      '<div class="fr-grid">' + withBase.map(tile).join('') + '</div>', { cls: 'sm fr-md' });
     function show(id) {
       prev = id; var f = frameOf(id), ok = own(f), wearing = (u.frame || 'base') === f.id;
       $$('[data-frame]', md).forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-frame') === id)); });
-      $('#fr-prev', md).innerHTML = ava({ name: u.name, avatar: u.avatar, frame: f.id }, 'lg') + '<div class="fr-t"><b>' + esc(f.name) + '</b><span class="small">' + (ok ? (wearing ? 'Сейчас надета' : 'Открыта у вас') : esc(lockText(f))) + '</span>' +
+      $('#fr-prev', md).innerHTML = ava({ name: u.name, avatar: u.avatar, frame: f.id }, 'lg') + '<div class="fr-t"><b>' + esc(f.name) + '</b><span class="small">' + (ok ? (wearing ? 'Сейчас надета' : 'Открыта') : esc(lockText(f))) + '</span>' +
         '<div class="fr-acts"><button class="btn btn-sm" type="button" id="fr-wear"' + (ok && !wearing ? '' : ' disabled') + '>' + (wearing ? 'Надета' : ok ? 'Надеть' : 'Пока закрыта') + '</button>' +
         ((u.frame || 'base') !== 'base' ? '<button class="btn btn-sm btn-ghost" type="button" id="fr-off">Снять</button>' : '') + '</div></div>';
       var w = $('#fr-wear', md); if (w) w.addEventListener('click', function () { wear(f.id, 'Рамка «' + f.name + '» надета'); });
