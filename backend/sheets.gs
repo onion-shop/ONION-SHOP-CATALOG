@@ -9,7 +9,7 @@ function allowMail() { Logger.log('Можно отправить писем се
    =================================================================== */
 
 var CATALOG_URL_DEFAULT = 'https://onion-shop.github.io/ONION-SHOP-CATALOG/data/catalog.js';
-var LAYOUT_VER = '14';
+var LAYOUT_VER = '15';
 
 var SHEET = { orders: 'Заказы', users: 'Клиенты', promos: 'Промокоды', log: 'Журнал ониксов', summary: 'Сводка', sessions: 'Сессии', reviews: 'Отзывы', waits: 'Лист ожидания', ledger: 'Учёт бонусов', flags: 'Подозрительное' };
 
@@ -118,7 +118,9 @@ var REVIEW_COLS = [
   ['rating', 'Оценка', { w: 70, t: 'num' }], ['text', 'Отзыв', { w: 380 }],
   ['status', 'Показывать на сайте', { w: 140, t: 'text', edit: true }],
   ['name', 'Имя', { w: 100 }], ['login', 'Логин', { w: 100, t: 'text' }], ['userId', 'ID клиента', { w: 80, t: 'text' }],
-  ['reward', 'Ониксов выдано', { w: 90, t: 'num', old: ['Токенов выдано'] }], ['productId', 'служебное: id товара', { w: 80, svc: true, t: 'text' }]
+  ['reward', 'Ониксов выдано', { w: 90, t: 'num', old: ['Токенов выдано'] }],
+  ['photoSt', 'Фото покупателя', { w: 130, t: 'text', edit: true }], ['photos', 'служебное: фото (Google Диск)', { w: 120, svc: true, t: 'text' }],
+  ['productId', 'служебное: id товара', { w: 80, svc: true, t: 'text' }]
 ];
 var WAIT_COLS = [
   ['at', 'Дата (МСК)', { w: 125, t: 'date' }], ['title', 'Товар', { w: 320 }], ['login', 'Логин', { w: 110, t: 'text' }], ['userId', 'ID клиента', { w: 80, t: 'text' }],
@@ -179,7 +181,7 @@ function migrate_(name, cols) {
     return -1;
   });
   var rows = data.map(function (r, ri) {
-    return cols.map(function (c, k) { var j = map[k]; if (j < 0) return c[2] && c[2].t === 'check' ? false : ''; return formulas[ri][j] || r[j]; });
+    return cols.map(function (c, k) { var j = map[k]; if (j < 0) return c[2] && c[2].t === 'check' ? false : ''; return formulas[ri][j] || safeCell_(r[j]); });
   });
   if (data.length) { // резервная копия листа перед перестройкой (скрытый лист «… (резерв дата)»)
     try { var bk = sh.copyTo(ss_()); bk.setName(name + ' (резерв ' + Utilities.formatDate(new Date(), 'Europe/Moscow', 'dd.MM HH:mm:ss') + ')'); bk.hideSheet(); } catch (e) { }
@@ -413,6 +415,30 @@ function styleReviews_() {
   sh.getRange(2, ci_(REVIEW_COLS, 'status') + 1, maxR - 1, 1).setDataValidation(SpreadsheetApp.newDataValidation().requireValueInList(['опубликован', 'скрыт'], true).setAllowInvalid(false).setHelpText('«скрыт»: отзыв пропадёт с сайта').build());
   sh.setConditionalFormatRules([SpreadsheetApp.newConditionalFormatRule().whenTextEqualTo('скрыт').setBackground('#fde8e8').setFontColor('#b91c1c').setRanges([sh.getRange(2, ci_(REVIEW_COLS, 'status') + 1, maxR - 1, 1)]).build()]);
   sh.getRange(1, ci_(REVIEW_COLS, 'status') + 1).setNote('Выберите «скрыт», чтобы убрать отзыв с сайта. Ониксы за отзыв остаются у клиента.');
+  var iP = ci_(REVIEW_COLS, 'photoSt') + 1;
+  sh.getRange(2, iP, maxR - 1, 1).setDataValidation(SpreadsheetApp.newDataValidation().requireValueInList(['на проверке', 'показывать', 'скрыть'], true).setAllowInvalid(true).build());
+  sh.getRange(1, iP).setNote('Фото, которые покупатель приложил к отзыву. «показывать»: фото видны на сайте под отзывом. Проще всего одобрять кнопками в боте: они приходят вместе с отзывом.');
+  sh.setConditionalFormatRules(sh.getConditionalFormatRules().concat([
+    SpreadsheetApp.newConditionalFormatRule().whenTextEqualTo('на проверке').setBackground('#fff4d6').setFontColor('#92400e').setRanges([sh.getRange(2, iP, maxR - 1, 1)]).build(),
+    SpreadsheetApp.newConditionalFormatRule().whenTextEqualTo('показывать').setBackground('#e3f6ea').setFontColor('#166534').setRanges([sh.getRange(2, iP, maxR - 1, 1)]).build()]));
+}
+/* папка для фото из отзывов (создаётся один раз) и ссылка на картинку для сайта */
+function reviewFolder_() {
+  var p = props_(), id = p.getProperty('REVIEW_FOLDER');
+  if (id) { try { return DriveApp.getFolderById(id); } catch (e) { } }
+  var f = DriveApp.createFolder('ONION SHOP: фото отзывов');
+  p.setProperty('REVIEW_FOLDER', f.getId());
+  return f;
+}
+function drivePhotoUrl_(id) { return 'https://drive.google.com/thumbnail?id=' + encodeURIComponent(id) + '&sz=w1200'; }
+/* менеджер одобряет или скрывает фото отзыва (кнопка в боте): ищем отзыв по заказу и товару */
+function setReviewPhotoSt_(no, pid, st) {
+  var sh = ss_().getSheetByName(SHEET.reviews); if (!sh) return false;
+  var rows = DB.reviewRows_(), i = -1;
+  rows.forEach(function (r, k) { if (r.no === no && r.productId === pid) i = k; });
+  if (i < 0) return false;
+  sh.getRange(i + 2, ci_(REVIEW_COLS, 'photoSt') + 1).setValue(st);
+  return true;
 }
 function styleWaits_() { style_(migrate_(SHEET.waits, WAIT_COLS), WAIT_COLS, {}); }
 /* Аварийно: вернуть лист из последней резервной копии («Заказы (резерв …)», скрытый лист), если перестройка прервалась.
@@ -547,8 +573,16 @@ function objToRow_(o, cols) {
     if (c[2] && c[2].t === 'date' && typeof v === 'number') return new Date(v);
     if (c[2] && c[2].t === 'date' && typeof v === 'string' && /^\d\d\.\d\d\.\d{4}/.test(v)) return v;
     if (v === undefined || v === null) return '';
-    return v;
+    return safeCell_(v);
   });
+}
+/* Защита таблицы от «формул в тексте». Строка от клиента, которая начинается с = + или -, иначе стала бы формулой:
+   например, имя «=IMPORTXML(…)» при открытии таблицы отправило бы чужие данные на посторонний сайт.
+   Такая строка записывается как обычный текст (апостроф в начале Google не показывает). Телефоны, числа и @ники не трогаем. */
+function safeCell_(v) {
+  if (typeof v !== 'string' || !v) return v;
+  if (/^[=+\-\t\r]/.test(v) && !/^[+\-]?[\d\s().,\-]+$/.test(v)) return "'" + v;
+  return v;
 }
 
 var USERS_CACHE_ = null;
@@ -623,7 +657,7 @@ function compactOrders_() {
   var forms = sh.getRange(2, 1, last - 1, nC).getFormulas();
   moves.forEach(function (m) {
     var from = m[0] + 2, to = m[1] + 2;
-    var row = vals[m[0]].map(function (v, k) { return forms[m[0]][k] || v; });
+    var row = vals[m[0]].map(function (v, k) { return forms[m[0]][k] || safeCell_(v); });
     sh.getRange(to, 1, 1, nC).setValues([row]);
     sh.setRowHeight(to, 64);
     sh.getRange(to, iPaid + 1).insertCheckboxes();
@@ -705,7 +739,7 @@ var DB = {
   },
   saveOrder: function (o) {
     var row = Object.assign({}, o);
-    row.itemsText = o.items.map(function (it) { return it.title + (it.size ? ' · ' + it.size : '') + (it.color ? ' · ' + it.color : '') + ' × ' + it.qty; }).join('\n');
+    row.itemsText = o.items.map(function (it) { return it.title + (it.size ? ', ' + it.size : '') + (it.color ? ', ' + it.color : '') + ' × ' + it.qty; }).join('\n');
     row.items = JSON.stringify(o.items);
     row.at = new Date(o.at);
     row.paid = false; row.status = o.status || 'Оформлен';
@@ -715,7 +749,7 @@ var DB = {
     row.contact = tgName ? F_('=HYPERLINK("https://t.me/' + tgName + '","Telegram ↗")') : digits ? F_('=HYPERLINK("https://t.me/+' + digits + '","По номеру ↗")') : '';
     row.xpDone = ''; row.refunded = ''; row.notified = row.status; row.remind = '';
     var sh = sheet_(SHEET.orders, ORDER_COLS), r = freeRow_(sh);
-    sh.getRange(r, 1, 1, ORDER_COLS.length).setValues([ORDER_COLS.map(function (c) { var v = row[c[0]]; return v === undefined || v === null ? '' : v; })]);
+    sh.getRange(r, 1, 1, ORDER_COLS.length).setValues([ORDER_COLS.map(function (c) { var v = row[c[0]]; return v === undefined || v === null ? '' : c[0] === 'contact' ? v : safeCell_(v); })]);
     sh.setRowHeight(r, 64);
     sh.getRange(r, ci_(ORDER_COLS, 'paid') + 1).insertCheckboxes();
   },
@@ -732,7 +766,7 @@ var DB = {
     return out;
   },
   log: function (e) {
-    sheet_(SHEET.log, LOG_COLS).appendRow([new Date(e.at), e.userId, e.login, e.delta, e.reason, e.balance]);
+    sheet_(SHEET.log, LOG_COLS).appendRow([new Date(e.at), safeCell_(String(e.userId == null ? '' : e.userId)), safeCell_(e.login), e.delta, safeCell_(e.reason), e.balance]);
   },
   // промокоды магазина из листа «Промокоды»
   shopPromo: function (code) {
@@ -842,14 +876,25 @@ var DB = {
   reviewAdd: function (r) {
     var sh = sheet_(SHEET.reviews, REVIEW_COLS), row = freeRow_(sh);
     var o = Object.assign({}, r); o.at = new Date(r.at);
-    sh.getRange(row, 1, 1, REVIEW_COLS.length).setValues([REVIEW_COLS.map(function (c) { var v = o[c[0]]; return v === undefined || v === null ? '' : v; })]);
+    sh.getRange(row, 1, 1, REVIEW_COLS.length).setValues([REVIEW_COLS.map(function (c) { var v = o[c[0]]; return v === undefined || v === null ? '' : safeCell_(v); })]);
     sh.getRange(row, ci_(REVIEW_COLS, 'text') + 1).setWrap(true);
-    try { DB.notify('⭐ Новый отзыв ' + '★'.repeat(Math.max(1, Math.min(5, +r.rating || 0))) + ' от @' + r.login + '\n«' + String(r.title || '').slice(0, 60) + '» · заказ ' + r.no + (r.text ? '\n\n' + String(r.text).slice(0, 600) : '') + '\n\nНачислено ' + r.reward + ' ониксов. Скрыть отзыв: лист «Отзывы».'); } catch (e) { }
+    try { reviewToManager_(r, row); } catch (e) { console.error('review notify', e && e.stack || e); }
   },
   reviewsFor: function (pid) {
     return DB.reviewRows_().filter(function (r) { return r.productId === pid && String(r.status).trim() !== 'скрыт' && +r.rating >= 1; }).reverse().map(function (r) {
-      return { name: r.name, rating: +r.rating, text: String(r.text || ''), at: r.at instanceof Date || typeof r.at === 'number' ? mskText_(+new Date(r.at)).slice(0, 10) : String(r.at).slice(0, 10) };
+      var ph = String(r.photoSt || '').trim() === 'показывать' ? String(r.photos || '').split(/\s+/).filter(function (id) { return /^[\w-]{10,}$/.test(id); }).map(drivePhotoUrl_) : [];
+      return { name: r.name, rating: +r.rating, text: String(r.text || ''), at: r.at instanceof Date || typeof r.at === 'number' ? mskText_(+new Date(r.at)).slice(0, 10) : String(r.at).slice(0, 10), photos: ph };
     });
+  },
+  /* фото к отзыву: в папку «ONION SHOP: фото отзывов» на Google Диске владельца, доступ «по ссылке, только просмотр» */
+  savePhoto: function (dataUrl, name) {
+    try {
+      var bytes = Utilities.base64Decode(String(dataUrl).replace(/^data:image\/jpeg;base64,/, ''));
+      if (bytes.length < 200 || bytes.length > 400000 || (bytes[0] & 255) !== 0xFF || (bytes[1] & 255) !== 0xD8) return '';
+      var f = reviewFolder_().createFile(Utilities.newBlob(bytes, 'image/jpeg', String(name).replace(/[^\w.-]/g, '_') + '.jpg'));
+      f.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+      return f.getId();
+    } catch (e) { console.error('savePhoto', e && e.stack || e); return ''; }
   },
   waitRows_: function () {
     var sh = ss_().getSheetByName(SHEET.waits); if (!sh) return [];
@@ -859,7 +904,7 @@ var DB = {
   waitsOf: function (uid) { return DB.waitRows_().filter(function (w) { return w.userId === String(uid) && w.productId; }); },
   waitAdd: function (w) {
     var sh = sheet_(SHEET.waits, WAIT_COLS), row = freeRow_(sh), o = Object.assign({}, w); o.at = new Date(w.at);
-    sh.getRange(row, 1, 1, WAIT_COLS.length).setValues([WAIT_COLS.map(function (c) { var v = o[c[0]]; return v === undefined || v === null ? '' : v; })]);
+    sh.getRange(row, 1, 1, WAIT_COLS.length).setValues([WAIT_COLS.map(function (c) { var v = o[c[0]]; return v === undefined || v === null ? '' : safeCell_(v); })]);
   },
   waitRemove: function (uid, pid) {
     var sh = ss_().getSheetByName(SHEET.waits); if (!sh) return;
@@ -1080,6 +1125,15 @@ function doPost(e) {
   var p;
   try { p = JSON.parse((e && e.postData && e.postData.contents) || '{}'); } catch (x) { return out_({ ok: false, error: 'Неверный запрос' }); }
   if (p && p.update_id !== undefined && !p.action) return tgWebhook_(e, p); // сообщение от Telegram (webhook): отвечаем сразу
+  // раз в час: если сайт уже ходит в новое развёртывание (адрес /exec сменился), переводим туда и бота
+  try {
+    var uc = CacheService.getScriptCache();
+    if (!uc.get('urlChk')) {
+      uc.put('urlChk', '1', 3600);
+      var cur = ScriptApp.getService().getUrl(), pr0 = props_();
+      if (cur && /\/exec$/.test(cur) && cur !== pr0.getProperty('WEBAPP_URL') && pr0.getProperty('BOT_TOKEN')) { pr0.setProperty('WEBAPP_URL', cur); enableWebhook_(); }
+    }
+  } catch (x) { }
   if (p.action === 'settings') return out_(OnionCore.handle('settings', p, DB));
   if (p.action === 'reviews') { try { DB.catalog_ = null; return out_(OnionCore.handle('reviews', p, DB)); } catch (x) { return out_({ ok: false, error: 'Не удалось загрузить отзывы' }); } }
   var lock = LockService.getScriptLock();
@@ -1120,15 +1174,14 @@ function tgWebhook_(e, up) {
   try {
     USERS_CACHE_ = null; DB.catalog_ = null; DB.ledger_ = null;
     ensureLayout_();
-    tgHandle_([up]);
-    try { syncXp_(); } catch (x) { console.error(x && x.stack || x); }
-    try { tgStatuses_(); } catch (x) { console.error(x && x.stack || x); }
+    tgHandle_([up]); // только ответ на сообщение: тяжёлые сверки делает минутный триггер, чтобы бот отвечал за секунду
   } catch (x) { console.error('webhook', x && x.stack || x); }
   finally { lock.releaseLock(); }
   return out_({ ok: true });
 }
 function webAppUrl_() {
   var u = props_().getProperty('WEBAPP_URL'); if (u) return u;
+  try { var su = ScriptApp.getService().getUrl(); if (su && /\/exec$/.test(su)) { props_().setProperty('WEBAPP_URL', su); return su; } } catch (x) { }
   try {
     var s = UrlFetchApp.fetch(siteBase_() + 'assets/config.js?t=' + Date.now(), { muteHttpExceptions: true }).getContentText();
     var m = /apiUrl:\s*"(https:\/\/script\.google\.com\/macros\/s\/[^"]+)"/.exec(s);
@@ -1163,40 +1216,151 @@ function webhookInfo() {
   Logger.log('url=' + String(i.url || '').replace(/\?tg=.*/, '?tg=***') + ' | в очереди: ' + i.pending_update_count + ' | последняя ошибка: ' + (i.last_error_message || 'нет') + ' | когда: ' + (i.last_error_date ? new Date(i.last_error_date * 1000) : '-'));
 }
 
-/* ------------------------------------------------------------------ меню в таблице */
+/* ------------------------------------------------------------------ меню в таблице
+   Сгруппировано по задачам: заказы, клиенты, промокоды и отзывы, отчёты, бот, настройка. */
 function onOpen() {
-  SpreadsheetApp.getUi().createMenu('ONION SHOP')
-    .addItem('1. Первичная настройка', 'setup')
-    .addItem('2. Ввести токен Telegram-бота', 'setBotToken')
-    .addItem('3. Привязать чат (после /start боту)', 'linkChat')
-    .addSeparator()
-    .addItem('4. Включить Telegram-уведомления клиентам', 'enableTelegram')
-    .addItem('5. Бот отвечает мгновенно (webhook)', 'enableWebhook')
-    .addItem('Примеры сообщений бота (мне)', 'botDemo')
-    .addSeparator()
-    .addItem('Начислить или списать ониксы', 'adminTokens')
-    .addItem('Удалить клиента…', 'deleteClient')
-    .addItem('Пересчитать уровни по заказам', 'recountLevels')
-    .addSubMenu(SpreadsheetApp.getUi().createMenu('Очистка данных (по отдельности)')
-      .addItem('Только заказы', 'clearOrders')
-      .addItem('Только клиентов', 'clearUsers')
-      .addItem('Только журнал ониксов', 'clearLog')
-      .addItem('Только промокоды магазина', 'clearPromos')
-      .addItem('Только личные промокоды клиентов', 'clearPersonalPromos')
-      .addItem('Выйти всем из аккаунтов', 'clearSessions')
+  var ui = SpreadsheetApp.getUi();
+  ui.createMenu('ONION SHOP')
+    .addSubMenu(ui.createMenu('📦 Заказы')
+      .addItem('Найти заказ по номеру…', 'findOrder')
+      .addItem('Показать только активные', 'filterActiveOrders')
+      .addItem('Показать неоплаченные', 'filterUnpaidOrders')
+      .addItem('Показать все заказы', 'filterAllOrders'))
+    .addSubMenu(ui.createMenu('👤 Клиенты')
+      .addItem('Найти клиента…', 'findClientUi')
+      .addItem('Начислить или списать ониксы…', 'adminTokens')
+      .addItem('Удалить клиента…', 'deleteClient')
+      .addItem('Пересчитать уровни по заказам', 'recountLevels'))
+    .addSubMenu(ui.createMenu('🏷 Промокоды и отзывы')
+      .addItem('Создать промокод…', 'createPromoUi')
+      .addItem('Фото из отзывов на проверке', 'showReviewQueue'))
+    .addSubMenu(ui.createMenu('📊 Отчёты')
+      .addItem('Аналитика продаж (обновить лист)', 'buildAnalytics')
+      .addItem('Обновить сводку', 'refreshSummary'))
+    .addSubMenu(ui.createMenu('🤖 Telegram-бот')
+      .addItem('Ввести токен бота', 'setBotToken')
+      .addItem('Включить бота и уведомления клиентам', 'enableTelegram')
+      .addItem('Мгновенные ответы (webhook)', 'enableWebhook')
+      .addItem('Проверить связь с ботом', 'webhookInfoUi')
+      .addItem('Чат менеджера: как привязать', 'linkChat')
+      .addItem('Примеры сообщений бота (мне)', 'botDemo')
+      .addItem('Отправить мне тестовое сообщение', 'testNotify'))
+    .addSubMenu(ui.createMenu('⚙️ Настройка и обслуживание')
+      .addItem('Первичная настройка', 'setup')
+      .addItem('Оформить таблицу заново', 'relayout')
+      .addItem('Проверить письма с кодом', 'testMail')
+      .addItem('Обновить каталог (сбросить кеш)', 'resetCatalogCache')
+      .addItem('Ускорить обновление каталога (каждые 10 минут)', 'setupCatalogPing')
+      .addItem('Обновить каталог с канала прямо сейчас', 'catalogPingNow')
       .addSeparator()
-      .addItem('Всё сразу (клиенты, заказы, журнал)', 'clearAllData'))
-    .addItem('Обновить сводку', 'refreshSummary')
-    .addItem('Оформить таблицу заново', 'relayout')
-    .addSubMenu(SpreadsheetApp.getUi().createMenu('Служебные листы')
-      .addItem('Показать («Учёт бонусов», «Игры»)', 'showServiceSheets')
-      .addItem('Спрятать', 'hideServiceSheets'))
-    .addItem('Отправить тестовое сообщение', 'testNotify')
-    .addItem('Проверить письма с кодом', 'testMail')
-    .addItem('Обновить каталог (сбросить кеш)', 'resetCatalogCache')
-    .addItem('Ускорить обновление каталога (каждые 10 минут)', 'setupCatalogPing')
-    .addItem('Обновить каталог с канала прямо сейчас', 'catalogPingNow')
+      .addItem('Показать служебные листы', 'showServiceSheets')
+      .addItem('Спрятать служебные листы', 'hideServiceSheets')
+      .addSubMenu(ui.createMenu('Очистка данных (осторожно)')
+        .addItem('Только заказы', 'clearOrders')
+        .addItem('Только клиентов', 'clearUsers')
+        .addItem('Только журнал ониксов', 'clearLog')
+        .addItem('Только промокоды магазина', 'clearPromos')
+        .addItem('Только личные промокоды клиентов', 'clearPersonalPromos')
+        .addItem('Выйти всем из аккаунтов', 'clearSessions')
+        .addSeparator()
+        .addItem('Всё сразу (клиенты, заказы, журнал)', 'clearAllData')))
     .addToUi();
+}
+
+/* ---------- инструменты таблицы: поиск, фильтры, промокоды, аналитика ---------- */
+function ordersFilter_() {
+  var sh = ss_().getSheetByName(SHEET.orders); if (!sh) return null;
+  return sh.getFilter() || sh.getRange(1, 1, Math.max(2, sh.getMaxRows()), ORDER_COLS.length).createFilter();
+}
+function filterActiveOrders() {
+  var f = ordersFilter_(); if (!f) return; filterAllOrders(true);
+  f.setColumnFilterCriteria(ci_(ORDER_COLS, 'status') + 1, SpreadsheetApp.newFilterCriteria().setHiddenValues(['Получен', 'Отменён']).build());
+  ss_().setActiveSheet(ss_().getSheetByName(SHEET.orders)); ss_().toast('Скрыты полученные и отменённые заказы. Вернуть всё: меню «Заказы» → «Показать все заказы».', 'ONION SHOP', 6);
+}
+function filterUnpaidOrders() {
+  var f = ordersFilter_(); if (!f) return; filterAllOrders(true);
+  var col = colL_(ci_(ORDER_COLS, 'paid') + 1);
+  f.setColumnFilterCriteria(ci_(ORDER_COLS, 'paid') + 1, SpreadsheetApp.newFilterCriteria().whenFormulaSatisfied(F_('=NOT($' + col + '2)')).build());
+  f.setColumnFilterCriteria(ci_(ORDER_COLS, 'status') + 1, SpreadsheetApp.newFilterCriteria().setHiddenValues(['Получен', 'Отменён']).build());
+  ss_().setActiveSheet(ss_().getSheetByName(SHEET.orders)); ss_().toast('Показаны активные заказы без оплаты.', 'ONION SHOP', 5);
+}
+function filterAllOrders(quiet) {
+  var sh = ss_().getSheetByName(SHEET.orders), f = sh && sh.getFilter(); if (!f) return;
+  for (var c = 1; c <= ORDER_COLS.length; c++) { try { if (f.getColumnFilterCriteria(c)) f.removeColumnFilterCriteria(c); } catch (e) { } }
+  if (quiet !== true) ss_().toast('Показаны все заказы.', 'ONION SHOP', 3);
+}
+function findOrder() {
+  var ui = SpreadsheetApp.getUi(), r = ui.prompt('Найти заказ', 'Номер заказа, например OS-26-00012 или 26-00012:', ui.ButtonSet.OK_CANCEL);
+  if (r.getSelectedButton() !== ui.Button.OK) return;
+  var q = r.getResponseText().trim().toUpperCase(); if (!/^OS-/.test(q)) q = 'OS-' + q;
+  var f = orderIdx_(q); if (!f) { ui.alert('Заказ ' + q + ' не найден.'); return; }
+  filterAllOrders(true);
+  var sh = ss_().getSheetByName(SHEET.orders); ss_().setActiveSheet(sh); sh.setActiveRange(sh.getRange(f.row, 1, 1, ORDER_COLS.length));
+}
+function findClientUi() {
+  var ui = SpreadsheetApp.getUi(), r = ui.prompt('Найти клиента', 'Логин, ID, @telegram или телефон:', ui.ButtonSet.OK_CANCEL);
+  if (r.getSelectedButton() !== ui.Button.OK) return;
+  var u = findClient_(r.getResponseText()); if (!u) { ui.alert('Клиент не найден.'); return; }
+  var sh = ss_().getSheetByName(SHEET.users); ss_().setActiveSheet(sh); sh.setActiveRange(sh.getRange(u._row, 1, 1, USER_COLS.length));
+}
+function createPromoUi() {
+  var ui = SpreadsheetApp.getUi();
+  var a = ui.prompt('Новый промокод', 'Код (латиница или кириллица, цифры), например AUTUMN10:', ui.ButtonSet.OK_CANCEL); if (a.getSelectedButton() !== ui.Button.OK) return;
+  var b = ui.prompt('Скидка', 'Сколько процентов (от 1 до 50)?', ui.ButtonSet.OK_CANCEL); if (b.getSelectedButton() !== ui.Button.OK) return;
+  var c = ui.prompt('Лимит', 'Сколько раз всего можно использовать? Пусто: без лимита.', ui.ButtonSet.OK_CANCEL); if (c.getSelectedButton() !== ui.Button.OK) return;
+  var lock = LockService.getScriptLock(); lock.waitLock(20000);
+  var e; try { e = promoCreate_(a.getResponseText(), parseFloat(String(b.getResponseText()).replace(',', '.')), parseInt(c.getResponseText(), 10) || 0); } finally { lock.releaseLock(); }
+  ui.alert(e ? 'Не получилось: ' + e : 'Промокод создан и включён (один раз на клиента, можно вместе с ониксами). Настройки меняются прямо в листе «Промокоды».');
+}
+function showReviewQueue() {
+  var list = DB.reviewRows_().filter(function (r) { return String(r.photoSt || '').trim() === 'на проверке'; });
+  var sh = ss_().getSheetByName(SHEET.reviews); if (sh) ss_().setActiveSheet(sh);
+  SpreadsheetApp.getUi().alert(list.length ? 'Фото ждут проверки: ' + list.length + '.\nВ колонке «Фото покупателя» выберите «показывать» или «скрыть». Удобнее одобрять кнопками в боте: «⭐ Отзывы».' : 'Все фото из отзывов проверены.');
+}
+function webhookInfoUi() {
+  var r = tgApi_('getWebhookInfo', {}), i = r && r.result || {};
+  SpreadsheetApp.getUi().alert('Связь с ботом', !r ? 'Telegram не ответил. Проверьте токен бота.' : i.url ? 'Мгновенные ответы включены ✅\nСообщений в очереди: ' + (i.pending_update_count || 0) + (i.last_error_message ? '\nПоследняя ошибка: ' + i.last_error_message : '') : 'Мгновенные ответы выключены: бот отвечает раз в минуту. Включите пункт «Мгновенные ответы (webhook)».', SpreadsheetApp.getUi().ButtonSet.OK);
+}
+/* лист «Аналитика»: выручка и заказы по месяцам (с графиком), топ товаров, топ клиентов. Отменённые заказы не считаются. */
+function buildAnalytics() {
+  var ss = ss_(), sh = ss.getSheetByName('Аналитика') || ss.insertSheet('Аналитика');
+  sh.clear(); sh.getCharts().forEach(function (c) { sh.removeChart(c); });
+  var all = ordersAll_().filter(function (o) { return String(o.status) !== 'Отменён'; });
+  var byM = {}, prods = {}, clients = {};
+  all.forEach(function (o) {
+    var d = o.at instanceof Date ? o.at : null; if (!d) return;
+    var k = Utilities.formatDate(d, 'Europe/Moscow', 'yyyy-MM'), sum = money_(o.toPay) || 0;
+    var m = byM[k] = byM[k] || { n: 0, sum: 0, got: 0 }; m.n++; m.sum += sum; if (String(o.status) === 'Получен') m.got += sum;
+    var items = []; try { items = JSON.parse(o.items || '[]'); } catch (e) { }
+    items.forEach(function (it) { var p = prods[it.id] = prods[it.id] || { t: it.title, q: 0, s: 0 }; p.q += +it.qty || 1; p.s += (+it.price || 0) * (+it.qty || 1); });
+    var cid = normId_(o.userId) || ('тел. ' + o.phone); var c = clients[cid] = clients[cid] || { name: o.name, login: o.login || '', n: 0, s: 0 }; c.n++; c.s += sum;
+  });
+  var months = Object.keys(byM).sort().slice(-12);
+  var head = function (r, c, t) { sh.getRange(r, c).setValue(t).setFontSize(13).setFontWeight('bold').setFontColor(C.navy); };
+  sh.getRange('A1').setValue('Аналитика ONION SHOP').setFontSize(18).setFontWeight('bold').setFontColor(C.navy);
+  sh.getRange('A2').setValue('Обновлено ' + mskText_(Date.now()) + '. Отменённые заказы не учитываются. Обновить: меню ONION SHOP → Отчёты.').setFontColor('#64748b');
+  head(4, 1, 'По месяцам');
+  var mRows = [['Месяц', 'Заказов', 'Сумма заказов, ₽', 'Получено клиентами, ₽', 'Средний чек, ₽']].concat(months.map(function (k) { var m = byM[k]; return [k.slice(5) + '.' + k.slice(0, 4), m.n, Math.round(m.sum), Math.round(m.got), m.n ? Math.round(m.sum / m.n) : 0]; }));
+  if (mRows.length === 1) mRows.push(['нет данных', 0, 0, 0, 0]);
+  sh.getRange(5, 1, mRows.length, 5).setValues(mRows);
+  var top = Object.keys(prods).map(function (id) { return prods[id]; }).sort(function (a, b) { return b.q - a.q || b.s - a.s; }).slice(0, 10);
+  var r0 = 5 + mRows.length + 2; head(r0, 1, 'Топ-10 товаров');
+  var pRows = [['Товар', 'Штук', 'На сумму, ₽']].concat(top.map(function (p) { return [p.t, p.q, Math.round(p.s)]; })); if (pRows.length === 1) pRows.push(['нет данных', 0, 0]);
+  sh.getRange(r0 + 1, 1, pRows.length, 3).setValues(pRows);
+  var tc = Object.keys(clients).map(function (k) { return clients[k]; }).sort(function (a, b) { return b.s - a.s; }).slice(0, 10);
+  head(r0, 5, 'Топ-10 клиентов');
+  var cRows = [['Клиент', 'Логин', 'Заказов', 'Сумма, ₽']].concat(tc.map(function (c) { return [safeCell_(String(c.name || '')), c.login, c.n, Math.round(c.s)]; })); if (cRows.length === 1) cRows.push(['нет данных', '', 0, 0]);
+  sh.getRange(r0 + 1, 5, cRows.length, 4).setValues(cRows);
+  [[5, mRows.length, 5], [r0 + 1, pRows.length, 3]].forEach(function (t) { sh.getRange(t[0], 1, 1, t[2]).setBackground(C.navy).setFontColor('#ffffff').setFontWeight('bold'); });
+  sh.getRange(r0 + 1, 5, 1, 4).setBackground(C.navy).setFontColor('#ffffff').setFontWeight('bold');
+  sh.getRange(6, 3, Math.max(1, mRows.length - 1), 3).setNumberFormat('#,##0');
+  sh.setColumnWidth(1, 300); sh.setColumnWidths(2, 4, 130); sh.setColumnWidth(5, 200); sh.setColumnWidths(6, 3, 110);
+  sh.setHiddenGridlines(true); sh.setFrozenRows(0); sh.setTabColor('#16a34a');
+  if (months.length) {
+    sh.insertChart(sh.newChart().setChartType(Charts.ChartType.COLUMN).addRange(sh.getRange(5, 1, mRows.length, 1)).addRange(sh.getRange(5, 3, mRows.length, 1))
+      .setPosition(4, 10, 0, 0).setOption('title', 'Сумма заказов по месяцам').setOption('legend', { position: 'none' }).setOption('colors', ['#1a86c0']).setOption('width', 620).setOption('height', 320).build());
+  }
+  ss.setActiveSheet(sh);
 }
 
 function setup() {
@@ -1253,10 +1417,24 @@ function setupTelegram_() {
   tg('setMyDescription', { description: 'ONION SHOP: одежда, обувь и аксессуары в наличии и под заказ из Китая.\n\nЯ пришлю сообщение, когда заказ меняет статус или нужный товар снова в продаже. Нажмите «Старт», чтобы начать.' });
   setBotCommands_();
   tg('setMyShortDescription', { short_description: 'Статусы заказов ONION SHOP и новости о товарах' });
-  ScriptApp.getProjectTriggers().forEach(function (t) { if (t.getHandlerFunction() === 'telegramTick') ScriptApp.deleteTrigger(t); });
+  ScriptApp.getProjectTriggers().forEach(function (t) { var h = t.getHandlerFunction(); if (h === 'telegramTick' || h === 'onEditInstant') ScriptApp.deleteTrigger(t); });
   ScriptApp.newTrigger('telegramTick').timeBased().everyMinutes(1).create();
+  // правка статуса или фотоотчёта в таблице сразу уходит клиенту (а не через минуту)
+  try { ScriptApp.newTrigger('onEditInstant').forSpreadsheet(ss_()).onEdit().create(); } catch (x) { console.error('onEdit trigger', x); }
   CacheService.getScriptCache().remove('catalog');
+  try { var we = enableWebhook_(); if (we) console.error('webhook: ' + we); } catch (x) { } // бот отвечает сразу
   return bot;
+}
+/* установленный триггер: менеджер поменял статус заказа или вставил фотоотчёт в таблице, клиент узнаёт в ту же секунду */
+function onEditInstant(e) {
+  try {
+    if (!e || !e.range || e.range.getSheet().getName() !== SHEET.orders) return;
+    var c0 = e.range.getColumn(), c1 = c0 + e.range.getNumColumns() - 1;
+    var hit = function (k) { var c = ci_(ORDER_COLS, k) + 1; return c >= c0 && c <= c1; };
+    if (!hit('status') && !hit('photoRep') && !hit('paid')) return;
+    var lock = LockService.getScriptLock(); if (!lock.tryLock(15000)) return;
+    try { USERS_CACHE_ = null; SpreadsheetApp.flush(); syncXp_(); tgStatuses_(); tgPhotos_(); } finally { lock.releaseLock(); }
+  } catch (x) { console.error('onEditInstant', x && x.stack || x); }
 }
 function disableTelegram() {
   ScriptApp.getProjectTriggers().forEach(function (t) { if (t.getHandlerFunction() === 'telegramTick') ScriptApp.deleteTrigger(t); });
@@ -1287,6 +1465,11 @@ function telegramPass_(onlyPoll) {
 function telegramTick() {
   telegramPass_(false);
   var p = props_();
+  // webhook ещё не включён: пробуем сами раз в час (нужен адрес веб-приложения), тогда бот начнёт отвечать мгновенно
+  if (!p.getProperty('tgWebhook') && p.getProperty('BOT_TOKEN') && !CacheService.getScriptCache().get('whTry')) {
+    CacheService.getScriptCache().put('whTry', '1', 3600);
+    try { var we = enableWebhook_(); if (we) console.error('webhook: ' + we); } catch (x) { }
+  }
   if (p.getProperty('tgWebhook')) return; // webhook включён: сообщения приходят сами, слушать не нужно
   if (!p.getProperty('BOT_TOKEN') || +(p.getProperty('tgHot') || 0) < Date.now()) return;
   var end = Date.now() + (+(p.getProperty('tgBurstMs') || 45000));
@@ -1325,7 +1508,7 @@ function tgPhotos_() {
     var links = OnionCore.photoLinks(r[iP]), key = links.join(' ');
     if (!links.length || String(r[iS] || '') === key || sent >= 20) return;
     var uid = normId_(r[iU]), u = uid ? DB.getUser(uid) : null, no = String(r[iNo]).trim();
-    if (u && u.tgChat) { DB.userNotify(u, '📸 Фотоотчёт по заказу ' + no + ' готов: посмотрите, как выглядит ваша вещь перед отправкой.', [links.slice(0, 3).map(function (l, k) { return { text: 'Фото ' + (k + 1), url: l }; })]); sent++; }
+    if (u && u.tgChat) { notice_(u, 'Фотоотчёт готов 📸', 'Сфотографировали вещи из заказа ' + hesc_(no) + ' на складе. Посмотрите, как они выглядят перед отправкой.', { text: 'Посмотреть фото', url: links[0] }); sent++; }
     var c = sh.getRange(i + 2, iS + 1); c.setNumberFormat('@'); c.setValue(key);
   });
 }
@@ -1338,9 +1521,8 @@ function tgWatch_() {
     if (!u.watch || sent >= 40) return;
     var before = JSON.stringify(u.watch), drops = OnionCore.priceDrops(DB, u);
     if (drops.length && u.tgChat) {
-      var t = '📉 <b>' + pick_(V_.drop) + '</b>\n———\n' + drops.slice(0, 5).map(function (d) { return '•<i>' + hesc_(d.title) + '</i>: <s>' + d.was + '</s> <b>' + d.now + '</b>'; }).join('\n');
-      // tgSend_ отправляет с parse_mode HTML: раньше клиент видел в сообщении теги <b>, <s> как текст
-      tgSend_(u.tgChat, t, [drops.slice(0, 3).map(function (d) { return { text: 'Открыть: ' + String(d.title).slice(0, 18), url: siteUrl_('p-' + d.id) }; })]); sent++;
+      var body = drops.slice(0, 3).map(function (d) { return hesc_(d.title) + ': ' + rub_(d.now) + ' вместо ' + rub_(d.was); }).join('\n');
+      notice_(u, pick_(V_.drop), body, drops.length === 1 ? btnUrl_('Посмотреть', 'p-' + drops[0].id) : btnUrl_('Открыть избранное', 'favorites')); sent++;
     }
     if (JSON.stringify(u.watch) !== before) DB.saveUser(u);
   });
@@ -1352,13 +1534,7 @@ function tgStatuses_() {
     var no = String(r[iNo]).trim(), st = String(r[iSt]).trim(), nt = String(r[iN] || '').trim();
     if (!no || !st || nt === st || sent >= 25) return;
     var uid = normId_(r[iU]), u = uid ? DB.getUser(uid) : null;
-    if (nt && u && u.tgChat) {
-      var text = statusText_(no, st), photo = '';
-      if (st === 'На складе' || st === 'Получен') { try { var it = JSON.parse(r[iIt] || '[]')[0]; if (it && (it.photo || it.thumb)) photo = photoUrl_(it.photo || it.thumb); } catch (e) { } }
-      var kb = statusKb_(no, st);
-      sendPostTo_(u, { text: text, photo: photo, kb: kb });
-      sent++;
-    }
+    if (nt && u && u.tgChat) { statusNotice_(u, no, st); sent++; } // только текст и одна кнопка
     var c = sh.getRange(i + 2, iN + 1); c.setNumberFormat('@'); c.setValue(st);
     if (st === 'Получен') setRemind_(sh, i + 2, iRm, r[iRm], { got: Date.now() });
   });
@@ -1379,12 +1555,12 @@ function tgReminders_() {
     var st = String(r[I('status')]).trim(), rm = {}; try { rm = r[I('remind')] ? JSON.parse(r[I('remind')]) : {}; } catch (e) { rm = {}; }
     var at = r[I('at')] instanceof Date ? r[I('at')].getTime() : 0;
     if (st === 'Оформлен' && !isTrue_(r[I('paid')]) && !rm.pay && at && now - at > 86400000) {
-      if (autoCfg_().remind) notifyHtml_(u, payText_(no, money_(r[I('toPay')])), [[{ text: '📦 Заказ', callback_data: 'm|' + no }, { text: '💬 Вопрос по оплате', callback_data: 'q|' + no }]]);
+      if (autoCfg_().remind) notifyHtml_(u, payText_(no, money_(r[I('toPay')])), [[btnOrder_(no)]]);
       setRemind_(sh, i + 2, I('remind'), r[I('remind')], { pay: 1 }); sent++;
     } else if (st === 'Получен' && rm.got && !rm.rev && now - rm.got > 3 * 86400000) {
       var items = []; try { items = JSON.parse(r[I('items')] || '[]'); } catch (e) { }
       var done = DB.reviewKeys(u.id), left = items.filter(function (it) { return done.indexOf(no + '|' + it.id) < 0; });
-      if (left.length && autoCfg_().remind) { notifyHtml_(u, reviewText_(no, OnionCore.RULES.reward.review, OnionCore.RULES.reward.reviewText), [[{ text: '⭐ Оставить отзыв', url: siteUrl_('orders') }]]); sent++; }
+      if (left.length && autoCfg_().remind) { notifyHtml_(u, reviewText_(no, OnionCore.RULES.reward.review, OnionCore.RULES.reward.reviewText), [[btnUrl_('Оставить отзыв', 'orders')]]); sent++; }
       setRemind_(sh, i + 2, I('remind'), r[I('remind')], { rev: 1 });
     }
   });
@@ -1394,11 +1570,11 @@ function tgPromo_() {
   var p = props_(), now = Date.now(), h = mskHour_();
   if (h < 18 || h > 19 || !autoCfg_().sale) return;
   if (now - (+p.getProperty('promoAt') || 0) < 3 * 86400000 - 3600000) return;
-  var b = bcBuild_({ t: 'sale', iv: Math.floor(Math.random() * 20) });
+  var b = autoSale_();
   p.setProperty('promoAt', String(now));
   if (!b) return;
   var sent = 0;
-  users_().forEach(function (u) { if (u.tgChat && sent < 100 && canPush_(u, 20)) { if (sendPostTo_(u, b)) { sent++; markPush_(u); } } });
+  users_().forEach(function (u) { if (u.tgChat && sent < 100 && canPush_(u, 20)) { if (notice_(u, b.title, b.body, b.btn)) { sent++; markPush_(u); } } });
 }
 /* новинки: как только появились в каталоге (днём, с 10 до 21 по Москве), всем с подключённым ботом */
 function tgNew_() {
@@ -1411,14 +1587,11 @@ function tgNew_() {
   var h = mskHour_(); if (h < 10 || h >= 21) return; // ночью не беспокоим, отправим утром
   if (!autoCfg_().fresh) { p.setProperty('seenIds', ids.join(',').slice(-8500)); return; }
   fresh.sort(function (a, b) { return b - a; });
-  var b = fresh.length === 1 ? bcBuild_({ t: 'prod', id: fresh[0], iv: Math.floor(Math.random() * 20) }) : (function () {
-    var L = fresh.slice(0, 5).map(function (id) { return cat[id]; });
-    return { text: '🆕 <b>' + fill_(pick_(V_.freshN), { n: fresh.length }) + '</b>\n———\n' + L.map(function (c) { return '•<i>' + hesc_(c.title) + '</i>: ' + c.price; }).join('\n'), photo: prodPhoto_(L[0]), kb: L.map(function (c) { return [{ text: String(c.title).slice(0, 34) + ' · ' + c.price, url: siteUrl_('p-' + c.id) }]; }) };
-  })();
+  var b = autoFresh_(fresh, cat);
   p.setProperty('seenIds', ids.join(',').slice(-8500));
   if (!b) return;
   var sent = 0;
-  users_().forEach(function (u) { if (u.tgChat && sent < 150 && canPush_(u, 3)) { if (sendPostTo_(u, b)) { sent++; markPush_(u); } } });
+  users_().forEach(function (u) { if (u.tgChat && sent < 150 && canPush_(u, 3)) { if (notice_(u, b.title, b.body, b.btn)) { sent++; markPush_(u); } } });
 }
 /* «давно не заходили»: раз в день около 12:00 пишем тем, кто не заказывал больше месяца (не чаще раза в 3 недели) */
 function tgNudge_() {
@@ -1433,8 +1606,7 @@ function tgNudge_() {
     if (!u.tgChat || sent >= 20) return;
     var reg = u.createdAt ? new Date(u.createdAt).getTime() : 0, lo = Math.max(last[u.id] || 0, reg);
     if (!lo || now - lo < 30 * 86400000 || (u.lastNudge && now - u.lastNudge < 21 * 86400000) || !canPush_(u, 20)) return;
-    var b = { text: '👋 <b>' + pick_(V_.winback) + '</b>\n\n' + postCaption_(L[0]), photo: prodPhoto_(L[0]), kb: [[{ text: '🛍 Открыть товар', url: siteUrl_('p-' + L[0].id) }], [{ text: '🛍 Весь каталог', url: siteUrl_('catalog') }]] };
-    if (sendPostTo_(u, b)) { u.lastNudge = now; markPush_(u); sent++; }
+    if (notice_(u, pick_(V_.winback), 'Пока вас не было, в каталоге появились новые вещи. Например, ' + hesc_(L[0].title) + ' за ' + rub_(L[0].price) + '.', btnUrl_('Смотреть новинки', 'catalog'))) { u.lastNudge = now; markPush_(u); sent++; }
   });
 }function tgWaits_() {
   var sh = ss_().getSheetByName(SHEET.waits); if (!sh) return;
@@ -1445,8 +1617,7 @@ function tgNudge_() {
     if (!pr || pr.status === 'out' || pr.status === 'sold') return;
     var u = DB.getUser(w.userId);
     if (u && u.tgChat) {
-      var b = { text: '🛍 <b>' + fill_(pick_(V_.restock), { t: hesc_(w.title) }) + '</b>' + (pr ? '\n\n' + postCaption_(pr) : ''), photo: prodPhoto_(pr), kb: [[{ text: '🛍 Открыть товар', url: siteUrl_('p-' + w.productId) }]] };
-      sendPostTo_(u, b); sent++;
+      notice_(u, pick_(V_.restock), hesc_(w.title) + ' снова можно заказать' + (pr && pr.price ? ', ' + rub_(pr.price) : '') + '. Вы просили сообщить.', btnUrl_('Посмотреть', 'p-' + w.productId)); sent++;
     }
     var c = sh.getRange(w._row, iS + 1); c.setNumberFormat('@'); c.setValue(mskText_(Date.now()));
   });
