@@ -295,15 +295,26 @@
   function pushRecent(id) { recent = [String(id)].concat(recent.filter(function (x) { return x !== String(id); })).slice(0, 12); store.set('recent', recent); }
 
   // ------------------------------------------------------------ уведомления, окна, анимации
+  // плашку можно смахнуть пальцем влево или вправо
+  function swipeAway(el, stop) {
+    var x0 = null, dx = 0;
+    el.style.touchAction = 'pan-y';
+    el.addEventListener('pointerdown', function (e) { x0 = e.clientX; dx = 0; });
+    el.addEventListener('pointermove', function (e) { if (x0 === null) return; dx = e.clientX - x0; if (Math.abs(dx) > 6) { el.style.animation = 'none'; el.style.transition = 'none'; el.style.transform = 'translateX(' + dx + 'px)'; el.style.opacity = String(Math.max(.25, 1 - Math.abs(dx) / 240)); } });
+    var end = function () { if (x0 === null) return; x0 = null; el.style.transition = 'transform .2s,opacity .2s'; if (Math.abs(dx) > 50) { stop(); el.style.transform = 'translateX(' + (dx > 0 ? 420 : -420) + 'px)'; el.style.opacity = '0'; setTimeout(function () { el.remove(); }, 220); } else { el.style.transform = ''; el.style.opacity = ''; } };
+    el.addEventListener('pointerup', end); el.addEventListener('pointercancel', end);
+  }
   function toast(msg, action, kind) {
     var root = $('#toasts'), el = document.createElement('div');
     el.className = 'toast' + (kind ? ' ' + kind : '');
     var ic = kind === 'reward' ? tk() : icon(kind === 'warn' ? 'alert' : 'check-circle');
     el.innerHTML = ic + '<span>' + esc(msg) + '</span>' + (action ? '<button type="button">' + esc(action.label) + '</button>' : '');
+    Array.prototype.slice.call(root.children).forEach(function (c) { var s = c.querySelector('span'); if (s && s.textContent === msg) c.remove(); }); // одинаковые плашки не копятся стопкой
     root.appendChild(el);
-    while (root.children.length > 3) root.firstChild.remove();
+    while (root.children.length > 2) root.firstChild.remove();
     var close = function () { el.classList.add('out'); setTimeout(function () { el.remove(); }, 300); };
-    var timer = setTimeout(close, action ? 6000 : 3200);
+    var timer = setTimeout(close, action ? 4500 : 2000);
+    swipeAway(el, function () { clearTimeout(timer); });
     if (action) el.querySelector('button').addEventListener('click', function () { clearTimeout(timer); close(); action.run(); });
   }
   // красивая плашка с заголовком, пояснением и крупной кнопкой (товар без наличия и подобное)
@@ -314,7 +325,8 @@
     root.appendChild(el);
     while (root.children.length > 3) root.firstChild.remove();
     var close = function () { el.classList.add('out'); setTimeout(function () { el.remove(); }, 300); };
-    var timer = setTimeout(close, 8000);
+    var timer = setTimeout(close, 5000);
+    swipeAway(el, function () { clearTimeout(timer); });
     el.querySelector('.tc-x').addEventListener('click', function () { clearTimeout(timer); close(); });
     if (o.action) el.querySelector('.tc-btn').addEventListener('click', function () { clearTimeout(timer); close(); o.action.run(); });
   }
@@ -408,7 +420,7 @@
     try { if (u && API.getSession()) store.set('meCache', { s: API.getSession(), u: u }); else store.set('meCache', null); } catch (e) { /* */ }
     if (u && localOrders.length) { localOrders = []; store.set('orders', []); } // старые заказы без входа не должны попадать в новый кабинет
     // город из профиля подставляется в заказ сам (пока клиент не ввёл другой)
-    if (u && u.city) { var cd = false; if (!form.recvCity) { form.recvCity = u.city; cd = true; } if (!form.city) { form.city = u.city; cd = true; } if (cd) saveForm(); }
+    if (u && u.city && !form.cityOwn) { var cd = false; if (!form.recvCity) { form.recvCity = u.city; cd = true; } if (!form.city) { form.city = u.city; cd = true; } if (cd) saveForm(); }
     updateAcctUI();
     showNews(u);
     if (u && u.bdayToday) setTimeout(bdayGift, 700);
@@ -1385,7 +1397,7 @@
       '<div class="cl-list">' + all.map(row).join('') + '</div>' +
       (API.enabled && !acct.user && acct.ready ? '<div class="notice notice-info" style="margin-top:12px">' + icon('user') + '<div><b>Заказ оформляется из кабинета.</b> Войдите, чтобы продолжить.</div></div>' : '') +
       '<div class="card panel vip-panel"><label class="vip"><span class="vip-t"><b>' + icon('bolt') + 'Приоритетный заказ · ' + rub(RULES.vipPrice) + '</b><small>Менеджер возьмёт заказ раньше обычных. Порядок: ' + esc(RULES.priorityOrder().join(', ')) + ', затем платный приоритет.</small></span><input type="checkbox" id="cl-vip"' + (form.vip ? ' checked' : '') + '><span class="sw-tg"></span></label></div>' +
-      '<div class="cart-bar"><div class="cb-sub"><span></span>' + (form.vip && st.n ? '<span class="cb-vip">⚡ Приоритет +' + rub(RULES.vipPrice) + '</span>' : '') + '</div><button class="cb-go" type="button" id="cb-go"' + (st.n ? '' : ' disabled') + '><span>' + (st.n ? 'К оформлению <span class="cnt-pill">' + st.n + '</span>' : 'Выберите товары') + '</span><b>' + (st.n ? rub(st.sum + (form.vip ? RULES.vipPrice : 0)) : '') + '</b></button></div>';
+      '<div class="cart-bar"><div class="cb-sub"><span></span>' + (form.vip && st.n ? '<span class="cb-vip">⚡ Приоритет +' + rub(RULES.vipPrice) + '</span>' : '') + '</div><button class="cb-go" type="button" id="cb-go"' + (st.n ? '' : ' disabled') + '><span>' + (st.n ? 'К оформлению' : 'Выберите товары') + '</span><b>' + (st.n ? rub(st.sum + (form.vip ? RULES.vipPrice : 0)) : '') + '</b></button></div>';
     var all2 = all;
     $$('.cl', v).forEach(function (rowEl) {
       var l = all2[+rowEl.getAttribute('data-k')];
@@ -1422,7 +1434,7 @@
     }
     var t = totals(lines), n = 0; saveDraft();
     v.innerHTML =
-      '<div class="view-head"><div><button class="back-btn" id="to-list" type="button">' + icon('arrow-right') + 'К корзине</button><h1>Оформление заказа</h1><p class="muted">' + t.cnt + ' ' + plural(t.cnt, 'товар', 'товара', 'товаров') + ' · ' + rub(t.total) + '</p></div></div>' +
+      '<div class="back-bar"><button class="back-btn" id="to-list" type="button">' + icon('arrow-right') + 'К корзине</button></div><div class="view-head"><div><h1>Оформление заказа</h1></div></div>' +
       (API.enabled && !u && acct.ready ? '<div class="notice notice-info need-acc" style="margin-bottom:12px">' + icon('user') + '<div><b>Заказ оформляется из кабинета.</b><div class="acts" style="margin-top:10px"><button class="btn btn-sm" type="button" id="need-acc">' + icon('user') + 'Войти или создать кабинет</button></div></div></div>' : '') +
       '<form class="checkout" id="checkout" novalidate><div class="col">' +
       '<div class="card panel"><div class="panel-head"><h2><span class="n">' + (++n) + '</span>Товары: ' + t.cnt + ' шт.</h2><button class="link-btn" type="button" id="cart-clear">Очистить</button></div><div class="lines">' +
@@ -1432,7 +1444,7 @@
           '<div style="min-width:0"><a class="t" href="#p-' + esc(p.id) + '">' + esc(p.title) + '</a><div class="meta">' + badge(p) + (optionText(l, p) ? '<span>' + esc(optionText(l, p)) + '</span>' : '') + '</div>' +
           (l.note ? '<div class="meta">Пожелания: ' + esc(l.note) + '</div>' : '') + '</div>' +
           '<div class="row"><div class="qty sm"><button type="button" data-q="-1" aria-label="Меньше"' + (l.qty <= 1 ? ' disabled' : '') + '>' + icon('minus') + '</button><output>' + l.qty + '</output><button type="button" data-q="1" aria-label="Больше"' + (l.qty >= 10 ? ' disabled' : '') + '>' + icon('plus') + '</button></div>' +
-          '<span class="price">' + rub(p.price * l.qty) + '</span><button class="cl-more" type="button" data-more aria-haspopup="menu" aria-expanded="false" aria-label="Действия с товаром: ' + esc(p.title) + '">' + icon('more') + '</button></div></div>';
+          '<span class="price">' + rub(p.price * l.qty) + '</span></div></div>';
       }).join('') + '</div></div>' +
 
       (!API.enabled ? '<div class="card panel"><div class="panel-head"><h2><span class="n">' + (++n) + '</span>Контакты</h2></div><div class="fgrid">' +
@@ -1476,7 +1488,7 @@
       '</div>' +
 
       '<aside class="card sumcard"><h2>Ваш заказ</h2>' +
-      '<div class="sumrow"><span>Товары · ' + t.cnt + ' шт.</span><b>' + rub(t.total) + '</b></div>' +
+      '<div class="sumrow"><span>Товаров: ' + t.cnt + ' шт.</span><b>' + rub(t.total) + '</b></div>' +
       (t.old > t.total ? '<div class="sumrow good"><span>Скидки на товары</span><b>учтены · −' + rub(t.old - t.total) + '</b></div>' : '') +
       '<div class="sumrow" id="sum-tok"' + (t.tok ? '' : ' hidden') + '><span>Ониксы</span><b>−' + rub(t.tokRub) + '</b></div>' +
       '<div class="sumrow good" id="sum-promo"' + (t.promoRub ? '' : ' hidden') + '><span>Промокод <span id="sum-promo-code">' + esc(t.promo) + '</span></span><b>−' + rub(t.promoRub) + '</b></div>' +
@@ -1539,7 +1551,7 @@
 
     var up = $('#use-pack', v); if (up) up.addEventListener('change', function () { usePack = up.checked; saveDraft(); });
     // анкета
-    function bind(id, key) { var el = $('#' + id, v); if (!el) return; el.addEventListener('input', function () { form[key] = el.value; saveForm(); clearF(key); }); }
+    function bind(id, key) { var el = $('#' + id, v); if (!el) return; el.addEventListener('input', function () { form[key] = el.value; if (key === 'city' || key === 'recvCity') form.cityOwn = true; saveForm(); clearF(key); }); }
     var tl = $('#to-list', v); if (tl) tl.addEventListener('click', function () { cartStep = 'list'; renderCart(); window.scrollTo(0, 0); });
     var vp = $('#f-vip', v); if (vp) vp.addEventListener('change', function () { form.vip = vp.checked; saveForm(); updSum(); });
     bind('f-name', 'name'); bind('f-phone', 'phone'); bind('f-tg', 'tg'); bind('f-recv-city', 'recvCity'); bind('f-recv-addr', 'recvAddr'); bind('f-city', 'city'); bind('f-pre-addr', 'preAddr'); bind('f-comment', 'comment');
@@ -1697,7 +1709,7 @@
     return '<div class="rv-card"><div class="rv-no"><div><span class="rv-l">Номер заказа</span><b>' + esc(o.no) + '</b></div><button class="rv-cp" type="button" data-copy="' + esc(o.no) + '">' + icon('copy') + 'Копировать</button></div>' +
       '<p class="rv-meta">' + esc(fmtAt(o.at)) + ' · ' + (o.count || 0) + ' шт. · ' + rub(o.toPay != null ? o.toPay : o.total) + '</p>' + status + '</div>' +
       '<details class="rv-det"' + (open ? ' open' : '') + '><summary>Что в заказе' + icon('chevron-down') + '</summary><div class="rv-in">' + (thumbs ? '<div class="rv-th">' + thumbs + '</div>' : '') +
-      '<div class="rc-row"><span>Товары · ' + (o.count || 0) + ' шт.</span><b>' + rub(o.total || 0) + '</b></div>' +
+      '<div class="rc-row"><span>Товаров: ' + (o.count || 0) + ' шт.</span><b>' + rub(o.total || 0) + '</b></div>' +
       (o.tokens ? '<div class="rc-row"><span>Ониксы · ' + num(o.tokens) + '</span><b>−' + rub(o.tokenRub) + '</b></div>' : '') +
       (o.promoRub ? '<div class="rc-row"><span>Промокод ' + esc(o.promo) + '</span><b>−' + rub(o.promoRub) + '</b></div>' : '') +
       '<div class="rc-row total"><span>К оплате</span><b>' + rub(o.toPay != null ? o.toPay : o.total) + '</b></div></div></details>';
@@ -1753,7 +1765,7 @@
   // ------------------------------------------------------------ избранное
   function renderFavorites() {
     var v = $('#v-favorites'), list = favs.map(function (id) { return BY_ID[id]; }).filter(Boolean);
-    v.innerHTML = '<div class="view-head"><div><h1>Избранное</h1><p class="muted">' + (list.length ? list.length + ' ' + plural(list.length, 'товар', 'товара', 'товаров') + ', сохранено на потом' : 'Сохраняйте понравившееся, чтобы вернуться позже') + '</p></div></div>' +
+    v.innerHTML = '<div class="view-head"><div><h1>Избранное</h1><p class="muted">' + (list.length ? '' : 'Сохраняйте понравившееся, чтобы вернуться позже') + '</p></div></div>' +
       (list.length && acct.user ? '<div class="fav-watch">' + icon('bell') + '<span>' + (acct.user.tgOn ? 'Сообщим в Telegram, если вещь из избранного подешевеет' : 'Подключите Telegram в кабинете, сообщим, если вещь из избранного подешевеет') + '</span></div>' : '') +
       (list.length ? grid(list) : '<div class="empty fav-empty"><span class="ico">' + icon('heart') + '</span><h3>Пока пусто</h3><a class="btn" href="#catalog">Перейти в каталог</a></div>');
   }
@@ -1821,7 +1833,7 @@
         '<div class="f"><label for="a-login">Логин</label><input class="input" id="a-login" autocomplete="username" autocapitalize="off" spellcheck="false" placeholder="латиница, от 3 символов"></div>' +
         '<div class="f full"><label for="a-email">Почта</label><input class="input" id="a-email" type="email" inputmode="email" autocomplete="email" autocapitalize="off" spellcheck="false" placeholder="name@mail.ru"><span class="hint">Пришлём код подтверждения. Через почту можно восстановить пароль.</span></div>' +
         '<div class="f"><label for="a-phone">Телефон</label><input class="input" id="a-phone" type="tel" autocomplete="tel" placeholder="+7 900 000-00-00" value="' + esc(form.phone) + '"></div>' +
-        '<div class="f"><label for="a-tg">Telegram <span class="opt-l">· желательно</span></label><div class="prefix"><span>@</span><input class="input" id="a-tg" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="username" value="' + esc(form.tg) + '"></div></div>' +
+        '<div class="f"><label for="a-tg">Telegram <span class="opt-l">желательно</span></label><div class="prefix"><span>@</span><input class="input" id="a-tg" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="username" value="' + esc(form.tg) + '"></div></div>' +
         '<div class="f full"><label for="a-pass">Пароль</label><div class="pass"><input class="input" id="a-pass" type="password" autocomplete="new-password" placeholder="не короче 6 символов"><button type="button" data-eye aria-label="Показать пароль">' + icon('eye') + '</button></div></div>' +
         '<div class="f full"><label for="a-ref">Код друга <span class="opt-l">· по желанию, +' + R.refFriend + ' ониксов</span></label><input class="input" id="a-ref" autocapitalize="characters" spellcheck="false" placeholder="Например, K7Q2MX" value="' + esc(ref) + '"></div>' +
         '<div class="f full" id="code-box"' + (regSent ? '' : ' hidden') + '><label for="a-code">Код из письма</label><input class="input code" id="a-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="••••••"><button class="link-btn" type="button" id="resend" style="justify-self:start">Отправить код ещё раз</button></div></div>' +
@@ -1970,11 +1982,11 @@
   }
   function profileModal() {
     var u = acct.user;
-    var md = openModal(modalHead('Имя, телефон и Telegram') + '<form id="prof-form" class="fgrid" novalidate>' +
+    var md = openModal(modalHead('Имя, телефон, Telegram и город') + '<form id="prof-form" class="fgrid" novalidate>' +
       '<div class="f full"><label for="p-name">Имя</label><input class="input" id="p-name" value="' + esc(u.name) + '"></div>' +
       '<div class="f"><label for="p-phone">Телефон</label><input class="input" id="p-phone" type="tel" value="' + esc(u.phone) + '"></div>' +
-      '<div class="f"><label for="p-tg">Telegram <span class="opt-l">· желательно</span></label><div class="prefix"><span>@</span><input class="input" id="p-tg" value="' + esc(u.tg) + '"></div></div>' +
-      '<div class="f full"><label for="p-city">Город <span class="opt-l">подставляется в заказы</span></label><input class="input" id="p-city" autocomplete="address-level2" placeholder="Например, Москва" value="' + esc(u.city || '') + '"><span class="err-msg" id="p-city-err" hidden>Не нашли такой город. Проверьте название.</span></div>' +
+      '<div class="f"><label for="p-tg">Telegram <span class="opt-l">желательно</span></label><div class="prefix"><span>@</span><input class="input" id="p-tg" value="' + esc(u.tg) + '"></div></div>' +
+      '<div class="f full"><label for="p-city">Город <span class="opt-l">подставится в заказы, можно изменить</span></label><input class="input" id="p-city" autocomplete="address-level2" placeholder="Например, Москва" value="' + esc(u.city || '') + '"><span class="err-msg" id="p-city-err" hidden>Не нашли такой город. Проверьте название.</span></div>' +
       '<div class="f full"><button class="btn" type="submit">Сохранить</button></div></form>', { cls: 'sm' });
     $('#prof-form', md).addEventListener('submit', function (e) {
       e.preventDefault();
@@ -2180,7 +2192,7 @@
     var def = RULES.tasks.filter(function (x) { return x.key === t.k; })[0]; if (!def) return '';
     var money = def.m === 'ordSum' || def.m === 'recvSum', multi = def.n > 1 && !t.d;
     var prog = money ? rub(t.p) + ' из ' + rub(def.n) : t.p + ' из ' + def.n;
-    return '<div class="task' + (t.d ? ' done' : '') + '"><span class="ck">' + icon('check') + '</span><span class="tt"><b>' + esc(def.title) + '</b><small>' + (t.d ? 'Выполнено · награда начислена' : esc(def.hint)) + '</small>' +
+    return '<div class="task' + (t.d ? ' done' : '') + '"><span class="ck">' + icon('check') + '</span><span class="tt"><b>' + esc(def.title) + '</b><small>' + (t.d ? 'Выполнено' : esc(def.hint)) + '</small>' +
       (multi ? '<span class="tbar"><i style="width:' + Math.round(t.p / def.n * 100) + '%"></i></span><small class="tcnt">' + prog + '</small>' : '') + '</span>' +
       '<span class="rw"><b>+' + def.tk + tk() + '</b><small>+' + def.xp + ' XP</small></span></div>';
   }
@@ -2240,17 +2252,17 @@
       }).join('') + '</div></div>' : '') +
       achvTile(u) +
       '<div class="card tile c12"><div class="tile-h"><h3>Мои заказы</h3><a class="link-btn" href="#orders">Все заказы</a></div>' +
-      (dashOrders.length ? '<div class="orders">' + dashOrders.map(orderCard).join('') + '</div>' + (u.orders.filter(isDoneOrder).length ? '<p class="small" style="margin-top:10px"><a href="#orders">История заказов · ' + u.orders.filter(isDoneOrder).length + '</a>: завершённые заказы, их можно повторить</p>' : '') : '<p class="small">Здесь появятся заказы с номерами и статусами. <a href="#catalog">Перейти в каталог</a></p>') + '</div>' +
+      (dashOrders.length ? '<div class="orders">' + dashOrders.map(orderCard).join('') + '</div>' + (u.orders.filter(isDoneOrder).length ? '<p class="small" style="margin-top:10px"><a href="#orders">История заказов · ' + u.orders.filter(isDoneOrder).length + '</a></p>' : '') : '<p class="small">Здесь появятся заказы с номерами и статусами. <a href="#catalog">Перейти в каталог</a></p>') + '</div>' +
 
       '<div class="card tile c12" style="padding-block:6px"><div class="rows">' +
-      '<button class="rowl" type="button" id="r-prof"><span class="ic">' + icon('user') + '</span><span class="tx">Имя, телефон и Telegram</span><span class="val">' + esc(u.phone) + '</span>' + icon('chevron-right') + '</button>' +
+      '<button class="rowl" type="button" id="r-prof"><span class="ic">' + icon('user') + '</span><span class="tx">Имя, телефон, Telegram и город</span><span class="val">' + esc(u.phone) + '</span>' + icon('chevron-right') + '</button>' +
       '<a class="rowl" href="#info"><span class="ic">' + icon('info') + '</span><span class="tx">Частые вопросы</span>' + icon('chevron-right') + '</a>' +
       (API.enabled ? '<button class="rowl" type="button" id="r-tg"><span class="ic">' + icon('send') + '</span><span class="tx">Уведомления в Telegram</span><span class="val">' + (u.tgOn ? 'подключены' : 'не подключены') + '</span>' + icon('chevron-right') + '</button>' : '') +
       '<button class="rowl" type="button" id="r-email"><span class="ic">' + icon('mail') + '</span><span class="tx">Почта</span><span class="val">' + (u.email ? esc(u.email) : 'не указана') + '</span>' + icon('chevron-right') + '</button>' +
       '<button class="rowl" type="button" id="r-pass"><span class="ic">' + icon('key') + '</span><span class="tx">Сменить пароль</span>' + icon('chevron-right') + '</button>' +
       '<button class="rowl" type="button" id="r-home"><span class="ic">' + icon('phone') + '</span><span class="tx">Добавить на экран «Домой»</span><span class="val">' + esc((homeIcons().filter(function (x) { return x[0] === homeIcon(); })[0] || [])[1]) + '</span>' + icon('chevron-right') + '</button>' +
       '<button class="rowl" type="button" id="r-theme"><span class="ic">' + icon(themeMode() === 'dark' ? 'moon' : 'sun') + '</span><span class="tx">Тема оформления</span><span class="val">' + THEME_NAMES[themeMode()] + '</span>' + icon('chevron-right') + '</button>' +
-      '<button class="rowl" type="button" id="r-bday"' + (bd ? ' disabled' : '') + '><span class="ic">' + icon('gift') + '</span><span class="tx">День рождения</span><span class="val">' + (bd ? (+bd[1]) + ' ' + MONTHS[+bd[0] - 1] : 'указать') + '</span>' + (bd ? '' : icon('chevron-right')) + '</button>' +
+      '<button class="rowl" type="button" id="r-bday"' + (bd ? ' disabled' : '') + '><span class="ic">' + icon('gift') + '</span><span class="tx">День рождения</span><span class="val">' + (bd ? (+bd[1]) + ' ' + MONTHS[+bd[0] - 1] : 'указать') + '</span>' + icon('chevron-right') + '</button>' +
       '<button class="rowl" type="button" id="r-frame"><span class="ic">' + icon('star') + '</span><span class="tx">Рамка аватара</span><span class="val">' + esc((RULES.frames.filter(function (f) { return f.id === u.frame; })[0] || {}).name || '') + '</span>' + icon('chevron-right') + '</button>' +
       (u.avatar ? '<button class="rowl" type="button" id="r-noava"><span class="ic">' + icon('camera') + '</span><span class="tx">Убрать фото</span>' + icon('chevron-right') + '</button>' : '') +
       '<button class="rowl" type="button" id="r-logout"><span class="ic">' + icon('logout') + '</span><span class="tx">Выйти</span>' + icon('chevron-right') + '</button>' +
