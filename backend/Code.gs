@@ -1131,7 +1131,7 @@ function doPost(e) {
     if (!uc.get('urlChk')) {
       uc.put('urlChk', '1', 3600);
       var cur = ScriptApp.getService().getUrl(), pr0 = props_();
-      if (cur && /\/exec$/.test(cur) && cur !== pr0.getProperty('WEBAPP_URL') && pr0.getProperty('BOT_TOKEN')) { pr0.setProperty('WEBAPP_URL', cur); enableWebhook_(); }
+      if (cur && /\/exec$/.test(cur) && cur !== pr0.getProperty('WEBAPP_URL')) pr0.setProperty('WEBAPP_URL', cur);
     }
   } catch (x) { }
   if (p.action === 'settings') return out_(OnionCore.handle('settings', p, DB));
@@ -1190,13 +1190,16 @@ function webAppUrl_() {
   return '';
 }
 /* Включает webhook: Telegram шлёт сообщения сюда сразу, без минутного ожидания. Ответ: '' или текст ошибки. */
+/* Важно: Apps Script на любой POST отвечает Telegram редиректом 302, а Telegram считает это ошибкой и повторяет одно и то же сообщение, из-за чего очередь встаёт и бот молчит.
+   Поэтому webhook включается ТОЛЬКО через прокси-адрес (свойство WEBHOOK_RELAY, например Cloudflare Worker), который отвечает Telegram кодом 200 сразу и сам передаёт сообщение сюда.
+   Без прокси бот работает через опрос раз в минуту: медленнее, но надёжно. */
 function enableWebhook_() {
-  var p = props_(), token = p.getProperty('BOT_TOKEN'), url = webAppUrl_();
+  var p = props_(), token = p.getProperty('BOT_TOKEN'), url = p.getProperty('WEBHOOK_RELAY') || '';
   if (!token) return 'Нет токена бота';
-  if (!url) return 'Не нашёл адрес веб-приложения (assets/config.js)';
+  if (!url) return 'Прокси для мгновенных ответов не настроен (свойство WEBHOOK_RELAY)';
   var secret = p.getProperty('TG_SECRET');
   if (!secret) { secret = Utilities.getUuid().replace(/-/g, '').slice(0, 24); p.setProperty('TG_SECRET', secret); }
-  var r = tgApi_('setWebhook', { url: url + '?tg=' + secret, allowed_updates: ['message', 'callback_query'], max_connections: 8, drop_pending_updates: false });
+  var r = tgApi_('setWebhook', { url: url.replace(/\/+$/, '') + '/?tg=' + secret, allowed_updates: ['message', 'callback_query'], max_connections: 8, drop_pending_updates: false });
   if (!r || !r.ok) return 'Telegram не принял webhook: ' + (r && r.description || 'нет ответа');
   p.setProperty('tgWebhook', '1');
   return '';
@@ -1206,8 +1209,9 @@ function enableWebhook() {
   Logger.log(err ? 'ОШИБКА: ' + err : 'Webhook включён');
   try { SpreadsheetApp.getUi().alert(err ? 'Не получилось: ' + err : 'Готово: бот теперь отвечает сразу.'); } catch (x) { }
 }
+function disableWebhook_() { tgApi_('deleteWebhook', { drop_pending_updates: false }); props_().deleteProperty('tgWebhook'); }
 function disableWebhook() {
-  tgApi_('deleteWebhook', {}); props_().deleteProperty('tgWebhook');
+  disableWebhook_();
   Logger.log('Webhook выключен, бот снова читает сообщения раз в минуту');
 }
 /* Диагностика: что Telegram думает о webhook (ошибки доставки, очередь) */
@@ -1422,7 +1426,6 @@ function setupTelegram_() {
   // правка статуса или фотоотчёта в таблице сразу уходит клиенту (а не через минуту)
   try { ScriptApp.newTrigger('onEditInstant').forSpreadsheet(ss_()).onEdit().create(); } catch (x) { console.error('onEdit trigger', x); }
   CacheService.getScriptCache().remove('catalog');
-  try { var we = enableWebhook_(); if (we) console.error('webhook: ' + we); } catch (x) { } // бот отвечает сразу
   return bot;
 }
 /* установленный триггер: менеджер поменял статус заказа или вставил фотоотчёт в таблице, клиент узнаёт в ту же секунду */
@@ -1466,10 +1469,8 @@ function telegramTick() {
   telegramPass_(false);
   var p = props_();
   // webhook ещё не включён: пробуем сами раз в час (нужен адрес веб-приложения), тогда бот начнёт отвечать мгновенно
-  if (!p.getProperty('tgWebhook') && p.getProperty('BOT_TOKEN') && !CacheService.getScriptCache().get('whTry')) {
-    CacheService.getScriptCache().put('whTry', '1', 3600);
-    try { var we = enableWebhook_(); if (we) console.error('webhook: ' + we); } catch (x) { }
-  }
+  // webhook без прокси ломает очередь Telegram (302): выключаем его, бот читает сообщения опросом
+  if (p.getProperty('tgWebhook') && !p.getProperty('WEBHOOK_RELAY')) { try { disableWebhook_(); } catch (x) { } }
   if (p.getProperty('tgWebhook')) return; // webhook включён: сообщения приходят сами, слушать не нужно
   if (!p.getProperty('BOT_TOKEN') || +(p.getProperty('tgHot') || 0) < Date.now()) return;
   var end = Date.now() + (+(p.getProperty('tgBurstMs') || 45000));
