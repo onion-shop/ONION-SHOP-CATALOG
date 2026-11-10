@@ -1443,17 +1443,16 @@ function disableTelegram() {
   ScriptApp.getProjectTriggers().forEach(function (t) { if (t.getHandlerFunction() === 'telegramTick') ScriptApp.deleteTrigger(t); });
   SpreadsheetApp.getUi().alert('Рассылка клиентам выключена.');
 }
-function telegramPass_(onlyPoll) {
+/* Плановые дела бота (статусы, фотоотчёты, напоминания, новинки, сводка): под общей блокировкой, сообщения клиентов здесь не читаются. */
+function telegramPass_() {
   var lock = LockService.getScriptLock();
-  if (!lock.tryLock(20000)) return;
+  if (!lock.tryLock(10000)) return;
   try {
     USERS_CACHE_ = null; DB.catalog_ = null; DB.ledger_ = null;
     if (!props_().getProperty('BOT_TOKEN')) return;
-    if (!props_().getProperty('tgWebhook')) { try { tgPoll_(); } catch (e) { console.error('poll', e && e.stack || e); } }
     try { syncXp_(); } catch (e) { console.error('xp', e && e.stack || e); }
     try { tgStatuses_(); } catch (e) { console.error('status', e && e.stack || e); }
     try { tgPhotos_(); } catch (e) { console.error('photos', e && e.stack || e); }
-    if (onlyPoll) return;
     try { tgWaits_(); } catch (e) { console.error('wait', e && e.stack || e); }
     try { tgWatch_(); } catch (e) { console.error('watch', e && e.stack || e); }
     try { tgReminders_(); } catch (e) { console.error('remind', e && e.stack || e); }
@@ -1463,29 +1462,54 @@ function telegramPass_(onlyPoll) {
     try { adminDigest_(); } catch (e) { console.error('digest', e && e.stack || e); }
   } finally { lock.releaseLock(); }
 }
-/* Раз в минуту. Если «горячее окно» открыто (клиент нажал «Подключить» или пришёл заказ), бот ещё ~45 секунд
-   слушает Telegram и отвечает за 1-2 секунды. Блокировка берётся только на саму обработку, сайт не ждёт. */
-function telegramTick() {
-  telegramPass_(false);
-  var p = props_();
-  // webhook ещё не включён: пробуем сами раз в час (нужен адрес веб-приложения), тогда бот начнёт отвечать мгновенно
-  // webhook без прокси ломает очередь Telegram (302): выключаем его, бот читает сообщения опросом
-  if (p.getProperty('tgWebhook') && !p.getProperty('WEBHOOK_RELAY')) { try { disableWebhook_(); } catch (x) { } }
-  if (p.getProperty('tgWebhook')) return; // webhook включён: сообщения приходят сами, слушать не нужно
-  if (!p.getProperty('BOT_TOKEN') || +(p.getProperty('tgHot') || 0) < Date.now()) return;
-  var end = Date.now() + (+(p.getProperty('tgBurstMs') || 45000));
-  while (Date.now() < end) {
-    var ups = [];
-    try { ups = tgFetch_(Math.max(1, Math.min(8, Math.floor((end - Date.now()) / 1000)))); } catch (e) { Utilities.sleep(1000); }
-    if (ups.length) {
-      var lock = LockService.getScriptLock();
-      if (lock.tryLock(15000)) {
-        try { USERS_CACHE_ = null; DB.catalog_ = null; tgHandle_(ups); try { syncXp_(); } catch (e) { } try { tgStatuses_(); } catch (e) { } } finally { lock.releaseLock(); }
-      }
-    }
-  }
+/* ====================== приём сообщений Telegram (опрос, без платных сервисов) ======================
+   Раньше здесь была ошибка: позиция очереди (tgOffset) осталась от старого бота и была больше номеров новых сообщений,
+   код брал максимум из двух чисел, позиция не сдвигалась, и Telegram отдавал одни и те же сообщения снова и снова (спам).
+   Теперь: 1) позиция всегда = номер последнего полученного сообщения + 1, и она сохраняется ДО обработки;
+   2) каждое сообщение обрабатывается не больше одного раза (память на 6 часов);
+   3) сообщения старше 10 минут (например, накопившиеся, пока бот не работал) пропускаются молча;
+   4) запуски не накладываются: пока один слушает Telegram, следующий сразу выходит. */
+var TG_STALE_SEC_ = 600;
+function tgPollOnce_(timeout) {
+  var p = props_(), token = p.getProperty('BOT_TOKEN'); if (!token) return 0;
+  var off = parseInt(p.getProperty('tgOffset') || '0', 10) || 0;
+  var res = UrlFetchApp.fetch('https://api.telegram.org/bot' + token + '/getUpdates?timeout=' + (timeout || 0) + '&offset=' + off + '&allowed_updates=' + encodeURIComponent('["message","callback_query"]'), { muteHttpExceptions: true });
+  var data = {}; try { data = JSON.parse(res.getContentText()); } catch (x) { return 0; }
+  if (!data.ok) { if (data.error_code === 409) disableWebhook_(); return 0; } // 409: ещё включён webhook, переходим на опрос
+  var ups = data.result || []; if (!ups.length) return 0;
+  p.setProperty('tgOffset', String(ups[ups.length - 1].update_id + 1)); // подтверждаем сразу: сообщение больше не придёт повторно, даже если обработка упадёт
+  var cache = CacheService.getScriptCache(), now = Date.now() / 1000;
+  var fresh = ups.filter(function (u) {
+    var key = 'upd:' + u.update_id; if (cache.get(key)) return false;
+    cache.put(key, '1', 21600);
+    return !(u.message && now - (+u.message.date || 0) > TG_STALE_SEC_);
+  });
+  if (!fresh.length) return ups.length;
+  DB.hot(15); // клиент пишет: следующие 15 минут бот слушает Telegram непрерывно и отвечает за 1-2 секунды
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(20000)) { fresh.forEach(function (u) { cache.remove('upd:' + u.update_id); }); p.setProperty('tgOffset', String(fresh[0].update_id)); return 0; }
+  try { USERS_CACHE_ = null; DB.catalog_ = null; DB.ledger_ = null; tgHandle_(fresh); } finally { lock.releaseLock(); }
+  return ups.length;
 }
-/* кнопки под новым заказом в чате менеджера: меняют статус прямо из Telegram */
+/* Каждую минуту (триггер). Сначала читает новые сообщения, потом делает плановые дела, а если с ботом недавно общались,
+   до конца минуты слушает Telegram «длинным опросом»: ответ приходит за 1-2 секунды. Сайт при этом не ждёт. */
+function telegramTick() {
+  var p = props_(); if (!p.getProperty('BOT_TOKEN')) return;
+  if (p.getProperty('tgWebhook') && !p.getProperty('WEBHOOK_RELAY')) { try { disableWebhook_(); } catch (x) { } }
+  var polling = !p.getProperty('tgWebhook');
+  var pollLock = null; try { pollLock = polling ? LockService.getDocumentLock() : null; } catch (x) { pollLock = null; }
+  if (pollLock && !pollLock.tryLock(500)) { telegramPass_(); return; } // другой запуск уже слушает Telegram
+  try {
+    var start = Date.now();
+    if (polling) { try { tgPollOnce_(0); } catch (e) { console.error('poll', e && e.stack || e); } }
+    telegramPass_();
+    if (!polling) return;
+    var end = start + 55000;
+    while (Date.now() < end - 3000 && +(props_().getProperty('tgHot') || 0) > Date.now()) {
+      try { tgPollOnce_(Math.max(1, Math.min(20, Math.floor((end - Date.now()) / 1000) - 2))); } catch (e) { console.error('poll', e && e.stack || e); Utilities.sleep(1000); }
+    }
+  } finally { if (pollLock) pollLock.releaseLock(); }
+}/* кнопки под новым заказом в чате менеджера: меняют статус прямо из Telegram */
 function adminStages_(kind) { var R = OnionCore.RULES; return (kind === 'в наличии' || kind === 'временно нет' ? R.stagesStock : R.stagesPre).filter(function (x) { return x !== 'Оформлен'; }).concat(['Отменён']); }
 function adminKeyboard_(no, kind) {
   var list = adminStages_(kind), rows = [[{ text: '💰 Оплачен', callback_data: 'p|' + no }]], row = [];
@@ -1493,13 +1517,6 @@ function adminKeyboard_(no, kind) {
   if (row.length) rows.push(row);
   return rows;
 }
-function tgFetch_(timeout) {
-  var p = props_(), off = parseInt(p.getProperty('tgOffset') || '0', 10) || 0;
-  var res = UrlFetchApp.fetch('https://api.telegram.org/bot' + p.getProperty('BOT_TOKEN') + '/getUpdates?timeout=' + timeout + '&offset=' + off, { muteHttpExceptions: true });
-  var data = JSON.parse(res.getContentText());
-  return data.ok ? (data.result || []) : [];
-}
-function tgPoll_() { tgHandle_(tgFetch_(0)); }
 /* фотоотчёт: как только менеджер вставил ссылку в «Фотоотчёт», клиент получает сообщение в Telegram */
 function tgPhotos_() {
   var sh = ss_().getSheetByName(SHEET.orders); if (!sh) return;
@@ -2262,10 +2279,9 @@ function adminText_(m, text) {
   adminMenu_(chat);
 }
 
+/* обработка уже полученных сообщений; позицию очереди Telegram ведёт только tgPollOnce_ (здесь её не трогаем) */
 function tgHandle_(updates) {
-  var p = props_(), off = parseInt(p.getProperty('tgOffset') || '0', 10) || 0;
   updates.forEach(function (up) {
-    off = Math.max(off, up.update_id + 1);
     try {
       if (up.callback_query) { adminCallback_(up.callback_query); return; }
       var m = up.message; if (!m || !m.chat || m.chat.type !== 'private') return;
@@ -2292,7 +2308,6 @@ function tgHandle_(updates) {
       else relayToManager_(m);
     } catch (e) { console.error('tg', e && e.stack || e); }
   });
-  p.setProperty('tgOffset', String(off));
 }
 
 /* подтверждение телефона: кнопка Telegram «Поделиться номером» (Telegram сам подтверждает, что номер владельца) */

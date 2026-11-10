@@ -521,10 +521,9 @@ function adminText_(m, text) {
   adminMenu_(chat);
 }
 
+/* обработка уже полученных сообщений; позицию очереди Telegram ведёт только tgPollOnce_ (здесь её не трогаем) */
 function tgHandle_(updates) {
-  var p = props_(), off = parseInt(p.getProperty('tgOffset') || '0', 10) || 0;
   updates.forEach(function (up) {
-    off = Math.max(off, up.update_id + 1);
     try {
       if (up.callback_query) { adminCallback_(up.callback_query); return; }
       var m = up.message; if (!m || !m.chat || m.chat.type !== 'private') return;
@@ -551,7 +550,6 @@ function tgHandle_(updates) {
       else relayToManager_(m);
     } catch (e) { console.error('tg', e && e.stack || e); }
   });
-  p.setProperty('tgOffset', String(off));
 }
 
 /* подтверждение телефона: кнопка Telegram «Поделиться номером» (Telegram сам подтверждает, что номер владельца) */
