@@ -1501,7 +1501,8 @@
     $$('.line', v).forEach(function (row) {
       var l = lines[+row.getAttribute('data-k')];
       $$('[data-q]', row).forEach(function (b) { b.addEventListener('click', function () { l.qty = Math.max(1, Math.min(10, l.qty + +b.getAttribute('data-q'))); saveCart(); renderCart(); }); });
-      $('[data-more]', row).addEventListener('click', function (e) { e.stopPropagation(); openCartMenu(l, this); });
+      var more = $('[data-more]', row); // в оформлении кнопки ⋮ нет
+      if (more) more.addEventListener('click', function (e) { e.stopPropagation(); openCartMenu(l, this); });
     });
     $('#cart-clear', v).addEventListener('click', function () { confirmBox({ title: 'Очистить корзину?', text: 'Все выбранные товары будут убраны.', actions: [{ label: 'Оставить', cls: 'btn-ghost' }, { label: 'Очистить', cls: 'btn-danger', run: function () { cart = []; saveCart(); renderCart(); } }] }); });
 
@@ -1707,7 +1708,7 @@
     var status = hasSt ? rvTimeline(o) : (o.offline ? '<div class="rc-status todo">' + icon('send') + '<span>Сервер недоступен: напишите менеджеру номер заказа.</span></div>'
       : '<div class="rc-status ok">' + icon('check-circle') + '<span>Заказ у менеджера. Он свяжется с вами в Telegram или по телефону.</span></div>');
     return '<div class="rv-card"><div class="rv-no"><div><span class="rv-l">Номер заказа</span><b>' + esc(o.no) + '</b></div><button class="rv-cp" type="button" data-copy="' + esc(o.no) + '">' + icon('copy') + 'Копировать</button></div>' +
-      '<p class="rv-meta">' + esc(fmtAt(o.at)) + ' · ' + (o.count || 0) + ' шт. · ' + rub(o.toPay != null ? o.toPay : o.total) + '</p>' + status + '</div>' +
+      '<p class="rv-meta">' + esc(fmtAt(o.at)) + ' · ' + rub(o.toPay != null ? o.toPay : o.total) + '</p>' + status + '</div>' +
       '<details class="rv-det"' + (open ? ' open' : '') + '><summary>Что в заказе' + icon('chevron-down') + '</summary><div class="rv-in">' + (thumbs ? '<div class="rv-th">' + thumbs + '</div>' : '') +
       '<div class="rc-row"><span>Товаров: ' + (o.count || 0) + ' шт.</span><b>' + rub(o.total || 0) + '</b></div>' +
       (o.tokens ? '<div class="rc-row"><span>Ониксы · ' + num(o.tokens) + '</span><b>−' + rub(o.tokenRub) + '</b></div>' : '') +
@@ -1732,7 +1733,7 @@
     return list;
   }
   function orderCard(o, i) {
-    return '<article class="card order" data-o="' + i + '"><div class="order-top"><div><span class="order-no">№ ' + esc(o.no) + '</span><p class="date">' + esc(fmtAt(o.at)) + ' · ' + (o.count || 0) + ' шт.</p></div><div style="display:grid;justify-items:end;gap:6px"><span class="sum">' + rub(o.toPay != null ? o.toPay : o.total) + '</span>' + stPill(o) + '</div></div>' +
+    return '<article class="card order" data-o="' + i + '"><div class="order-top"><div><span class="order-no">№ ' + esc(o.no) + '</span><p class="date">' + esc(fmtAt(o.at)) + '</p></div><div style="display:grid;justify-items:end;gap:6px"><span class="sum">' + rub(o.toPay != null ? o.toPay : o.total) + '</span>' + stPill(o) + '</div></div>' +
       '<div class="order-items">' + (o.items || []).map(function (it) { var id = it.photo || it.thumb; return '<a class="oi" href="#p-' + esc(it.id) + '" title="' + esc(it.title) + '">' + (id ? '<img src="' + thumb(id) + '" alt="' + esc(it.title) + '" loading="lazy">' : '') + (it.qty > 1 ? '<i>×' + it.qty + '</i>' : '') + '</a>'; }).join('') + '</div>' +
       ((o.photos || []).length ? '<div class="ord-photos">' + icon('camera') + '<b>Фотоотчёт</b>' + o.photos.map(function (l, k) { return '<a class="chip" href="' + esc(l) + '" target="_blank" rel="noopener">Фото ' + (k + 1) + '</a>'; }).join('') + '</div>' : '') +
       '<div class="acts"><button class="btn btn-sm" type="button" data-open>' + icon('receipt') + (o.stages ? 'Статус и чек' : 'Чек') + '</button><button class="btn btn-ghost btn-sm" type="button" data-repeat>' + icon('refresh') + 'Повторить</button>' + reviewBtn(o) + '</div></article>';
@@ -2252,7 +2253,7 @@
       }).join('') + '</div></div>' : '') +
       achvTile(u) +
       '<div class="card tile c12"><div class="tile-h"><h3>Мои заказы</h3><a class="link-btn" href="#orders">Все заказы</a></div>' +
-      (dashOrders.length ? '<div class="orders">' + dashOrders.map(orderCard).join('') + '</div>' + (u.orders.filter(isDoneOrder).length ? '<p class="small" style="margin-top:10px"><a href="#orders">История заказов · ' + u.orders.filter(isDoneOrder).length + '</a></p>' : '') : '<p class="small">Здесь появятся заказы с номерами и статусами. <a href="#catalog">Перейти в каталог</a></p>') + '</div>' +
+      (dashOrders.length ? '<div class="orders">' + dashOrders.map(orderCard).join('') + '</div>' + (u.orders.filter(isDoneOrder).length ? '<p class="small" style="margin-top:10px"><a href="#orders">История заказов</a></p>' : '') : '<p class="small">Здесь появятся заказы с номерами и статусами. <a href="#catalog">Перейти в каталог</a></p>') + '</div>' +
 
       '<div class="card tile c12" style="padding-block:6px"><div class="rows">' +
       '<button class="rowl" type="button" id="r-prof"><span class="ic">' + icon('user') + '</span><span class="tx">Имя, телефон, Telegram и город</span><span class="val">' + esc(u.phone) + '</span>' + icon('chevron-right') + '</button>' +
