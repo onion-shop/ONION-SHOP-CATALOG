@@ -18,6 +18,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <!--MANIFEST--><link rel="manifest" href="manifest.webmanifest"><!--/MANIFEST-->
+<link rel="preconnect" href="https://script.google.com">
+<link rel="preconnect" href="https://script.googleusercontent.com">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Onest:wght@500;600;700;800&display=swap">
@@ -28,32 +30,36 @@
 <body>
 <div id="splash" aria-hidden="true">
 <style>
-/* заставка: белый фон, ONION SHOP по центру, под ним полоса и подпись о загрузке; объёмные шары ходят по краям и не заходят к центру */
+/* заставка: белый фон, логотип и ONION SHOP по центру, полоса загрузки; светлые объёмные шары плавают по краям */
 #splash{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;overflow:hidden;background:#fff;transition:opacity .6s ease,visibility .6s;font-family:Onest,Inter,system-ui,sans-serif}
 #splash.out{opacity:0;visibility:hidden}
-#splash .dot{position:absolute;border-radius:50%;will-change:transform;opacity:.62;
-  background:radial-gradient(circle at 30% 26%,rgba(255,255,255,.7) 0,rgba(255,255,255,0) 22%),radial-gradient(circle at 50% 48%,#4aa6e8 0,#2379c2 58%,#14589e 100%);
-  box-shadow:inset -1.4vmax -1.8vmax 3.2vmax rgba(4,36,86,.38),inset 1vmax 1vmax 2vmax rgba(255,255,255,.25),0 2.2vmax 4vmax rgba(24,90,170,.16)}
-#splash .d1{width:30vmax;height:30vmax;left:-14vmax;top:-9vmax;animation:spl-a 9s ease-in-out infinite}
-#splash .d2{width:22vmax;height:22vmax;right:-11vmax;top:22%;animation:spl-b 10s ease-in-out infinite}
-#splash .d3{width:34vmax;height:34vmax;right:-14vmax;bottom:-16vmax;animation:spl-a 12s ease-in-out infinite reverse}
-#splash .d4{width:16vmax;height:16vmax;left:-8vmax;bottom:16%;animation:spl-b 8s ease-in-out infinite reverse}
-#splash .d5{width:10vmax;height:10vmax;right:6vmax;top:-5vmax;animation:spl-c 7s ease-in-out infinite}
-/* только вдоль края и в сторону от центра, к центру не приближаются */
-@keyframes spl-a{0%,100%{transform:translate(0,0)}50%{transform:translate(-3vmax,3vmax)}}
-@keyframes spl-b{0%,100%{transform:translate(0,0)}50%{transform:translate(-2.5vmax,-4vmax)}}
-@keyframes spl-c{0%,100%{transform:translate(0,0)}50%{transform:translate(3vmax,-1vmax)}}
-#splash .box{position:relative;display:grid;justify-items:center;gap:14px;text-align:center}
-#splash .word{margin:0;font-weight:900;font-size:clamp(2.4rem,11vw,4rem);letter-spacing:.02em;line-height:1;color:#0a45c2;animation:spl-in .8s cubic-bezier(.2,1,.3,1) both}
-#splash .word em{font-style:normal;color:#2bb3e0}
+#splash .dot{position:absolute;border-radius:50%;will-change:transform;
+  background:radial-gradient(circle at 32% 26%,#d4f1fa 0,#9fdcef 30%,#5db3e2 68%,#4a9bd4 100%);
+  box-shadow:inset -.8vw -1.2vw 2.4vw rgba(30,100,170,.28),inset .8vw .8vw 1.6vw rgba(255,255,255,.45),0 2vw 4vw rgba(60,150,210,.14)}
+#splash .d1{width:49vw;height:49vw;left:-15vw;top:-19vw;animation:spl-a 9s ease-in-out infinite}
+#splash .d2{width:17vw;height:17vw;right:11vw;top:16.5vw;animation:spl-b 7s ease-in-out infinite}
+#splash .d3{width:14vw;height:14vw;left:6.5vw;top:40.5vw;animation:spl-c 8s ease-in-out infinite}
+#splash .d4{width:28vw;height:28vw;right:-8vw;top:38vw;animation:spl-b 10s ease-in-out infinite reverse}
+#splash .d5{width:29vw;height:29vw;right:-8vw;bottom:39vw;animation:spl-a 11s ease-in-out infinite reverse}
+#splash .d6{width:20vw;height:20vw;right:9vw;bottom:18vw;animation:spl-c 8.5s ease-in-out infinite}
+#splash .d7{width:12.5vw;height:12.5vw;left:25.5vw;bottom:16vw;animation:spl-b 7.5s ease-in-out infinite}
+#splash .d8{width:25vw;height:25vw;left:-9vw;bottom:-6vw;animation:spl-a 10s ease-in-out infinite}
+@keyframes spl-a{0%,100%{transform:translate(0,0)}50%{transform:translate(2.5vw,3vw)}}
+@keyframes spl-b{0%,100%{transform:translate(0,0)}50%{transform:translate(-2vw,-3vw)}}
+@keyframes spl-c{0%,100%{transform:translate(0,0)}33%{transform:translate(2vw,-2vw)}66%{transform:translate(-1.5vw,1.5vw)}}
+#splash .box{position:relative;display:grid;justify-items:center;gap:20px;text-align:center}
+#splash .logo{width:92px;height:92px;border-radius:50%;box-shadow:0 0 0 7px rgba(190,215,235,.55),0 10px 26px rgba(30,80,150,.2);animation:spl-in .8s cubic-bezier(.2,1,.3,1) both}
+#splash .word{margin:0;font-weight:900;font-size:clamp(2rem,9.5vw,3.2rem);letter-spacing:.01em;line-height:1;color:#0c1f46;animation:spl-in .8s .08s cubic-bezier(.2,1,.3,1) both}
+#splash .word em{font-style:normal;color:#1a86c0}
 @keyframes spl-in{from{transform:translateY(12px);opacity:0}to{transform:none;opacity:1}}
-#splash .bar{width:min(240px,62vw);height:6px;border-radius:99px;background:#e4eef7;overflow:hidden}
-#splash .bar b{display:block;height:100%;width:100%;border-radius:99px;background:linear-gradient(90deg,#1a86c0,#43c9e3);transform-origin:left;transform:scaleX(.02);transition:transform .25s linear}
-#splash small{color:#5a6b82;font-size:13px;font-weight:600;min-height:1.2em}
+#splash .bar{width:min(260px,52vw);height:5px;border-radius:99px;background:#e4eaf3;overflow:hidden}
+#splash .bar b{display:block;height:100%;width:100%;border-radius:99px;background:linear-gradient(90deg,#1a5fb4,#43c9e3);transform-origin:left;transform:scaleX(.02);transition:transform .25s linear}
+#splash small{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 @media (prefers-reduced-motion: reduce){#splash *{animation:none!important}}
 </style>
-<span class="dot d1"></span><span class="dot d2"></span><span class="dot d3"></span><span class="dot d4"></span><span class="dot d5"></span>
+<span class="dot d1"></span><span class="dot d2"></span><span class="dot d3"></span><span class="dot d4"></span><span class="dot d5"></span><span class="dot d6"></span><span class="dot d7"></span><span class="dot d8"></span>
 <div class="box">
+<img class="logo" src="assets/logo.png" alt="" width="92" height="92">
 <h1 class="word">ONION <em>SHOP</em></h1>
 <div class="bar"><b id="spl-bar"></b></div>
 <small id="spl-txt">Загружаем данные…</small>
