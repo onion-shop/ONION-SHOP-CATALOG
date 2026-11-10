@@ -67,6 +67,9 @@ var OnionAPI = (function () {
     codes: {},
     putCode: function (k, o) { DemoDB.codes[k] = o; },
     getCode: function (k) { return DemoDB.codes[k] || null; },
+    // как на сервере: 6 неудачных входов за 15 минут, и вход по этому ключу на паузе
+    rateLimited: function (login) { var v = DemoDB.codes['fail:' + login]; return !!(v && v.n >= 6 && v.exp > Date.now()); },
+    failedLogin: function (login) { var k = 'fail:' + login, v = DemoDB.codes[k]; if (!v || v.exp < Date.now()) v = { n: 0, exp: Date.now() + 900000 }; v.n++; DemoDB.codes[k] = v; },
     delCode: function (k) { delete DemoDB.codes[k]; },
     mail: function () { return true; },
     deleteUser: function (u) { mem.users = mem.users.filter(function (x) { return x.id !== u.id; }); save(); },
@@ -78,7 +81,9 @@ var OnionAPI = (function () {
     reviewKeys: function (uid) { return (mem.reviews || []).filter(function (r) { return r.userId === uid; }).map(function (r) { return r.no + '|' + r.productId; }); },
     reviewHas: function (no, pid) { return (mem.reviews || []).some(function (r) { return r.no === no && r.productId === pid; }); },
     reviewAdd: function (r) { (mem.reviews = mem.reviews || []).push(r); save(); },
-    reviewsFor: function (pid) { return (mem.reviews || []).filter(function (r) { return r.productId === pid && r.status === 'опубликован'; }).reverse().map(function (r) { var d = new Date(r.at); return { name: r.name, rating: r.rating, text: r.text, at: ('0' + d.getDate()).slice(-2) + '.' + ('0' + (d.getMonth() + 1)).slice(-2) + '.' + d.getFullYear() }; }); },
+    reviewsFor: function (pid) { return (mem.reviews || []).filter(function (r) { return r.productId === pid && r.status === 'опубликован'; }).reverse().map(function (r) { var d = new Date(r.at); return { name: r.name, rating: r.rating, text: r.text, at: ('0' + d.getDate()).slice(-2) + '.' + ('0' + (d.getMonth() + 1)).slice(-2) + '.' + d.getFullYear(), photos: String(r.photos || '').split(' ').filter(Boolean).map(function (id) { return (mem.photos || {})[id] || ''; }).filter(Boolean) }; }); },
+    // демо: менеджера нет, фото хранятся в этом браузере и видны сразу (на сервере только после одобрения)
+    savePhoto: function (data, name) { var id = 'demo' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); (mem.photos = mem.photos || {})[id] = data; save(); return id; },
     waitsOf: function (uid) { return (mem.waits || []).filter(function (w) { return w.userId === uid; }); },
     waitAdd: function (w) { (mem.waits = mem.waits || []).push(w); save(); },
     waitRemove: function (uid, pid) { mem.waits = (mem.waits || []).filter(function (w) { return !(w.userId === uid && w.productId === pid); }); save(); },

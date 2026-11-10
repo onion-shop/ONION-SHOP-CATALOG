@@ -238,6 +238,8 @@ var OnionCore = (function () {
   function pad(n, w) { n = String(n); while (n.length < w) n = '0' + n; return n; }
   function digits(s) { return String(s || '').replace(/\D/g, ''); }
   function cleanLogin(s) { return String(s || '').trim().toLowerCase(); }
+  // имя: без служебных символов и угловых скобок, не длиннее 40 знаков
+  function cleanName(s) { return String(s || '').replace(/[\u0000-\u001f\u007f<>]/g, '').replace(/\s+/g, ' ').trim().slice(0, 40); }
   function cleanTg(s) { return String(s || '').trim().replace(/^https?:\/\/(t\.me|telegram\.me)\//i, '').replace(/^@+/, '').replace(/[/?#].*$/, ''); }
   function fmtPhone(s) {
     var d = digits(s);
@@ -475,14 +477,14 @@ var OnionCore = (function () {
       var p15 = (u.promos || []).filter(function (p) { return p.kind === 'lvl15' && p.exp === mk; })[0];
       if (!p15) {
         var c = RULES.promoCats[Math.floor(db.random() * RULES.promoCats.length)];
-        var pr = { code: genCode(db, 'GOLD', 5), pct: 1.5, kind: 'lvl15', exp: mk, from: 'Золото · ' + c.label, at: now, cat: c.key, catLabel: c.label };
+        var pr = { code: genCode(db, 'GOLD', 5), pct: 1.5, kind: 'lvl15', exp: mk, from: 'Золото, ' + c.label, at: now, cat: c.key, catLabel: c.label };
         u.promos.push(pr); log(db, u, 0, 'Промокод −1,5% на «' + c.label + '» за уровень ' + L.name);
       }
     }
     if (li >= 3) {
       var p15p = (u.promos || []).filter(function (p) { return p.kind === 'lvl15p' && p.exp === mk; })[0];
       if (!p15p) {
-        u.promos.push({ code: genCode(db, 'PLAT', 5), pct: 1.5, kind: 'lvl15p', exp: mk, from: 'Платина · любой товар', at: now });
+        u.promos.push({ code: genCode(db, 'PLAT', 5), pct: 1.5, kind: 'lvl15p', exp: mk, from: 'Платина, на любой товар', at: now });
         log(db, u, 0, 'Промокод −1,5% на любой товар за уровень ' + L.name);
       }
     }    // Алмаз: 3 промокода −2,5% в месяц, по одному в неделю
@@ -490,7 +492,7 @@ var OnionCore = (function () {
       if (u.perkDiaMonth !== mk) { u.perkDiaMonth = mk; u.perkDiaN = 0; }
       if ((u.perkDiaN || 0) < 3 && (!u.perkDiaN || now - (+u.perkDiaAt || 0) >= 7 * 86400000)) {
         u.perkDiaN = (u.perkDiaN || 0) + 1; u.perkDiaAt = now;
-        u.promos.push({ code: genCode(db, 'DIAM', 5), pct: 2.5, kind: 'lvl25', exp: mk, from: 'Алмаз · неделя ' + u.perkDiaN + ' из 3', at: now });
+        u.promos.push({ code: genCode(db, 'DIAM', 5), pct: 2.5, kind: 'lvl25', exp: mk, from: 'Алмаз, неделя ' + u.perkDiaN + ' из 3', at: now });
         log(db, u, 0, 'Промокод −2,5% за уровень Алмаз (' + u.perkDiaN + ' из 3)');
       }
     }
@@ -625,7 +627,7 @@ var OnionCore = (function () {
   };
 
   A.register = function (db, p) {
-    var login = cleanLogin(p.login), pass = String(p.password || ''), name = String(p.name || '').trim();
+    var login = cleanLogin(p.login), pass = String(p.password || ''), name = cleanName(p.name);
     var tg = cleanTg(p.tg), ph = phoneKey(p.phone), email = cleanEmail(p.email);
     if (!/^[a-z0-9_.]{3,20}$/.test(login)) return err('Логин: от 3 до 20 символов, латиница, цифры, точка или «_»');
     if (pass.length < 6) return err('Пароль: не короче 6 символов');
@@ -636,9 +638,10 @@ var OnionCore = (function () {
     if (db.findUser('login', login)) return err('Такой логин уже занят');
     var ec = canonEmail(email);
     if (db.findUser('email', email) || db.findUser('emailCanon', ec) || (ec !== email && db.findUser('email', ec))) return err('Эта почта уже привязана к аккаунту');
-    if (tg && db.findUser('tg', tg.toLowerCase())) return err('Этот Telegram уже привязан к другому аккаунту');
-    if (db.findUser('phone', ph)) return err('Этот телефон уже привязан к другому аккаунту');
+    // сначала код из письма (почта ваша), и только потом проверка телефона и Telegram: без кода нельзя узнать, чей номер есть в базе
     var bad = checkCode(db, 'register', email, p.code); if (bad) return bad;
+    if (tg && db.findUser('tg', tg.toLowerCase())) return err('Этот Telegram уже привязан к другому аккаунту. Запросите новый код и укажите другой');
+    if (db.findUser('phone', ph)) return err('Этот телефон уже привязан к другому аккаунту. Запросите новый код и укажите другой номер');
     var ref = null, repeat = ledgerHas(db, idKeys(db, { phone: ph, email: email, tg: tg }), 'acct');
     if (p.ref && !repeat) { ref = db.findUser('refCode', String(p.ref).trim().toUpperCase()); }
     var refCode; do { refCode = genCode(db, '', 6); } while (db.findUser('refCode', refCode));
@@ -707,8 +710,10 @@ var OnionCore = (function () {
     var login = cleanLogin(p.login);
     if (db.rateLimited && db.rateLimited(login)) return err('Слишком много попыток. Подождите 15 минут');
     var u = db.findUser('login', login) || (login.indexOf('@') > 0 ? db.findUser('email', login) : null) || (login.charAt(0) === '@' ? db.findUser('tg', login.slice(1)) : null);
+    // лимит и на сам аккаунт: перебор пароля через логин, почту и @telegram по очереди тоже упирается в 6 попыток за 15 минут
+    if (u && db.rateLimited && db.rateLimited('id:' + u.id)) return err('Слишком много попыток. Подождите 15 минут');
     if (!u || hashPass(db, u.salt, String(p.password || '')) !== u.hash) {
-      if (db.failedLogin) db.failedLogin(login);
+      if (db.failedLogin) { db.failedLogin(login); if (u) db.failedLogin('id:' + u.id); }
       return err('Неверный логин или пароль');
     }
     touch(db, u); db.saveUser(u);
@@ -727,7 +732,10 @@ var OnionCore = (function () {
 
   A.profile = function (db, p) {
     var u = sessionUser(db, p); if (!u) return err('auth'); var bdayNow = false;
-    if (p.name != null) { var n = String(p.name).trim(); if (n.length < 2) return err('Укажите имя'); u.name = n; }
+    if (p.name != null) { var n = cleanName(p.name); if (n.length < 2) return err('Укажите имя'); u.name = n; }
+    // смена телефона или Telegram: не чаще 10 раз в час, иначе через профиль можно было бы перебором узнавать, чьи номера есть в базе
+    var phCh = p.phone != null && phoneKey(p.phone) !== u.phoneKey, tgCh = p.tg != null && String(cleanTg(p.tg) || '').toLowerCase() !== String(u.tgKey || '');
+    if ((phCh || tgCh) && bump(db, 'prof:' + u.id, 3600) > 10) { flag(db, 2, 'profile', 'Много смен телефона или Telegram подряд: @' + u.login); return err('Слишком много изменений подряд. Попробуйте через час или напишите менеджеру'); }
     if (p.phone != null) {
       var ph = phoneKey(p.phone); if (ph.length < 10 || ph.length > 15) return err('Проверьте телефон');
       var other = db.findUser('phone', ph); if (other && other.id !== u.id) return err('Этот телефон уже привязан к другому аккаунту');
@@ -742,7 +750,7 @@ var OnionCore = (function () {
       }
       u.tg = tg; u.tgKey = tg ? tg.toLowerCase() : '';
     }
-    if (p.city != null) { u.city = String(p.city).replace(/\s+/g, ' ').trim().slice(0, 60); }
+    if (p.city != null) { u.city = String(p.city).replace(/[\u0000-\u001f\u007f<>]/g, '').replace(/\s+/g, ' ').trim().slice(0, 60); }
     if (p.avatar != null) {
       var av = String(p.avatar);
       if (av && (av.length > 45000 || !/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+\/=]+$/.test(av))) return err('Фото не подошло. Выберите другое (JPG или PNG)');
@@ -785,7 +793,7 @@ var OnionCore = (function () {
     log(db, u, 0, 'Промокод ' + code + ' −' + pctText(B.promoPct) + '% на 30 дней (день рождения)');
     ledgerAdd(db, idKeys(db, u), 'bday' + year, 'подарок выдан');
     settle(db, u); db.saveUser(u);
-    if (u.tgChat && db.userNotify) { try { db.userNotify(u, '🎂 С днём рождения, ' + firstName(u.name) + '! Подарок уже в кабинете: ' + B.tokens + ' ониксов (≈ ' + tokensToRub(B.tokens) + ' ₽), ' + B.xp + ' XP и промокод ' + code + ' на −' + pctText(B.promoPct) + '%.'); } catch (e) {} }
+    if (u.tgChat && db.userNotify) { try { db.userNotify(u, '🎂 С днём рождения, ' + firstName(u.name) + '!\nПодарок уже в кабинете: ' + B.tokens + ' ониксов (это ' + tokensToRub(B.tokens) + ' ₽), ' + B.xp + ' XP и промокод ' + code + ' на −' + pctText(B.promoPct) + '%.', [[{ text: 'Мои бонусы', callback_data: 'bn' }]]); } catch (e) {} }
     return ok({ gifts: [{ k: 'tok', n: B.tokens, rub: tokensToRub(B.tokens) }, { k: 'xp', n: B.xp }, { k: 'promo', code: code, pct: B.promoPct, until: until }], user: publicUser(db, u) });
   };
 
@@ -901,14 +909,14 @@ var OnionCore = (function () {
   // значение колонки «Приоритет» в таблице: номер очереди и название, сортируется по возрастанию («№1 Алмаз», «№4 Платный»)
   function prioCell(priority, li, paid, u) {
     var ord = priorityOrder(), r = priority && li ? ord.indexOf(li.name) + 1 : 0;
-    if (r) return '№' + r + ' ' + li.name + (paid ? ' · платный' : '');
+    if (r) return '№' + r + ' ' + li.name + (paid ? ' (платный)' : '');
     return paid ? '№' + (ord.length + 1) + ' Платный' : (u ? 'Обычный' : '');
   }
 
   /** Текст заказа для менеджера. o: {no, at, f (поля анкеты), lines:[{title,status,size,color,photoNo,note,qty,price,link}], total, tokens, tokenRub, promo, promoRub, toPay, user} */
   function orderText(o) {
     var f = o.f, L = [], hasPre = false, hasStock = false, hasOut = false, cnt = 0;
-    L.push('🛍 ЗАКАЗ ONION SHOP · №' + o.no);
+    L.push('🛍 ЗАКАЗ ONION SHOP №' + o.no);
     var pOrder = priorityOrder(), pRank = o.priority && o.user ? pOrder.indexOf(o.user.levelName) + 1 : 0, pTotal = pOrder.length + 1;
     if (pRank) L.push('⭐ ПРИОРИТЕТ УРОВНЯ: ' + o.priority.toUpperCase() + ' (' + o.user.levelName + '), очередь №' + pRank + ' из ' + pTotal);
     if (o.f.vip === true) L.push('⚡ ПЛАТНЫЙ ПРИОРИТЕТ (+' + RULES.vipPrice + ' ₽, оплачено в заказе)' + (pRank ? ', очередь определяет уровень' : ', очередь №' + pTotal + ' из ' + pTotal + ', после ' + pOrder.join(', ')));
@@ -919,7 +927,7 @@ var OnionCore = (function () {
     L.push('Имя: ' + String(f.name).trim());
     L.push('Телефон: ' + fmtPhone(f.phone));
     L.push(cleanTg(f.tg) ? 'Telegram: @' + cleanTg(f.tg) : 'Telegram: нет username, связаться по телефону');
-    if (o.user) L.push('Аккаунт: ' + o.user.login + ' · ID OS' + o.user.id + ' · уровень «' + o.user.levelName + '»');
+    if (o.user) L.push('Аккаунт: ' + o.user.login + ', ID OS' + o.user.id + ', уровень «' + o.user.levelName + '»');
     L.push('');
     L.push('📦 ТОВАРЫ');
     o.lines.forEach(function (l, i) {
@@ -931,13 +939,13 @@ var OnionCore = (function () {
       if (l.size) opt.push('Размер: ' + l.size);
       if (l.color) opt.push('Цвет: ' + l.color);
       if (l.photoNo) opt.push('фото №' + l.photoNo);
-      if (opt.length) L.push('   ' + opt.join(' · '));
+      if (opt.length) L.push('   ' + opt.join(', '));
       if (l.note) L.push('   Пожелания: ' + l.note);
       L.push('   ' + l.qty + ' шт × ' + rub(l.price) + ' = ' + rub(l.price * l.qty));
       if (l.link) L.push('   ' + l.link);
     });
     L.push('');
-    L.push('💰 Сумма: ' + rub(o.total) + ' · ' + cnt + ' шт');
+    L.push('💰 Сумма: ' + rub(o.total) + ', товаров: ' + cnt + ' шт.');
     if (o.tokens) L.push('🪙 Списано ониксов: ' + o.tokens + ' (−' + rub(o.tokenRub) + ')');
     if (o.promo) L.push('🏷 Промокод ' + o.promo + (o.promoNote ? ' (' + o.promoNote + ')' : '') + ': −' + rub(o.promoRub));
     if (o.pack) L.push('🎁 ПРИВИЛЕГИЯ: ' + o.pack + ', учесть при расчёте упаковки');
@@ -1022,6 +1030,9 @@ var OnionCore = (function () {
     // заказ: только из кабинета: без входа в аккаунт оформить нельзя (db.allowGuest: только для автотестов)
     if (!db.allowGuest && !sessionUser(db, p)) return { ok: false, error: 'Чтобы оформить заказ, войдите в кабинет или создайте его', needAccount: true };
     var su = sessionUser(db, p);
+    // защита от потока заказов (спам менеджеру и накрутка заданий «оформить заказ»): до 5 в час и до 15 в сутки на аккаунт
+    var ordKeys = su ? ['ordH:' + su.id + ':' + hourKey(db), 'ordD:' + su.id + ':' + dayKey(db.now())] : [];
+    if (su && db.getCode && (((db.getCode(ordKeys[0]) || {}).n || 0) >= 5 || ((db.getCode(ordKeys[1]) || {}).n || 0) >= 15)) { flag(db, 2, 'orders', 'Слишком много заказов подряд: @' + su.login); return err('Слишком много заказов подряд. Если нужно оформить ещё, напишите менеджеру @OnionShop_Support'); }
     if (su) { // контакты, из профиля; профиль должен быть заполнен
       if (String(su.name || '').trim().length < 2 || phoneKey(su.phone || '').length < 10) return err('Заполните имя и телефон в кабинете перед заказом');
       f = Object.assign({}, f, { name: su.name, phone: su.phone, tg: su.tg || '' });
@@ -1084,7 +1095,8 @@ var OnionCore = (function () {
     };
     if (u && taskRew.length) order.taskRew = JSON.stringify(taskRew);
     db.saveOrder(order);
-    if (u && u.tgChat && db.userNotify) { try { db.userNotify(u, '🧾 Заказ ' + no + ' принят. Сумма к оплате: ' + toPay + ' ₽.\nМенеджер скоро свяжется с вами. Статусы заказа будут приходить сюда.', [[{ text: '📦 Подробнее о заказе', callback_data: 'm|' + no }]]); } catch (e) { /* не критично */ } }
+    if (ordKeys.length) { bump(db, ordKeys[0], 3700); bump(db, ordKeys[1], 90000); }
+    if (u && u.tgChat && db.userNotify) { try { db.userNotify(u, 'Заказ ' + no + ' принят 🧾\nК оплате: ' + toPay + ' ₽. Менеджер проверит заказ и пришлёт реквизиты, а статусы я буду присылать сюда.', [[{ text: 'Открыть заказ', callback_data: 'm|' + no }]]); } catch (e) { /* не критично */ } }
     var notified = false;
     try { notified = db.notify ? !!db.notify(text, { no: no, kind: order.kind }) : false; } catch (e) { notified = false; }
     return ok({ order: order, notified: notified, user: u ? publicUser(db, u) : null });
@@ -1242,9 +1254,16 @@ var OnionCore = (function () {
     if (!it) return err('Этого товара нет в заказе');
     if (db.reviewHas(no, pid)) return err('Вы уже оставили отзыв на этот товар');
     var text = String(p.text || '').replace(/\s+/g, ' ').trim().slice(0, 600);
+    // фото к отзыву: до 3 штук, только JPEG в base64 (сайт сам сжимает), каждое до ~350 КБ. На сайте их видно после одобрения менеджером.
+    var raw = Array.isArray(p.photos) ? p.photos : [];
+    if (raw.length > 3) return err('К отзыву можно приложить до 3 фото');
+    var shots = raw.filter(function (d) { return typeof d === 'string' && d.length <= 500000 && /^data:image\/jpeg;base64,[A-Za-z0-9+\/=]+$/.test(d); });
+    if (shots.length !== raw.length) return err('Не получилось прочитать фото. Попробуйте другое');
     var tokens = text.length >= 20 ? RULES.reward.reviewText : RULES.reward.review;
     touch(db, u);
-    db.reviewAdd({ at: db.now(), no: no, userId: u.id, login: u.login, name: firstName(u.name), productId: pid, title: it.title, rating: rating, text: text, status: 'опубликован', reward: tokens });
+    var ids = [];
+    shots.forEach(function (d, i) { var id = db.savePhoto ? db.savePhoto(d, no + '_' + pid + '_' + (i + 1)) : ''; if (id) ids.push(id); });
+    db.reviewAdd({ at: db.now(), no: no, userId: u.id, login: u.login, name: firstName(u.name), productId: pid, title: it.title, rating: rating, text: text, status: 'опубликован', reward: tokens, photos: ids.join(' '), photoSt: ids.length ? 'на проверке' : '' });
     log(db, u, tokens, 'Отзыв на товар «' + String(it.title).slice(0, 40) + '»');
     track(db, u, 'review'); settle(db, u); db.saveUser(u);
     return ok({ reward: tokens, user: publicUser(db, u) });
@@ -1253,7 +1272,7 @@ var OnionCore = (function () {
     var rows = (db.reviewsFor ? db.reviewsFor(String(p.productId || '')) : []) || [], sum = 0;
     rows.forEach(function (r) { sum += +r.rating || 0; });
     return ok({ count: rows.length, avg: rows.length ? Math.round(sum / rows.length * 10) / 10 : 0,
-      list: rows.slice(0, 20).map(function (r) { return { name: r.name, rating: +r.rating, text: r.text, at: r.at }; }) });
+      list: rows.slice(0, 50).map(function (r) { return { name: r.name, rating: +r.rating, text: r.text, at: r.at, photos: (r.photos || []).slice(0, 3) }; }) });
   };
 
   /* ---------- «Сообщить, когда появится» ---------- */
@@ -1283,7 +1302,7 @@ var OnionCore = (function () {
   return {
     RULES: RULES, handle: handle, orderText: orderText, buildLines: buildLines, checkFields: checkFields,
     offlineNo: offlineNo, levelInfo: levelInfo, levelOf: levelOf, fixIndex: fixIndex, receive: receive, priceDrops: priceDrops, photoLinks: photoLinks, earlyLeft: earlyLeft, phoneConfirm: phoneConfirm, flag: flag, referralOnReceive: referralOnReceive, orderCanceled: orderCanceled, canonEmail: canonEmail, bdayIsToday: bdayIsToday, adjustTokens: adjustTokens, xpOfRub: xpOfRub, wheelFor: wheelFor, framesFor: framesFor, pctText: pctText, promoBase: promoBase, touch: touch, tokensToRub: tokensToRub, settings: settings, dayKey: dayKey, monthKey: monthKey,
-    statusMessage: statusMessage, tgBind: tgBind,
+    statusMessage: statusMessage, tgBind: tgBind, activePromos: activePromos,
     cleanTg: cleanTg, cleanEmail: cleanEmail, phoneKey: phoneKey, fmtPhone: fmtPhone, digits: digits, validEmail: validEmail, taskPick: picksFor, weekKey: weekKey, stagesFor: stagesFor
   };
 })();

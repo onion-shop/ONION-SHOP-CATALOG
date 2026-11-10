@@ -118,7 +118,6 @@
   function thumb(id) { return 'img/thumb/' + id + '.jpg' + (PHOTO_V[id] ? '?v=' + PHOTO_V[id] : ''); }
   function full(id) { return 'img/full/' + id + '.jpg' + (PHOTO_V[id] ? '?v=' + PHOTO_V[id] : ''); }
   function norm(s) { return String(s || '').toLowerCase().replace(/ё/g, 'е'); }
-  function initials(name) { var p = String(name || '?').trim().split(/\s+/); return (p[0].charAt(0) + (p[1] ? p[1].charAt(0) : '')).toUpperCase(); }
   function pct(w) { var v = w / WHEEL_SUM * 100; return String(v < 0.1 ? Math.round(v * 100) / 100 : Math.round(v * 10) / 10).replace('.', ',') + '%'; }
   var store = {
     get: function (k, d) { try { var v = localStorage.getItem('onion.shop.' + k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
@@ -138,8 +137,7 @@
   function lvlImg(key, size, cls) { return '<img class="lvl-img' + (cls ? ' ' + cls : '') + '" src="assets/lvl/' + esc(key) + '.svg?v=4" width="' + size + '" height="' + size + '" alt="" decoding="async">'; }
   function lvlByKey(k) { return RULES.levels.filter(function (l) { return l.key === k; })[0] || RULES.levels[0]; }
   function pctTxt(p) { return String(p).replace('.', ','); }
-  function perkItems(list) { return list.map(function (x) { return '<li>' + icon('check') + '<span><b>' + esc(x[0]) + '</b>' + (x[1] ? '<small>' + esc(x[1]) + '</small>' : '') + '</span></li>'; }).join(''); }
-  function promoLine(p) { var d = p.until ? new Date(+p.until + 3 * 3600000) : null; return (p.cat ? 'только «' + esc(p.catLabel) + '»' : esc(p.from || '')) + (p.exp ? ' · до конца месяца' : d ? ' · до ' + String(d.getUTCDate()).padStart(2, '0') + '.' + String(d.getUTCMonth() + 1).padStart(2, '0') : ''); }
+  function promoLine(p) { var d = p.until ? new Date(+p.until + 3 * 3600000) : null; return (p.cat ? 'только «' + esc(p.catLabel) + '»' : esc(String(p.from || '').replace(/\s*[·•]\s*/g, ', '))) + (p.exp ? ', действует до конца месяца' : d ? ', действует до ' + String(d.getUTCDate()).padStart(2, '0') + '.' + String(d.getUTCMonth() + 1).padStart(2, '0') : ''); }
   function ava(u, cls) {
     var f = esc((u && u.frame) || 'base');
     // у рамок с «живым» движением по орбите (планета, Пакман) есть слой орбиты: он крутится, а планета остаётся ровной
@@ -163,17 +161,11 @@
     return String(at || '');
   }
   function hm(min) { return String(Math.floor(min / 60)).padStart(2, '0') + ':' + String(min % 60).padStart(2, '0'); }
-  function ageText() {
-    var t = msk(), m = (t.y - SHOP.since) * 12 + (t.mo - 3);
-    if (m < 12) return Math.max(1, m) + ' мес.';
-    var y = Math.floor(m / 6) / 2;
-    return String(y).replace('.', ',') + ' ' + (y % 1 ? 'года' : plural(y, 'год', 'года', 'лет'));
-  }
   function openState() {
     var t = msk(), now = t.h * 60 + t.mi, today = SHOP.hours[t.wd];
     if (now >= today[0] && now < today[1]) return { open: true, text: 'Открыто до ' + hm(today[1]) };
-    if (now < today[0]) return { open: false, text: 'Закрыто · откроется в ' + hm(today[0]) };
-    return { open: false, text: 'Закрыто · завтра с ' + hm(SHOP.hours[(t.wd + 1) % 7][0]) };
+    if (now < today[0]) return { open: false, text: 'Закрыто, откроемся в ' + hm(today[0]) };
+    return { open: false, text: 'Закрыто, откроемся завтра в ' + hm(SHOP.hours[(t.wd + 1) % 7][0]) };
   }
   function tickClock() {
     var t = msk(), time = t.hh + ':' + t.mm;
@@ -356,9 +348,12 @@
     document.removeEventListener('keydown', escClose);
     if (lastFocus && lastFocus.focus) try { lastFocus.focus({ preventScroll: true }); } catch (e) { /* */ }
   }
+  // окно-вопрос: значок сверху, заголовок, короткий текст, кнопки (o.icon, o.tone: 'warn' | 'info', o.html: доп. разметка)
   function confirmBox(o) {
-    var md = openModal(modalHead(o.title) + (o.text ? '<p class="muted">' + esc(o.text) + '</p>' : '') +
-      '<div class="send-row">' + o.actions.map(function (a, i) { return '<button type="button" class="btn ' + (a.cls || 'btn-ghost') + '" data-a="' + i + '">' + esc(a.label) + '</button>'; }).join('') + '</div>', { cls: 'sm' });
+    var md = openModal((o.icon
+      ? '<div class="cbx' + (o.tone ? ' cbx-' + o.tone : '') + '"><button class="icon-btn cbx-x" type="button" data-close aria-label="Закрыть">' + icon('x') + '</button><span class="cbx-ic">' + icon(o.icon) + '</span><h2>' + esc(o.title) + '</h2>' + (o.text ? '<p>' + esc(o.text) + '</p>' : '') + (o.html || '') + '</div>'
+      : modalHead(o.title) + (o.text ? '<p class="muted">' + esc(o.text) + '</p>' : '') + (o.html || '')) +
+      '<div class="send-row' + (o.icon ? ' cbx-acts' : '') + '">' + o.actions.map(function (a, i) { return '<button type="button" class="btn ' + (a.cls || 'btn-ghost') + '" data-a="' + i + '">' + esc(a.label) + '</button>'; }).join('') + '</div>', { cls: 'sm' });
     $$('[data-a]', md).forEach(function (b) { b.addEventListener('click', function () { var a = o.actions[+b.getAttribute('data-a')]; closeModal(); if (a.run) a.run(); }); });
   }
   function copyText(text, okMsg) {
@@ -532,7 +527,7 @@
     if (!list.length) return;
     API.call('ackNews');
     list.slice(0, 3).forEach(function (n, i) {
-      setTimeout(function () { reward('+' + n.tk + ' ' + tokWord(n.tk) + ' и +' + n.xp + ' XP · задание «' + n.title + '»'); if (n.per === 'm') confetti(80); }, i * 900);
+      setTimeout(function () { reward('Задание «' + n.title + '» выполнено: +' + n.tk + ' ' + tokWord(n.tk) + ' и +' + n.xp + ' XP'); if (n.per === 'm') confetti(80); }, i * 900);
     });
     if (list.length > 3) setTimeout(function () { reward('Ещё выполнено заданий: ' + (list.length - 3) + ', награды уже начислены'); }, 3 * 900);
   }
@@ -621,7 +616,7 @@
     API.call('checkin').then(function (r) {
       if (!r.ok) { toast(r.error, null, 'warn'); if (btn) btn.disabled = false; return; }
       setUser(r.user);
-      reward('+' + r.got + ' ' + tokWord(r.got) + (r.xp ? ' и +' + r.xp + ' XP' : '') + ' за вход' + (r.extra.length ? ' · ' + r.extra.join(', ') : ''));
+      reward('За вход: +' + r.got + ' ' + tokWord(r.got) + (r.xp ? ' и +' + r.xp + ' XP' : '') + (r.extra.length ? ', включая ' + r.extra.join(', ') : ''));
       if (r.extra.length) confetti(90);
     });
   }
@@ -636,6 +631,43 @@
     var ph = p.photos.slice(0, 5);
     return '<div class="ph-t">' + ph.map(function (x, k) { return '<img' + (k ? '' : ' class="a"') + ' src="' + thumb(x.id) + '" alt="" loading="' + (k ? 'lazy' : 'lazy') + '" decoding="async" draggable="false">'; }).join('') + '</div>';
   }
+  /* ---------- скорость: фото грузятся заранее, до того как человек их увидит ----------
+     1) карточки за ~2 экрана до появления сразу качают первые фото (lazy в Safari срабатывает слишком поздно);
+     2) карточка, на которой задержался взгляд, заранее качает большое фото для страницы товара;
+     3) при касании карточки большие фото товара начинают грузиться ещё до перехода. */
+  var warm = (function () {
+    var got = {}, near = null, look = null, timers = new WeakMap(), queued = 0;
+    function pre(url) { if (!url || got[url]) return; got[url] = 1; var im = new Image(); im.decoding = 'async'; im.src = url; }
+    function preProduct(id, n) { var p = BY_ID[id]; if (!p) return; p.photos.slice(0, n || 1).forEach(function (ph) { pre(full(ph.id)); }); }
+    if ('IntersectionObserver' in window) {
+      near = new IntersectionObserver(function (en) {
+        en.forEach(function (e) {
+          if (!e.isIntersecting) return; near.unobserve(e.target);
+          $$('img[loading="lazy"]', e.target).forEach(function (im, k) { if (k < 2) im.loading = 'eager'; });
+        });
+      }, { rootMargin: '1600px 0px 1600px 0px' });
+      look = new IntersectionObserver(function (en) {
+        en.forEach(function (e) {
+          var c = e.target;
+          if (e.isIntersecting) timers.set(c, setTimeout(function () { look.unobserve(c); preProduct(c.getAttribute('data-pid'), 1); }, 450));
+          else clearTimeout(timers.get(c));
+        });
+      }, { threshold: 0.6 });
+    }
+    function scan() {
+      queued = 0; if (!near) return;
+      $$('.pcard:not([data-w])').forEach(function (c) { c.setAttribute('data-w', '1'); near.observe(c); look.observe(c); });
+    }
+    if (window.MutationObserver) new MutationObserver(function () { if (!queued) { queued = 1; requestAnimationFrame(scan); } }).observe(document.getElementById('main') || document.body, { childList: true, subtree: true });
+    function onTouch(e) {
+      var a = e.target.closest && e.target.closest('[data-pid],a[href^="#p-"]'); if (!a) return;
+      var id = a.getAttribute('data-pid') || String(a.getAttribute('href') || '').replace(/^#p-/, '');
+      preProduct(id, 2);
+    }
+    document.addEventListener('pointerdown', onTouch, { passive: true, capture: true });
+    document.addEventListener('mouseover', function (e) { if (e.target.closest && e.target.closest('.pcard')) onTouch(e); }, { passive: true });
+    return { product: preProduct };
+  })();
   function phDots(p) {
     var n = Math.min(5, p.photos.length); if (n < 2) return '';
     var h = ''; for (var k = 0; k < n; k++) h += '<i' + (k ? '' : ' class="on"') + '></i>';
@@ -683,18 +715,6 @@
     return CAT_ORDER.filter(function (k) { return k !== 'other' || c.other; }).map(function (k) { return { key: k, label: CAT_LABELS[k], n: c[k] || 0 }; });
   }
 
-  // ------------------------------------------------------------ общие блоки
-  function deliveryCard() {
-    return '<div class="card icard"><h3><span class="ic">' + icon('truck') + '</span>Получение товаров в наличии</h3><ul>' +
-      '<li><span><b>Доставка по Москве или в другой город</b> <small>· через Авито Доставку, быстрее всего</small></span></li>' +
-      '<li><span><b>Курьер по Москве</b> <small>· не всегда доступен, согласуется с менеджером</small></span></li>' +
-      '<li><span><b>Самовывоз</b> <small>· ' + esc(SHOP.address) + '</small></span></li></ul>' +
-      '<p class="small">Предзаказ из Китая: фурой до склада, дальше Авито, СДЭК или личная встреча в Москве.</p></div>';
-  }
-  function paymentCard() {
-    return '<div class="card icard"><h3><span class="ic">' + icon('card') + '</span>Оплата</h3><ul><li>Перевод: Сбербанк, Т-Банк, Альфа-Банк, СБП</li><li>Наличными <small>· при встрече в Москве</small></li>' +
-      (API.enabled ? '<li>До 12% заказа: ониксы и промокод вместе <small>· 1 оникс = 0,3 ₽</small></li><li>Промокоды <small>· вводятся при оформлении</small></li>' : '') + '</ul><p class="small">На сайте оплаты нет: менеджер подтвердит заказ и пришлёт реквизиты.</p></div>';
-  }
   function contactsCard() {
     var s = openState();
     return '<div class="card icard"><h3><span class="ic">' + icon('pin') + '</span>Магазин и связь</h3>' +
@@ -712,43 +732,20 @@
       '<a class="contact" href="' + SHOP.reviewsUrl + '" target="_blank" rel="noopener"><span class="l">' + icon('star') + '<span><small>Отзывы и отправки</small><b>@ONION_SHOP_FEEDBACK</b></span></span>' + icon('arrow-up-right') + '</a>' +
       '<a class="contact" href="' + SHOP.tiktokUrl + '" target="_blank" rel="noopener"><span class="l">' + icon('play') + '<span><small>TikTok</small><b>@onion_shop</b></span></span>' + icon('arrow-up-right') + '</a></div></div>';
   }
-  function preorderBanner() {
-    return '<div class="banner"><span class="ic">' + icon('plane') + '</span><div><h3>Что такое предзаказ</h3><p>Выкупаем товар у поставщика в Китае после вашего заказа, проверяем на складе и отправляем фурой (самолётом: по согласованию с менеджером). Доставка из Китая уже включена в цену.</p></div>' +
-      '<a class="btn btn-ghost" href="' + SHOP.preorderUrl + '" target="_blank" rel="noopener">Условия и сроки' + icon('arrow-up-right') + '</a></div>';
-  }
-  function stepsBlock() {
-    var st = [['Выберите вещь', 'В наличии: отправим сразу. Предзаказ: выкупим в Китае под вас.'], ['Размер и цвет', 'Выберите размер и цвет в карточке товара. Пожелания можно написать в комментарии.'],
-      ['Ониксы и промокод', API.enabled ? 'Спишите ониксы и введите промокод: вместе до 12% суммы.' : 'Укажите контакты и способ получения.'],
-      ['Номер заказа', 'Заказ сам уходит менеджеру. Статус видно в «Моих заказах».']];
-    return '<div class="steps">' + st.map(function (s, i) { return '<div class="step"><span class="n">' + (i + 1) + '</span><h3>' + s[0] + '</h3><p>' + s[1] + '</p></div>'; }).join('') + '</div>';
-  }
   function tokensStrip() {
     if (!API.enabled) return '';
     var u = acct.user;
     if (!u) return '<div class="strip" id="tok-strip"><span class="ic">' + tk() + '</span><div><h3>Ониксы ONION SHOP</h3><p class="small">+' + RULES.reward.register + ' за регистрацию, задания каждый день, посылка и бонус за друга. Ониксами и промокодом можно оплатить до 12% заказа.</p></div><div class="acts"><a class="btn btn-sm" href="#account">' + icon('gift') + 'Забрать ' + RULES.reward.register + '</a></div></div>';
     var L = u.level, p = L.next ? Math.min(100, Math.round((u.xp - L.min) / (L.next.min - L.min) * 100)) : 100;
-    return '<div class="strip" id="tok-strip"><span class="ic">' + lvlImg(L.key, 44) + '</span><div><h3>' + num(u.balance) + ' ' + tokWord(u.balance) + ' · ' + esc(L.name) + ' · ' + num(u.xp) + ' XP</h3>' +
+    return '<div class="strip" id="tok-strip"><span class="ic">' + lvlImg(L.key, 44) + '</span><div><h3>' + num(u.balance) + ' ' + tokWord(u.balance) + '<span class="strip-sub">' + esc(L.name) + ', ' + num(u.xp) + ' XP</span></h3>' +
       '<div class="bar"><i data-w="' + p + '%"></i></div><p class="small" style="margin-top:6px">' + (L.next ? 'Ещё ' + num(L.next.left) + ' XP до «' + esc(L.next.name) + '»' : (L.fixed ? 'Уровень закреплён менеджером' : 'Максимальный уровень месяца')) + '</p></div>' +
       '<div class="acts"><a class="btn btn-sm" href="#roulette">' + icon('sparkles') + 'Игра</a><a class="btn btn-ghost btn-sm" href="#account">Кабинет</a></div></div>';
   }
   function growBars(root) { requestAnimationFrame(function () { $$('[data-w]', root).forEach(function (b) { b.style.width = b.getAttribute('data-w'); }); }); }
 
   // ------------------------------------------------------------ главная
-  var revealIO = null;
-  function reveal(root) {
-    return;
-    if (!revealIO) revealIO = new IntersectionObserver(function (en) { en.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add('in'); revealIO.unobserve(e.target); } }); }, { rootMargin: '0px 0px -6% 0px' });
-    $$('.pcard:not(.rv)', root).forEach(function (el, i) { el.classList.add('rv'); el.style.setProperty('--d', (i % 4) * 60 + 'ms'); revealIO.observe(el); });
-  }
   var homeTimers = [];
   function stopHomeTimers() { homeTimers.forEach(clearInterval); homeTimers = []; }
-  function banner(title, sub, href, picks, cls, chips) {
-    if (!picks.length) return '';
-    return '<a class="bn ' + (cls || '') + '" href="' + href + '"><div class="bn-pics" style="grid-template-columns:repeat(' + picks.length + ',1fr)">' +
-      '<span class="bn-big">' + picks.map(function (p, i) { return '<img class="' + (i ? '' : 'on') + '" src="' + full(p.photos[0].id) + '" alt="" loading="' + (i ? 'lazy' : 'eager') + '" decoding="async">'; }).join('') + '</span>' +
-      picks.map(function (p, i) { return '<span class="bn-th' + (i ? '' : ' on') + '"><img src="' + thumb(p.photos[0].id) + '" alt="" loading="lazy" decoding="async"></span>'; }).join('') +
-      '</div><div class="bn-txt"><b>' + title + '</b>' + icon('arrow-right') + '</div></a>';
-  }
   // три компактных баннера на главной (вместо большой карусели): подборка магазина, выгодные предложения, новинки из Китая
   function banner3(tag, title, sub, href, picks, cls) {
     if (!picks.length) return '';
@@ -774,7 +771,6 @@
     (rest || []).forEach(function (p) { if (out.length < 3) out.push(p); });
     return out;
   }
-  function isPick(p) { return shopPicks().indexOf(p) >= 0; }
   function dateRange(d1, d2) {
     var a = msk(Date.now() + d1 * 864e5), b = msk(Date.now() + d2 * 864e5);
     return a.mo === b.mo ? a.d + '-' + b.d + ' ' + MONTHS[b.mo - 1] : a.d + ' ' + MONTHS[a.mo - 1] + ' - ' + b.d + ' ' + MONTHS[b.mo - 1];
@@ -787,46 +783,6 @@
     if (p.status === 'preorder') return '<div class="eta">' + icon('truck') + '<div><b>Ориентировочно получите: ' + dateRange(24, 47) + '</b><small>Если оплатить сегодня. Выкуп до 12 часов, проверка на складе и фотоотчёт, стоимость доставки из Китая уже включена в стоимость.</small></div></div>';
     if (p.status === 'out') return '<div class="oos"><div class="oos-h"><div><b>Сейчас нет в наличии</b><small>Менеджер уточнит срок поступления' + (API.enabled ? ' и напишет вам, как только товар появится.' : '. Напишите ему: подскажет, когда ждать.') + '</small></div></div>' + (API.enabled ? '<button class="oos-btn" type="button" id="wait-btn"></button>' : '') + '</div>';
     return '<div class="eta">' + icon('truck') + '<div><b>Уже в Москве</b><small>Самовывоз, курьер или Авито Доставка, способ выберете при оформлении.</small></div></div>';
-  }
-  function howStrip() {
-    var st = [['bag', 'Заказ', 'Корзина → менеджер пишет вам'], ['receipt', 'Выкуп до 12 ч', 'Закрепляем вещь за вами'], ['check-circle', 'Проверка', 'Склад в Китае + фотоотчёт'], ['truck', 'Доставка', 'Из Китая включена в стоимость']];
-    return '<div class="how"><div class="how-h">Как мы работаем</div><div class="how-s">' + st.map(function (x, i) { return '<div class="how-i"><span class="how-n">' + (i + 1) + '</span><span class="how-ic">' + icon(x[0]) + '</span><b>' + x[1] + '</b><small>' + x[2] + '</small></div>'; }).join('') + '</div><a class="how-l" href="#info">Подробнее об этапах' + icon('arrow-right') + '</a></div>';
-  }
-  function heroHtml(slides) {
-    if (!slides.length) return '';
-    return '<section class="hero" aria-label="Рекомендации магазина"><div class="hero-sl">' + slides.map(function (s, i) {
-      var p = s.p, d = discount(p);
-      return '<a class="hs' + (i ? '' : ' on') + '" href="#p-' + esc(p.id) + '" data-pid="' + esc(p.id) + '"><img src="' + full(p.photos[0].id) + '" alt="" loading="' + (i ? 'lazy' : 'eager') + '" decoding="async">' +
-        '<span class="hs-cap"><span class="hs-tag">' + esc(s.tag) + '</span><b>' + esc(p.title) + '</b><span class="hs-pr"><i>' + rub(p.price) + '</i>' + (p.oldPrice ? '<s>' + rub(p.oldPrice) + '</s>' : '') + dscChip(p) + '</span><span class="hs-go">Смотреть' + icon('arrow-right') + '</span></span></a>';
-    }).join('') + '</div><div class="hero-dots">' + slides.map(function (s, i) { return '<button type="button" class="' + (i ? '' : 'on') + '" data-hs="' + i + '" aria-label="Слайд ' + (i + 1) + '"></button>'; }).join('') + '</div></section>';
-  }
-  function startHero(v) {
-    var hero = $('.hero', v); if (!hero) return;
-    var sl = $$('.hs', hero), dots = $$('[data-hs]', hero), i = 0, hold = false;
-    function show(n) { sl[i].classList.remove('on'); dots[i].classList.remove('on'); i = (n + sl.length) % sl.length; sl[i].classList.add('on'); dots[i].classList.add('on'); }
-    dots.forEach(function (d) { d.addEventListener('click', function () { show(+d.getAttribute('data-hs')); }); });
-    var x0 = null;
-    hero.addEventListener('touchstart', function (e) { x0 = e.touches[0].clientX; hold = true; }, { passive: true });
-    hero.addEventListener('touchend', function (e) { if (x0 != null) { var dx = e.changedTouches[0].clientX - x0; if (Math.abs(dx) > 40) show(i + (dx < 0 ? 1 : -1)); } x0 = null; setTimeout(function () { hold = false; }, 4000); }, { passive: true });
-    hero.addEventListener('mouseenter', function () { hold = true; }); hero.addEventListener('mouseleave', function () { hold = false; });
-    if (!REDUCED && sl.length > 1) homeTimers.push(setInterval(function () { if (!hold && !document.hidden && current === 'home') show(i + 1); }, 4600));
-  }
-  function startBanners(v) {
-    stopHomeTimers();
-    if (REDUCED) return;
-    $$('.bn', v).forEach(function (b, k) {
-      var imgs = $$('.bn-big img', b), ths = $$('.bn-th', b), chips = $$('.bn-chip', b), i = 0, j = 0;
-      function live() { return !document.hidden && current === 'home'; }
-      if (imgs.length > 1) homeTimers.push(setInterval(function () {
-        if (!live()) return;
-        imgs[i].classList.remove('on'); ths[i].classList.remove('on');
-        i = (i + 1) % imgs.length; imgs[i].classList.add('on'); ths[i].classList.add('on');
-      }, 3800 + k * 900));
-      if (chips.length > 1) homeTimers.push(setInterval(function () {
-        if (!live()) return;
-        chips[j].classList.remove('on'); j = (j + 1) % chips.length; chips[j].classList.add('on');
-      }, 3200 + k * 600));
-    });
   }
   // плашка-уведомление на главной (как на WB). Текст считается сам; data/promo.json позволяет задать свой
   var PROMO = null;
@@ -882,7 +838,7 @@
       '<div class="sec"><div class="sec-head"><h2>Новинки</h2><a class="btn btn-ghost btn-sm" href="#catalog">Весь каталог</a></div>' + grid(fresh, 'home-grid') + '</div>' +
       '<div class="sec"><a class="faqc" href="#info"><span class="faqc-ic">' + icon('info') + '</span><span class="faqc-t"><b>Частые вопросы</b><small>Заказ, сроки, доставка, оплата</small></span><span class="faqc-go">' + icon('arrow-right') + '</span></a></div>';
     $$('.ct[data-cat]', v).forEach(function (a) { a.addEventListener('click', function () { filter = newFilter(); filter.cat = a.getAttribute('data-cat'); }); });
-    stopHomeTimers(); reveal(v); loadPromo();
+    stopHomeTimers(); loadPromo();
   }
 
   // быстрое добавление из карточки: размер/цвет: в окне выбора
@@ -898,7 +854,7 @@
     var md = openModal(modalHead(p.title) +
       (p.sizes.length > 1 ? '<div class="opt"><div class="opt-head"><b>Размер</b></div><div class="choices" id="qa-sizes">' + p.sizes.map(function (x) { return '<button class="choice" type="button" data-size="' + esc(x) + '" aria-pressed="false">' + esc(x) + '</button>'; }).join('') + '</div></div>' : '') +
       (p.colors.length > 1 ? '<div class="opt"><div class="opt-head"><b>Цвет</b></div><div class="choices" id="qa-colors">' + p.colors.map(function (c) { return '<button class="choice color" type="button" data-color="' + esc(c) + '" aria-pressed="false"><i class="sw" style="' + swatch(c) + '"></i>' + esc(cap(c)) + '</button>'; }).join('') + '</div></div>' : '') +
-      '<span class="msg err-msg" id="qa-msg" hidden></span><button class="btn btn-block" type="button" id="qa-go">' + icon('bag') + 'В корзину · ' + rub(p.price) + '</button>', { cls: 'sm' });
+      '<span class="msg err-msg" id="qa-msg" hidden></span><button class="btn btn-block" type="button" id="qa-go">' + icon('bag') + '<span class="b-l">В корзину</span><span class="b-sum">' + rub(p.price) + '</span></button>', { cls: 'sm' });
     function pick(sel1, attr, key) { $$(sel1 + ' [' + attr + ']', md).forEach(function (b) { b.addEventListener('click', function () { sel[key] = b.getAttribute(attr); $$(sel1 + ' [' + attr + ']', md).forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); }); $('#qa-msg', md).hidden = true; }); }); }
     pick('#qa-sizes', 'data-size', 'size'); pick('#qa-colors', 'data-color', 'color');
     $('#qa-go', md).addEventListener('click', function () {
@@ -1043,7 +999,6 @@
     var soon = f.cat !== 'all' && !f.q && !PRODUCTS.some(function (p) { return p.category === f.cat; });
     $('#cat-grid').innerHTML = list.length ? fzNote + grid(list) :
       '<div class="empty"><span class="ico">' + icon('search') + '</span><h3>' + (soon ? 'Скоро появится' : 'Ничего не нашлось') + '</h3>' + (soon ? '<p>В категории «' + esc(CAT_LABELS[f.cat] || '') + '» пока пусто. Новинки выходят в канале, или напишите менеджеру, привезём под заказ.</p>' : '') + (dym ? '<p>Возможно, вы искали <button class="link-btn" type="button" id="dym-btn">' + esc(dym) + '</button></p>' : '') + '' + (soon ? '' : '<p>Попробуйте другое слово или сбросьте фильтры. Нужной вещи нет: напишите менеджеру, подберём под заказ.</p>') + '<div class="acts" style="justify-content:center"><button class="btn btn-ghost btn-sm" type="button" id="empty-reset">Сбросить фильтры</button><a class="btn btn-sm" href="' + SHOP.managerUrl + '" target="_blank" rel="noopener">' + icon('send') + 'Написать менеджеру</a></div></div>';
-    reveal($('#cat-grid'));
     var dy = $('#dym-btn'); if (dy) dy.addEventListener('click', function () { filter.q = dym; var hq = $('#hdr-q'); if (hq) hq.value = dym; updateCatalog(); });
     var er = $('#empty-reset'); if (er) er.addEventListener('click', function () { filter = newFilter(); silentHash('catalog'); renderCatalog(); setNav('catalog'); });
   }
@@ -1095,7 +1050,7 @@
     var sizes = Object.keys(tbl), labels = [];
     sizes.forEach(function (z) { tbl[z].forEach(function (r) { if (labels.indexOf(mlab(r[0])) < 0) labels.push(mlab(r[0])); }); });
     return '<div class="mtbl-wrap"><table class="mtbl"><thead><tr><th></th>' + sizes.map(function (z) { return '<th data-mz="' + esc(z) + '"' + (z === selSize ? ' class="on"' : '') + '>' + esc(z) + '</th>'; }).join('') + '</tr></thead><tbody>' +
-      labels.map(function (l) { return '<tr><th scope="row">' + esc(l) + '</th>' + sizes.map(function (z) { var r = tbl[z].filter(function (x) { return mlab(x[0]) === l; })[0]; return '<td data-mz="' + esc(z) + '"' + (z === selSize ? ' class="on"' : '') + '>' + (r ? esc(String(r[1]).replace(/\s*см$/i, '')) : '·') + '</td>'; }).join('') + '</tr>'; }).join('') + '</tbody></table></div><p class="small">Размеры в сантиметрах. Выберите размер: столбец подсветится.</p>';
+      labels.map(function (l) { return '<tr><th scope="row">' + esc(l) + '</th>' + sizes.map(function (z) { var r = tbl[z].filter(function (x) { return mlab(x[0]) === l; })[0]; return '<td data-mz="' + esc(z) + '"' + (z === selSize ? ' class="on"' : '') + '>' + (r ? esc(String(r[1]).replace(/\s*см$/i, '')) : '') + '</td>'; }).join('') + '</tr>'; }).join('') + '</tbody></table></div><p class="small">Размеры в сантиметрах. Выберите размер: столбец подсветится.</p>';
   }
   function colorPhotoMap(p) { return !!p.colorPhoto; }
   function renderProduct(id) {
@@ -1118,10 +1073,10 @@
     related = related.slice(0, 4);
 
     v.innerHTML =
-      '<div class="back-row"><button class="back-btn" type="button" id="back-btn" aria-label="Назад">' + icon('arrow-right') + 'Назад</button><span class="cr">' + (p.status === 'preorder' ? 'Предзаказ' : p.status === 'sold' ? 'Продано' : p.status === 'out' ? 'Нет в наличии' : 'В наличии') + ' · ' + esc(p.categoryLabel) + '</span></div>' +
+      backBar('back-btn', 'Назад', esc(p.categoryLabel)) +
       '<div class="product">' +
       '<div class="gallery"><div class="stage"><div class="slides" id="slides" tabindex="0" aria-label="Фотографии товара. Нажмите, чтобы увеличить">' +
-      p.photos.map(function (ph, i) { return '<figure data-i="' + i + '" style="--bg:url(\'' + thumb(ph.id) + '\')"><img src="' + full(ph.id) + '" alt="' + esc(p.title) + ', фото ' + (i + 1) + '" ' + (i ? 'loading="lazy" ' : '') + 'decoding="async" width="' + ph.w + '" height="' + ph.ht + '"></figure>'; }).join('') + '</div>' +
+      p.photos.map(function (ph, i) { return '<figure data-i="' + i + '" style="--bg:url(\'' + thumb(ph.id) + '\')"><img src="' + full(ph.id) + '" alt="' + esc(p.title) + ', фото ' + (i + 1) + '" ' + (i > 1 ? 'loading="lazy" ' : i ? '' : 'fetchpriority="high" ') + 'decoding="async" width="' + ph.w + '" height="' + ph.ht + '"></figure>'; }).join('') + '</div>' +
       (many ? '<button class="nav-b prev" type="button" aria-label="Предыдущее фото">' + icon('chevron-right') + '</button><button class="nav-b next" type="button" aria-label="Следующее фото">' + icon('chevron-right') + '</button><span class="gal-count" id="gal-count">1 / ' + p.photos.length + '</span>' : '') +
       '<button class="zoom" type="button" id="zoom-btn" aria-label="Увеличить фото">' + icon('expand') + '</button></div>' +
       (many ? '<div class="thumbs" id="thumbs">' + p.photos.map(function (ph, i) { return '<button type="button" data-i="' + i + '" aria-label="Фото ' + (i + 1) + '"' + (i === 0 ? ' aria-current="true"' : '') + '><img src="' + thumb(ph.id) + '" alt="" loading="lazy"></button>'; }).join('') + '</div>' : '') + '</div>' +
@@ -1144,11 +1099,11 @@
       (p.colors.length ? '<div class="opt" id="opt-color"><div class="opt-head"><b>Цвет' + (p.colors.length > 1 ? ' <span class="req">*</span>' : '') + '</b><span class="val" id="color-val">' + (sel.color ? esc(cap(sel.color)) : 'не выбран') + '</span></div><div class="choices">' +
         p.colors.map(function (c) { return '<button class="choice color" type="button" data-color="' + esc(c) + '" aria-pressed="' + (sel.color === c) + '"><i class="sw" style="' + swatch(c) + '"></i>' + esc(cap(c)) + '</button>'; }).join('') + '</div><span class="msg" hidden>Выберите цвет</span></div>' : '') +
       '<div class="buy"><div class="qty" aria-label="Количество"><button type="button" id="q-minus" aria-label="Меньше" disabled>' + icon('minus') + '</button><output id="q-val">1</output><button type="button" id="q-plus" aria-label="Больше">' + icon('plus') + '</button></div>' +
-      '<button class="btn" type="button" id="add-btn">' + icon('bag') + '<span id="add-lbl">В корзину · ' + rub(p.price) + '</span></button></div></div>' +
+      '<button class="btn" type="button" id="add-btn">' + icon('bag') + '<span id="add-lbl" class="b-l">В корзину</span><span class="b-sum" id="add-sum">' + rub(p.price) + '</span></button></div></div>' +
       '<div class="acc">' +
       ((specs.length || p.notes.length) ? '<details><summary>Характеристики' + icon('chevron-down') + '</summary><div class="acc-body">' + (specs.length ? '<dl class="specs">' + specs.map(function (r) { return '<div><dt>' + esc(r[0]) + '</dt><dd>' + esc(r[1]) + '</dd></div>'; }).join('') + '</dl>' : '') + (p.notes.length ? '<div class="notes">' + p.notes.map(function (n) { return '<span>' + icon('check') + esc(n) + '</span>'; }).join('') + '</div>' : '') + '</div></details>' : '') +
       (hasMeas ? '<details id="meas-det"><summary>Замеры изделия' + icon('chevron-down') + '</summary><div class="acc-body">' + (tbl ? measTable(tbl, sel.size) : (p.sizes.length === 1 ? '<p class="small" style="margin:0 0 8px">Размер ' + esc(p.sizes[0]) + '</p>' : '') + '<dl class="specs">' + measures.map(function (r) { return '<div><dt>' + esc(mlab(r[0])) + '</dt><dd>' + esc(r[1]) + '</dd></div>'; }).join('') + '</dl>') + '</div></details>' : '') +
-      (((p.reviews && p.reviews.length) || API.enabled) ? '<details id="rev-det"><summary>Отзывы <span class="rev-n" id="rev-n">' + ((p.reviews && p.reviews.length) ? '· ' + p.reviews.length : '') + '</span>' + icon('chevron-down') + '</summary><div class="acc-body">' + ((p.reviews && p.reviews.length) ? p.reviews.map(function (r) { return '<div class="rev"><div class="rev-h"><b>' + esc(r.name || 'Покупатель') + '</b>' + (r.stars ? stars(r.stars) : '<span class="small">Оценка не поставлена</span>') + '</div><p>' + esc(r.text) + '</p></div>'; }).join('') : '') + '<div id="rev-body" data-base="' + ((p.reviews && p.reviews.length) || 0) + '">' + (API.enabled ? '<p class="small">Загружаем…</p>' : '') + '</div><a class="small" href="https://t.me/ONION_SHOP_FEEDBACK" target="_blank" rel="noopener">Все отзывы в канале</a></div></details>' : '') +
+      (((p.reviews && p.reviews.length) || API.enabled) ? '<details id="rev-det"><summary>Отзывы<span class="rev-n" id="rev-n">' + revHead(staticReviews(p)) + '</span>' + icon('chevron-down') + '</summary><div class="acc-body"><div id="rev-body">' + (API.enabled ? '<div class="rvs-load"><i></i><i></i><i></i></div>' : reviewsHtml(staticReviews(p))) + '</div><a class="rv-all" href="https://t.me/ONION_SHOP_FEEDBACK" target="_blank" rel="noopener">' + icon('send') + 'Все отзывы и отправки в канале</a></div></details>' : '') +
       '</div>' +
       '<a class="tg-link" href="' + esc(p.link) + '" target="_blank" rel="noopener">' + icon('send') + 'Пост с этим товаром в канале</a>' +
       '</div></div></div>' +
@@ -1177,12 +1132,13 @@
     if (next) next.addEventListener('click', function () { goTo(cur + 1); });
     slides.addEventListener('keydown', function (e) { if (e.key === 'ArrowRight') { e.preventDefault(); goTo(cur + 1); } if (e.key === 'ArrowLeft') { e.preventDefault(); goTo(cur - 1); } if (e.key === 'Enter') openLightbox(p, cur); });
     $$('figure', slides).forEach(function (f) { f.addEventListener('click', function () { openLightbox(p, +f.getAttribute('data-i')); }); });
-    $('#back-btn', v).addEventListener('click', function () { if (routed > 1) history.back(); else go('catalog'); });
+    bindBack('back-btn', 'catalog', v);
     $('#zoom-btn', v).addEventListener('click', function () { openLightbox(p, cur); });
     $('#share-btn', v).addEventListener('click', function () { shareProduct(p); });
     var md0 = $('#meas-det', v); if (md0) md0.addEventListener('toggle', function () { if (md0.open) track('measure'); });
     var rd = $('#rev-det', v);
-    if (rd && API.enabled) rd.addEventListener('toggle', function () { if (rd.open) loadReviews(p.id, $('#rev-body', v), $('#rev-n', v)); });
+    if (rd) bindReviewPhotos(rd);
+    if (rd && API.enabled) { loadReviews(p, $('#rev-body', v), $('#rev-n', v)); }
     var wb = $('#wait-btn', v);
     if (wb) {
       var isWait = function () { return !!(acct.user && (acct.user.waits || []).some(function (w) { return w.id === p.id; })); };
@@ -1208,7 +1164,7 @@
       sel.photo = pid; sel.photoAuto = !!auto;
       $$('[data-photo]', v).forEach(function (x) { x.setAttribute('aria-pressed', String(+x.getAttribute('data-photo') === sel.photo)); });
       var i = p.photos.findIndex(function (x) { return x.id === pid; });
-      var pv = $('#photo-val'); if (pv) pv.textContent = pid ? 'фото №' + (i + 1) + (auto ? ' · по цвету' : '') : 'не отмечен';
+      var pv = $('#photo-val'); if (pv) pv.textContent = pid ? 'фото №' + (i + 1) + (auto ? ', по цвету' : '') : 'не отмечен';
       if (pid && i >= 0) { goTo(i, false); setTimeout(function () { if (sel.photo === pid) goTo(i, false); }, 80); }
     }
     $$('[data-size]', v).forEach(function (b) { b.addEventListener('click', function () { sel.size = b.getAttribute('data-size'); $$('[data-size]', v).forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); }); $('#size-val').textContent = sel.size; clearErr('opt-size'); showSizeMeas(); }); });
@@ -1225,8 +1181,8 @@
         }
       });
     });
-    var qv = $('#q-val', v), qm = $('#q-minus', v), qp = $('#q-plus', v), lbl = $('#add-lbl', v);
-    function setQty(n) { sel.qty = Math.max(1, Math.min(10, n)); qv.textContent = sel.qty; qm.disabled = sel.qty <= 1; qp.disabled = sel.qty >= 10; lbl.textContent = 'В корзину · ' + rub(p.price * sel.qty); updBuybar(); }
+    var qv = $('#q-val', v), qm = $('#q-minus', v), qp = $('#q-plus', v), lbl = $('#add-lbl', v), sumEl = $('#add-sum', v);
+    function setQty(n) { sel.qty = Math.max(1, Math.min(10, n)); qv.textContent = sel.qty; qm.disabled = sel.qty <= 1; qp.disabled = sel.qty >= 10; sumEl.textContent = rub(p.price * sel.qty); updBuybar(); }
     qm.addEventListener('click', function () { setQty(sel.qty - 1); });
     qp.addEventListener('click', function () { setQty(sel.qty + 1); });
     function validate() {
@@ -1246,16 +1202,16 @@
       var box = $('#size-meas', v); if (!tbl) return;
       var rows = sel.size && tbl[sel.size];
       if (box) box.hidden = !rows;
-      if (rows && box) box.innerHTML = '<b>Замеры · ' + esc(sel.size) + '</b>' + rows.map(function (r) { return '<span>' + esc(mlab(r[0])) + ' <i>' + esc(r[1]) + '</i></span>'; }).join('');
+      if (rows && box) box.innerHTML = '<b>Замеры размера ' + esc(sel.size) + '</b>' + rows.map(function (r) { return '<span>' + esc(mlab(r[0])) + ' <i>' + esc(r[1]) + '</i></span>'; }).join('');
       $$('.mtbl [data-mz]', v).forEach(function (c) { c.classList.toggle('on', c.getAttribute('data-mz') === sel.size); });
     }
     showSizeMeas();
     var addBtn = $('#add-btn', v), addTimer;
-    if (p.status === 'sold') { addBtn.disabled = true; $('#add-lbl', v).textContent = 'Продано'; }
+    if (p.status === 'sold') { addBtn.disabled = true; $('#add-lbl', v).textContent = 'Продано'; sumEl.hidden = true; }
     addBtn.addEventListener('click', function () {
       if (!add()) return;
-      addBtn.classList.add('done'); lbl.textContent = 'Добавлено';
-      clearTimeout(addTimer); addTimer = setTimeout(function () { addBtn.classList.remove('done'); lbl.textContent = 'В корзину · ' + rub(p.price * sel.qty); }, 1500);
+      addBtn.classList.add('done'); lbl.textContent = 'Добавлено'; sumEl.hidden = true;
+      clearTimeout(addTimer); addTimer = setTimeout(function () { addBtn.classList.remove('done'); lbl.textContent = 'В корзину'; sumEl.hidden = false; sumEl.textContent = rub(p.price * sel.qty); }, 1500);
       toast('В корзине: ' + p.title, { label: 'Оформить', run: function () { go('cart'); } });
     });
 
@@ -1285,9 +1241,9 @@
   function optionText(l, p) {
     var o = [];
     if (l.size) o.push('Размер ' + l.size);
-    if (l.color) o.push(cap(l.color));
+    if (l.color) o.push(String(l.color).toLowerCase());
     if (l.photo) { var i = p.photos.findIndex(function (x) { return x.id === l.photo; }); if (i >= 0) o.push('фото №' + (i + 1)); }
-    return o.join(' · ');
+    return cap(o.join(', '));
   }
   function radio(name, value, cur, title, sub, tag) { return '<label class="radio"><input type="radio" name="' + name + '" value="' + value + '"' + (cur === value ? ' checked' : '') + '><span class="mark"></span><b>' + title + (tag ? '<span class="tag">' + tag + '</span>' : '') + '</b>' + (sub ? '<small>' + sub + '</small>' : '') + '</label>'; }
   function totals(lines) {
@@ -1396,7 +1352,7 @@
       '<div class="cl-top"><button type="button" class="cl-all" id="cl-all" aria-pressed="' + allOn + '"><span class="cl-chk' + (allOn ? ' on' : '') + '">' + icon('check') + '</span>Все</button><span class="cl-cnt">Выбрано: ' + selLines().length + '</span><button type="button" class="cl-clear" id="cl-clear" aria-label="Удалить выбранные" ' + (selLines().length ? '' : 'disabled') + '>' + icon('trash') + '</button></div>' +
       '<div class="cl-list">' + all.map(row).join('') + '</div>' +
       (API.enabled && !acct.user && acct.ready ? '<div class="notice notice-info" style="margin-top:12px">' + icon('user') + '<div><b>Заказ оформляется из кабинета.</b> Войдите, чтобы продолжить.</div></div>' : '') +
-      '<div class="card panel vip-panel"><label class="vip"><span class="vip-t"><b>' + icon('bolt') + 'Приоритетный заказ · ' + rub(RULES.vipPrice) + '</b><small>Менеджер возьмёт заказ раньше обычных. Порядок: ' + esc(RULES.priorityOrder().join(', ')) + ', затем платный приоритет.</small></span><input type="checkbox" id="cl-vip"' + (form.vip ? ' checked' : '') + '><span class="sw-tg"></span></label></div>' +
+      '<div class="card panel vip-panel"><label class="vip"><span class="vip-t"><b>' + icon('bolt') + 'Приоритетный заказ за ' + rub(RULES.vipPrice) + '</b><small>Менеджер возьмёт заказ раньше обычных. Порядок: ' + esc(RULES.priorityOrder().join(', ')) + ', затем платный приоритет.</small></span><input type="checkbox" id="cl-vip"' + (form.vip ? ' checked' : '') + '><span class="sw-tg"></span></label></div>' +
       '<div class="cart-bar"><div class="cb-sub"><span></span>' + (form.vip && st.n ? '<span class="cb-vip">⚡ Приоритет +' + rub(RULES.vipPrice) + '</span>' : '') + '</div><button class="cb-go" type="button" id="cb-go"' + (st.n ? '' : ' disabled') + '><span>' + (st.n ? 'К оформлению' : 'Выберите товары') + '</span><b>' + (st.n ? rub(st.sum + (form.vip ? RULES.vipPrice : 0)) : '') + '</b></button></div>';
     var all2 = all;
     $$('.cl', v).forEach(function (rowEl) {
@@ -1434,7 +1390,7 @@
     }
     var t = totals(lines), n = 0; saveDraft();
     v.innerHTML =
-      '<div class="back-bar"><button class="back-btn" id="to-list" type="button">' + icon('arrow-right') + 'К корзине</button></div><div class="view-head"><div><h1>Оформление заказа</h1></div></div>' +
+      backBar('to-list', 'К корзине') + '<div class="view-head"><div><h1>Оформление заказа</h1></div></div>' +
       (API.enabled && !u && acct.ready ? '<div class="notice notice-info need-acc" style="margin-bottom:12px">' + icon('user') + '<div><b>Заказ оформляется из кабинета.</b><div class="acts" style="margin-top:10px"><button class="btn btn-sm" type="button" id="need-acc">' + icon('user') + 'Войти или создать кабинет</button></div></div></div>' : '') +
       '<form class="checkout" id="checkout" novalidate><div class="col">' +
       '<div class="card panel"><div class="panel-head"><h2><span class="n">' + (++n) + '</span>Товары: ' + t.cnt + ' шт.</h2><button class="link-btn" type="button" id="cart-clear">Очистить</button></div><div class="lines">' +
@@ -1489,7 +1445,7 @@
 
       '<aside class="card sumcard"><h2>Ваш заказ</h2>' +
       '<div class="sumrow"><span>Товаров: ' + t.cnt + ' шт.</span><b>' + rub(t.total) + '</b></div>' +
-      (t.old > t.total ? '<div class="sumrow good"><span>Скидки на товары</span><b>учтены · −' + rub(t.old - t.total) + '</b></div>' : '') +
+      (t.old > t.total ? '<div class="sumrow good"><span>Скидки на товары</span><b>−' + rub(t.old - t.total) + '</b></div>' : '') +
       '<div class="sumrow" id="sum-tok"' + (t.tok ? '' : ' hidden') + '><span>Ониксы</span><b>−' + rub(t.tokRub) + '</b></div>' +
       '<div class="sumrow good" id="sum-promo"' + (t.promoRub ? '' : ' hidden') + '><span>Промокод <span id="sum-promo-code">' + esc(t.promo) + '</span></span><b>−' + rub(t.promoRub) + '</b></div>' +
       '<div class="sumrow" id="sum-vip"' + (t.vipRub ? '' : ' hidden') + '><span>Приоритетный заказ</span><b>+' + rub(t.vipRub) + '</b></div>' +
@@ -1672,12 +1628,6 @@
     });
   }
 
-  // ------------------------------------------------------------ чек и статусы
-  function barcode(no) {
-    var bars = [], x = 0, s = String(no);
-    for (var i = 0; i < s.length; i++) { var c = s.charCodeAt(i); for (var b = 0; b < 6; b++) { var w = ((c >> b) & 1) ? 3 : 1.4; if (b % 2 === 0) bars.push('<rect x="' + x.toFixed(1) + '" y="0" width="' + w + '" height="36"/>'); x += w + 1.6; } }
-    return '<svg viewBox="0 0 ' + Math.ceil(x) + ' 36" preserveAspectRatio="none" aria-hidden="true" fill="currentColor">' + bars.join('') + '</svg>';
-  }
   function stPill(o) {
     if (!o.status) return '';
     var cls = o.status === 'Получен' ? 'st-final' : o.status === 'Отменён' ? 'st-off' : o.status === 'Оформлен' ? 'st-new' : '';
@@ -1708,10 +1658,10 @@
     var status = hasSt ? rvTimeline(o) : (o.offline ? '<div class="rc-status todo">' + icon('send') + '<span>Сервер недоступен: напишите менеджеру номер заказа.</span></div>'
       : '<div class="rc-status ok">' + icon('check-circle') + '<span>Заказ у менеджера. Он свяжется с вами в Telegram или по телефону.</span></div>');
     return '<div class="rv-card"><div class="rv-no"><div><span class="rv-l">Номер заказа</span><b>' + esc(o.no) + '</b></div><button class="rv-cp" type="button" data-copy="' + esc(o.no) + '">' + icon('copy') + 'Копировать</button></div>' +
-      '<p class="rv-meta">' + esc(fmtAt(o.at)) + ' · ' + rub(o.toPay != null ? o.toPay : o.total) + '</p>' + status + '</div>' +
+      '<p class="rv-meta"><span>' + esc(fmtAt(o.at)) + '</span><b>' + rub(o.toPay != null ? o.toPay : o.total) + '</b></p>' + status + '</div>' +
       '<details class="rv-det"' + (open ? ' open' : '') + '><summary>Что в заказе' + icon('chevron-down') + '</summary><div class="rv-in">' + (thumbs ? '<div class="rv-th">' + thumbs + '</div>' : '') +
       '<div class="rc-row"><span>Товаров: ' + (o.count || 0) + ' шт.</span><b>' + rub(o.total || 0) + '</b></div>' +
-      (o.tokens ? '<div class="rc-row"><span>Ониксы · ' + num(o.tokens) + '</span><b>−' + rub(o.tokenRub) + '</b></div>' : '') +
+      (o.tokens ? '<div class="rc-row"><span>Списано ' + num(o.tokens) + ' ' + tokWord(o.tokens) + '</span><b>−' + rub(o.tokenRub) + '</b></div>' : '') +
       (o.promoRub ? '<div class="rc-row"><span>Промокод ' + esc(o.promo) + '</span><b>−' + rub(o.promoRub) + '</b></div>' : '') +
       '<div class="rc-row total"><span>К оплате</span><b>' + rub(o.toPay != null ? o.toPay : o.total) + '</b></div></div></details>';
   }
@@ -1752,13 +1702,14 @@
   }
   function renderOrders() {
     var v = $('#v-orders'), list = allOrders();
-    var head = '<div class="view-head"><div><span class="eyebrow">История</span><h1>Мои заказы</h1>' + '</div>' + (API.enabled && !acct.user ? '<a class="btn btn-ghost" href="#account">' + icon('user') + 'Войти</a>' : '') + '</div>';
-    if (!list.length) { v.innerHTML = head + '<div class="empty"><span class="ico">' + icon('receipt') + '</span><h3>Заказов пока нет</h3><p>Здесь будут номера заказов, статусы и суммы.</p><a class="btn" href="#catalog">' + icon('grid') + 'Перейти в каталог</a></div>'; return; }
+    var head = backBar('ord-back', 'Назад') + '<div class="view-head"><div><h1>Мои заказы</h1>' + '</div>' + (API.enabled && !acct.user ? '<a class="btn btn-ghost" href="#account">' + icon('user') + 'Войти</a>' : '') + '</div>';
+    if (!list.length) { v.innerHTML = head + '<div class="empty"><span class="ico">' + icon('receipt') + '</span><h3>Заказов пока нет</h3><p>Здесь будут номера заказов, статусы и суммы.</p><a class="btn" href="#catalog">' + icon('grid') + 'Перейти в каталог</a></div>'; bindBack('ord-back', 'account', v); return; }
     var act = [], hist = [];
     list.forEach(function (o, i) { (isDoneOrder(o) ? hist : act).push(orderCard(o, i)); });
     v.innerHTML = head +
-      (act.length ? '<h2 class="sec-h">Активные · ' + act.length + '</h2><div class="orders">' + act.join('') + '</div>' : '<div class="notice notice-info" style="margin-bottom:12px">' + icon('check-circle') + '<div>Активных заказов нет. Завершённые лежат в «Истории заказов» ниже, любой можно повторить в один клик.</div></div>') +
+      (act.length ? '<h2 class="sec-h">Активные заказы</h2><div class="orders">' + act.join('') + '</div>' : '<div class="notice notice-info" style="margin-bottom:12px">' + icon('check-circle') + '<div>Активных заказов нет. Завершённые лежат в «Истории заказов» ниже, любой можно повторить в один клик.</div></div>') +
       (hist.length ? '<details class="hist"' + (act.length ? '' : ' open') + '><summary>' + icon('receipt') + '<span>История заказов</span><b>' + hist.length + '</b>' + icon('chevron-down') + '</summary><div class="orders">' + hist.join('') + '</div></details>' : '');
+    bindBack('ord-back', 'account', v);
     bindOrders(v, list);
   }
   function isDoneOrder(o) { return RULES.finalStages.indexOf(o.status) >= 0; }
@@ -1816,7 +1767,7 @@
     var R = RULES.reward;
     return '<div class="auth-side"><h2>Что даёт аккаунт</h2><ul>' +
       '<li>' + tk('lg') + '<span><b>+' + R.register + ' ониксов</b> сразу за регистрацию</span></li>' +
-      '<li>' + tk('lg') + '<span>Ониксы и промокод вместе: <b>до 12%</b> заказа · 1 оникс = 0,3 ₽</span></li>' +
+      '<li>' + tk('lg') + '<span>Ониксами и промокодом можно оплатить <b>до 12%</b> заказа, 1 оникс равен 0,3 ₽</span></li>' +
       '<li>' + tk('lg') + '<span><b>Ежедневные задания</b>: по 1 ониксу, и до ' + RULES.levels[4].streak + ' за 7 дней подряд</span></li>' +
       '<li>' + tk('lg') + '<span><b>Программа лояльности</b>: Бронза → Серебро → Золото → Платина → Алмаз</span></li>' +
       '<li>' + tk('lg') + '<span><b>Посылка</b>: ониксы, промокоды, рамки для аватара</span></li>' +
@@ -1836,8 +1787,8 @@
         '<div class="f"><label for="a-phone">Телефон</label><input class="input" id="a-phone" type="tel" autocomplete="tel" placeholder="+7 900 000-00-00" value="' + esc(form.phone) + '"></div>' +
         '<div class="f"><label for="a-tg">Telegram <span class="opt-l">желательно</span></label><div class="prefix"><span>@</span><input class="input" id="a-tg" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="username" value="' + esc(form.tg) + '"></div></div>' +
         '<div class="f full"><label for="a-pass">Пароль</label><div class="pass"><input class="input" id="a-pass" type="password" autocomplete="new-password" placeholder="не короче 6 символов"><button type="button" data-eye aria-label="Показать пароль">' + icon('eye') + '</button></div></div>' +
-        '<div class="f full"><label for="a-ref">Код друга <span class="opt-l">· по желанию, +' + R.refFriend + ' ониксов</span></label><input class="input" id="a-ref" autocapitalize="characters" spellcheck="false" placeholder="Например, K7Q2MX" value="' + esc(ref) + '"></div>' +
-        '<div class="f full" id="code-box"' + (regSent ? '' : ' hidden') + '><label for="a-code">Код из письма</label><input class="input code" id="a-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="••••••"><button class="link-btn" type="button" id="resend" style="justify-self:start">Отправить код ещё раз</button></div></div>' +
+        '<div class="f full"><label for="a-ref">Код друга <span class="opt-l">по желанию, даёт +' + R.refFriend + ' ониксов</span></label><input class="input" id="a-ref" autocapitalize="characters" spellcheck="false" placeholder="Например, K7Q2MX" value="' + esc(ref) + '"></div>' +
+        '<div class="f full" id="code-box"' + (regSent ? '' : ' hidden') + '><label for="a-code">Код из письма</label><input class="input code" id="a-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="6 цифр"><button class="link-btn" type="button" id="resend" style="justify-self:start">Отправить код ещё раз</button></div></div>' +
         '<div id="code-msg"></div><div class="form-err" id="auth-err" hidden></div>' +
         '<button class="btn btn-block" type="submit" id="auth-btn">' + (regSent ? icon('gift') + 'Подтвердить и получить ' + R.register + ' ониксов' : icon('mail') + 'Получить код на почту') + '</button></form>';
     } else if (authTab === 'login') {
@@ -1850,7 +1801,7 @@
       body = '<form id="auth-form" novalidate style="display:grid;gap:14px"><p class="muted">Пришлём код на почту, указанную при регистрации, и вы зададите новый пароль.</p>' +
         '<div class="f"><label for="a-email">Почта</label><div class="promo-row"><input class="input" id="a-email" type="email" inputmode="email" autocomplete="email" autocapitalize="off" spellcheck="false" placeholder="name@mail.ru" style="text-transform:none;letter-spacing:0;font-weight:500"><button class="btn btn-dark" type="button" id="send-reset">Код</button></div></div>' +
         '<div id="code-msg"></div>' +
-        '<div class="f"><label for="a-code">Код из письма</label><input class="input code" id="a-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="••••••"></div>' +
+        '<div class="f"><label for="a-code">Код из письма</label><input class="input code" id="a-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="6 цифр"></div>' +
         '<div class="f"><label for="a-pass">Новый пароль</label><div class="pass"><input class="input" id="a-pass" type="password" autocomplete="new-password" placeholder="не короче 6 символов"><button type="button" data-eye aria-label="Показать пароль">' + icon('eye') + '</button></div></div>' +
         '<div class="form-err" id="auth-err" hidden></div><button class="btn btn-block" type="submit" id="auth-btn">' + icon('key') + 'Сохранить и войти</button><button class="link-btn" type="button" id="to-login" style="justify-self:start">Вернуться ко входу</button></form>';
     }
@@ -1921,6 +1872,25 @@
   }
 
   // аватар: обрезаем в квадрат и сжимаем, чтобы влезло в ячейку таблицы
+  // фото к отзыву: уменьшаем до 1280 px по длинной стороне и сжимаем в JPEG (до ~350 КБ), чтобы быстро отправлялось с телефона
+  function shrinkPhoto(f) {
+    return new Promise(function (res) {
+      if (!f || !/^image\//.test(f.type)) { toast('Нужна картинка: JPG или PNG', null, 'warn'); res(''); return; }
+      var url = URL.createObjectURL(f), img = new Image();
+      img.onload = function () {
+        var out = '', sides = [1280, 1080, 900], q = [0.82, 0.76, 0.7];
+        for (var i = 0; i < sides.length; i++) {
+          var k = Math.min(1, sides[i] / Math.max(img.naturalWidth, img.naturalHeight)), c = document.createElement('canvas');
+          c.width = Math.round(img.naturalWidth * k); c.height = Math.round(img.naturalHeight * k);
+          var ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height); ctx.drawImage(img, 0, 0, c.width, c.height);
+          out = c.toDataURL('image/jpeg', q[i]); if (out.length < 480000) break;
+        }
+        URL.revokeObjectURL(url); res(out.length < 480000 ? out : '');
+      };
+      img.onerror = function () { URL.revokeObjectURL(url); toast('Не получилось открыть фото', null, 'warn'); res(''); };
+      img.src = url;
+    });
+  }
   function pickAvatar() {
     var inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*';
     inp.addEventListener('change', function () {
@@ -1947,7 +1917,7 @@
   function emailModal() {
     var md = openModal(modalHead(acct.user.email ? 'Сменить почту' : 'Добавить почту') + '<p class="muted">Пришлём код подтверждения. Через почту можно восстановить пароль.</p>' +
       '<div class="f"><label for="m-email">Почта</label><div class="promo-row"><input class="input" id="m-email" type="email" inputmode="email" autocapitalize="off" spellcheck="false" placeholder="name@mail.ru" style="text-transform:none;letter-spacing:0;font-weight:500"><button class="btn btn-dark" type="button" id="m-send">Код</button></div></div><div id="m-msg"></div>' +
-      '<div class="f"><label for="m-code">Код из письма</label><input class="input code" id="m-code" inputmode="numeric" maxlength="6" placeholder="••••••"></div>' +
+      '<div class="f"><label for="m-code">Код из письма</label><input class="input code" id="m-code" inputmode="numeric" maxlength="6" placeholder="6 цифр"></div>' +
       '<button class="btn btn-block" type="button" id="m-save">Подтвердить почту</button>', { cls: 'sm' });
     $('#m-send', md).addEventListener('click', function () { var e = $('#m-email', md).value.trim(); if (!CORE.validEmail(e.toLowerCase())) { toast('Проверьте почту', null, 'warn'); return; } sendCode('email', e, this, $('#m-msg', md)); });
     $('#m-save', md).addEventListener('click', function () {
@@ -2040,7 +2010,6 @@
   }
   // ------------------------------------------------------------ значок на экране «Домой»
   var SEASON_ICONS = []; // сезонные значки (id, название, [месяц, день] начала, конца); сейчас нет
-  function seasonOn(s) { var d = new Date(Date.now() + 3 * 3600e3), m = d.getUTCMonth() + 1, k = m * 100 + d.getUTCDate(), a = s[2][0] * 100 + s[2][1], b = s[3][0] * 100 + s[3][1]; return a <= b ? k >= a && k <= b : k >= a || k <= b; }
   var HOME_BASE = [['dark', 'Тёмная'], ['white', 'Белая']];
   function homeIcons() { return HOME_BASE.concat(SEASON_ICONS.map(function (s) { return [s[0], s[1]]; })); }
   var installEvt = null;
@@ -2177,7 +2146,10 @@
     var u = acct.user;
     if (!u.canDelete) {
       var act = u.orders.filter(function (o) { return o.active; }).length;
-      confirmBox({ title: 'Пока нельзя удалить', text: 'Аккаунт можно удалить, когда нет активных заказов. Сейчас активных: ' + act + '. Дождитесь получения или напишите менеджеру.', actions: [{ label: 'Понятно', cls: 'btn' }] });
+      confirmBox({ icon: 'hourglass', tone: 'info', title: 'Сначала завершим заказы',
+        text: act === 1 ? 'У вас есть заказ в работе. Мы удалим аккаунт сразу после того, как вы его получите, чтобы ничего не потерялось по дороге.' : 'У вас ' + act + ' ' + plural(act, 'заказ', 'заказа', 'заказов') + ' в работе. Мы удалим аккаунт сразу после того, как вы их получите, чтобы ничего не потерялось по дороге.',
+        html: '<p class="cbx-note">Если хотите отменить заказ или вопрос срочный, напишите менеджеру, он поможет.</p>',
+        actions: [{ label: 'Написать менеджеру', cls: 'btn-ghost', run: function () { window.open(SHOP.managerUrl, '_blank', 'noopener'); } }, { label: 'Хорошо', cls: 'btn' }] });
       return;
     }
     var md = openModal(modalHead('Удалить аккаунт?') + '<p class="muted">Удалятся данные кабинета, ониксы (' + num(u.balance) + '), промокоды и уровень. Восстановить будет нельзя. При новой регистрации на тот же телефон или почту приветственные бонусы повторно не начисляются.</p>' +
@@ -2205,8 +2177,6 @@
       return '<button type="button" role="tab" data-tt="' + k + '" aria-selected="' + (k === per) + '">' + esc(RULES.taskPer[k].name) + '<small>' + n + '/' + board[k].length + '</small></button>';
     }).join('');
     list.innerHTML = board[per].map(taskRow).join('');
-    var all = board[per], done = all.filter(function (t) { return t.d; }).length;
-    $('#task-side', root).textContent = done + ' из ' + all.length + ' · ' + RULES.taskPer[per].until;
     $$('[data-tt]', tabs).forEach(function (b) { b.addEventListener('click', function () { taskTab = b.getAttribute('data-tt'); drawTasks(root); }); });
   }
   function renderDash(v) {
@@ -2230,14 +2200,14 @@
       '<div class="acts"><a class="btn" href="#roulette">' + icon('gift') + 'Игра</a><a class="btn btn-white" href="#cart">' + icon('bag') + 'Потратить ониксы</a></div></div>' +
 
       '<div class="card tile c6 loyal lv-' + L.key + '"><div class="tile-h"><h3>Программа лояльности</h3><button class="link-btn" type="button" id="all-levels">Все уровни</button></div>' +
-      '<div class="lh lh-row lv-' + L.key + '">' + emblem(L.key, 68, 3) + '<div class="lh-t"><span class="small">Ваш уровень' + (L.fixed ? ' · закреплён менеджером' : '') + '</span><b class="loyal-name">' + esc(L.name) + '</b><span class="xp-num">' + num(u.xp) + ' XP <span class="small">за месяц</span></span></div></div>' +
+      '<div class="lh lh-row lv-' + L.key + '">' + emblem(L.key, 68, 3) + '<div class="lh-t"><span class="small">' + (L.fixed ? 'Уровень закреплён менеджером' : 'Ваш уровень') + '</span><b class="loyal-name">' + esc(L.name) + '</b><span class="xp-num">' + num(u.xp) + ' XP <span class="small">за месяц</span></span></div></div>' +
       (L.next ? '<div class="xp-bar"><div class="bar"><i data-w="' + pctL + '%"></i></div><div class="xp-meta"><span>' + num(u.xp) + ' / ' + num(L.next.min) + ' XP</span><span>до ' + lvlImg(L.next.key, 18) + '«' + esc(L.next.name) + '» ещё <b>' + num(L.next.left) + ' XP</b></span></div></div>' : '') +
       '<div class="lvl-steps">' + RULES.levels.map(function (l, j) { return '<span class="' + (j <= L.index ? 'on' : '') + (j === L.index ? ' cur' : '') + '">' + lvlImg(l.key, 30) + esc(l.name) + '</span>'; }).join('') + '</div>' +
       '<h4 class="perks-h">Ваши привилегии</h4>' + perkTiles(lvlByKey(L.key).perks) + '</div>' +
 
-      '<div class="card tile c6"><div class="tile-h"><h3>Задания</h3><span class="side" id="task-side"></span></div>' +
+      '<div class="card tile c6"><div class="tile-h"><h3>Задания</h3></div>' +
       '<div class="streak">' + streakDays.join('') + '</div>' +
-      (u.checkedToday ? '<p class="small">Сегодня отмечено</p>' : '<button class="btn btn-sm" type="button" id="checkin-btn">' + icon('gift') + 'Отметиться · +' + R.checkin + ' и +' + RULES.xpReward.checkin + ' XP</button>') +
+      (u.checkedToday ? '<p class="small">Сегодня отмечено</p>' : '<button class="btn btn-sm" type="button" id="checkin-btn">' + icon('gift') + 'Отметиться и забрать +' + R.checkin + ' и ' + RULES.xpReward.checkin + ' XP</button>') +
       '<div class="ttabs" role="tablist" aria-label="Период заданий" id="task-tabs"></div><div class="tasks" id="task-list"></div></div>' +
 
       '<div class="card tile c6"><div class="tile-h"><h3>Пригласить друга</h3><span class="side">' + u.refCount + ' ' + plural(u.refCount, 'друг', 'друга', 'друзей') + '</span></div>' +
@@ -2274,7 +2244,10 @@
     on('ava-cam', pickAvatar); on('add-email', emailModal); on('r-prof', profileModal); on('r-email', emailModal); on('r-pass', passModal); on('r-home', homeModal); on('r-theme', themeModal);
     on('r-tg', tgModal); on('r-bday', bdayModal); on('r-frame', framesModal); on('r-del', deleteModal); on('all-levels', levelsModal);
     on('r-noava', function () { API.call('profile', { avatar: '' }).then(function (r) { if (r.ok) { setUser(r.user); toast('Фото убрано'); } }); });
-    on('r-logout', function () { API.call('logout'); API.setSession(''); setUser(null); toast('Вы вышли из аккаунта'); });
+    on('r-logout', function () {
+      confirmBox({ icon: 'logout', title: 'Вы точно хотите выйти из аккаунта?', text: 'Ониксы, заказы и промокоды останутся на месте. Чтобы вернуться, войдите по логину и паролю.',
+        actions: [{ label: 'Остаться', cls: 'btn-ghost' }, { label: 'Выйти', cls: 'btn-danger', run: function () { API.call('logout'); API.setSession(''); setUser(null); toast('Вы вышли из аккаунта'); } }] });
+    });
     on('checkin-btn', function () { doCheckin($('#checkin-btn', v)); });
     on('ref-share', function () {
       var text = 'Заходи в ONION SHOP, по моей ссылке +' + R.refFriend + ' ониксов при регистрации';
@@ -2308,7 +2281,29 @@
   }
   /* «Игра» одна: посылка с сюрпризом (#roulette). Других игр в магазине нет. */
   // «Назад» в играх: из «Игр» туда, откуда пришли (последний экран вне игр), без истории: кабинет или главная
-  function backRow(id) { return '<div class="back-row"><button class="back-btn" type="button" id="' + id + '" aria-label="Назад">' + icon('arrow-right') + 'Назад</button></div>'; }
+  /* кнопка «Назад» для всех разделов: в начале страницы видна подпись, при прокрутке кнопка
+     сжимается в круглую и едет следом у левого края, почти не закрывая содержимое */
+  function backBar(id, label, crumb) {
+    return '<div class="back-bar"><button class="back-btn" type="button" id="' + id + '" aria-label="' + esc(label) + '"><span class="bk-i">' + icon('chevron-right') + '</span><span class="bk-l">' + esc(label) + '</span></button>' + (crumb ? '<span class="bk-cr">' + crumb + '</span>' : '') + '</div>';
+  }
+  function bindBack(id, fallback, root) {
+    var b = $('#' + id, root || document); if (!b) return;
+    b.addEventListener('click', function () { if (routed > 1) history.back(); else go(fallback || ''); });
+    stuckBars();
+  }
+  var stuckRaf = 0;
+  function stuckBars() {
+    if (stuckRaf) return;
+    stuckRaf = requestAnimationFrame(function () {
+      stuckRaf = 0;
+      var top = ($('.hdr') || {}).offsetHeight || 0;
+      $$('.view:not([hidden]) .back-bar').forEach(function (bar) {
+        var box = bar.parentNode.getBoundingClientRect();
+        bar.classList.toggle('stuck', window.scrollY > 4 && bar.getBoundingClientRect().top <= top + 12 && box.top < top);
+      });
+    });
+  }
+  window.addEventListener('scroll', stuckBars, { passive: true });
   function gamesBack() {
     var t = lastOutside;
     if (typeof t !== 'string' || t === 'games') t = acct.user ? 'account' : '';
@@ -2495,7 +2490,7 @@
     if (!API.enabled) { v.innerHTML = '<div class="empty"><span class="ico">' + icon('gift') + '</span><h3>Посылка скоро появится</h3><a class="btn" href="#catalog">В каталог</a></div>'; return; }
     var u = acct.user, busyNow = false, idleI = 0, IDLE = ['t100', 'xp100', 'promo', 'frame', 're1', 't500'];
     var CAP0 = '<b>Что внутри?</b><span>Посылка проходит рентген, и вы сразу видите приз</span>';
-    v.innerHTML = backRow('rl-back') + '<div class="pad roul-head" style="padding:0 0 10px"><div><h1>Посылка с сюрпризом</h1></div></div>' +
+    v.innerHTML = backBar('rl-back', 'Назад') + '<div class="pad roul-head" style="padding:0 0 10px"><div><h1>Посылка с сюрпризом</h1></div></div>' +
       '<section class="px" id="px">' +
       '<div class="rl-bar">' + (u ? '<span class="rl-chipb" id="roul-bal"></span><span class="rl-free" id="roul-free"></span>' : '<span class="rl-chipb">' + rlUse('i-token', 26) + '<span>Посылка</span></span><span class="rl-free">Войдите, чтобы открыть</span>') + '</div>' +
       '<div class="px-station">' +
@@ -2612,19 +2607,20 @@
       faqItem('Оплата', '<ul><li>Переводом: Сбербанк, Т-Банк, Альфа-Банк или СБП.</li><li>Наличными при встрече в Москве.</li><li>На самом сайте оплаты нет: после подтверждения заказа менеджер пришлёт реквизиты.</li><li>Ониксами и промокодом вместе можно оплатить до 12% заказа, 1 оникс = 0,3 ₽.</li><li>Предзаказ мы выкупаем сразу после оплаты: чем раньше оплата, тем раньше приедет вещь.</li></ul>'),
       faqItem('Статусы заказа', '<ul><li><b>Оформлен</b>: заказ отправлен, менеджер его проверяет.</li><li><b>Выкуплен</b>: вещь оплачена у поставщика.</li><li><b>В пути</b>: едет на наш склад в Китае.</li><li><b>На складе</b>: проверена и готовится к отправке.</li><li><b>Едет к нам</b>: везём в Россию.</li><li><b>Едет к вам</b>: вещь в России и передана в доставку.</li><li><b>Получен</b>: заказ у вас.</li><li><b>Отменён</b>: заказ остановлен, причину объяснит менеджер.</li></ul>'),
       faqItem('Что от нас не зависит', '<ul><li>Задержки у поставщика, на складе или у перевозчика, праздники и погода.</li><li>Скрытый брак, который видно только при проверке. Если найдём, сразу напишем и предложим, как поступить.</li><li>Работа пунктов выдачи и сроки СДЭК или Авито после того, как посылка передана им.</li></ul>'),
-      faqItem('Если что-то пошло не так', '<p>Напишите менеджеру в Telegram. Он на связи в рабочее время: Пн-Пт 08:30-21:00, Сб-Вс 10:00-20:00. Бот-помощник отвечает примерно через минуту, так и должно быть, просто подождите.</p><p><a class="btn btn-sm" href="' + SHOP.managerUrl + '" target="_blank" rel="noopener">Написать менеджеру</a></p>')
+      faqItem('Если что-то пошло не так', '<p>Напишите менеджеру в Telegram. Он на связи в рабочее время: Пн-Пт 08:30-21:00, Сб-Вс 10:00-20:00. Бот-помощник отвечает сразу, а на вопросы, которые он передал менеджеру, ответ придёт в тот же чат.</p><p><a class="btn btn-sm" href="' + SHOP.managerUrl + '" target="_blank" rel="noopener">Написать менеджеру</a></p>')
     ];
     var bonus = API.enabled ? [
       faqItem('Где взять ониксы', '<ul><li>+' + R.register + ' за регистрацию</li><li>+' + R.checkin + ' за каждый день входа и от ' + L[0].streak + ' до ' + L[4].streak + ' за 7 дней подряд, в зависимости от уровня</li><li>Задания: ежедневные по 3 оникса, еженедельные по 25, ежемесячные от 40</li><li>Посылка с сюрпризом</li><li>+' + R.referrer + ' за приглашённого друга и +' + R.birthday + ' в день рождения</li></ul><p>Ониксы не сгорают, передать их другому человеку нельзя. Пока на балансе больше ' + num(RULES.balanceCap) + ' ониксов, вход, задания и посылка дают опыт вместо ониксов (2 оникса = 1 XP). За заказы, отзывы, друзей и день рождения ониксы приходят всегда.</p>'),
-      faqItem('Промокоды', '<p>Личные промокоды выпадают в посылке. С уровня «Золото» раз в месяц приходит промокод на −1,5%, а на «Алмазе» ещё три по −2,5% в месяц. Они лежат в кабинете, а в корзине их выбирают на последнем шаге. Один промокод действует на один заказ.</p><p>Промокоды магазина вводятся вручную в поле «Промокод» в корзине.</p>'),
+      faqItem('Промокоды', '<p>Личные промокоды выпадают в посылке. С уровня «Золото» раз в месяц приходит промокод −1,5% на случайную категорию, с «Платины» к нему добавляется отдельный −1,5% на любой товар, а на «Алмазе» ещё три по −2,5% в месяц. Они лежат в кабинете, а в корзине их выбирают на последнем шаге. Один промокод действует на один заказ.</p><p>Промокоды магазина вводятся вручную в поле «Промокод» в корзине.</p>'),
       faqItem('Как начисляется XP', '<ul><li>Полученный заказ: 1 XP за каждые 10 ₽, когда у заказа статус «Получен»</li><li>Вход каждый день: +' + RULES.xpReward.checkin + ' XP</li><li>Задания: ежедневные +10 XP, еженедельные +60 XP, ежемесячные +180 XP</li><li>Посылка: от ' + Math.min.apply(null, RULES.wheel.filter(function (w) { return w.xp; }).map(function (w) { return w.xp; })) + ' до ' + Math.max.apply(null, RULES.wheel.filter(function (w) { return w.xp; }).map(function (w) { return w.xp; })) + ' XP</li></ul>'),
       faqItem('Как работают уровни', '<p>Уровень считается по XP, набранному за месяц. 1-го числа XP обнуляется, и все снова начинают с Бронзы.</p><p>Заказы берутся в работу по очереди: ' + esc(RULES.priorityOrder().join(', ')) + '. Следом идут заказы с платным «Приоритетным заказом» (' + rub(RULES.vipPrice) + ') у тех, у кого нет такой привилегии, и уже потом обычные.</p><button class="btn btn-ghost btn-sm" type="button" id="info-levels">Привилегии уровней</button>'),
       faqItem('Когда обновляются задания', '<ul><li>Ежедневные: в 00:00 по Москве. Это простые задания за ониксы и XP, на высоких уровнях их больше.</li><li>Еженедельные: по понедельникам. «Оформить заказ» засчитывается сразу после оформления.</li><li>Ежемесячные: 1-го числа. Заказы засчитываются, когда у них статус «Получен».</li></ul><p class="small">Сколько заданий на каждом уровне:</p><ul>' + L.map(function (l) { return '<li><b>' + esc(l.name) + '</b>: ' + esc(l.perks[0][1]) + '</li>'; }).join('') + '</ul>'),
       faqItem('Посылка с сюрпризом: как это работает', '<ul><li>Каждый день одна бесплатная посылка на любом уровне, на «Алмазе» три. Они не копятся и обновляются в 00:00 по Москве.</li><li>Дальше посылка стоит ' + RULES.spinCost + ' ониксов. Приз «Ещё раз» даёт бесплатные посылки, они не сгорают.</li><li>На «Платине» и «Алмазе» пустые посылки попадаются реже.</li><li>Призы и шансы у бесплатной и платной посылки одинаковые.</li><li>Ониксы сразу попадают на баланс, промокод выбирается в корзине, а XP идут в уровень этого месяца.</li></ul>')
     ] : [];
     var shop = [faqItem('Магазин и связь', contactsCard()), faqItem('Мы в соцсетях', socialCard())];
-    $('#v-info').innerHTML = '<div class="view-head"><div><h1>Частые вопросы</h1></div></div>' +
+    $('#v-info').innerHTML = backBar('info-back', 'Назад') + '<div class="view-head"><div><h1>Частые вопросы</h1></div></div>' +
       faqGroup('Заказ и доставка', order) + (bonus.length ? faqGroup('Ониксы и уровни', bonus) : '') + faqGroup('Магазин', shop);
+    bindBack('info-back', '', $('#v-info'));
     var il = $('#info-levels'); if (il) il.addEventListener('click', levelsModal);
   }
 
@@ -2747,7 +2743,7 @@
   function reviewBtn(o) {
     if (!acct.user || String(o.status) !== 'Получен' || !o.reviewed) return '';
     var left = (o.items || []).filter(function (it) { return o.reviewed.indexOf(it.id) < 0; }).length;
-    return left ? '<button class="btn btn-sm" type="button" data-review>' + icon('star') + 'Оставить отзыв · +' + RULES.reward.reviewText + '</button>' : '';
+    return left ? '<button class="btn btn-sm" type="button" data-review>' + icon('star') + 'Оставить отзыв<span class="b-sum">+' + RULES.reward.reviewText + '</span></button>' : '';
   }
   function reviewModal(o) {
     var R = RULES.reward, items = (o.items || []).filter(function (it) { return (o.reviewed || []).indexOf(it.id) < 0; });
@@ -2756,16 +2752,32 @@
         var id = it.photo || it.thumb;
         return '<div class="rv" data-id="' + esc(it.id) + '"><div class="rv-h">' + (id ? '<img src="' + thumb(id) + '" alt="">' : '') + '<b>' + esc(it.title) + '</b></div>' +
           '<div class="rv-pick" role="radiogroup" aria-label="Оценка">' + [1, 2, 3, 4, 5].map(function (n) { return '<button type="button" data-r="' + n + '" aria-label="' + n + '">★</button>'; }).join('') + '</div>' +
-          '<textarea maxlength="600" placeholder="Как сидит, качество, совпало ли с фото"></textarea><div class="rv-act"><button class="btn btn-sm" type="button" data-send disabled>Отправить</button><span class="rv-msg small"></span></div></div>';
-      }).join('') + '</div>', { cls: 'sm' });
+          '<textarea maxlength="600" placeholder="Как сидит, качество, совпало ли с фото"></textarea>' +
+          '<div class="rv-photos"><label class="rv-add">' + icon('camera') + '<span>Фото</span><input type="file" accept="image/*" multiple hidden></label></div>' +
+          '<div class="rv-act"><button class="btn btn-sm" type="button" data-send disabled>Отправить</button><span class="rv-msg small"></span></div></div>';
+      }).join('') + '</div><p class="small rv-ph-note">До 3 фото к каждому товару. Они появятся на сайте после быстрой проверки менеджером.</p>', { cls: 'sm' });
     $$('.rv', md).forEach(function (box) {
-      var rating = 0, send = $('[data-send]', box), msg = $('.rv-msg', box);
+      var rating = 0, send = $('[data-send]', box), msg = $('.rv-msg', box), shots = [], phBox = $('.rv-photos', box), inp = $('input[type=file]', box);
+      function drawShots() {
+        $$('.rv-shot', phBox).forEach(function (x) { x.remove(); });
+        shots.forEach(function (d, i) {
+          var el = document.createElement('span'); el.className = 'rv-shot';
+          el.innerHTML = '<img src="' + d + '" alt=""><button type="button" aria-label="Убрать фото">' + icon('x') + '</button>';
+          $('button', el).addEventListener('click', function () { shots.splice(i, 1); drawShots(); });
+          phBox.insertBefore(el, phBox.lastElementChild);
+        });
+        $('.rv-add', phBox).hidden = shots.length >= 3;
+      }
+      inp.addEventListener('change', function () {
+        var files = Array.prototype.slice.call(inp.files || []).slice(0, 3 - shots.length); inp.value = '';
+        files.reduce(function (pr, f) { return pr.then(function () { return shrinkPhoto(f).then(function (d) { if (d && shots.length < 3) shots.push(d); }); }); }, Promise.resolve()).then(drawShots);
+      });
       $$('.rv-pick button', box).forEach(function (b) {
         b.addEventListener('click', function () { rating = +b.getAttribute('data-r'); $$('.rv-pick button', box).forEach(function (x) { x.classList.toggle('on', +x.getAttribute('data-r') <= rating); }); send.disabled = false; });
       });
       send.addEventListener('click', function () {
         busy(send, true, 'Отправляем');
-        API.call('review', { no: o.no, productId: box.getAttribute('data-id'), rating: rating, text: $('textarea', box).value }).then(function (r) {
+        API.call('review', { no: o.no, productId: box.getAttribute('data-id'), rating: rating, text: $('textarea', box).value, photos: shots }).then(function (r) {
           busy(send, false);
           if (!r.ok) { msg.textContent = r.error; return; }
           acct.user = r.user; updateAcctUI(); revCache = {};
@@ -2776,20 +2788,55 @@
       });
     });
   }
+  /* ---------- отзывы на странице товара: сводка, фото покупателей, карточки ---------- */
   var revCache = {};
-  function drawReviews(r, body, n) {
-    var base = +body.getAttribute('data-base') || 0;
-    if (n) n.textContent = (r.count + base) ? '· ' + (r.count + base) : '';
-    body.innerHTML = (!r.count && base) ? '' : r.count
-      ? '<div class="rev-sum">' + stars(r.avg) + '<b>' + String(r.avg).replace('.', ',') + '</b><span class="small">' + r.count + ' ' + plural(r.count, 'отзыв', 'отзыва', 'отзывов') + '</span></div>' +
-        r.list.map(function (x) { return '<div class="rev"><div class="rev-h"><b>' + esc(x.name) + '</b>' + stars(x.rating) + '<span class="small">' + esc(x.at) + '</span></div>' + (x.text ? '<p>' + esc(x.text) + '</p>' : '') + '</div>'; }).join('')
-      : '<p class="small">Отзывов пока нет. Они появляются после получения заказа, их оставляют покупатели в кабинете.</p>';
+  // отзывы из канала (data/reviews.json через каталог) в том же виде, что и с сервера
+  function staticReviews(p) {
+    return (p.reviews || []).map(function (r) { return { name: r.name, rating: +r.stars || 0, text: r.text || '', at: r.at || '', photos: (r.photos || []).filter(function (u) { return /^https:\/\//.test(u); }) }; });
   }
-  function loadReviews(pid, body, n) {
-    if (revCache[pid]) { drawReviews(revCache[pid], body, n); return; }
-    API.call('reviews', { productId: pid }).then(function (r) {
-      if (!r.ok) { body.innerHTML = '<p class="small">Не удалось загрузить отзывы. Попробуйте позже.</p>'; return; }
-      revCache[pid] = r; drawReviews(r, body, n);
+  function revStats(list) {
+    var rated = list.filter(function (x) { return x.rating >= 1; }), sum = 0, dist = [0, 0, 0, 0, 0];
+    rated.forEach(function (x) { sum += x.rating; dist[Math.min(5, Math.max(1, Math.round(x.rating))) - 1]++; });
+    return { n: list.length, rated: rated.length, avg: rated.length ? Math.round(sum / rated.length * 10) / 10 : 0, dist: dist };
+  }
+  function fmtAvg(a) { return String(a.toFixed(1)).replace('.', ','); }
+  // в заголовке раздела только средняя оценка, без количества
+  function revHead(list) { var s = revStats(list); return s.rated ? '<span class="rv-star">★</span>' + fmtAvg(s.avg) : ''; }
+  function revCard(x) {
+    var ph = x.photos || [], nm = String(x.name || 'Покупатель');
+    return '<article class="rvw"><div class="rvw-h"><span class="rvw-av" aria-hidden="true">' + esc(nm.charAt(0).toUpperCase()) + '</span><div class="rvw-who"><b>' + esc(nm) + '</b>' + (x.at ? '<small>' + esc(x.at) + '</small>' : '') + '</div>' + (x.rating ? stars(x.rating) : '') + '</div>' +
+      (x.text ? '<p>' + esc(x.text) + '</p>' : '') +
+      (ph.length ? '<div class="rvw-ph">' + ph.map(function (u) { return '<button type="button" data-rph="' + esc(u) + '" aria-label="Открыть фото покупателя"><img src="' + esc(u) + '" alt="" loading="lazy" decoding="async"></button>'; }).join('') + '</div>' : '') + '</article>';
+  }
+  function reviewsHtml(list) {
+    if (!list.length) return '<div class="rvs-empty">' + icon('star') + '<div><b>Отзывов пока нет</b><span>Их оставляют покупатели после получения заказа. Ваш может стать первым.</span></div></div>';
+    var s = revStats(list), photos = [];
+    list.forEach(function (x) { (x.photos || []).forEach(function (u) { photos.push(u); }); });
+    return (s.rated ? '<div class="rvs"><div class="rvs-avg"><b>' + fmtAvg(s.avg) + '</b>' + stars(s.avg) + '<small>' + s.rated + ' ' + plural(s.rated, 'оценка', 'оценки', 'оценок') + '</small></div><div class="rvs-bars">' +
+      [5, 4, 3, 2, 1].map(function (k) { var c = s.dist[k - 1]; return '<div class="rvs-b"><span>' + k + '</span><i><b style="width:' + (s.rated ? Math.round(c / s.rated * 100) : 0) + '%"></b></i></div>'; }).join('') + '</div></div>' : '') +
+      (photos.length ? '<div class="rvs-ph-h">Фото покупателей</div><div class="rvs-strip">' + photos.slice(0, 12).map(function (u) { return '<button type="button" data-rph="' + esc(u) + '" aria-label="Открыть фото покупателя"><img src="' + esc(u) + '" alt="" loading="lazy" decoding="async"></button>'; }).join('') + '</div>' : '') +
+      '<div class="rvw-list">' + list.map(revCard).join('') + '</div>';
+  }
+  // фото из отзыва открывается крупно поверх страницы
+  function bindReviewPhotos(root) {
+    root.addEventListener('click', function (e) {
+      var b = e.target.closest && e.target.closest('[data-rph]'); if (!b) return;
+      e.preventDefault();
+      openModal(modalHead('Фото покупателя') + '<img class="rvw-big" src="' + esc(b.getAttribute('data-rph')) + '" alt="Фото покупателя">', { cls: 'sm' });
+    });
+  }
+  function drawReviews(p, r, body, n) {
+    var list = (r && r.ok ? r.list : []).concat(staticReviews(p));
+    if (n) n.innerHTML = revHead(list);
+    body.innerHTML = reviewsHtml(list);
+  }
+  function loadReviews(p, body, n) {
+    if (revCache[p.id]) { drawReviews(p, revCache[p.id], body, n); return; }
+    API.call('reviews', { productId: p.id }).then(function (r) {
+      if (r && r.ok) revCache[p.id] = r;
+      if (!body.isConnected) return;
+      if (!r.ok && !staticReviews(p).length) { body.innerHTML = '<p class="small">Не удалось загрузить отзывы. Попробуйте позже.</p>'; return; }
+      drawReviews(p, r, body, n);
     });
   }
   /* подтверждение телефона: бот привязывается к кабинету и просит «Поделиться номером» */
@@ -2800,7 +2847,7 @@
     b.innerHTML = '<div class="tg-hero"><span class="tg-ic">' + icon('phone') + '</span><h3>Один шаг до бонусов</h3><p>Telegram подтвердит, что номер ' + esc(u.phone || '') + ' ваш. Мы не видим ничего, кроме номера.</p></div>' +
       '<ul class="tg-perks"><li><span class="ic">' + tk() + '</span><span><b>Приветственные ониксы</b><small>начислятся сразу после подтверждения</small></span></li><li><span class="ic">' + icon('bag') + '</span><span><b>Бонусы за друзей и подарок на ДР</b><small>и статусы заказов прямо в Telegram</small></span></li></ul>' +
       (API.mode === 'demo' ? '<button class="btn btn-block" type="button" id="ph-demo">Подтвердить (демо)</button>' : '<button class="btn btn-block" type="button" id="ph-on">' + icon('send') + 'Подтвердить в Telegram</button>') + '<div id="ph-out"></div>';
-    var dm = $('#ph-demo', b); if (dm) dm.addEventListener('click', function () { API.call('phoneDemo').then(function (r) { if (!r.ok) { toast(r.error, null, 'warn'); return; } setUser(r.user); closeModal(); confetti(120); reward('Телефон подтверждён' + (r.got ? ' · +' + r.got + ' ' + tokWord(r.got) : '')); }); });
+    var dm = $('#ph-demo', b); if (dm) dm.addEventListener('click', function () { API.call('phoneDemo').then(function (r) { if (!r.ok) { toast(r.error, null, 'warn'); return; } setUser(r.user); closeModal(); confetti(120); reward('Телефон подтверждён' + (r.got ? ', на балансе +' + r.got + ' ' + tokWord(r.got) : '')); }); });
     var on = $('#ph-on', b); if (on) on.addEventListener('click', function () {
       busy(on, true, 'Секунду');
       API.call('tgLink').then(function (r) {
@@ -2827,7 +2874,7 @@
     function draw() {
       var u = acct.user, b = $('#tg-body', md); if (!b) return;
       if (u.tgOn) {
-        b.innerHTML = hero('check-circle', 'Telegram подключён', (u.tgName ? esc(u.tgName) + ' · ' : '') + 'все уведомления включены', 'ok') +
+        b.innerHTML = hero('check-circle', 'Telegram подключён', (u.tgName ? esc(u.tgName) + ', все' : 'Все') + ' уведомления включены', 'ok') +
           '<ul class="tg-perks">' + perks.map(function (x) { return '<li><span class="ic">' + icon(x[0]) + '</span><span><b>' + x[1] + '</b><small>' + x[2] + '</small></span></li>'; }).join('') + '</ul>' +
           '<p class="small">Бот пришлёт всё важное: статусы заказов, возвращение товара, скидки на избранное, новинки и бонусы.</p>';
       } else {
@@ -2860,44 +2907,6 @@
     draw();
   }
   var SIZE_SCALE = ['XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL', '4XL', '5XL'];
-  function normSize(s) { s = String(s).trim().toUpperCase().replace(/\s/g, ''); return s === '2XL' ? 'XXL' : s === 'XXXL' ? '3XL' : s === '4XL' || s === 'XXXXL' ? '4XL' : s === 'XXS' ? 'XXS' : s; }
-  function fitModal(p, apply) {
-    var nums = p.sizes.map(function (x) { return parseFloat(String(x).replace(',', '.')); });
-    var shoe = nums.every(function (n) { return n >= 30 && n <= 50; }), letters = p.sizes.every(function (x) { return SIZE_SCALE.indexOf(normSize(x)) >= 0; });
-    var saved = store.get('fit', {});
-    var form = shoe
-      ? '<label for="fit-foot"><b>Длина стопы, см</b></label><input class="input" id="fit-foot" type="number" inputmode="decimal" min="18" max="34" step="0.1" placeholder="например, 26,5" value="' + (saved.foot || '') + '">'
-      : letters ? '<div class="fit-grid"><div><label for="fit-h"><b>Рост, см</b></label><input class="input" id="fit-h" type="number" inputmode="numeric" min="130" max="215" placeholder="170" value="' + (saved.h || '') + '"></div><div><label for="fit-w"><b>Вес, кг</b></label><input class="input" id="fit-w" type="number" inputmode="numeric" min="30" max="200" placeholder="65" value="' + (saved.w || '') + '"></div></div>' +
-        '<label for="fit-s"><b>Как носите</b></label><select class="select" id="fit-s"><option value="0">По фигуре</option><option value="1"' + (saved.s === '1' ? ' selected' : '') + '>Свободно</option></select>'
-      : '<p>У этого товара нестандартная сетка размеров (' + p.sizes.map(esc).join(', ') + '). Если в карточке есть раздел «Замеры изделия», сверьтесь с ним, или спросите менеджера, подскажем.</p>';
-    var md = openModal(modalHead('Подобрать размер') + '<div class="fit">' + form + (shoe || letters ? '<button class="btn" type="button" id="fit-go" style="margin-top:12px">Подобрать</button><div id="fit-out" aria-live="polite"></div>' : '') +
-      '<p class="small" style="margin-top:12px">Это ориентир по общей сетке. Если в карточке есть раздел «Замеры изделия», сверьтесь с ним, а если сомневаетесь, спросите менеджера.</p></div>', { cls: 'sm' });
-    var go1 = $('#fit-go', md); if (!go1) return;
-    go1.addEventListener('click', function () {
-      var out = $('#fit-out', md), want, label;
-      if (shoe) {
-        var foot = parseFloat(String($('#fit-foot', md).value).replace(',', '.'));
-        if (!(foot >= 18 && foot <= 34)) { out.innerHTML = '<div class="form-err">Введите длину стопы от 18 до 34 см</div>'; return; }
-        store.set('fit', Object.assign(saved, { foot: foot }));
-        want = Math.round((foot + 1.5) * 1.5); label = 'по стопе ' + String(foot).replace('.', ',') + ' см';
-        var best = null; nums.forEach(function (n, i) { if (best === null || Math.abs(n - want) < Math.abs(nums[best] - want)) best = i; });
-        draw(p.sizes[best], Math.abs(nums[best] - want) < 0.6, want);
-      } else {
-        var h = parseFloat($('#fit-h', md).value), w = parseFloat($('#fit-w', md).value), fs = $('#fit-s', md).value;
-        if (!(h >= 130 && h <= 215) || !(w >= 30 && w <= 200)) { out.innerHTML = '<div class="form-err">Проверьте рост и вес</div>'; return; }
-        store.set('fit', Object.assign(saved, { h: h, w: w, s: fs }));
-        var idx = w < 47 ? 1 : w < 55 ? 2 : w < 64 ? 3 : w < 74 ? 4 : w < 85 ? 5 : w < 96 ? 6 : w < 108 ? 7 : 8;
-        if (h >= 182) idx += 1; else if (h <= 155) idx -= 1;
-        idx = Math.max(0, Math.min(SIZE_SCALE.length - 1, idx + (+fs)));
-        var bestI = null; p.sizes.forEach(function (x, i) { var k = SIZE_SCALE.indexOf(normSize(x)); if (bestI === null || Math.abs(k - idx) < Math.abs(SIZE_SCALE.indexOf(normSize(p.sizes[bestI])) - idx)) bestI = i; });
-        draw(p.sizes[bestI], normSize(p.sizes[bestI]) === SIZE_SCALE[idx], SIZE_SCALE[idx]);
-      }
-      function draw(size, exact, calc) {
-        out.innerHTML = '<div class="fit-res"><small>' + (exact ? 'Вам подойдёт' : 'Ближайший в наличии') + '</small><b>' + esc(size) + '</b>' + (exact ? '' : '<span class="small">по расчёту: ' + esc(calc) + ', такого нет</span>') + '<button class="btn btn-sm" type="button" id="fit-pick">Выбрать ' + esc(size) + '</button></div>';
-        $('#fit-pick', out).addEventListener('click', function () { closeModal(); apply(size); });
-      }
-    });
-  }
   // нет связи: плашка сверху
   function netBar(show) {
     var el = $('#net-bar');
@@ -2939,6 +2948,8 @@
     window.__onionBoot = true;
     // сайт загрузился: заглушка «Магазин сейчас не открывается» (если успела показаться на медленной сети) убирается
     var dn = document.getElementById('down'); if (dn) dn.hidden = true;
+    // кэш для мгновенной повторной загрузки (sw.js в корне сайта); в предпросмотре и без https не включается
+    try { if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost') && !/claude|artifact/.test(location.host)) { var regSw = function () { navigator.serviceWorker.register('sw.js').catch(function () { }); }; if (document.readyState === 'complete') regSw(); else window.addEventListener('load', regSw); } } catch (e) { /* */ }
     lastMeAt = Date.now();
     refreshMe().then(function () { lastMe = acct.user ? JSON.stringify(acct.user) : ''; if (current !== 'account') refreshView(); });
     setInterval(silentRefresh, 180000);

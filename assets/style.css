@@ -865,10 +865,8 @@ canvas.confetti{position:fixed;inset:0;width:100%;height:100%;pointer-events:non
 .task .rw b{display:inline-flex;align-items:center;gap:4px;font-weight:800;font-size:13px;color:var(--accent-ink)}
 
 /* новые рамки аватара */
-.back-row{display:flex;align-items:center;gap:10px;margin:2px 0 12px;flex-wrap:wrap}
 .back-btn{display:inline-flex;align-items:center;gap:6px;height:42px;padding:0 16px 0 12px;border-radius:999px;border:1px solid var(--line-2);background:var(--card);font-weight:700;font-size:14.5px;color:var(--ink);box-shadow:0 1px 6px rgba(8,30,70,.1)}
 .back-btn .i{transform:rotate(180deg);width:18px;height:18px}
-.back-row .cr{font-size:13px;color:var(--ink-3);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .frames{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
 .frames button{min-width:0;align-content:start;text-align:center;font-size:11.5px;padding:10px 4px}
 .frames button small,.frames button span:not(.ava){font-size:11px;line-height:1.25}
@@ -2679,8 +2677,92 @@ html,body{touch-action:pan-x pan-y}
 .bc::after{display:none}
 @media (min-width:760px){.bc{flex:none}}
 /* ==== обновление 90 ==== */
-/* «К корзине» в оформлении: отступ от заголовка и кнопка едет за страницей, возвращаться наверх не нужно */
-.back-bar{position:sticky;top:calc(var(--hdr) + env(safe-area-inset-top,0px) + 6px);z-index:30;padding:6px 0 14px;pointer-events:none}
-.back-bar .back-btn{pointer-events:auto;box-shadow:0 4px 14px rgba(8,30,70,.28)}
 .muted:empty{display:none}
 .opt-l{font-weight:500;font-size:12.5px;color:var(--ink-3);margin-left:6px}
+/* ==== обновление 92 ==== */
+/* телефон: полоса прокрутки справа не нужна (листают пальцем) */
+@media (hover:none) and (pointer:coarse){
+  html,body,*{scrollbar-width:none}
+  html::-webkit-scrollbar,body::-webkit-scrollbar,*::-webkit-scrollbar{display:none;width:0;height:0;background:transparent}
+}
+/* «Назад» во всех разделах: аккуратная пилюля со значком; при прокрутке сжимается в круг и едет следом у левого края */
+.back-bar{position:sticky;top:calc(var(--hdr) + env(safe-area-inset-top,0px) + 8px);z-index:30;display:flex;align-items:center;gap:10px;min-height:40px;margin:2px 0 14px;padding:0;pointer-events:none}
+.back-bar .back-btn{pointer-events:auto;display:inline-flex;align-items:center;gap:0;height:40px;padding:0 15px 0 5px;border-radius:999px;border:1px solid var(--line);background:var(--card);color:var(--ink);font:600 14.5px/1 var(--f-b);box-shadow:0 1px 3px rgba(11,29,58,.07);transition:padding .22s var(--ease),box-shadow .22s var(--ease),background-color .16s}
+.back-bar .back-btn:hover{background:var(--card);border-color:var(--line-2)}
+.back-bar .back-btn:active{transform:scale(.96)}
+.back-bar .bk-i{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--accent-soft);color:var(--accent-ink);flex:none}
+.back-bar .bk-i .i{width:16px;height:16px;transform:rotate(180deg)}
+.back-bar .bk-l{max-width:180px;margin-left:8px;overflow:hidden;white-space:nowrap;transition:max-width .22s var(--ease),opacity .16s,margin .22s var(--ease)}
+.back-bar .bk-cr{min-width:0;font-size:13px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:opacity .16s}
+.back-bar.stuck .back-btn{padding:0 5px;box-shadow:0 6px 18px rgba(8,30,70,.24);border-color:var(--line-2)}
+.back-bar.stuck .bk-l{max-width:0;margin-left:0;opacity:0}
+.back-bar.stuck .bk-cr{opacity:0}
+/* кнопки с суммой: «В корзину | 1 715 ₽» вместо точки-разделителя */
+.btn .b-sum{display:inline-flex;align-items:center;margin-left:10px;padding-left:10px;border-left:1px solid rgba(255,255,255,.38);font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+.btn-sm .b-sum{margin-left:8px;padding-left:8px}
+.btn-ghost .b-sum,.btn-white .b-sum{border-left-color:var(--line-2)}
+/* окна-вопросы: значок, заголовок, короткий текст, кнопки */
+.cbx{position:relative;display:grid;justify-items:center;gap:10px;padding:6px 4px 0;text-align:center}
+.cbx-x{position:absolute;top:-6px;right:-6px}
+.cbx-ic{display:grid;place-items:center;width:64px;height:64px;margin-top:8px;border-radius:20px;background:var(--danger-bg);color:var(--danger)}
+.cbx-ic .i{width:30px;height:30px}
+.cbx-info .cbx-ic{background:var(--accent-soft);color:var(--accent-ink)}
+.cbx h2{font-size:1.28rem;line-height:1.22;max-width:24ch}
+.cbx p{max-width:38ch;color:var(--ink-2);font-size:15px;line-height:1.5}
+.cbx .cbx-note{width:100%;max-width:none;padding:10px 12px;border-radius:14px;background:var(--tile);color:var(--ink-3);font-size:13.5px}
+.send-row.cbx-acts{grid-template-columns:1fr 1fr;gap:10px;margin-top:18px}
+.cbx-acts .btn{width:100%;justify-content:center}
+@media (max-width:440px){.send-row.cbx-acts{grid-template-columns:1fr}.cbx-acts .btn:last-child{order:-1}}
+/* отзывы на странице товара */
+#rev-det summary .rev-n{margin-left:auto;margin-right:2px;display:inline-flex;align-items:center;gap:4px;color:var(--ink);font-size:14.5px;font-weight:700}
+.rv-star{color:#f5a524}
+.rvs{display:grid;grid-template-columns:auto minmax(0,1fr);gap:18px;align-items:center;margin-bottom:14px;padding:14px 16px;border-radius:16px;background:var(--tile)}
+.rvs-avg{display:grid;justify-items:center;gap:4px;min-width:84px}
+.rvs-avg>b{font:800 2.25rem/1 var(--f-d);color:var(--ink)}
+.rvs-avg small{font-size:12.5px;color:var(--ink-3)}
+.rvs .stars i.on,.rvw .stars i.on{color:#f5a524}
+.rvs-bars{display:grid;gap:6px}
+.rvs-b{display:grid;grid-template-columns:10px minmax(0,1fr);gap:8px;align-items:center;font-size:12px;font-weight:600;color:var(--ink-3)}
+.rvs-b i{display:block;height:6px;border-radius:99px;background:var(--line);overflow:hidden}
+.rvs-b i b{display:block;height:100%;border-radius:inherit;background:#f5a524}
+.rvs-ph-h{margin:0 0 8px;font-weight:700;font-size:14px}
+.rvs-strip{display:flex;gap:8px;margin:0 0 14px;padding-bottom:2px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.rvs-strip::-webkit-scrollbar{display:none}
+.rvs-strip button,.rvw-ph button{flex:none;width:78px;height:78px;padding:0;border:0;border-radius:12px;overflow:hidden;background:var(--tile)}
+.rvw-ph button{width:64px;height:64px}
+.rvs-strip img,.rvw-ph img{width:100%;height:100%;object-fit:cover}
+.rvw-list{display:grid;gap:10px}
+.rvw{padding:14px;border:1px solid var(--line);border-radius:16px;background:var(--card)}
+.rvw-h{display:flex;align-items:center;gap:10px}
+.rvw-av{display:grid;place-items:center;flex:none;width:36px;height:36px;border-radius:50%;background:var(--grad);color:#fff;font:700 15px/1 var(--f-d)}
+.rvw-who{display:grid;flex:1;min-width:0}
+.rvw-who b{font-size:14.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rvw-who small{font-size:12px;color:var(--ink-3)}
+.rvw p{margin-top:8px;color:var(--ink-2);font-size:14.5px;line-height:1.5;overflow-wrap:anywhere}
+.rvw-ph{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.rvs-empty{display:flex;align-items:flex-start;gap:12px;padding:14px;border-radius:16px;background:var(--tile)}
+.rvs-empty>.i{flex:none;width:22px;height:22px;margin-top:2px;color:#f5a524}
+.rvs-empty div{display:grid;gap:2px}
+.rvs-empty span{font-size:13.5px;color:var(--ink-3)}
+.rvs-load{display:grid;gap:8px}
+.rvs-load i{display:block;height:56px;border-radius:14px;background:linear-gradient(90deg,var(--tile),var(--tile-2),var(--tile));background-size:200% 100%;animation:rvs-sh 1.2s linear infinite}
+@keyframes rvs-sh{to{background-position:-200% 0}}
+.rv-all{display:inline-flex;align-items:center;gap:6px;margin-top:12px;font-size:13.5px;font-weight:600}
+.rv-all .i{width:16px;height:16px}
+.rvw-big{width:100%;height:auto;max-height:75vh;object-fit:contain;border-radius:14px;background:#000}
+/* фото в окне «Отзыв о заказе» */
+.rv-photos{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.rv-add{display:inline-flex;align-items:center;gap:6px;height:64px;padding:0 16px;border:1.5px dashed var(--line-2);border-radius:12px;color:var(--ink-2);font-weight:600;font-size:13.5px;cursor:pointer}
+.rv-add .i{width:18px;height:18px}
+.rv-shot{position:relative;width:64px;height:64px;border-radius:12px;overflow:hidden}
+.rv-shot img{width:100%;height:100%;object-fit:cover}
+.rv-shot button{position:absolute;top:3px;right:3px;display:grid;place-items:center;width:22px;height:22px;padding:0;border:0;border-radius:50%;background:rgba(0,0,0,.62);color:#fff}
+.rv-shot button .i{width:12px;height:12px}
+.rv-ph-note{margin-top:10px}
+/* подписи без точек-разделителей */
+.icard small.sub-l{display:block;margin-top:2px;font-size:12.5px;font-weight:500;color:var(--ink-3)}
+.strip-sub{display:block;margin-top:3px;font:500 13px/1.3 var(--f-b);color:var(--ink-3)}
+.rv-meta{display:flex;justify-content:space-between;gap:10px}
+.rv-meta b{color:var(--ink);font-weight:700}/* касание сразу видно: кнопка чуть темнеет и проседает, пока грузится следующий экран */
+.btn:active,.back-btn:active,.qcart:active,.choice:active,.chip:active,.rowl:active,.icon-btn:active{filter:brightness(.92)}
+.btn:active,.qcart:active{transform:scale(.97)}
