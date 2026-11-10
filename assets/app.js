@@ -2669,6 +2669,16 @@
     if (h !== 'roulette' && h !== 'games') { if (pxStop) { pxStop(); pxStop = null; } clearInterval(rlTimer); rlTimer = null; }
     if (skipHash !== null && h === skipHash) { skipHash = null; return; }
     skipHash = null;
+    // вход менеджера в кабинет клиента по одноразовой ссылке из таблицы (#as=…): ссылка живёт 10 минут и работает один раз
+    var asM = h.match(/^as=([a-f0-9]{40,80})$/);
+    if (asM) {
+      try { history.replaceState(null, '', location.pathname + location.search + '#account'); } catch (e) { /* */ }
+      API.call('asLogin', { token: asM[1] }).then(function (r) {
+        if (!r || !r.ok) { toast((r && r.error) || 'Ссылка для входа устарела', null, 'warn'); route(); return; }
+        API.setSession(r.session); setUser(r.user); toast('Вы в кабинете клиента @' + r.user.login + ' (вход менеджера)'); route();
+      });
+      return;
+    }
     var m = h.match(/^ref=([A-Za-z0-9]{4,12})$/);
     if (m) {
       store.set('ref', m[1].toUpperCase());

@@ -721,6 +721,18 @@ var OnionCore = (function () {
   };
 
   A.logout = function (db, p) { if (p.session) db.deleteSession(p.session); return ok(); };
+  /* вход менеджера в кабинет клиента: одноразовый код создаётся ТОЛЬКО в Google-таблице (меню «Клиенты»),
+     живёт 10 минут, срабатывает один раз и записывается в журнал. Без кода из таблицы войти так нельзя. */
+  A.asLogin = function (db, p) {
+    var token = String(p.token || '');
+    if (!/^[a-f0-9]{40,80}$/.test(token) || !db.getCode) return err('Ссылка для входа неверная');
+    var rec = db.getCode('as:' + token); if (!rec) return err('Ссылка для входа устарела. Создайте новую в таблице');
+    db.delCode('as:' + token);
+    var u = db.getUser(rec.userId); if (!u) return err('Клиент не найден');
+    log(db, u, 0, 'Менеджер вошёл в кабинет через таблицу');
+    touch(db, u); db.saveUser(u);
+    return ok({ session: newSession(db, u), user: publicUser(db, u) });
+  };
 
   A.me = function (db, p) {
     var u = sessionUser(db, p); if (!u) return err('auth');
@@ -1302,7 +1314,7 @@ var OnionCore = (function () {
   return {
     RULES: RULES, handle: handle, orderText: orderText, buildLines: buildLines, checkFields: checkFields,
     offlineNo: offlineNo, levelInfo: levelInfo, levelOf: levelOf, fixIndex: fixIndex, receive: receive, priceDrops: priceDrops, photoLinks: photoLinks, earlyLeft: earlyLeft, phoneConfirm: phoneConfirm, flag: flag, referralOnReceive: referralOnReceive, orderCanceled: orderCanceled, canonEmail: canonEmail, bdayIsToday: bdayIsToday, adjustTokens: adjustTokens, xpOfRub: xpOfRub, wheelFor: wheelFor, framesFor: framesFor, pctText: pctText, promoBase: promoBase, touch: touch, tokensToRub: tokensToRub, settings: settings, dayKey: dayKey, monthKey: monthKey,
-    statusMessage: statusMessage, tgBind: tgBind, activePromos: activePromos,
+    statusMessage: statusMessage, tgBind: tgBind, activePromos: activePromos, hashPass: hashPass,
     cleanTg: cleanTg, cleanEmail: cleanEmail, phoneKey: phoneKey, fmtPhone: fmtPhone, digits: digits, validEmail: validEmail, taskPick: picksFor, weekKey: weekKey, stagesFor: stagesFor
   };
 })();
