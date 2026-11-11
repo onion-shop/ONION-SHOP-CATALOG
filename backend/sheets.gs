@@ -40,7 +40,7 @@ var ORDER_COLS = [
   ['promoRub', 'Скидка промокодом', { w: 95, t: 'money', old: ['Скидка промокодом, ₽'] }],
   ['pack', 'Привилегия уровня', { w: 170, t: 'text' }],
   ['level', 'Уровень клиента', { w: 100, t: 'text' }],
-  ['login', 'Логин', { w: 100, t: 'text', edit: true }],
+  ['login', 'Логин', { w: 100, t: 'text' }],
   ['userId', 'ID клиента', { w: 80, t: 'text' }],
   ['text', 'Текст заказа', { w: 120, svc: true }],
   ['items', 'служебное: товары', { w: 80, svc: true }],
@@ -58,19 +58,19 @@ var FLAG_COLS = [['at', 'Когда', { w: 125, t: 'date' }], ['level', 'Уро�
 var LEDGER_COLS = [['key', 'Хэш', { w: 260, t: 'text' }], ['kind', 'Что получено', { w: 120, t: 'text' }], ['at', 'Когда', { w: 125, t: 'date' }], ['note', 'Примечание', { w: 200 }]];
 var USER_COLS = [
   ['id', 'ID', { w: 50, t: 'text' }],
-  ['login', 'Логин', { w: 100, t: 'text', edit: true }],
-  ['name', 'Имя', { w: 120, t: 'text', edit: true }],
+  ['login', 'Логин', { w: 100, t: 'text' }],
+  ['name', 'Имя', { w: 120, t: 'text' }],
   ['levelName', 'Уровень', { w: 100, t: 'text', edit: true, old: ['Уровень (месяц)'] }],
   ['balance', 'Ониксы', { w: 75, t: 'num', edit: true, old: ['Токены'] }],
   ['xp', 'XP за месяц', { w: 90, t: 'num', edit: true, old: ['Покупки за месяц'] }],
   ['spent', 'Потрачено всего', { w: 105, t: 'money', edit: true, old: ['Потрачено всего, ₽'] }],
   ['ordersCount', 'Заказов', { w: 70, t: 'num', edit: true }],
-  ['tg', 'Telegram', { w: 120, t: 'text', edit: true }],
-  ['phone', 'Телефон', { w: 130, t: 'text', edit: true }],
-  ['email', 'Почта', { w: 170, t: 'text', edit: true }],
+  ['tg', 'Telegram', { w: 120, t: 'text' }],
+  ['phone', 'Телефон', { w: 130, t: 'text' }],
+  ['email', 'Почта', { w: 170, t: 'text' }],
   ['lastCheckin', 'Последний вход', { w: 105, t: 'text' }],
-  ['createdAt', 'Регистрация', { w: 120, t: 'date', edit: true }],
-  ['birthday', 'День рождения (ММ-ДД)', { w: 110, t: 'text', edit: true }],
+  ['createdAt', 'Регистрация', { w: 120, t: 'date' }],
+  ['birthday', 'День рождения (ММ-ДД)', { w: 110, t: 'text' }],
   ['levelFix', 'Уровень вручную', { w: 130, t: 'text', edit: true }],
   ['streak', 'Серия входов', { w: 85, t: 'num', edit: true }],
   ['frame', 'Рамка', { w: 80, t: 'text', edit: true }],
@@ -1050,26 +1050,21 @@ function onEdit(e) {
         if (hit(ORDER_COLS, 'status') || hit(ORDER_COLS, 'userId') || hit(ORDER_COLS, 'toPay')) syncXp_();
         return;
       }
-      // логин, телефон, почта и Telegram должны быть уникальны: повтор отменяем и показываем подсказку
-      var uniq = [['login', 'login', 'Такой логин уже есть у клиента'], ['phone', 'phone', 'Этот телефон уже привязан к другому клиенту'], ['email', 'email', 'Эта почта уже привязана к другому клиенту'], ['tg', 'tg', 'Этот Telegram уже привязан к другому клиенту']];
+      // личные данные клиента (то, что он ввёл сам) менять нельзя: одиночную правку откатываем, групповую просим отменить
+      var CONF = ['login', 'name', 'tg', 'phone', 'email', 'createdAt', 'birthday'];
+      if (CONF.some(function (k) { return hit(USER_COLS, k); })) {
+        if (single) e.range.setValue(e.oldValue == null ? '' : e.oldValue);
+        ss_().toast(single ? 'Личные данные клиента менять нельзя. Изменение отменено.' : 'Личные данные клиентов менять нельзя. Отмените правку (Ctrl+Z).', 'ONION SHOP', 8);
+        return;
+      }
       if (single) {
-        var colKey = USER_COLS[c0 - 1] && USER_COLS[c0 - 1][0], nv = String(e.value == null ? '' : e.value).trim();
-        var uq = uniq.filter(function (x) { return x[0] === colKey; })[0];
-        if (uq && nv) {
-          var me = users_().filter(function (u) { return u._row === r0; })[0], other = null;
-          if (uq[1] === 'login') other = users_().filter(function (u) { return u._row !== r0 && String(u.login).toLowerCase() === nv.toLowerCase(); })[0];
-          else other = DB.findUser(uq[1], uq[1] === 'tg' ? nv.replace(/^@/, '').toLowerCase() : uq[1] === 'phone' ? OnionCore.phoneKey(nv) : nv.toLowerCase());
-          if (other && (!me || other.id !== me.id)) { e.range.setValue(e.oldValue == null ? '' : e.oldValue); ss_().toast(uq[2] + ' (ID ' + other.id + '). Изменение отменено.', 'ONION SHOP', 8); return; }
-          if (uq[1] === 'login' && !/^[a-z0-9_.]{3,20}$/.test(nv.toLowerCase())) { e.range.setValue(e.oldValue == null ? '' : e.oldValue); ss_().toast('Логин: 3-20 символов, латиница, цифры, точка или «_». Изменение отменено.', 'ONION SHOP', 8); return; }
-          if (uq[1] === 'login') e.range.setValue(nv.toLowerCase());
-        }
         // каждое ручное изменение клиента записываем в «Журнал ониксов» (с нулём), чтобы было видно, кто и что менял
+        var colKey = USER_COLS[c0 - 1] && USER_COLS[c0 - 1][0], nv = String(e.value == null ? '' : e.value).trim();
         if (colKey && colKey !== 'balance' && USER_COLS[c0 - 1][2] && !USER_COLS[c0 - 1][2].svc) {
           var mu = users_().filter(function (u) { return u._row === r0; })[0];
           if (mu) DB.log({ at: Date.now(), userId: mu.id, login: mu.login, delta: 0, reason: 'Изменено в таблице: «' + USER_COLS[c0 - 1][1] + '»: ' + String(e.oldValue == null ? '' : e.oldValue).slice(0, 40) + ' → ' + nv.slice(0, 40), balance: mu.balance || 0 });
         }
-      }
-      var any = ['balance', 'levelName', 'levelFix', 'xp', 'name', 'email', 'phone', 'tg', 'login', 'createdAt', 'ordersCount', 'spent', 'birthday', 'frame', 'streak', 'refCount'].some(function (k) { return hit(USER_COLS, k); });
+      }      var any = ['balance', 'levelName', 'levelFix', 'xp', 'ordersCount', 'spent', 'frame', 'streak', 'refCount'].some(function (k) { return hit(USER_COLS, k); });
       if (!any) return;
       var mk = OnionCore.monthKey(Date.now()), L = OnionCore.RULES.levels;
       users_().forEach(function (u) {
@@ -1279,12 +1274,10 @@ function onOpen() {
       .addItem('Найти клиента…', 'findClientUi')
       .addItem('Карточка клиента', 'clientCardUi')
       .addItem('Войти в кабинет клиента (ссылка на 10 минут)…', 'openClientCabinet')
-      .addItem('Задать клиенту новый пароль…', 'resetClientPassword')
-      .addItem('Подтвердить телефон вручную…', 'confirmClientPhone')
+      .addItem('Выдать клиенту личный промокод…', 'giftPromoUi')
       .addItem('Выйти клиента со всех устройств…', 'logoutClient')
       .addSeparator()
       .addItem('Начислить или списать ониксы…', 'adminTokens')
-      .addItem('Удалить клиента…', 'deleteClient')
       .addItem('Пересчитать уровни по заказам', 'recountLevels'))
     .addSubMenu(ui.createMenu('🏷 Промокоды и отзывы')
       .addItem('Создать промокод…', 'createPromoUi')
@@ -1343,13 +1336,41 @@ function clientCardUi() {
   var L = OnionCore.levelOf(u), mine = ordersAll_().filter(function (o) { return normId_(o.userId) === u.id; });
   var act = mine.filter(function (o) { return !isDone_(String(o.status || 'Оформлен')); }).length;
   SpreadsheetApp.getUi().alert('Клиент @' + u.login, [
-    'Имя: ' + (u.name || '-'), 'ID: ' + u.id, 'Телефон: ' + (u.phone || '-') + (u.phoneOk === false ? ' (не подтверждён)' : ' (подтверждён)'),
-    'Почта: ' + (u.email || '-'), 'Telegram: ' + (u.tg || '-') + (u.tgChat ? ', бот подключён' : ', бот не подключён'), 'Город: ' + (u.city || '-'),
+    'Имя: ' + (u.name || '-'), 'ID: ' + u.id, 'Телефон: ' + maskPhone_(u.phone) + (u.phoneOk === false ? ' (не подтверждён)' : ' (подтверждён)'),
+    'Почта: ' + maskEmail_(u.email), 'Telegram: ' + (u.tg || '-') + (u.tgChat ? ', бот подключён' : ', бот не подключён'), 'Город: ' + (u.city || '-'),
     'Регистрация: ' + (u.createdAt ? mskText_(+new Date(u.createdAt)) : '-'), 'Последний вход: ' + (u.lastCheckin || '-'),
     '', 'Ониксы: ' + (u.balance || 0) + ', уровень: ' + L.name + ', XP за месяц: ' + (u.xp || 0),
     'Заказов: ' + mine.length + ' (в работе ' + act + '), потрачено всего: ' + (u.spent || 0) + ' ₽',
     'Промокодов: ' + (u.promos || []).length + ', друзей привёл: ' + (u.refCount || 0) + ', код приглашения: ' + (u.refCode || '-')
   ].join('\n'), SpreadsheetApp.getUi().ButtonSet.OK);
+}
+/* личные данные клиента менеджеру не показываются целиком: телефон и почта скрыты */
+function maskPhone_(ph) { var d = String(ph || '').replace(/\D/g, ''); return d.length >= 4 ? '+' + d.slice(0, 1) + ' *** ***-**-' + d.slice(-2) : (d ? '***' : '-'); }
+function maskEmail_(em) { em = String(em || ''); var i = em.indexOf('@'); return i > 0 ? em.charAt(0) + '***' + em.slice(i) : (em ? '***' : '-'); }
+
+/* Личный промокод клиенту: скидка на любой товар, действует N дней, один раз. Клиент видит его в кабинете, в Telegram приходит сообщение. */
+function giftPromo_(u, pct, days, reason) {
+  var lock = LockService.getScriptLock(), code = '', done = null; lock.waitLock(20000);
+  try {
+    USERS_CACHE_ = null; u = DB.getUser(u.id); if (!u) return null;
+    code = OnionCore.genCode(DB, 'GIFT', 5); var until = Date.now() + days * 86400000;
+    u.promos = u.promos || []; u.promos.push({ code: code, pct: pct, kind: 'gift', from: reason || 'Подарок от магазина', at: Date.now(), until: until });
+    DB.saveUser(u); DB.log({ at: Date.now(), userId: u.id, login: u.login, delta: 0, reason: 'Менеджер выдал личный промокод ' + code + ' на −' + pct + '% на ' + days + ' дн.', balance: u.balance || 0 });
+    done = { u: u, code: code, until: until };
+  } finally { lock.releaseLock(); }
+  var d = new Date(done.until + 3 * 3600000), ds = ('0' + d.getUTCDate()).slice(-2) + '.' + ('0' + (d.getUTCMonth() + 1)).slice(-2);
+  notice_(done.u, '🎁 Подарок от магазина', 'Личный промокод <code>' + done.code + '</code> на −' + pct + '%. Действует до ' + ds + '. Введите его при оформлении заказа.', { text: 'Открыть магазин', url: siteBase_() });
+  return done;
+}
+function giftPromoUi() {
+  var ui = SpreadsheetApp.getUi(), u = pickClient_('Личный промокод клиенту'); if (!u) return;
+  var a = ui.prompt('Скидка', 'Сколько процентов скидки (от 1 до 50)?', ui.ButtonSet.OK_CANCEL); if (a.getSelectedButton() !== ui.Button.OK) return;
+  var pct = parseFloat(String(a.getResponseText()).replace(',', '.')); if (!(pct >= 1 && pct <= 50)) { ui.alert('Скидка должна быть от 1 до 50 процентов.'); return; }
+  var b = ui.prompt('Срок', 'Сколько дней действует промокод (от 1 до 365)? Пусто: 30 дней.', ui.ButtonSet.OK_CANCEL); if (b.getSelectedButton() !== ui.Button.OK) return;
+  var days = parseInt(b.getResponseText(), 10) || 30; if (days < 1 || days > 365) { ui.alert('Срок должен быть от 1 до 365 дней.'); return; }
+  var c = ui.prompt('Подпись', 'За что подарок? Клиент увидит это в кабинете. Пусто: «Подарок от магазина».', ui.ButtonSet.OK_CANCEL); if (c.getSelectedButton() !== ui.Button.OK) return;
+  var r = giftPromo_(u, pct, days, String(c.getResponseText() || '').trim().slice(0, 40)); if (!r) { ui.alert('Клиент не найден.'); return; }
+  ui.alert('Готово', 'Промокод ' + r.code + ' на −' + pct + '% выдан клиенту @' + u.login + ' на ' + days + ' дн. Он уже в его кабинете' + (r.u.tgChat ? ', и в Telegram ушло сообщение.' : '.'), ui.ButtonSet.OK);
 }
 /* Вход в кабинет клиента: одноразовая ссылка на 10 минут. Работает только из этой таблицы, вход записывается в журнал. */
 function openClientCabinet() {
@@ -1363,21 +1384,6 @@ function openClientCabinet() {
     '<p style="color:#64748b;font-size:12px">Ссылка работает один раз и 10 минут. Никому её не пересылайте. Откройте её в отдельном окне инкогнито, чтобы не выйти из своего аккаунта на сайте. После работы нажмите в кабинете «Выйти».</p></div>';
   SpreadsheetApp.getUi().showModalDialog(HtmlService.createHtmlOutput(html).setWidth(420).setHeight(230), 'Вход в кабинет клиента');
 }
-function resetClientPassword() {
-  var u = pickClient_('Новый пароль клиенту'); if (!u) return;
-  var abc = 'abcdefghjkmnpqrstuvwxyz23456789', pass = ''; for (var i = 0; i < 10; i++) pass += abc.charAt(Math.floor(Math.random() * abc.length));
-  var lock = LockService.getScriptLock(); lock.waitLock(20000);
-  try { USERS_CACHE_ = null; u = DB.getUser(u.id); u.salt = DB.token().slice(0, 16); u.hash = OnionCore.hashPass(DB, u.salt, pass); DB.saveUser(u); DB.deleteSessionsOf(u.id);
-    DB.log({ at: Date.now(), userId: u.id, login: u.login, delta: 0, reason: 'Менеджер задал новый пароль', balance: u.balance || 0 }); } finally { lock.releaseLock(); }
-  SpreadsheetApp.getUi().alert('Новый пароль для @' + u.login + ':\n\n' + pass + '\n\nПередайте его клиенту лично (например, в Telegram). Все старые входы клиента сброшены. Клиент может сменить пароль в кабинете.');
-}
-function confirmClientPhone() {
-  var u = pickClient_('Подтвердить телефон вручную'); if (!u) return;
-  var lock = LockService.getScriptLock(); lock.waitLock(20000);
-  try { USERS_CACHE_ = null; u = DB.getUser(u.id); u.phoneOk = true; DB.saveUser(u);
-    DB.log({ at: Date.now(), userId: u.id, login: u.login, delta: 0, reason: 'Менеджер подтвердил телефон вручную', balance: u.balance || 0 }); } finally { lock.releaseLock(); }
-  SpreadsheetApp.getUi().alert('Телефон @' + u.login + ' отмечен как подтверждённый. Приветственные ониксы при этом не начисляются: если нужно, начислите их через «Начислить или списать ониксы».');
-}
 function logoutClient() {
   var u = pickClient_('Выйти клиента со всех устройств'); if (!u) return;
   var lock = LockService.getScriptLock(); lock.waitLock(20000);
@@ -1389,8 +1395,8 @@ function logoutClient() {
 function showGuide() {
   var s = function (t, items) { return '<h3>' + t + '</h3><ul>' + items.map(function (x) { return '<li>' + x + '</li>'; }).join('') + '</ul>'; };
   var html = '<div style="font:13.5px/1.55 Arial;color:#1b2333;padding:0 4px"><style>h3{color:#0b1b4d;font-size:15px;margin:16px 0 6px}ul{margin:0;padding-left:18px}li{margin:3px 0}b{color:#0b1b4d}</style>' +
-    s('Листы', ['<b>Сводка</b>: всё главное о магазине, считается само.', '<b>Заказы</b>: каждый заказ с сайта. Меняйте «Статус» из списка, клиент сразу получит сообщение в Telegram. Ставьте галочку «Оплачен».', '<b>Клиенты</b>: аккаунты. Колонки с синим заголовком можно править: имя, логин, телефон, почта, Telegram, ониксы, уровень, XP, дата регистрации, число заказов и другие. Логин, телефон, почта и Telegram не могут совпадать с другим клиентом: повтор отменится сам. Каждое изменение записывается в «Журнал ониксов».', '<b>Промокоды</b>: промокоды магазина. Новая строка = новый промокод.', '<b>Отзывы</b>: «скрыт» убирает отзыв с сайта, «Фото покупателя» управляет фото.', '<b>Лист ожидания</b>: кто ждёт появления товара.', '<b>Журнал ониксов</b>: все начисления, списания и ручные изменения.', '<b>Подозрительное</b>: сигналы о возможной накрутке.', '<b>Аналитика</b>: появляется после «Отчёты → Аналитика продаж».']) +
-    s('Клиенты (меню «👤 Клиенты»)', ['Встаньте на строку клиента в листе «Клиенты» или введите логин, ID, @telegram или телефон.', '<b>Карточка клиента</b>: всё о клиенте одним окном.', '<b>Войти в кабинет клиента</b>: одноразовая ссылка на 10 минут, открывает сайт уже внутри его кабинета. Открывайте в окне инкогнито и потом нажмите «Выйти». Вход пишется в журнал.', '<b>Новый пароль</b>: таблица придумает пароль, покажет его вам и сбросит старые входы.', '<b>Подтвердить телефон</b>, <b>выйти со всех устройств</b>, <b>начислить или списать ониксы</b>, <b>удалить клиента</b>.']) +
+    s('Листы', ['<b>Сводка</b>: всё главное о магазине, считается само.', '<b>Заказы</b>: каждый заказ с сайта. Меняйте «Статус» из списка, клиент сразу получит сообщение в Telegram. Ставьте галочку «Оплачен».', '<b>Клиенты</b>: аккаунты. Колонки с синим заголовком можно править: ониксы, уровень, XP, число заказов, серию входов и другие рабочие данные. Личные данные клиента (имя, логин, телефон, почта, Telegram, дата регистрации, день рождения) менять нельзя. Каждое изменение записывается в «Журнал ониксов».', '<b>Промокоды</b>: промокоды магазина. Новая строка = новый промокод.', '<b>Отзывы</b>: «скрыт» убирает отзыв с сайта, «Фото покупателя» управляет фото.', '<b>Лист ожидания</b>: кто ждёт появления товара.', '<b>Журнал ониксов</b>: все начисления, списания и ручные изменения.', '<b>Подозрительное</b>: сигналы о возможной накрутке.', '<b>Аналитика</b>: появляется после «Отчёты → Аналитика продаж».']) +
+    s('Клиенты (меню «👤 Клиенты»)', ['Встаньте на строку клиента в листе «Клиенты» или введите логин, ID, @telegram или телефон.', '<b>Карточка клиента</b>: всё о клиенте одним окном.', '<b>Войти в кабинет клиента</b>: одноразовая ссылка на 10 минут, открывает сайт уже внутри его кабинета. Открывайте в окне инкогнито и потом нажмите «Выйти». Вход пишется в журнал.', '<b>Выдать личный промокод</b>: выберите клиента, скидку и срок, промокод появится в его кабинете и придёт в Telegram.', '<b>Выйти со всех устройств</b> и <b>начислить или списать ониксы</b>.', 'Личные данные клиента (имя, логин, телефон, почта, Telegram, дата регистрации и день рождения) вы не меняете и не удаляете: правки в этих колонках отменяются, в карточке телефон и почта скрыты. Пароли вам недоступны.']) +
     s('Заказы', ['«Найти заказ по номеру» переносит к строке заказа.', 'Фильтры: только активные, неоплаченные, все.', 'Новый заказ сразу приходит менеджеру в Telegram-бот с кнопками статусов.']) +
     s('Telegram-бот', ['Менеджер (@OnionShop_Support) управляет всем из бота: заказы, клиенты, ониксы, промокоды, отзывы, рассылки.', 'Бот проверяет новые сообщения раз в минуту, а во время разговора отвечает за 1-5 секунд.', '«Проверить связь с ботом» показывает, всё ли в порядке.']) +
     s('Очистка данных', ['Меню «⚙️ Настройка и обслуживание → 🗑 Очистка данных». Каждый раздел отдельно или всё сразу.', 'Перед очисткой нужно ввести слово УДАЛИТЬ. Отменить очистку можно только через «Файл → История версий».']) +
@@ -1768,41 +1774,6 @@ function tgNudge_() {
 }
 
 /* Удалить одного клиента: встаньте на его строку в листе «Клиенты» и выберите пункт меню (или введите ID / логин) */
-function deleteClient() {
-  var ui = SpreadsheetApp.getUi(), key = '';
-  var sh = ss_().getActiveSheet();
-  if (sh.getName() === SHEET.users) {
-    var r = sh.getActiveCell().getRow();
-    if (r > 1) key = String(sh.getRange(r, 1).getValue()).trim();
-  }
-  if (!key) {
-    var q = ui.prompt('Удалить клиента', 'Введите ID клиента (колонка «ID», например 1005) или его логин.\nСовет: можно сначала встать на строку клиента в листе «Клиенты».', ui.ButtonSet.OK_CANCEL);
-    if (q.getSelectedButton() !== ui.Button.OK) return;
-    key = q.getResponseText().trim();
-  }
-  USERS_CACHE_ = null;
-  var u = DB.getUser(normId_(key)) || DB.findUser('login', key.replace(/^@/, '').toLowerCase());
-  if (!u) { ui.alert('Клиент «' + key + '» не найден.'); return; }
-  var ords = orderRows_().map(function (r, i) { return { row: i + 2, uid: normId_(r[ci_(ORDER_COLS, 'userId')]), no: r[ci_(ORDER_COLS, 'no')] }; }).filter(function (o) { return o.uid === u.id; });
-  var a = ui.alert('Удалить клиента?', 'ID ' + u.id + ' · @' + u.login + ' · ' + (u.name || '') + '\nОниксов на балансе: ' + (u.balance || 0) + '\nЗаказов: ' + ords.length + '\n\nАккаунт и вход будут удалены без возможности восстановления. Удалить?', ui.ButtonSet.YES_NO);
-  if (a !== ui.Button.YES) { ui.alert('Отменено. Ничего не удалено.'); return; }
-  var delOrders = false;
-  if (ords.length) {
-    var b = ui.alert('Что сделать с заказами клиента (' + ords.length + ')?', 'ДА: оставить заказы в таблице (это история продаж, рекомендуется).\nНЕТ: удалить и заказы клиента.', ui.ButtonSet.YES_NO);
-    delOrders = b === ui.Button.NO;
-  }
-  var lock = LockService.getScriptLock(); lock.waitLock(25000);
-  try {
-    var wr = DB.waitRows_().filter(function (w) { return w.userId === u.id; }).map(function (w) { return w._row; }).sort(function (x, y) { return y - x; });
-    var ws = ss_().getSheetByName(SHEET.waits); wr.forEach(function (rw) { ws.deleteRow(rw); });
-    DB.deleteSessionsOf(u.id);
-    DB.log({ at: Date.now(), userId: u.id, login: u.login, delta: -(u.balance || 0), reason: 'Клиент удалён менеджером', balance: 0 });
-    DB.deleteUser(u);
-    if (delOrders) { var os = ss_().getSheetByName(SHEET.orders); ords.sort(function (x, y) { return y.row - x.row; }).forEach(function (o) { os.deleteRow(o.row); }); }
-    USERS_CACHE_ = null;
-  } finally { lock.releaseLock(); }
-  ui.alert('Клиент @' + u.login + ' удалён' + (delOrders ? ' вместе с заказами.' : '. Заказы остались в таблице.'));
-}
 
 function linkChat() {
   var ui = SpreadsheetApp.getUi(), token = props_().getProperty('BOT_TOKEN');

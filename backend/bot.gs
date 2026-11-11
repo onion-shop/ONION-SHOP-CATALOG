@@ -226,7 +226,7 @@ function adminHelp_(chat) {
   tgSend_(chat, '<b>Как работать с ботом</b>\n\n' +
     '📦 <b>Заказы.</b> Новый заказ приходит сюда с кнопками статусов. Список: «Заказы», есть фильтры. Номер заказа (OS-26-00012 или 26-00012) сразу открывает карточку. Смена статуса тут же уходит клиенту.\n\n' +
     '💬 <b>Вопросы покупателей</b> приходят сюда. Ответить: свайп по сообщению и текст (или фото), либо кнопка «Ответить».\n\n' +
-    '👤 <b>Клиенты:</b> отправьте логин, ID, @telegram или телефон. В карточке: ониксы, написать, удалить.\n' +
+    '👤 <b>Клиенты:</b> отправьте логин, ID, @telegram или телефон. В карточке: ониксы, написать, личный промокод (или /gift КЛИЕНТ 10 30: скидка и дни).\n' +
     '🪙 /tokens логин +50 причина: начислить (с минусом списать), клиенту придёт сообщение.\n' +
     '🏷 <b>Промокоды:</b> список, включить или выключить, новый: /promo КОД 10 (скидка 10%).\n' +
     '⭐ <b>Отзывы с фото:</b> фото появляются на сайте после вашего «Показать».\n' +
@@ -310,11 +310,11 @@ function findClient_(q) {
 function clientCard_(chat, u, msgId) {
   var L = OnionCore.levelOf(u), mine = orderRows_().filter(function (r) { return normId_(r[ci_(ORDER_COLS, 'userId')]) === u.id; });
   var last = mine.slice(-3).reverse().map(function (r) { return String(r[ci_(ORDER_COLS, 'no')]).trim(); });
-  var text = '👤 <b>@' + hesc_(u.login) + '</b>, ID ' + hesc_(u.id) + '\n' + hesc_(u.name || '') + (u.phone ? ', ' + hesc_(u.phone) + (u.phoneOk === false ? ' (не подтверждён)' : ' ✅') : '') + (u.tg ? ', ' + hesc_(u.tg) : '') + (u.city ? '\n📍 ' + hesc_(u.city) : '') +
+  var text = '👤 <b>@' + hesc_(u.login) + '</b>, ID ' + hesc_(u.id) + '\n' + hesc_(u.name || '') + (u.phone ? ', ' + hesc_(maskPhone_(u.phone)) + (u.phoneOk === false ? ' (не подтверждён)' : ' ✅') : '') + (u.tg ? ', ' + hesc_(u.tg) : '') + (u.city ? '\n📍 ' + hesc_(u.city) : '') +
     '\nУровень: ' + hesc_(L.name) + ', 🪙 ' + num_(u.balance || 0) + ' ониксов, заказов: ' + mine.length + '\nБот: ' + (u.tgChat ? 'подключён ' + hesc_(u.tgName || '') : 'не подключён');
   var kb = [[{ text: '+50', callback_data: 't|' + u.id + '|50' }, { text: '+100', callback_data: 't|' + u.id + '|100' }, { text: '−50', callback_data: 't|' + u.id + '|-50' }]];
   last.forEach(function (no) { kb.push([{ text: '🧾 ' + no, callback_data: 'o|' + no }]); });
-  var r2 = []; if (u.tgChat) r2.push({ text: '✉️ Написать', callback_data: 'rp|' + u.tgChat }); r2.push({ text: '🗑 Удалить', callback_data: 'd|' + u.id }); kb.push(r2);
+  var r2 = []; if (u.tgChat) r2.push({ text: '✉️ Написать', callback_data: 'rp|' + u.tgChat }); kb.push(r2); kb.push([{ text: '🎁 Промокод −5%', callback_data: 'gp|' + u.id + '|5' }, { text: '🎁 −10%', callback_data: 'gp|' + u.id + '|10' }, { text: '🎁 −15%', callback_data: 'gp|' + u.id + '|15' }]);
   if (msgId) tgEdit_(chat, msgId, text, kb); else tgSend_(chat, text, kb);
 }
 function adjustClient_(u, d, reason) {
@@ -325,13 +325,6 @@ function adjustClient_(u, d, reason) {
   var why = reason && reason !== 'Менеджер (Telegram)' ? ' ' + hesc_(reason) + '.' : '';
   notice_(u, d > 0 ? 'Вам начислено ' + num_(d) + ' ' + plural_(d, 'оникс', 'оникса', 'ониксов') + ' 🪙' : 'Списано ' + num_(-d) + ' ' + plural_(-d, 'оникс', 'оникса', 'ониксов'), 'Баланс сейчас: ' + num_(u.balance) + '.' + why, { text: 'Мои бонусы', callback_data: 'bn' });
   return u;
-}
-function removeClient_(u) {
-  var wr = DB.waitRows_().filter(function (w) { return w.userId === u.id; }).map(function (w) { return w._row; }).sort(function (x, y) { return y - x; });
-  var ws = ss_().getSheetByName(SHEET.waits); if (ws) wr.forEach(function (rw) { ws.deleteRow(rw); });
-  DB.deleteSessionsOf(u.id);
-  DB.log({ at: Date.now(), userId: u.id, login: u.login, delta: -(u.balance || 0), reason: 'Клиент удалён менеджером (Telegram)', balance: 0 });
-  DB.deleteUser(u); USERS_CACHE_ = null;
 }
 function broadcastTargets_(mode) {
   var act = {};
@@ -448,13 +441,9 @@ function adminCallback_(cq) {
     var dd = parseInt(a[2], 10) || 0; var nu = adjustClient_(tu, dd);
     tgAnswer_(cq.id, (dd > 0 ? '+' : '') + dd + ', баланс ' + (nu ? nu.balance : '?')); if (nu) clientCard_(chat, nu, mid); return;
   }
-  if (a[0] === 'd') {
-    var du = DB.getUser(a[1]); if (!du) { tgAnswer_(cq.id, 'Клиент не найден'); return; }
-    tgAnswer_(cq.id, ''); tgEdit_(chat, mid, '⚠️ <b>Удалить @' + hesc_(du.login) + '?</b>\nОниксов: ' + (du.balance || 0) + '. Аккаунт и вход исчезнут, заказы останутся в таблице как история.', [[{ text: 'Да, удалить', callback_data: 'dy|' + du.id }, { text: 'Отмена', callback_data: 'c|' + du.id }]]); return;
-  }
-  if (a[0] === 'dy') {
-    var yu = DB.getUser(a[1]); if (!yu) { tgAnswer_(cq.id, 'Уже удалён'); return; }
-    removeClient_(yu); tgAnswer_(cq.id, 'Удалён'); tgEdit_(chat, mid, '🗑 Клиент @' + hesc_(yu.login) + ' удалён. Заказы сохранены в таблице.', []); return;
+  if (a[0] === 'gp') {
+    var gu = DB.getUser(a[1]); if (!gu) { tgAnswer_(cq.id, 'Клиент не найден'); return; }
+    var gr = giftPromo_(gu, parseFloat(a[2]) || 5, 30, ''); tgAnswer_(cq.id, gr ? 'Выдан ' + gr.code : 'Не получилось'); if (gr) tgSend_(chat, '🎁 Промокод <code>' + gr.code + '</code> на −' + (parseFloat(a[2]) || 5) + '% выдан @' + hesc_(gu.login) + ' на 30 дней.'); return;
   }
   if (a[0] === 'o') { tgAnswer_(cq.id, ''); orderCard_(chat, a[1], /^🧾|^📦/.test(String(cq.message.text || '')) ? mid : null); return; }
   // p|no: оплачен, s|no|i: статус
@@ -509,7 +498,7 @@ function adminText_(m, text) {
     var tu = findClient_(mm[1]); if (!tu) { tgSend_(chat, 'Клиент не найден.'); return; }
     var nu = adjustClient_(tu, parseInt(mm[2], 10), mm[3] || 'Менеджер (Telegram)'); tgSend_(chat, '✅ @' + hesc_(nu.login) + ': баланс ' + nu.balance + ' ониксов'); return;
   }
-  if ((mm = text.match(/^\/delete\s+(\S+)/i))) { var du = findClient_(mm[1]); if (!du) { tgSend_(chat, 'Клиент не найден.'); return; } tgSend_(chat, '⚠️ <b>Удалить @' + hesc_(du.login) + '?</b> Заказы останутся в таблице.', [[{ text: 'Да, удалить', callback_data: 'dy|' + du.id }, { text: 'Отмена', callback_data: 'c|' + du.id }]]); return; }
+  if ((mm = text.match(/^\/gift\s+(\S+)\s+(\d+(?:[.,]\d+)?)(?:\s+(\d+))?\s*$/i))) { var gu2 = findClient_(mm[1]); if (!gu2) { tgSend_(chat, 'Клиент не найден.'); return; } var gp2 = parseFloat(mm[2].replace(',', '.')); if (!(gp2 >= 1 && gp2 <= 50)) { tgSend_(chat, 'Скидка от 1 до 50 процентов.'); return; } var gr2 = giftPromo_(gu2, gp2, Math.min(365, parseInt(mm[3], 10) || 30), ''); tgSend_(chat, gr2 ? '🎁 Промокод <code>' + gr2.code + '</code> на −' + gp2 + '% выдан @' + hesc_(gu2.login) + '.' : 'Не получилось.'); return; }
   if ((mm = text.match(/^\/broadcast\s+([\s\S]+)/i))) { askBroadcast_(chat, mm[1].trim()); return; }
   if (aw === 'broadcast') { p.deleteProperty('adminAwait'); askBroadcast_(chat, text); return; }
   if (/^(OS-)?\d{2}-\d{3,}$/i.test(text)) { orderCard_(chat, /^OS-/i.test(text) ? text.toUpperCase() : 'OS-' + text, null); return; }
