@@ -1126,13 +1126,6 @@ details.fold[open]>summary .i{transform:rotate(180deg)}
 .bn-chips{position:absolute;left:12px;top:12px;right:12px;height:34px;pointer-events:none}
 .bn-chip{position:absolute;left:0;top:0;max-width:100%;padding:7px 13px;border-radius:999px;background:rgba(255,255,255,.94);color:#0b1d3a;font-weight:800;font-size:13px;box-shadow:0 6px 16px rgba(11,29,58,.25);opacity:0;transform:translateY(-8px);transition:opacity .5s,transform .5s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .bn-chip.on{opacity:1;transform:none}
-.float-back{position:fixed;left:12px;top:calc(var(--hdr,60px) + env(safe-area-inset-top,0px) + 10px);z-index:55;display:inline-flex;align-items:center;gap:6px;height:40px;padding:0 16px 0 10px;border:0;border-radius:999px;background:color-mix(in srgb,var(--card) 92%,transparent);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);color:var(--ink);font-weight:700;font-size:14.5px;box-shadow:0 6px 20px rgba(11,29,58,.2),inset 0 0 0 1px var(--line);cursor:pointer;opacity:0;transform:translateY(-6px);pointer-events:none;transition:opacity .25s,transform .25s}
-.float-back.show{opacity:1;transform:none;pointer-events:auto}
-.float-back[hidden]{display:none}
-.float-back .i{width:18px;height:18px;transform:rotate(180deg)}
-@media (min-width:980px){ .float-back{left:max(16px,calc((100vw - 1240px)/2 - 8px))} }
-.has-back .view{padding-top:52px}
-.has-back #v-product{padding-top:0}
 
 /* ===== v23: плашки, анимации ===== */
 .bn-chip{background:linear-gradient(135deg,#1a86c0,#0b4f9a);color:#fff;box-shadow:0 8px 20px rgba(11,79,154,.45)}
@@ -1195,7 +1188,6 @@ details.fold[open]>summary .i{transform:rotate(180deg)}
   .hdr-in{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"b a" "s s";padding-block:8px 10px}
   .hdr-search{max-width:none;justify-self:stretch}
 }
-.float-back{top:calc(var(--hdr) + env(safe-area-inset-top,0px) + 8px)}
 
 /* карточка: плоская, крупное фото, цена, кнопка */
 .grid{gap:10px 8px}
@@ -1283,10 +1275,6 @@ details.fold[open]>summary .i{transform:rotate(180deg)}
 .cats-price button[data-sale]{color:var(--red);background:#fde8ea;box-shadow:inset 0 0 0 1px #f6b9bf;font-weight:800}
 .cats-price button[data-sale][aria-pressed="true"]{background:var(--red);color:#fff;box-shadow:none}
 .cats-price button[aria-pressed="true"]:not([data-sale]){background:var(--navy);color:#fff}
-.qchip{display:inline-flex;align-items:center;gap:8px;margin-top:12px;padding:6px 8px 6px 12px;border-radius:999px;background:var(--accent-soft);color:var(--accent-ink);font-size:14px}
-.qchip .i{width:16px;height:16px}
-.qchip button{border:0;background:var(--card);width:24px;height:24px;border-radius:50%;display:grid;place-items:center;color:var(--ink);cursor:pointer;padding:0}
-.qchip button .i{width:12px;height:12px}
 .ctile-sale .ctile-all{background:linear-gradient(140deg,#ff5a67,#e11d2e)}
 .ctile-sale .ctile-n{background:var(--red)}
 .ctile-sale[aria-pressed="true"]{box-shadow:inset 0 0 0 2.5px var(--red);background:#fde8ea}
@@ -1310,10 +1298,6 @@ details.fold[open]>summary .i{transform:rotate(180deg)}
 .back-btn{height:30px;padding:0 10px 0 6px;border:0;background:transparent;box-shadow:none;font-size:13px;font-weight:600;color:var(--ink-3)}
 .back-btn .i{width:15px;height:15px}
 .back-btn:hover{color:var(--ink);background:var(--tile)}
-.float-back{font-size:0!important;width:34px;height:34px;padding:0!important;justify-content:center;gap:0!important;opacity:.0;box-shadow:0 1px 6px rgba(8,30,70,.18)!important;background:color-mix(in srgb,var(--card) 82%,transparent)!important;color:var(--ink-2)!important}
-.float-back.show{opacity:.72}
-.float-back.show:hover{opacity:1}
-.float-back .i{width:17px;height:17px}
 /* витрина-слайдер и рекомендации */
 .hero{position:relative;margin:2px 0 14px;border-radius:20px;overflow:hidden;background:#0b1d3a;aspect-ratio:4/4.6;box-shadow:var(--shadow-lg)}
 .hero-sl{position:absolute;inset:0}
@@ -1418,9 +1402,6 @@ html.dr-open{overflow:hidden}
 .back-btn{height:36px;padding:0 14px 0 9px;border:1px solid var(--line-2);background:var(--card);box-shadow:0 1px 4px rgba(8,30,70,.12);font-size:14px;font-weight:700;color:var(--ink)}
 .back-btn .i{width:17px;height:17px}
 .back-btn:hover{background:var(--tile);color:var(--ink)}
-.float-back{font-size:14px!important;width:auto;height:38px;padding:0 15px 0 10px!important;gap:6px!important;opacity:0;background:var(--card)!important;color:var(--ink)!important;border:1px solid var(--line-2);box-shadow:0 4px 14px rgba(8,30,70,.25)!important;font-weight:700}
-.float-back.show{opacity:1}
-.float-back .i{width:18px;height:18px}
 .ct-i img{padding:5px}.ctile-i img{padding:3px}
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .cats-price button[data-sale]:not([aria-pressed="true"]){background:rgba(225,29,46,.18);color:#ff9aa3;box-shadow:inset 0 0 0 1px rgba(225,29,46,.4)}}
 :root[data-theme="dark"] .cats-price button[data-sale]:not([aria-pressed="true"]){background:rgba(225,29,46,.18);color:#ff9aa3;box-shadow:inset 0 0 0 1px rgba(225,29,46,.4)}
@@ -1488,7 +1469,7 @@ html.dr-open{overflow:hidden}
 .pcard .qcart{width:50px;height:50px;border-radius:15px;top:calc(133.333cqw - 60px);right:8px;box-shadow:0 6px 16px rgba(8,40,90,.32)}
 .pcard .qcart .i{width:27px;height:27px}
 .badge-stock,.badge-pre,.badge-out,.badge-sold{display:inline-flex;align-items:center;gap:7px;height:26px;padding:0 11px 0 9px;border-radius:9px;background:rgba(9,22,48,.84);color:#fff;font-size:12.5px;font-weight:700;letter-spacing:.005em;box-shadow:0 2px 8px rgba(0,0,0,.28),inset 0 0 0 1px rgba(255,255,255,.14);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
-.badge-stock::before,.badge-pre::before,.badge-out::before,.badge-sold::before{content:"";width:9px;height:9px;border-radius:50%;flex:none;background:#22c55e;box-shadow:0 0 0 2px rgba(34,197,94,.28)}
+.badge-stock::before,.badge-pre::before,.badge-out::before,.badge-sold::before{content:"";width:8px;height:8px;border-radius:50%;flex:none;background:#2ee66b;box-shadow:0 0 0 2px rgba(46,230,107,.25),0 0 8px 1px rgba(46,230,107,.75)}
 .badge-pre::before{background:#ff9d1c;box-shadow:0 0 0 2px rgba(255,157,28,.3)}
 .badge-out::before{background:#ffd23f;box-shadow:0 0 0 2px rgba(255,210,63,.3)}
 .badge-sold::before{background:#ff4d5e;box-shadow:0 0 0 2px rgba(255,77,94,.3)}
@@ -1818,7 +1799,6 @@ html.dr-open{overflow:hidden}
 .pcs{display:grid;gap:10px}
 .pc{position:relative;display:flex;align-items:stretch;border-radius:18px;background:var(--tile);box-shadow:inset 0 0 0 1px var(--line);overflow:hidden}
 .pc-l{flex:none;display:grid;place-items:center;width:84px;background:linear-gradient(150deg,#43c9e3,#1a86c0);color:#fff;font-family:var(--f-d);font-size:22px;font-weight:800;position:relative}
-.pc-l::after{content:"";position:absolute;right:-7px;top:0;bottom:0;width:14px;background:radial-gradient(circle at 7px 50%,transparent 0,transparent 0) ;}
 .pc-l::before{content:"";position:absolute;right:-1px;top:0;bottom:0;width:2px;background:repeating-linear-gradient(180deg,var(--tile) 0 5px,transparent 5px 10px);z-index:1}
 .pc-r{flex:1;min-width:0;display:grid;gap:3px;align-content:center;padding:12px 8px 12px 14px}
 .pc-r code{font-family:var(--f-d);font-weight:800;font-size:15px;letter-spacing:.06em;color:var(--ink);overflow-wrap:anywhere}
@@ -1835,7 +1815,7 @@ html.dr-open{overflow:hidden}
 .tabbar a .ic{height:34px}
 /* бейдж в узких карточках */
 .hscroll .pcard .tags .badge,.pcard .tags .badge{gap:5px;height:24px;padding:0 8px 0 7px;font-size:11.5px}
-.pcard .tags .badge::before{width:7px;height:7px}
+
 .pcard .tags{right:46px}
 /* рулетка: без фона, светлая */
 .rl-scene{color:var(--ink);background:none;box-shadow:none;border-radius:0;overflow:visible;padding:0 0 12px;animation:none}
@@ -1900,9 +1880,9 @@ html.dr-open{overflow:hidden}
 /* бейдж статуса: всегда помещается целиком */
 .pcard .tags{right:auto;max-width:calc(100% - 52px)}
 .pcard .tags .badge{max-width:none;overflow:visible;text-overflow:clip;white-space:nowrap}
-@container (max-width:170px){.pcard .tags .badge{font-size:10.5px;padding:0 7px 0 6px;gap:4px;height:22px}.pcard .tags .badge::before{width:6px;height:6px}}
+@container (max-width:170px){.pcard .tags .badge{font-size:10.5px;padding:0 7px 0 6px;gap:4px;height:22px}}
 .pcard .tags .badge{height:auto;min-height:24px;white-space:normal;line-height:1.15;padding-top:3px;padding-bottom:3px;text-wrap:balance}
-@container (max-width:200px){.pcard .tags .badge{font-size:11px;padding-left:7px;padding-right:8px;gap:5px;min-height:22px}.pcard .tags .badge::before{width:6px;height:6px}.pcard .tags{max-width:calc(100% - 46px)}}
+@container (max-width:200px){.pcard .tags .badge{font-size:11px;padding-left:7px;padding-right:8px;gap:5px;min-height:22px}.pcard .tags{max-width:calc(100% - 46px)}}
 .pcard .tags{max-width:calc(100% - 56px)}
 @container (max-width:200px){.pcard .fav{width:30px;height:30px;right:6px;top:6px}.pcard .fav .i{width:17px;height:17px}.pcard .tags{left:6px;top:6px;max-width:calc(100% - 48px)}}
 .ref-note{margin:8px 0 2px;color:var(--ink-3)}
@@ -2148,9 +2128,7 @@ html.dr-open{overflow:hidden}
 .hw-a2{animation:hw-arm var(--st,.7s) ease-in-out infinite alternate}
 @keyframes hw-sw{from{transform:rotate(-26deg)}to{transform:rotate(26deg)}}
 @keyframes hw-arm{from{transform:rotate(-20deg)}to{transform:rotate(20deg)}}
-.hw-carry .hw-a{animation:none;transform:rotate(-78deg)}
 .hw-stand .hw-l,.hw-stand .hw-a{animation:none;transform:none}
-.hw-stand.hw-carry .hw-a{transform:rotate(-78deg)}
 .hw-wave .hw-a2{animation:hw-wave .45s ease-in-out infinite alternate;transform:rotate(-140deg)}
 @keyframes hw-wave{from{transform:rotate(-170deg)}to{transform:rotate(-125deg)}}
 .fk-beacon{animation:fk-bl .8s steps(2) infinite}
@@ -2271,7 +2249,7 @@ html.dr-open{overflow:hidden}
 /* v49: статус на карточке всегда в одну строку, как «В наличии» и «Предзаказ» */
 .pcard .tags .badge{white-space:nowrap;text-wrap:nowrap;height:24px;min-height:0;padding-top:0;padding-bottom:0;line-height:1}
 @container (max-width:200px){.pcard .tags .badge{height:22px;font-size:10.5px;letter-spacing:-.01em;padding:0 7px 0 6px;gap:4px}.pcard .tags{max-width:calc(100% - 44px)}}
-@container (max-width:168px){.pcard .tags .badge{font-size:10px;letter-spacing:-.02em;padding:0 6px 0 5px;gap:3px}.pcard .tags .badge::before{width:5px;height:5px;box-shadow:none}.pcard .tags{max-width:calc(100% - 38px)}.pcard .fav{width:28px;height:28px;right:5px;top:5px}.pcard .fav .i{width:16px;height:16px}}
+@container (max-width:168px){.pcard .tags .badge{font-size:10px;letter-spacing:-.02em;padding:0 6px 0 5px;gap:3px}.pcard .tags{max-width:calc(100% - 38px)}.pcard .fav{width:28px;height:28px;right:5px;top:5px}.pcard .fav .i{width:16px;height:16px}}
 /* v49: раздел «Игры» */
 .gm-grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
 .gm-big{padding:0;overflow:hidden;gap:0;transition:transform .2s var(--ease),box-shadow .2s}
@@ -2390,25 +2368,6 @@ html,body{touch-action:manipulation;-webkit-text-size-adjust:100%;text-size-adju
 /* три компактных баннера на главной */
 .bcs{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;margin:0 0 16px;padding:2px 0 6px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
 .bcs::-webkit-scrollbar{display:none}
-.bc{position:relative;flex:0 0 82%;scroll-snap-align:start;display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:132px;padding:16px 0 16px 18px;border-radius:22px;overflow:hidden;color:#fff;text-decoration:none;box-shadow:0 12px 26px -14px rgba(11,29,58,.55)}
-.bc::after{content:"";position:absolute;right:-30px;top:-40px;width:150px;height:150px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.22),transparent 68%);pointer-events:none}
-.bc{border:1px solid rgba(255,255,255,.14)}
-.bc-1{background:radial-gradient(120% 100% at 100% 0%,rgba(67,201,227,.55),rgba(67,201,227,0) 60%),linear-gradient(150deg,#1a86c0,#0b2e63)}
-.bc-2{background:radial-gradient(120% 100% at 0% 100%,rgba(143,230,245,.42),rgba(143,230,245,0) 58%),linear-gradient(150deg,#0e9bb8,#0b4a7a)}
-.bc-3{background:radial-gradient(120% 100% at 100% 100%,rgba(67,201,227,.38),rgba(67,201,227,0) 60%),linear-gradient(150deg,#1d4f9c,#0b1d3a)}
-.bc-go{background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.28);backdrop-filter:blur(4px)}
-.bc-t{position:relative;z-index:1;display:grid;gap:3px;align-content:center;min-width:0;flex:1 1 52%}
-.bc-t small{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;opacity:.82}
-.bc-t b{font:800 1.12rem/1.15 var(--f-d)}
-.bc-t i{font-style:normal;font-size:13px;opacity:.88}
-.bc-go{display:inline-flex;align-items:center;gap:6px;margin-top:8px;padding:7px 12px;border-radius:999px;background:rgba(255,255,255,.2);font-weight:700;font-size:13px;width:max-content}
-.bc-go .i{width:15px;height:15px}
-.bc-ph{position:relative;z-index:1;flex:0 0 44%;display:flex;align-items:center;padding-right:14px}
-.bc-ph span{flex:0 0 58%;aspect-ratio:3/4;border-radius:14px;overflow:hidden;border:2px solid rgba(255,255,255,.9);box-shadow:0 8px 18px rgba(0,0,0,.28);background:#fff}
-.bc-ph span img{width:100%;height:100%;object-fit:cover;display:block}
-.bc-ph span:nth-child(1){transform:rotate(-6deg);z-index:1}
-.bc-ph span:nth-child(2){transform:rotate(3deg) translateY(-6px);margin-left:-26%;z-index:2}
-.bc-ph span:nth-child(3){transform:rotate(9deg) translateY(4px);margin-left:-26%;z-index:1}
 @media (min-width:760px){.bcs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));overflow:visible}.bc{flex:none}}
 
 /* окно рамок: без лагов и обрезания. В сетке рамки без движения (стоят картинкой), движется только большое превью; фильтр на заблокированных убран, он перерисовывал анимацию на каждом кадре */
@@ -2640,16 +2599,6 @@ html,body{touch-action:pan-x pan-y}
 .cats-price .pr-chips::after{content:"";flex:none;width:1px}
 /* подсказки «0» и «любая» в полях цены убраны: подписи «От» и «До» и так понятны */
 .cats-price .pr-in input::placeholder{color:transparent;opacity:0}
-/* баннеры на главной: товары видны целиком и крупнее */
-.bc{min-height:176px}
-.bc-t{flex:1 1 42%}
-.bc-ph{flex:0 0 56%;padding-right:12px;padding-left:10px;justify-content:center}
-.bc-t b{font-size:1.02rem}
-.bc-ph span{flex:0 0 40%;border-radius:14px;background:#fff}
-.bc-ph span img{object-fit:contain;padding:2px}
-.bc-ph span:nth-child(1){transform:rotate(-6deg) translateY(6px);margin-left:0;z-index:1}
-.bc-ph span:nth-child(2){transform:scale(1.18) rotate(2deg) translateY(-4px);margin-left:-10%;z-index:3}
-.bc-ph span:nth-child(3){transform:rotate(7deg) translateY(8px);margin-left:-10%;z-index:2}
 /* рамки: плитки не лезут на подписи соседних, корона и свечение не перекрывают текст */
 .fr-grid{row-gap:20px;padding-top:6px}
 .fr-it{padding:30px 2px 10px}
@@ -2661,21 +2610,6 @@ html,body{touch-action:pan-x pan-y}
 /* плитки категорий: выделенная «Все» не прилипает к краю экрана */
 .cat-rail{padding-left:16px;padding-right:16px;scroll-padding-inline:16px}
 /* ==== обновление 83 ==== */
-/* баннеры на главной: сверху текст и кнопка, снизу три крупные фотографии во всю ширину карточки */
-.bc{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto auto auto 1fr;column-gap:10px;row-gap:3px;align-items:start;min-height:0;padding:16px 14px 14px 16px;flex:0 0 84%}
-.bc-t{display:contents}
-.bc-t small{grid-column:1;grid-row:1}
-.bc-t b{grid-column:1;grid-row:2;font-size:1.1rem}
-.bc-t i{grid-column:1;grid-row:3}
-.bc-t .bc-go{grid-column:2;grid-row:1 / span 3;align-self:start;margin:0;padding:7px 12px}
-.bc-ph{grid-column:1 / -1;grid-row:4;position:relative;z-index:1;display:flex;justify-content:center;align-items:flex-end;padding:0;margin-top:12px;flex:none;width:100%}
-.bc-ph span{flex:0 0 37%;aspect-ratio:4/5;border-radius:16px;border:2.5px solid #fff;background:#fff;overflow:hidden;box-shadow:0 10px 22px rgba(0,0,0,.3)}
-.bc-ph span img{width:100%;height:100%;object-fit:cover;object-position:center;padding:0;display:block}
-.bc-ph span:nth-child(1){transform:rotate(-5deg) translateY(6px);margin-left:0;z-index:1}
-.bc-ph span:nth-child(2){transform:scale(1.1) translateY(-6px);margin-left:-7%;z-index:3}
-.bc-ph span:nth-child(3){transform:rotate(5deg) translateY(6px);margin-left:-7%;z-index:2}
-.bc::after{display:none}
-@media (min-width:760px){.bc{flex:none}}
 /* ==== обновление 90 ==== */
 .muted:empty{display:none}
 .opt-l{font-weight:500;font-size:12.5px;color:var(--ink-3);margin-left:6px}
@@ -2693,10 +2627,8 @@ html,body{touch-action:pan-x pan-y}
 .back-bar .bk-i{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--accent-soft);color:var(--accent-ink);flex:none}
 .back-bar .bk-i .i{width:16px;height:16px;transform:rotate(180deg)}
 .back-bar .bk-l{max-width:180px;margin-left:8px;overflow:hidden;white-space:nowrap;transition:max-width .22s var(--ease),opacity .16s,margin .22s var(--ease)}
-.back-bar .bk-cr{min-width:0;font-size:13px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:opacity .16s}
 .back-bar.stuck .back-btn{padding:0 5px;box-shadow:0 6px 18px rgba(8,30,70,.24);border-color:var(--line-2)}
 .back-bar.stuck .bk-l{max-width:0;margin-left:0;opacity:0}
-.back-bar.stuck .bk-cr{opacity:0}
 /* кнопки с суммой: «В корзину | 1 715 ₽» вместо точки-разделителя */
 .btn .b-sum{display:inline-flex;align-items:center;margin-left:10px;padding-left:10px;border-left:1px solid rgba(255,255,255,.38);font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
 .btn-sm .b-sum{margin-left:8px;padding-left:8px}
@@ -2706,10 +2638,8 @@ html,body{touch-action:pan-x pan-y}
 .cbx-x{position:absolute;top:-6px;right:-6px}
 .cbx-ic{display:grid;place-items:center;width:64px;height:64px;margin-top:8px;border-radius:20px;background:var(--danger-bg);color:var(--danger)}
 .cbx-ic .i{width:30px;height:30px}
-.cbx-info .cbx-ic{background:var(--accent-soft);color:var(--accent-ink)}
 .cbx h2{font-size:1.28rem;line-height:1.22;max-width:24ch}
 .cbx p{max-width:38ch;color:var(--ink-2);font-size:15px;line-height:1.5}
-.cbx .cbx-note{width:100%;max-width:none;padding:10px 12px;border-radius:14px;background:var(--tile);color:var(--ink-3);font-size:13.5px}
 .send-row.cbx-acts{grid-template-columns:1fr 1fr;gap:10px;margin-top:18px}
 .cbx-acts .btn{width:100%;justify-content:center}
 @media (max-width:440px){.send-row.cbx-acts{grid-template-columns:1fr}.cbx-acts .btn:last-child{order:-1}}
@@ -2766,3 +2696,98 @@ html,body{touch-action:pan-x pan-y}
 .rv-meta b{color:var(--ink);font-weight:700}/* касание сразу видно: кнопка чуть темнеет и проседает, пока грузится следующий экран */
 .btn:active,.back-btn:active,.qcart:active,.choice:active,.chip:active,.rowl:active,.icon-btn:active{filter:brightness(.92)}
 .btn:active,.qcart:active{transform:scale(.97)}
+/* ==== обновление 94 ==== */
+/* точка статуса одинаковая на всех карточках: тот же размер и свечение, что в «Новинках» */
+.badge-pre::before{background:#ff9d1c;box-shadow:0 0 0 2px rgba(255,157,28,.25),0 0 8px 1px rgba(255,157,28,.7)}
+.badge-out::before{background:#ffd23f;box-shadow:0 0 0 2px rgba(255,210,63,.25),0 0 8px 1px rgba(255,210,63,.7)}
+.badge-sold::before{background:#ff4d5e;box-shadow:0 0 0 2px rgba(255,77,94,.25),0 0 8px 1px rgba(255,77,94,.7)}
+/* баннеры на главной: яркий градиент, сетка точек, белая кнопка, три фото веером */
+.bc{position:relative;isolation:isolate;flex:0 0 86%;scroll-snap-align:start;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;column-gap:10px;padding:16px 16px 0;border-radius:24px;overflow:hidden;color:#fff;text-decoration:none;border:1px solid rgba(255,255,255,.22);box-shadow:0 14px 30px -16px rgba(8,40,110,.7)}
+.bc::before{content:"";position:absolute;inset:0;z-index:-1;background-image:radial-gradient(rgba(255,255,255,.28) 1px,transparent 1.4px);background-size:14px 14px;-webkit-mask-image:linear-gradient(200deg,#000 0%,transparent 55%);mask-image:linear-gradient(200deg,#000 0%,transparent 55%)}
+.bc::after{content:"";position:absolute;z-index:-1;right:-60px;bottom:-70px;width:230px;height:230px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.38),transparent 65%);pointer-events:none}
+.bc-1{background:linear-gradient(140deg,#29d3f2 0%,#1f8ff0 45%,#2747d8 100%)}
+.bc-2{background:linear-gradient(140deg,#2fe0c8 0%,#13a7d8 50%,#1765c9 100%)}
+.bc-3{background:linear-gradient(140deg,#7c8cff 0%,#4a5df0 45%,#1d2fa8 100%)}
+.bc-t{display:contents}
+.bc-t small{grid-column:1;grid-row:1;justify-self:start;padding:4px 9px;border-radius:999px;background:rgba(255,255,255,.22);font-size:10.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;line-height:1.2}
+.bc-t b{grid-column:1 / -1;grid-row:2;margin-top:9px;font:800 1.32rem/1.12 var(--f-d);letter-spacing:-.01em;text-shadow:0 2px 12px rgba(0,30,90,.25)}
+.bc-t i{grid-column:1 / -1;grid-row:3;margin-top:4px;font-style:normal;font-size:13.5px;opacity:.92}
+.bc-go{grid-column:2;grid-row:1;display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 4px 0 12px;border-radius:999px;background:#fff;color:#123a86;font-weight:800;font-size:13px;box-shadow:0 6px 16px -6px rgba(0,20,70,.5)}
+.bc-go .i{width:24px;height:24px;padding:5px;border-radius:50%;background:#e2f3fd;color:#1765c9;transition:transform .2s var(--ease)}
+.bc:hover .bc-go .i,.bc:active .bc-go .i{transform:translateX(3px)}
+.bc-ph{grid-column:1 / -1;grid-row:4;display:flex;justify-content:center;align-items:flex-end;margin-top:16px;padding:0 6px}
+.bc-ph span{flex:0 0 34%;aspect-ratio:4/5;border-radius:16px 16px 0 0;border:3px solid #fff;border-bottom:0;background:#fff;overflow:hidden;box-shadow:0 -6px 22px rgba(0,20,70,.3)}
+.bc-ph span img{width:100%;height:100%;object-fit:cover;display:block}
+.bc-ph span:nth-child(1){transform:translateY(14px) rotate(-4deg);transform-origin:bottom right;z-index:1}
+.bc-ph span:nth-child(2){flex-basis:38%;margin:0 -5%;z-index:2}
+.bc-ph span:nth-child(3){transform:translateY(14px) rotate(4deg);transform-origin:bottom left;z-index:1}
+/* «Весь каталог»: как кнопка «Назад», только стрелка справа */
+.more-btn{display:inline-flex;align-items:center;height:40px;padding:0 5px 0 15px;border-radius:999px;border:1px solid var(--line);background:var(--card);color:var(--ink);font:600 14.5px/1 var(--f-b);box-shadow:0 1px 3px rgba(11,29,58,.07);text-decoration:none;white-space:nowrap;transition:box-shadow .2s var(--ease),border-color .16s}
+.more-btn .bk-i{display:grid;place-items:center;width:28px;height:28px;margin-left:8px;border-radius:50%;background:var(--accent-soft);color:var(--accent-ink);flex:none;transition:transform .2s var(--ease)}
+.more-btn .bk-i .i{width:16px;height:16px}
+.more-btn:hover{border-color:var(--line-2);box-shadow:0 6px 16px rgba(8,30,70,.14)}
+.more-btn:hover .bk-i{transform:translateX(3px)}
+.more-btn:active{transform:scale(.96)}
+/* чип «Ищем: …»: тёмный в светлой теме и голубой в тёмной, крестик в контрастном кружке */
+.qchip{display:inline-flex;align-items:center;gap:8px;margin-top:12px;height:38px;padding:0 5px 0 13px;border-radius:999px;background:#0b1d3a;color:#fff;font-size:14px;box-shadow:0 4px 12px -4px rgba(11,29,58,.45)}
+.qchip>.i{width:16px;height:16px;color:#8fe3f5}
+.qchip b{color:#8fe3f5}
+.qchip button{border:0;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:#fff;color:#0b1d3a;cursor:pointer;padding:0}
+.qchip button .i{width:13px;height:13px;stroke-width:2.6}
+:root[data-theme="dark"] .qchip{background:#43c9e3;color:#06223a;box-shadow:0 4px 14px -4px rgba(67,201,227,.55)}
+:root[data-theme="dark"] .qchip>.i,:root[data-theme="dark"] .qchip b{color:#06223a}
+:root[data-theme="dark"] .qchip button{background:#06223a;color:#fff}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]) .qchip{background:#43c9e3;color:#06223a;box-shadow:0 4px 14px -4px rgba(67,201,227,.55)}
+  :root:not([data-theme="light"]) .qchip>.i,:root:not([data-theme="light"]) .qchip b{color:#06223a}
+  :root:not([data-theme="light"]) .qchip button{background:#06223a;color:#fff}
+}
+/* профиль: корона рамки не вылезает за верх карточки */
+.dash > .profile{padding-top:30px}
+/* шторки: заметная полоска сверху, аккуратный крестик, смахивание вниз */
+.modal{touch-action:pan-y;will-change:transform}
+.modal::before{width:44px;height:5px;border-radius:5px;background:var(--line-2);margin:-10px 0 -4px;opacity:.9}
+.modal-head{align-items:center}
+.modal-head .icon-btn,.cbx-x{width:36px;height:36px;border-radius:50%;background:var(--tile);box-shadow:none;color:var(--ink-2)}
+.modal-head .icon-btn .i,.cbx-x .i{width:17px;height:17px}
+.cbx-x{top:-4px;right:-4px}
+/* кнопки в окнах-вопросах со значком */
+.cbx-acts .btn .i{width:18px;height:18px}
+.cbx-acts .btn-danger{background:var(--danger);color:#fff;box-shadow:0 8px 18px -8px rgba(180,35,24,.6)}
+:root[data-theme="dark"] .cbx-acts .btn-danger{color:#2a0907}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .cbx-acts .btn-danger{color:#2a0907} }
+/* «Удалить аккаунт», когда есть заказы в работе: путь до удаления вместо значка */
+.dl-track{display:flex;align-items:flex-start;justify-content:center;width:100%;max-width:320px;margin:14px 0 4px}
+.dl-track span{display:grid;justify-items:center;gap:6px;flex:none;width:76px;font-size:12px;font-weight:700;color:var(--ink-3)}
+.dl-track span i{display:grid;place-items:center;width:44px;height:44px;border-radius:15px;background:var(--tile);color:var(--ink-3);box-shadow:inset 0 0 0 1px var(--line)}
+.dl-track span .i{width:21px;height:21px}
+.dl-track span.on{color:var(--accent-ink)}
+.dl-track span.on i{background:linear-gradient(150deg,#43c9e3,#1a86c0);color:#fff;box-shadow:0 0 0 4px var(--accent-soft),0 8px 18px -6px rgba(26,134,192,.6);animation:dlPulse 2s ease-in-out infinite}
+.dl-track b{flex:1;height:2px;margin-top:21px;background:repeating-linear-gradient(90deg,var(--line-2) 0 5px,transparent 5px 9px)}
+@keyframes dlPulse{50%{box-shadow:0 0 0 8px transparent,0 8px 18px -6px rgba(26,134,192,.6)}}
+.dl-ords{display:grid;gap:6px;width:100%;margin-top:4px}
+.dl-ords div{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 12px;border-radius:14px;background:var(--tile);font-size:14px}
+.dl-ords b{font-family:var(--f-d);color:var(--ink)}
+.dl-help{display:flex;align-items:center;gap:10px;width:100%;max-width:none!important;margin:0;padding:0 2px;text-align:left;font-size:13.5px!important;color:var(--ink-3)!important}
+.dl-help .i{flex:none;width:20px;height:20px;color:var(--accent)}
+/* «Выйти»: аватар со значком выхода, имя и логин */
+.lo-who{display:grid;justify-items:center;gap:2px;margin-top:10px}
+.lo-ava{position:relative;display:grid;place-items:center;width:84px;height:84px;margin-bottom:8px}
+.lo-ava .ava{width:68px;height:68px}
+.lo-ava > i{position:absolute;right:2px;bottom:2px;z-index:3;display:grid;place-items:center;width:30px;height:30px;border-radius:50%;background:var(--danger);color:#fff;box-shadow:0 0 0 3px var(--card)}
+.lo-ava > i .i{width:15px;height:15px}
+.lo-who b{font:800 16px/1.2 var(--f-d);color:var(--ink)}
+.lo-who small{font-size:13px;color:var(--ink-3)}
+.cbx-out h2{margin-top:6px}
+/* промокоды: компактные билетики с вырезами */
+.pcs{gap:8px}
+.pc{min-height:58px;border-radius:14px;overflow:visible}
+.pc-l{width:66px;border-radius:14px 0 0 14px;font-size:17px}
+.pc-l::after,.pc-r::before{content:"";position:absolute;right:-7px;width:14px;height:14px;border-radius:50%;background:var(--card);z-index:2}
+.pc-l::after{top:-7px}
+.pc-r{position:relative;padding:8px 6px 8px 14px;gap:1px}
+.pc-r::before{left:-7px;right:auto;bottom:-7px}
+.pc-r code{font-size:14px}
+.pc-r .small{font-size:11.5px}
+.pc .icon-btn{width:36px;height:36px;margin-right:8px}
+.pc .icon-btn .i{width:17px;height:17px}

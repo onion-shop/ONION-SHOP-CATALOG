@@ -336,9 +336,40 @@
     var ov = root.firstChild, md = ov.firstChild;
     ov.addEventListener('click', function (e) { if (e.target === ov) closeModal(); });
     $$('[data-close]', md).forEach(function (b) { b.addEventListener('click', closeModal); });
+    sheetSwipe(ov, md);
     document.addEventListener('keydown', escClose);
     setTimeout(function () { md.focus(); }, 10);
     return md;
+  }
+  // шторку на телефоне можно смахнуть вниз: за полоску сверху или за любое место, когда она прокручена к началу
+  function sheetSwipe(ov, md) {
+    var y0 = 0, dy = 0, t0 = 0, drag = false, armed = false;
+    md.addEventListener('touchstart', function (e) {
+      if (window.innerWidth >= 640 || e.touches.length > 1) return;
+      var t = e.target, onBar = e.touches[0].clientY - md.getBoundingClientRect().top < 34;
+      // поле ввода и горизонтальные ленты оставляем как есть
+      armed = onBar || (md.scrollTop <= 0 && !t.closest('input,textarea,select,[contenteditable],.lm-tabs,.fr-grid,.hrow'));
+      y0 = e.touches[0].clientY; dy = 0; t0 = Date.now(); drag = false;
+    }, { passive: true });
+    md.addEventListener('touchmove', function (e) {
+      if (!armed) return;
+      dy = e.touches[0].clientY - y0;
+      if (!drag) { if (dy > 6) { drag = true; md.style.transition = 'none'; } else if (dy < -4) { armed = false; return; } else return; }
+      e.preventDefault();
+      var d = Math.max(0, dy);
+      md.style.transform = 'translateY(' + d + 'px)';
+      ov.style.backgroundColor = 'rgba(5,12,26,' + Math.max(0.12, 0.52 - d / 900) + ')';
+    }, { passive: false });
+    md.addEventListener('touchend', function () {
+      if (!drag) { armed = false; return; }
+      drag = armed = false;
+      var fast = dy / Math.max(1, Date.now() - t0) > 0.6;
+      md.style.transition = 'transform .24s cubic-bezier(.2,.8,.2,1)';
+      if (dy > Math.min(140, md.offsetHeight * 0.28) || (fast && dy > 40)) {
+        md.style.transform = 'translateY(110%)'; ov.style.transition = 'opacity .24s'; ov.style.opacity = '0';
+        setTimeout(function () { if (ov.parentNode) closeModal(); }, 230);
+      } else { md.style.transform = ''; ov.style.backgroundColor = ''; }
+    });
   }
   function modalHead(title) { return '<div class="modal-head"><h2>' + esc(title) + '</h2><button class="icon-btn" type="button" data-close aria-label="Закрыть">' + icon('x') + '</button></div>'; }
   function escClose(e) { if (e.key === 'Escape') { closeModal(); closeLightbox(); } }
@@ -348,12 +379,13 @@
     document.removeEventListener('keydown', escClose);
     if (lastFocus && lastFocus.focus) try { lastFocus.focus({ preventScroll: true }); } catch (e) { /* */ }
   }
-  // окно-вопрос: значок сверху, заголовок, короткий текст, кнопки (o.icon, o.tone: 'warn' | 'info', o.html: доп. разметка)
+  // окно-вопрос: значок или своя картинка сверху (o.icon или o.top), заголовок, короткий текст, кнопки (o.tone: 'warn' | 'info', o.html: доп. разметка, a.icon: значок на кнопке)
   function confirmBox(o) {
-    var md = openModal((o.icon
-      ? '<div class="cbx' + (o.tone ? ' cbx-' + o.tone : '') + '"><button class="icon-btn cbx-x" type="button" data-close aria-label="Закрыть">' + icon('x') + '</button><span class="cbx-ic">' + icon(o.icon) + '</span><h2>' + esc(o.title) + '</h2>' + (o.text ? '<p>' + esc(o.text) + '</p>' : '') + (o.html || '') + '</div>'
+    var pic = o.top || (o.icon ? '<span class="cbx-ic">' + icon(o.icon) + '</span>' : '');
+    var md = openModal((pic
+      ? '<div class="cbx' + (o.tone ? ' cbx-' + o.tone : '') + '"><button class="icon-btn cbx-x" type="button" data-close aria-label="Закрыть">' + icon('x') + '</button>' + pic + '<h2>' + esc(o.title) + '</h2>' + (o.text ? '<p>' + esc(o.text) + '</p>' : '') + (o.html || '') + '</div>'
       : modalHead(o.title) + (o.text ? '<p class="muted">' + esc(o.text) + '</p>' : '') + (o.html || '')) +
-      '<div class="send-row' + (o.icon ? ' cbx-acts' : '') + '">' + o.actions.map(function (a, i) { return '<button type="button" class="btn ' + (a.cls || 'btn-ghost') + '" data-a="' + i + '">' + esc(a.label) + '</button>'; }).join('') + '</div>', { cls: 'sm' });
+      '<div class="send-row' + (pic ? ' cbx-acts' : '') + '">' + o.actions.map(function (a, i) { return '<button type="button" class="btn ' + (a.cls || 'btn-ghost') + '" data-a="' + i + '">' + (a.icon ? icon(a.icon) : '') + esc(a.label) + '</button>'; }).join('') + '</div>', { cls: 'sm' });
     $$('[data-a]', md).forEach(function (b) { b.addEventListener('click', function () { var a = o.actions[+b.getAttribute('data-a')]; closeModal(); if (a.run) a.run(); }); });
   }
   function copyText(text, okMsg) {
@@ -703,7 +735,7 @@
   function grid(list, cls) { return '<div class="grid' + (cls ? ' ' + cls : '') + '">' + list.map(card).join('') + '</div>'; }
   function countBy(list, fn) { var m = {}; list.forEach(function (p) { var k = fn(p); m[k] = (m[k] || 0) + 1; }); return m; }
   // картинка категории: рисованная иконка (assets/cat/<ключ>.svg, для тёмной темы assets/cat/dark/), одна и та же на главной, в каталоге и в меню
-  var CAT_V = '2'; // меняется, когда перерисовываются иконки: телефон сразу берёт новые, а не старые из кеша
+  var CAT_V = '3'; // меняется, когда перерисовываются иконки: телефон сразу берёт новые, а не старые из кеша
   var CAT_ART = { other: 'stock' };
   function catSrc(key) { return 'assets/cat/' + (CAT_ART[key] || key) + '.svg?v=' + CAT_V; }
   function catImg(key, art) {
@@ -835,7 +867,7 @@
       '<div class="bcs">' + banner3('Подборка', 'Выбор магазина', 'Вещи, которые мы советуем', '#catalog', vivid(['321', '521', '371'], picks), 'bc-1') + banner3('В наличии', 'Трендовые товары', 'То, что берут прямо сейчас', '#stock', vivid(['693', '704:705', '682'], stockL), 'bc-2') + banner3('Выгодно', 'Лучшие предложения', hot.length && discount(hot[0]) >= 3 ? 'Скидки до −' + discount(hot[0]) + '%' : 'Уже в Москве', '#stock', vivid(['460', '440', '414'], hot), 'bc-3') + '</div>' +
       (favList.length ? '<div class="sec"><div class="sec-head"><h2>Избранное</h2></div><div class="hscroll">' + favList.slice(0, 10).map(card).join('') + '</div></div>' : '') +
       (rec.length ? '<div class="sec"><div class="sec-head"><h2>Вы смотрели</h2></div><div class="hscroll">' + rec.map(card).join('') + '</div></div>' : '') +
-      '<div class="sec"><div class="sec-head"><h2>Новинки</h2><a class="btn btn-ghost btn-sm" href="#catalog">Весь каталог</a></div>' + grid(fresh, 'home-grid') + '</div>' +
+      '<div class="sec"><div class="sec-head"><h2>Новинки</h2><a class="more-btn" href="#catalog">Весь каталог<span class="bk-i">' + icon('arrow-right') + '</span></a></div>' + grid(fresh, 'home-grid') + '</div>' +
       '<div class="sec"><a class="faqc" href="#info"><span class="faqc-ic">' + icon('info') + '</span><span class="faqc-t"><b>Частые вопросы</b><small>Заказ, сроки, доставка, оплата</small></span><span class="faqc-go">' + icon('arrow-right') + '</span></a></div>';
     $$('.ct[data-cat]', v).forEach(function (a) { a.addEventListener('click', function () { filter = newFilter(); filter.cat = a.getAttribute('data-cat'); }); });
     stopHomeTimers(); loadPromo();
@@ -1073,7 +1105,7 @@
     related = related.slice(0, 4);
 
     v.innerHTML =
-      backBar('back-btn', 'Назад', esc(p.categoryLabel)) +
+      backBar('back-btn', 'Назад') +
       '<div class="product">' +
       '<div class="gallery"><div class="stage"><div class="slides" id="slides" tabindex="0" aria-label="Фотографии товара. Нажмите, чтобы увеличить">' +
       p.photos.map(function (ph, i) { return '<figure data-i="' + i + '" style="--bg:url(\'' + thumb(ph.id) + '\')"><img src="' + full(ph.id) + '" alt="' + esc(p.title) + ', фото ' + (i + 1) + '" ' + (i > 1 ? 'loading="lazy" ' : i ? '' : 'fetchpriority="high" ') + 'decoding="async" width="' + ph.w + '" height="' + ph.ht + '"></figure>'; }).join('') + '</div>' +
@@ -2145,11 +2177,14 @@
   function deleteModal() {
     var u = acct.user;
     if (!u.canDelete) {
-      var act = u.orders.filter(function (o) { return o.active; }).length;
-      confirmBox({ icon: 'hourglass', tone: 'info', title: 'Сначала завершим заказы',
-        text: act === 1 ? 'У вас есть заказ в работе. Мы удалим аккаунт сразу после того, как вы его получите, чтобы ничего не потерялось по дороге.' : 'У вас ' + act + ' ' + plural(act, 'заказ', 'заказа', 'заказов') + ' в работе. Мы удалим аккаунт сразу после того, как вы их получите, чтобы ничего не потерялось по дороге.',
-        html: '<p class="cbx-note">Если хотите отменить заказ или вопрос срочный, напишите менеджеру, он поможет.</p>',
-        actions: [{ label: 'Написать менеджеру', cls: 'btn-ghost', run: function () { window.open(SHOP.managerUrl, '_blank', 'noopener'); } }, { label: 'Хорошо', cls: 'btn' }] });
+      var actList = u.orders.filter(function (o) { return o.active; }), act = actList.length;
+      // путь до удаления: заказ в работе, получение, после этого можно удалить
+      var track = '<div class="dl-track"><span class="on"><i>' + icon('box') + '</i>В работе</span><b></b><span><i>' + icon('check') + '</i>Получен</span><b></b><span><i>' + icon('trash') + '</i>Удаление</span></div>';
+      confirmBox({ tone: 'info', top: track, title: act === 1 ? 'Удалим после доставки заказа' : 'Удалим после доставки заказов',
+        text: act === 1 ? 'Сейчас у вас есть заказ в работе. Когда вы его получите, аккаунт можно будет удалить, а пока ничего не потеряется.' : 'Сейчас у вас ' + act + ' ' + plural(act, 'заказ', 'заказа', 'заказов') + ' в работе. Когда вы их получите, аккаунт можно будет удалить, а пока ничего не потеряется.',
+        html: '<div class="dl-ords">' + actList.slice(0, 3).map(function (o) { return '<div><b>№ ' + esc(o.no) + '</b>' + stPill(o) + '</div>'; }).join('') + '</div>' +
+          '<p class="dl-help">' + icon('chat') + '<span>Нужно отменить заказ или вопрос срочный? Менеджер ответит в Telegram.</span></p>',
+        actions: [{ label: 'Написать менеджеру', icon: 'send', cls: 'btn-ghost', run: function () { window.open(SHOP.managerUrl, '_blank', 'noopener'); } }, { label: 'Понятно', cls: 'btn' }] });
       return;
     }
     var md = openModal(modalHead('Удалить аккаунт?') + '<p class="muted">Удалятся данные кабинета, ониксы (' + num(u.balance) + '), промокоды и уровень. Восстановить будет нельзя. При новой регистрации на тот же телефон или почту приветственные бонусы повторно не начисляются.</p>' +
@@ -2216,7 +2251,7 @@
       '<div class="ref-row"><span class="lnk">' + esc(refLink.replace(/^https?:\/\//, '')) + '</span><button class="icon-btn" type="button" data-copy="' + esc(refLink) + '" aria-label="Скопировать ссылку">' + icon('copy') + '</button><button class="icon-btn acc" type="button" id="ref-share" aria-label="Поделиться">' + icon('share') + '</button></div>' +
       '<p class="small">Ваш код: <b>' + esc(u.refCode) + '</b></p></div>' +
 
-      '<div class="card tile c6"><div class="tile-h"><h3>Промокоды</h3>' + (u.promos.length ? '<span class="side">' + u.promos.length + '</span>' : '') + '</div>' + (u.promos.length ? '<div class="pcs">' + u.promos.map(function (p) { return '<div class="pc"><div class="pc-l"><b>−' + pctTxt(p.pct) + '%</b></div><div class="pc-r"><code>' + esc(p.code) + '</code><span class="small">' + promoLine(p) + '</span></div><button class="icon-btn" type="button" data-copy="' + esc(p.code) + '" aria-label="Скопировать код">' + icon('copy') + '</button></div>'; }).join('') + '</div>' : '<div class="pc-empty">' + icon('ticket') + '<span>Пока нет промокодов.</span></div>') + '</div>' +
+      '<div class="card tile c6"><div class="tile-h"><h3>Промокоды</h3></div>' + (u.promos.length ? '<div class="pcs">' + u.promos.map(function (p) { return '<div class="pc"><div class="pc-l"><b>−' + pctTxt(p.pct) + '%</b></div><div class="pc-r"><code>' + esc(p.code) + '</code><span class="small">' + promoLine(p) + '</span></div><button class="icon-btn" type="button" data-copy="' + esc(p.code) + '" aria-label="Скопировать код">' + icon('copy') + '</button></div>'; }).join('') + '</div>' : '<div class="pc-empty">' + icon('ticket') + '<span>Пока нет промокодов.</span></div>') + '</div>' +
 
       ((u.waits || []).length ? '<div class="card tile c12"><div class="tile-h"><h3>Жду появления</h3><span class="side">' + u.waits.length + '</span></div><div class="waits">' + u.waits.map(function (w) {
         return '<div class="wait-c' + (w.ready ? ' rdy' : '') + '"><a class="wait-ph" href="#p-' + esc(w.id) + '"><img src="' + thumb(w.id) + '" alt="" loading="lazy" width="64" height="64"></a><div class="wait-i"><a href="#p-' + esc(w.id) + '">' + esc(w.title) + '</a>' + (w.ready ? '<span class="wait-st ok">' + icon('check-circle') + 'Уже можно заказать</span>' : '<span class="wait-st">' + icon('hourglass') + 'Сообщим, когда появится</span>') + '</div><button class="icon-btn" type="button" data-wx="' + esc(w.id) + '" aria-label="Больше не ждать">' + icon('x') + '</button></div>';
@@ -2245,8 +2280,9 @@
     on('r-tg', tgModal); on('r-bday', bdayModal); on('r-frame', framesModal); on('r-del', deleteModal); on('all-levels', levelsModal);
     on('r-noava', function () { API.call('profile', { avatar: '' }).then(function (r) { if (r.ok) { setUser(r.user); toast('Фото убрано'); } }); });
     on('r-logout', function () {
-      confirmBox({ icon: 'logout', title: 'Вы точно хотите выйти из аккаунта?', text: 'Ониксы, заказы и промокоды останутся на месте. Чтобы вернуться, войдите по логину и паролю.',
-        actions: [{ label: 'Остаться', cls: 'btn-ghost' }, { label: 'Выйти', cls: 'btn-danger', run: function () { API.call('logout'); API.setSession(''); setUser(null); toast('Вы вышли из аккаунта'); } }] });
+      confirmBox({ tone: 'out', top: '<div class="lo-who"><span class="lo-ava">' + ava(u) + '<i>' + icon('logout') + '</i></span><b>' + esc(u.name) + '</b><small>@' + esc(u.login) + '</small></div>',
+        title: 'Выйти из аккаунта?', text: 'Ониксы, заказы и промокоды сохранятся. Вернуться можно в любой момент по логину и паролю.',
+        actions: [{ label: 'Остаться', cls: 'btn-ghost' }, { label: 'Выйти', icon: 'logout', cls: 'btn-danger', run:function () { API.call('logout'); API.setSession(''); setUser(null); toast('Вы вышли из аккаунта'); } }] });
     });
     on('checkin-btn', function () { doCheckin($('#checkin-btn', v)); });
     on('ref-share', function () {
@@ -2283,8 +2319,8 @@
   // «Назад» в играх: из «Игр» туда, откуда пришли (последний экран вне игр), без истории: кабинет или главная
   /* кнопка «Назад» для всех разделов: в начале страницы видна подпись, при прокрутке кнопка
      сжимается в круглую и едет следом у левого края, почти не закрывая содержимое */
-  function backBar(id, label, crumb) {
-    return '<div class="back-bar"><button class="back-btn" type="button" id="' + id + '" aria-label="' + esc(label) + '"><span class="bk-i">' + icon('chevron-right') + '</span><span class="bk-l">' + esc(label) + '</span></button>' + (crumb ? '<span class="bk-cr">' + crumb + '</span>' : '') + '</div>';
+  function backBar(id, label) {
+    return '<div class="back-bar"><button class="back-btn" type="button" id="' + id + '" aria-label="' + esc(label) + '"><span class="bk-i">' + icon('chevron-right') + '</span><span class="bk-l">' + esc(label) + '</span></button></div>';
   }
   function bindBack(id, fallback, root) {
     var b = $('#' + id, root || document); if (!b) return;
@@ -2347,16 +2383,32 @@
   function hgRand(a, b) { return a + Math.random() * (b - a); }
   function hgPick(a) { return a[Math.floor(Math.random() * a.length)]; }
   var HG_VEST = ['#ff8a2a', '#ffd23a', '#79d97a', '#ff6b6b', '#58b8ff'], HG_HELM = ['#ffffff', '#ffd23a', '#2d7cff', '#ff8a2a'], HG_SKIN = ['#e9b996', '#c98f66', '#8d5a3b', '#f2cfae'];
+  /* рабочий: с пустыми руками машет ими при ходьбе; коробку и планшет держит согнутыми руками снизу, ладони видны по краям */
   function hgWorkerSvg(vest, helm, skin, hold) {
-    var h = hold === 'box' ? '<rect x="14.5" y="17" width="11" height="9" rx="1" fill="#c99358"/><rect x="14.5" y="20" width="11" height="2" fill="#ecd0a6"/>' : hold === 'tab' ? '<rect x="15" y="17" width="7" height="9" rx="1" fill="#1d2740" stroke="#9fd0ff" stroke-width=".8"/>' : '';
+    // рука: тонкий тёмный контур под рукавом, чтобы согнутая рука читалась на фоне жилета того же цвета
+    var arm = function (d) { return '<path d="' + d + '" fill="none" stroke="#0f1830" stroke-opacity=".3" stroke-width="4.8" stroke-linecap="round" stroke-linejoin="round"/><path d="' + d + '" fill="none" stroke="' + vest + '" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>'; };
+    var hand = function (x, y) { return '<circle cx="' + x + '" cy="' + y + '" r="1.75" fill="' + skin + '"/>'; };
+    var back = '', front = '';
+    if (hold === 'box') {
+      back = arm('M19 15L21 21.5L26 20.6') + hand(26.4, 20.4);
+      front = '<rect x="14.6" y="15.8" width="11.4" height="9.4" rx="1" fill="#c99358"/><rect x="14.6" y="19.4" width="11.4" height="2" fill="#ecd0a6"/><path d="M14.6 15.8h11.4" stroke="#a87a45" stroke-width=".8"/>' +
+        arm('M8.4 15L10.6 23.6L20.5 25.6') + hand(21.2, 25.4);
+    } else if (hold === 'tab') {
+      back = arm('M19 15L21 21L23.2 18.6') + hand(23.4, 18.2);
+      front = '<g transform="rotate(-12 20 19.5)"><rect x="16.4" y="14.6" width="7.4" height="9.6" rx="1.2" fill="#1d2740"/><rect x="17.4" y="15.6" width="5.4" height="7.2" rx=".6" fill="#7fd8ff" opacity=".85"/><path d="M18.2 17.4h3.6M18.2 19.2h2.6" stroke="#1d4f8a" stroke-width=".7"/></g>' +
+        arm('M8.4 15L10.4 22.6L17.8 23') + hand(18.3, 22.8);
+    } else {
+      back = '<g class="hw-a hw-a2"><rect x="17.2" y="14" width="3.6" height="13" rx="1.8" fill="' + vest + '"/></g>';
+      front = '<g class="hw-a hw-a1"><rect x="5" y="14" width="3.6" height="13" rx="1.8" fill="' + vest + '" opacity=".82"/></g>';
+    }
     return '<svg viewBox="0 0 28 46" width="28" height="46" aria-hidden="true">' +
       '<g class="hw-l hw-l1"><rect x="8" y="28" width="4.6" height="16" rx="1.8" fill="#263253"/><rect x="7.2" y="42" width="7" height="3.2" rx="1.4" fill="#0f1830"/></g>' +
       '<g class="hw-l hw-l2"><rect x="14" y="28" width="4.6" height="16" rx="1.8" fill="#34426a"/><rect x="13.4" y="42" width="7" height="3.2" rx="1.4" fill="#0f1830"/></g>' +
-      '<g class="hw-a hw-a2"><rect x="17.2" y="14" width="3.6" height="13" rx="1.8" fill="' + vest + '"/></g>' +
+      back +
       '<rect x="6" y="12" width="15" height="18" rx="4.5" fill="' + vest + '"/><rect x="6" y="19.5" width="15" height="2.4" fill="#f4f9ff" opacity=".85"/>' +
       '<rect x="11.6" y="9" width="4.2" height="4" fill="' + skin + '"/><circle cx="13.6" cy="7.6" r="5" fill="' + skin + '"/>' +
       '<path d="M8.2 7.4a5.4 5.4 0 0 1 10.8 0z" fill="' + helm + '"/><rect x="7.4" y="6.8" width="12.4" height="1.9" rx=".9" fill="' + helm + '"/>' +
-      '<g class="hw-a hw-a1"><rect x="5" y="14" width="3.6" height="13" rx="1.8" fill="' + vest + '" opacity=".82"/></g>' + h + '</svg>';
+      front + '</svg>';
   }
   function hgCartSvg() {
     var bx = '', n = 1 + Math.floor(Math.random() * 3), i;
@@ -2416,7 +2468,7 @@
       var w = W(), kind = opt.kind || hgPick(['walk', 'walk', 'box', 'box', 'cart', 'check', 'wave']), dir = opt.dir || (Math.random() < .5 ? 1 : -1);
       var vest = hgPick(HG_VEST), helm = hgPick(HG_HELM), skin = hgPick(HG_SKIN), d = opt.d != null ? opt.d : hgRand(.15, .95);
       var hold = kind === 'box' ? 'box' : kind === 'check' ? 'tab' : '';
-      var el = mk('<span class="hg-ppl' + (kind === 'box' ? ' hw-carry' : '') + '">' + hgWorkerSvg(vest, helm, skin, hold) + '</span>' + (kind === 'cart' ? hgCartSvg() : ''), 'hg-w', d, kind === 'cart' ? 74 : 28);
+      var el = mk('<span class="hg-ppl">' + hgWorkerSvg(vest, helm, skin, hold) + '</span>' + (kind === 'cart' ? hgCartSvg() : ''), 'hg-w', d, kind === 'cart' ? 74 : 28);
       var ppl = el.querySelector('.hg-ppl'); ppl.style.setProperty('--st', hgRand(.5, .85).toFixed(2) + 's');
       var speed = (kind === 'cart' ? hgRand(20, 30) : hgRand(26, 50)) * (1 - d * .28), x0 = opt.x0 != null ? opt.x0 : (dir > 0 ? -90 : w + 20), far = dir > 0 ? w + 20 : -90;
       var p1 = opt.stopAt != null ? opt.stopAt : hgRand(.18, .82) * w;
@@ -2645,23 +2697,6 @@
     });
     current = view;
   }
-  // плавающая кнопка «Назад»: везде, кроме главной, и не уезжает при прокрутке
-  var floatBack = null;
-  function goBack() { if (routed > 1) history.back(); else { location.hash = ''; } }
-  function updFloatBack(h) {
-    if (!floatBack) {
-      floatBack = document.createElement('button'); floatBack.type = 'button'; floatBack.className = 'float-back'; floatBack.setAttribute('aria-label', 'Назад');
-      floatBack.innerHTML = icon('arrow-right') + '<span>Назад</span>';
-      floatBack.addEventListener('click', goBack);
-      document.body.appendChild(floatBack);
-      window.addEventListener('scroll', function () { if (floatBack._p) floatBack.classList.toggle('show', window.scrollY > 120); }, { passive: true });
-    }
-    var home = !h || h === 'home';
-    floatBack._p = /^p-\d+$/.test(h);
-    floatBack.hidden = !floatBack._p;
-    document.body.classList.remove('has-back');
-    floatBack.classList.toggle('show', floatBack._p && window.scrollY > 120);
-  }
   function route() {
     // ссылка с битым «%» (бывает после пересылки в мессенджерах) не должна ломать сайт
     var rawH = location.hash.replace(/^#/, ''), h; try { h = decodeURIComponent(rawH); } catch (e) { h = rawH; } routed++;
@@ -2707,7 +2742,7 @@
     else if (h === 'games' || h === 'gruz' || h === 'rub') { try { history.replaceState(null, '', location.pathname + location.search + '#roulette'); } catch (e) { /* */ } h = 'roulette'; renderRoulette(); show('roulette'); }   // старые ссылки на игры ведут в посылку
     else if (h === 'info') { renderInfo(); show('info'); }
     else { renderHome(); show('home'); }
-    setNav(h); updFloatBack(h);
+    setNav(h);
     if (restore) restoreCatalogSpot(restore); else window.scrollTo(0, 0);
     tickClock();
   }
