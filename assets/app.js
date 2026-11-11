@@ -779,12 +779,15 @@
   var homeTimers = [];
   function stopHomeTimers() { homeTimers.forEach(clearInterval); homeTimers = []; }
   // три компактных баннера на главной (вместо большой карусели): подборка магазина, выгодные предложения, новинки из Китая
+  /* баннер-постер: большое фото на всю карточку, сверху метка и две маленькие плитки, снизу название и кнопка-стрелка */
   function banner3(tag, title, sub, href, picks, cls) {
     if (!picks.length) return '';
-    return '<a class="bc ' + cls + '" href="' + href + '"><span class="bc-t"><small>' + esc(tag) + '</small><b>' + esc(title) + '</b><i>' + esc(sub) + '</i><span class="bc-go">Смотреть' + icon('arrow-right') + '</span></span>' +
-      '<span class="bc-ph">' + picks.slice(0, 3).map(function (p) { return '<span><img src="' + thumb(p.photos[0].id) + '" alt="" loading="lazy" decoding="async"></span>'; }).join('') + '</span></a>';
-  }
-  var DEFAULT_PICKS = ['521', '371', '321', '532'];   // выбор магазина по умолчанию (можно отметить в редакторе)
+    var img = function (p) { return '<img src="' + thumb(p.photos[0].id) + '" alt="" loading="lazy" decoding="async">'; };
+    return '<a class="bc ' + cls + '" href="' + href + '"><span class="bc-hero">' + img(picks[0]) + '</span>' +
+      '<span class="bc-tag">' + esc(tag) + '</span>' +
+      (picks.length > 1 ? '<span class="bc-mini">' + picks.slice(1, 3).map(function (p) { return '<span>' + img(p) + '</span>'; }).join('') + '</span>' : '') +
+      '<span class="bc-t"><b>' + esc(title) + '</b><i>' + esc(sub) + '</i></span><span class="bc-go">' + icon('arrow-right') + '</span></a>';
+  }  var DEFAULT_PICKS = ['521', '371', '321', '532'];   // выбор магазина по умолчанию (можно отметить в редакторе)
   function shopPicks() {
     var f = PRODUCTS.filter(function (p) { return p.rec && p.status !== 'sold'; });
     if (f.length) return f;
