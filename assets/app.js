@@ -735,7 +735,7 @@
   function grid(list, cls) { return '<div class="grid' + (cls ? ' ' + cls : '') + '">' + list.map(card).join('') + '</div>'; }
   function countBy(list, fn) { var m = {}; list.forEach(function (p) { var k = fn(p); m[k] = (m[k] || 0) + 1; }); return m; }
   // картинка категории: рисованная иконка (assets/cat/<ключ>.svg, для тёмной темы assets/cat/dark/), одна и та же на главной, в каталоге и в меню
-  var CAT_V = '3'; // меняется, когда перерисовываются иконки: телефон сразу берёт новые, а не старые из кеша
+  var CAT_V = '4'; // меняется, когда перерисовываются иконки: телефон сразу берёт новые, а не старые из кеша
   var CAT_ART = { other: 'stock' };
   function catSrc(key) { return 'assets/cat/' + (CAT_ART[key] || key) + '.svg?v=' + CAT_V; }
   function catImg(key, art) {
