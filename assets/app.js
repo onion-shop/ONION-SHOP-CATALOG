@@ -442,13 +442,23 @@
   }
 
   // ------------------------------------------------------------ аккаунт
-  function setUser(u) {
+  /* плашка «режим менеджера»: видна, пока менеджер сидит в чужом кабинете по ссылке из таблицы; сессия привязана к этому входу */
+  function asBar(u) {
+    var el = $('#as-bar'), on = !!(u && API.getSession() && store.get('asMgr') === API.getSession());
+    if (!on) { if (el) el.remove(); return; }
+    if (el) return;
+    el = document.createElement('div'); el.id = 'as-bar'; el.className = 'as-bar';
+    el.innerHTML = icon('eye') + '<span>Режим менеджера: кабинет @' + esc(u.login) + '</span><button type="button">Выйти</button>';
+    document.body.appendChild(el);
+    $('button', el).addEventListener('click', function () { API.call('logout'); API.setSession(''); store.set('asMgr', ''); setUser(null); toast('Вы вышли из кабинета клиента'); go(''); });
+  }  function setUser(u) {
     acct.user = u || null;
     try { if (u && API.getSession()) store.set('meCache', { s: API.getSession(), u: u }); else store.set('meCache', null); } catch (e) { /* */ }
     if (u && localOrders.length) { localOrders = []; store.set('orders', []); } // старые заказы без входа не должны попадать в новый кабинет
     // город из профиля подставляется в заказ сам (пока клиент не ввёл другой)
     if (u && u.city && !form.cityOwn) { var cd = false; if (!form.recvCity) { form.recvCity = u.city; cd = true; } if (!form.city) { form.city = u.city; cd = true; } if (cd) saveForm(); }
     updateAcctUI();
+    asBar(u);
     showNews(u);
     if (u && u.bdayToday) setTimeout(bdayGift, 700);
     if (u && !watchSynced) {
@@ -735,7 +745,7 @@
   function grid(list, cls) { return '<div class="grid' + (cls ? ' ' + cls : '') + '">' + list.map(card).join('') + '</div>'; }
   function countBy(list, fn) { var m = {}; list.forEach(function (p) { var k = fn(p); m[k] = (m[k] || 0) + 1; }); return m; }
   // картинка категории: рисованная иконка (assets/cat/<ключ>.svg, для тёмной темы assets/cat/dark/), одна и та же на главной, в каталоге и в меню
-  var CAT_V = '8'; // меняется, когда перерисовываются иконки: телефон сразу берёт новые, а не старые из кеша
+  var CAT_V = '9'; // меняется, когда перерисовываются иконки: телефон сразу берёт новые, а не старые из кеша
   var CAT_ART = { other: 'stock' };
   function catSrc(key) { return 'assets/cat/' + (CAT_ART[key] || key) + '.svg?v=' + CAT_V; }
   function catImg(key, art) {
@@ -2719,7 +2729,7 @@
       try { history.replaceState(null, '', location.pathname + location.search + '#account'); } catch (e) { /* */ }
       API.call('asLogin', { token: asM[1] }).then(function (r) {
         if (!r || !r.ok) { toast((r && r.error) || 'Ссылка для входа устарела', null, 'warn'); route(); return; }
-        API.setSession(r.session); setUser(r.user); toast('Вы в кабинете клиента @' + r.user.login + ' (вход менеджера)'); route();
+        API.setSession(r.session); store.set('asMgr', r.session); setUser(r.user); toast('Вы в кабинете клиента @' + r.user.login + ' (вход менеджера)'); route();
       });
       return;
     }

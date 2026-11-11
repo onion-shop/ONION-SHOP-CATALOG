@@ -2839,3 +2839,10 @@ html,body{touch-action:pan-x pan-y}
 .bd button:active{transform:scale(.94)}
 .bd button.on{background:linear-gradient(145deg,#43c9e3,#1a86c0);border-color:transparent;color:#fff;box-shadow:0 6px 14px -6px rgba(26,134,192,.7)}
 #m-save:disabled{opacity:.45;box-shadow:none}
+
+/* плашка «режим менеджера» над нижним меню */
+.as-bar{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom,0px));z-index:88;display:flex;align-items:center;gap:10px;max-width:calc(100% - 24px);padding:7px 7px 7px 14px;border-radius:999px;background:#0b1d3a;color:#fff;font-size:13.5px;font-weight:700;box-shadow:0 10px 24px -8px rgba(0,10,40,.6),0 0 0 1.5px rgba(67,201,227,.55)}
+.as-bar .i{width:18px;height:18px;flex:none;color:#43e0f4}
+.as-bar span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.as-bar button{flex:none;height:30px;padding:0 14px;border:0;border-radius:999px;background:#fff;color:#0b1d3a;font:800 13px/1 var(--f-b);cursor:pointer}
+:root[data-theme="dark"] .as-bar{background:#16294d}

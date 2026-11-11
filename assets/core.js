@@ -571,9 +571,9 @@ var OnionCore = (function () {
       wheel: RULES.wheel.map(function (w) { return { id: w.id, label: w.label, sub: w.sub, w: w.w }; })
     };
   }
-  function newSession(db, u) {
+  function newSession(db, u, ttlMs) {
     var token = db.token();
-    db.saveSession({ token: token, userId: u.id, exp: db.now() + RULES.sessionDays * 86400000 });
+    db.saveSession({ token: token, userId: u.id, exp: db.now() + (ttlMs || RULES.sessionDays * 86400000) });
     return token;
   }
 
@@ -731,7 +731,8 @@ var OnionCore = (function () {
     var u = db.getUser(rec.userId); if (!u) return err('Клиент не найден');
     log(db, u, 0, 'Менеджер вошёл в кабинет через таблицу');
     touch(db, u); db.saveUser(u);
-    return ok({ session: newSession(db, u), user: publicUser(db, u) });
+    // вход менеджера живёт 3 часа, потом клиент в своём кабинете сам выйдет, а менеджер войдёт заново новой ссылкой
+    return ok({ session: newSession(db, u, 3 * 3600000), user: publicUser(db, u), asManager: true });
   };
 
   A.me = function (db, p) {
@@ -1312,7 +1313,7 @@ var OnionCore = (function () {
   }
 
   return {
-    RULES: RULES, handle: handle, orderText: orderText, buildLines: buildLines, checkFields: checkFields,
+    RULES: RULES, genCode: genCode, handle: handle, orderText: orderText, buildLines: buildLines, checkFields: checkFields,
     offlineNo: offlineNo, levelInfo: levelInfo, levelOf: levelOf, fixIndex: fixIndex, receive: receive, priceDrops: priceDrops, photoLinks: photoLinks, earlyLeft: earlyLeft, phoneConfirm: phoneConfirm, flag: flag, referralOnReceive: referralOnReceive, orderCanceled: orderCanceled, canonEmail: canonEmail, bdayIsToday: bdayIsToday, adjustTokens: adjustTokens, xpOfRub: xpOfRub, wheelFor: wheelFor, framesFor: framesFor, pctText: pctText, promoBase: promoBase, touch: touch, tokensToRub: tokensToRub, settings: settings, dayKey: dayKey, monthKey: monthKey,
     statusMessage: statusMessage, tgBind: tgBind, activePromos: activePromos, hashPass: hashPass,
     cleanTg: cleanTg, cleanEmail: cleanEmail, phoneKey: phoneKey, fmtPhone: fmtPhone, digits: digits, validEmail: validEmail, taskPick: picksFor, weekKey: weekKey, stagesFor: stagesFor
