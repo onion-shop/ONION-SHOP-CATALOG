@@ -735,7 +735,7 @@
   function grid(list, cls) { return '<div class="grid' + (cls ? ' ' + cls : '') + '">' + list.map(card).join('') + '</div>'; }
   function countBy(list, fn) { var m = {}; list.forEach(function (p) { var k = fn(p); m[k] = (m[k] || 0) + 1; }); return m; }
   // картинка категории: рисованная иконка (assets/cat/<ключ>.svg, для тёмной темы assets/cat/dark/), одна и та же на главной, в каталоге и в меню
-  var CAT_V = '4'; // меняется, когда перерисовываются иконки: телефон сразу берёт новые, а не старые из кеша
+  var CAT_V = '5'; // меняется, когда перерисовываются иконки: телефон сразу берёт новые, а не старые из кеша
   var CAT_ART = { other: 'stock' };
   function catSrc(key) { return 'assets/cat/' + (CAT_ART[key] || key) + '.svg?v=' + CAT_V; }
   function catImg(key, art) {
@@ -779,14 +779,11 @@
   var homeTimers = [];
   function stopHomeTimers() { homeTimers.forEach(clearInterval); homeTimers = []; }
   // три компактных баннера на главной (вместо большой карусели): подборка магазина, выгодные предложения, новинки из Китая
-  /* баннер-постер: большое фото на всю карточку, сверху метка и две маленькие плитки, снизу название и кнопка-стрелка */
+  /* баннер на главной: сверху метка, название и кнопка «Смотреть» (ведёт в раздел), снизу три фото веером: каждое открывает свой товар */
   function banner3(tag, title, sub, href, picks, cls) {
     if (!picks.length) return '';
-    var img = function (p) { return '<img src="' + thumb(p.photos[0].id) + '" alt="" loading="lazy" decoding="async">'; };
-    return '<a class="bc ' + cls + '" href="' + href + '"><span class="bc-hero">' + img(picks[0]) + '</span>' +
-      '<span class="bc-tag">' + esc(tag) + '</span>' +
-      (picks.length > 1 ? '<span class="bc-mini">' + picks.slice(1, 3).map(function (p) { return '<span>' + img(p) + '</span>'; }).join('') + '</span>' : '') +
-      '<span class="bc-t"><b>' + esc(title) + '</b><i>' + esc(sub) + '</i></span><span class="bc-go">' + icon('arrow-right') + '</span></a>';
+    return '<div class="bc ' + cls + '"><a class="bc-t" href="' + href + '"><small>' + esc(tag) + '</small><b>' + esc(title) + '</b><i>' + esc(sub) + '</i><span class="bc-go">Смотреть' + icon('arrow-right') + '</span></a>' +
+      '<span class="bc-ph">' + picks.slice(0, 3).map(function (p) { return '<a href="#p-' + esc(p.id) + '" aria-label="Открыть товар"><img src="' + thumb(p.photos[0].id) + '" alt="" loading="lazy" decoding="async"></a>'; }).join('') + '</span></div>';
   }  var DEFAULT_PICKS = ['521', '371', '321', '532'];   // выбор магазина по умолчанию (можно отметить в редакторе)
   function shopPicks() {
     var f = PRODUCTS.filter(function (p) { return p.rec && p.status !== 'sold'; });
@@ -801,7 +798,7 @@
       var parts = String(key).split(':'), p = BY_ID[parts[0]];
       if (!p || p.status === 'sold' || p.status === 'out' || !p.photos || !p.photos.length) return;
       var ph = p.photos.filter(function (x) { return String(x.id) === parts[1]; })[0] || p.photos[0];
-      out.push({ photos: [ph] });
+      out.push({ id: p.id, photos: [ph] });
     });
     (rest || []).forEach(function (p) { if (out.length < 3) out.push(p); });
     return out;
@@ -2192,7 +2189,7 @@
     }
     var md = openModal(modalHead('Удалить аккаунт?') + '<p class="muted">Удалятся данные кабинета, ониксы (' + num(u.balance) + '), промокоды и уровень. Восстановить будет нельзя. При новой регистрации на тот же телефон или почту приветственные бонусы повторно не начисляются.</p>' +
       '<div class="f"><label for="m-pass">Пароль для подтверждения</label><input class="input" id="m-pass" type="password" autocomplete="current-password"></div><div id="m-msg"></div>' +
-      '<div class="send-row"><button class="btn btn-ghost" type="button" data-close>Оставить</button><button class="btn btn-danger" type="button" id="m-del">Удалить навсегда</button></div>', { cls: 'sm' });
+      '<div class="send-row"><button class="btn btn-ghost dl-keep" type="button" data-close>Оставить</button><button class="btn" type="button" id="m-del">Удалить навсегда</button></div>', { cls: 'sm' });
     $('#m-del', md).addEventListener('click', function () {
       var b = this; busy(b, true);
       API.call('deleteAccount', { password: $('#m-pass', md).value }).then(function (r) { busy(b, false); if (!r.ok) { $('#m-msg', md).innerHTML = '<div class="form-err">' + esc(r.error) + '</div>'; return; } closeModal(); API.setSession(''); setUser(null); toast('Аккаунт удалён'); });
@@ -2386,32 +2383,17 @@
   function hgRand(a, b) { return a + Math.random() * (b - a); }
   function hgPick(a) { return a[Math.floor(Math.random() * a.length)]; }
   var HG_VEST = ['#ff8a2a', '#ffd23a', '#79d97a', '#ff6b6b', '#58b8ff'], HG_HELM = ['#ffffff', '#ffd23a', '#2d7cff', '#ff8a2a'], HG_SKIN = ['#e9b996', '#c98f66', '#8d5a3b', '#f2cfae'];
-  /* рабочий: с пустыми руками машет ими при ходьбе; коробку и планшет держит согнутыми руками снизу, ладони видны по краям */
+  /* рабочий: руки прямые; с коробкой, планшетом или тележкой руки вытянуты вперёд */
   function hgWorkerSvg(vest, helm, skin, hold) {
-    // рука: тонкий тёмный контур под рукавом, чтобы согнутая рука читалась на фоне жилета того же цвета
-    var arm = function (d) { return '<path d="' + d + '" fill="none" stroke="#0f1830" stroke-opacity=".3" stroke-width="4.8" stroke-linecap="round" stroke-linejoin="round"/><path d="' + d + '" fill="none" stroke="' + vest + '" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>'; };
-    var hand = function (x, y) { return '<circle cx="' + x + '" cy="' + y + '" r="1.75" fill="' + skin + '"/>'; };
-    var back = '', front = '';
-    if (hold === 'box') {
-      back = arm('M19 15L21 21.5L26 20.6') + hand(26.4, 20.4);
-      front = '<rect x="14.6" y="15.8" width="11.4" height="9.4" rx="1" fill="#c99358"/><rect x="14.6" y="19.4" width="11.4" height="2" fill="#ecd0a6"/><path d="M14.6 15.8h11.4" stroke="#a87a45" stroke-width=".8"/>' +
-        arm('M8.4 15L10.6 23.6L20.5 25.6') + hand(21.2, 25.4);
-    } else if (hold === 'tab') {
-      back = arm('M19 15L21 21L23.2 18.6') + hand(23.4, 18.2);
-      front = '<g transform="rotate(-12 20 19.5)"><rect x="16.4" y="14.6" width="7.4" height="9.6" rx="1.2" fill="#1d2740"/><rect x="17.4" y="15.6" width="5.4" height="7.2" rx=".6" fill="#7fd8ff" opacity=".85"/><path d="M18.2 17.4h3.6M18.2 19.2h2.6" stroke="#1d4f8a" stroke-width=".7"/></g>' +
-        arm('M8.4 15L10.4 22.6L17.8 23') + hand(18.3, 22.8);
-    } else {
-      back = '<g class="hw-a hw-a2"><rect x="17.2" y="14" width="3.6" height="13" rx="1.8" fill="' + vest + '"/></g>';
-      front = '<g class="hw-a hw-a1"><rect x="5" y="14" width="3.6" height="13" rx="1.8" fill="' + vest + '" opacity=".82"/></g>';
-    }
+    var h = hold === 'box' ? '<rect x="14.5" y="17" width="11" height="9" rx="1" fill="#c99358"/><rect x="14.5" y="20" width="11" height="2" fill="#ecd0a6"/>' : hold === 'tab' ? '<rect x="15" y="17" width="7" height="9" rx="1" fill="#1d2740" stroke="#9fd0ff" stroke-width=".8"/>' : '';
     return '<svg viewBox="0 0 28 46" width="28" height="46" aria-hidden="true">' +
       '<g class="hw-l hw-l1"><rect x="8" y="28" width="4.6" height="16" rx="1.8" fill="#263253"/><rect x="7.2" y="42" width="7" height="3.2" rx="1.4" fill="#0f1830"/></g>' +
       '<g class="hw-l hw-l2"><rect x="14" y="28" width="4.6" height="16" rx="1.8" fill="#34426a"/><rect x="13.4" y="42" width="7" height="3.2" rx="1.4" fill="#0f1830"/></g>' +
-      back +
+      '<g class="hw-a hw-a2"><rect x="17.2" y="14" width="3.6" height="13" rx="1.8" fill="' + vest + '"/></g>' +
       '<rect x="6" y="12" width="15" height="18" rx="4.5" fill="' + vest + '"/><rect x="6" y="19.5" width="15" height="2.4" fill="#f4f9ff" opacity=".85"/>' +
       '<rect x="11.6" y="9" width="4.2" height="4" fill="' + skin + '"/><circle cx="13.6" cy="7.6" r="5" fill="' + skin + '"/>' +
       '<path d="M8.2 7.4a5.4 5.4 0 0 1 10.8 0z" fill="' + helm + '"/><rect x="7.4" y="6.8" width="12.4" height="1.9" rx=".9" fill="' + helm + '"/>' +
-      front + '</svg>';
+      '<g class="hw-a hw-a1"><rect x="5" y="14" width="3.6" height="13" rx="1.8" fill="' + vest + '" opacity=".82"/></g>' + h + '</svg>';
   }
   function hgCartSvg() {
     var bx = '', n = 1 + Math.floor(Math.random() * 3), i;
@@ -2471,7 +2453,7 @@
       var w = W(), kind = opt.kind || hgPick(['walk', 'walk', 'box', 'box', 'cart', 'check', 'wave']), dir = opt.dir || (Math.random() < .5 ? 1 : -1);
       var vest = hgPick(HG_VEST), helm = hgPick(HG_HELM), skin = hgPick(HG_SKIN), d = opt.d != null ? opt.d : hgRand(.15, .95);
       var hold = kind === 'box' ? 'box' : kind === 'check' ? 'tab' : '';
-      var el = mk('<span class="hg-ppl">' + hgWorkerSvg(vest, helm, skin, hold) + '</span>' + (kind === 'cart' ? hgCartSvg() : ''), 'hg-w', d, kind === 'cart' ? 74 : 28);
+      var el = mk('<span class="hg-ppl' + (kind === 'box' || kind === 'check' || kind === 'cart' ? ' hw-carry' : '') + '">' + hgWorkerSvg(vest, helm, skin, hold) + '</span>' + (kind === 'cart' ? hgCartSvg() : ''), 'hg-w', d, kind === 'cart' ? 74 : 28);
       var ppl = el.querySelector('.hg-ppl'); ppl.style.setProperty('--st', hgRand(.5, .85).toFixed(2) + 's');
       var speed = (kind === 'cart' ? hgRand(20, 30) : hgRand(26, 50)) * (1 - d * .28), x0 = opt.x0 != null ? opt.x0 : (dir > 0 ? -90 : w + 20), far = dir > 0 ? w + 20 : -90;
       var p1 = opt.stopAt != null ? opt.stopAt : hgRand(.18, .82) * w;
