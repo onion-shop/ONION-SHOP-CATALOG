@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!--HEAD-->
+<title>Магазин ONION SHOP</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="ONION SHOP — одежда, обувь и аксессуары в наличии и по предзаказу из Китая. Токены за покупки и задания, рулетка призов, заказ в пару кликов.">
+<meta name="theme-color" content="#dfe6ef">
+<meta property="og:title" content="Магазин ONION SHOP">
+<meta property="og:description" content="Одежда, обувь и аксессуары в наличии и по предзаказу из Китая.">
+<meta property="og:image" content="assets/icon-512.png">
+<link rel="icon" type="image/png" href="assets/favicon.png">
+<link rel="apple-touch-icon" href="assets/icons/dark-180.png">
+<meta name="apple-mobile-web-app-title" content="Onion Shop">
+<meta name="application-name" content="Onion Shop">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<!--MANIFEST--><link rel="manifest" href="manifest.webmanifest"><!--/MANIFEST-->
+<link rel="preconnect" href="https://script.google.com">
+<link rel="preconnect" href="https://script.googleusercontent.com">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Onest:wght@500;600;700;800&display=swap">
+<script>(function(){try{var t=localStorage.getItem('onion.shop.theme');if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+<link rel="stylesheet" href="assets/style.css">
+<!--/HEAD-->
+</head>
+<body>
+<div id="splash" aria-hidden="true">
+<style>
+/* заставка: белый фон, логотип и ONION SHOP по центру, полоса загрузки; светлые объёмные шары плавают по краям */
+#splash{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;overflow:hidden;background:#fff;transition:opacity .6s ease,visibility .6s;font-family:Onest,Inter,system-ui,sans-serif}
+#splash.out{opacity:0;visibility:hidden}
+#splash .dot{position:absolute;border-radius:50%;will-change:transform;
+  background:radial-gradient(circle at 32% 26%,#d4f1fa 0,#9fdcef 30%,#5db3e2 68%,#4a9bd4 100%);
+  box-shadow:inset -.8vw -1.2vw 2.4vw rgba(30,100,170,.28),inset .8vw .8vw 1.6vw rgba(255,255,255,.45),0 2vw 4vw rgba(60,150,210,.14)}
+#splash .d1{width:49vw;height:49vw;left:-15vw;top:-19vw;animation:spl-a 9s ease-in-out infinite}
+#splash .d2{width:17vw;height:17vw;right:11vw;top:16.5vw;animation:spl-b 7s ease-in-out infinite}
+#splash .d3{width:14vw;height:14vw;left:6.5vw;top:40.5vw;animation:spl-c 8s ease-in-out infinite}
+#splash .d4{width:28vw;height:28vw;right:-8vw;top:38vw;animation:spl-b 10s ease-in-out infinite reverse}
+#splash .d5{width:29vw;height:29vw;right:-8vw;bottom:39vw;animation:spl-a 11s ease-in-out infinite reverse}
+#splash .d6{width:20vw;height:20vw;right:9vw;bottom:18vw;animation:spl-c 8.5s ease-in-out infinite}
+#splash .d7{width:12.5vw;height:12.5vw;left:25.5vw;bottom:16vw;animation:spl-b 7.5s ease-in-out infinite}
+#splash .d8{width:25vw;height:25vw;left:-9vw;bottom:-6vw;animation:spl-a 10s ease-in-out infinite}
+@keyframes spl-a{0%,100%{transform:translate(0,0)}50%{transform:translate(2.5vw,3vw)}}
+@keyframes spl-b{0%,100%{transform:translate(0,0)}50%{transform:translate(-2vw,-3vw)}}
+@keyframes spl-c{0%,100%{transform:translate(0,0)}33%{transform:translate(2vw,-2vw)}66%{transform:translate(-1.5vw,1.5vw)}}
+#splash .box{position:relative;display:grid;justify-items:center;gap:20px;text-align:center}
+#splash .logo{width:92px;height:92px;border-radius:50%;box-shadow:0 0 0 7px rgba(190,215,235,.55),0 10px 26px rgba(30,80,150,.2);animation:spl-in .8s cubic-bezier(.2,1,.3,1) both}
+#splash .word{margin:0;font-weight:900;font-size:clamp(2rem,9.5vw,3.2rem);letter-spacing:.01em;line-height:1;color:#0c1f46;animation:spl-in .8s .08s cubic-bezier(.2,1,.3,1) both}
+#splash .word em{font-style:normal;color:#1a86c0}
+@keyframes spl-in{from{transform:translateY(12px);opacity:0}to{transform:none;opacity:1}}
+#splash .bar{width:min(260px,52vw);height:5px;border-radius:99px;background:#e4eaf3;overflow:hidden}
+#splash .bar b{display:block;height:100%;width:100%;border-radius:99px;background:linear-gradient(90deg,#1a5fb4,#43c9e3);transform-origin:left;transform:scaleX(.02);transition:transform .25s linear}
+#splash small{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+@media (prefers-reduced-motion: reduce){#splash *{animation:none!important}}
+</style>
+<span class="dot d1"></span><span class="dot d2"></span><span class="dot d3"></span><span class="dot d4"></span><span class="dot d5"></span><span class="dot d6"></span><span class="dot d7"></span><span class="dot d8"></span>
+<div class="box">
+<img class="logo" src="assets/logo.png" alt="" width="92" height="92">
+<h1 class="word">ONION <em>SHOP</em></h1>
+<div class="bar"><b id="spl-bar"></b></div>
+<small id="spl-txt">Загружаем данные…</small>
+</div>
+<script>try{if(sessionStorage.getItem('onion.splash')){var s=document.getElementById('splash');s.parentNode.removeChild(s)}}catch(e){}</script>
+</div>
+<!--BODY-->
+<!--SPRITE-->
+
+<header class="hdr">
+  <div class="wrap hdr-in">
+    <a class="brand" href="#" aria-label="ONION SHOP — на главную">
+      <img src="assets/logo.png" alt="" width="36" height="36">
+      <span>ONION SHOP</span>
+    </a>
+    <form class="hdr-search" id="hdr-search" role="search"><svg class="i"><use href="#i-search"/></svg><label class="sr" for="hdr-q">Поиск по каталогу</label><input id="hdr-q" type="search" placeholder="Найти товар или бренд" autocomplete="off" enterkeyhint="search"><button type="submit">Найти</button></form>
+    <nav class="nav" aria-label="Разделы">
+      <a href="#catalog" data-route="catalog"><svg class="i"><use href="#i-grid"/></svg>Каталог</a>
+      <a href="#preorder" data-route="preorder"><svg class="i"><use href="#i-plane"/></svg>Предзаказ</a>
+      <a href="#roulette" data-route="roulette" data-needs-api hidden><svg class="i"><use href="#i-gift"/></svg>Игра</a>
+      <a href="#info" data-route="info"><svg class="i"><use href="#i-info"/></svg><span class="l-long">Частые вопросы</span><span class="l-short">Вопросы</span></a>
+    </nav>
+    <div class="hdr-act">
+      <button class="icon-btn menu-btn" id="menu-btn" type="button" aria-label="Меню" aria-haspopup="dialog"><svg class="i"><use href="#i-menu"/></svg></button>
+      <a class="icon-btn fav-link" href="#favorites" aria-label="Избранное"><svg class="i"><use href="#i-heart"/></svg><span class="dot-n" data-fav-count hidden>0</span></a>
+      <a class="acct-chip guest" id="acct-chip" href="#account" hidden><svg class="i"><use href="#i-user"/></svg><span>Войти</span></a>
+      <a class="cart-btn" href="#cart" aria-label="Корзина"><svg class="i"><use href="#i-bag"/></svg><span>Корзина</span><span class="cnt" data-cart-count>0</span></a>
+    </div>
+  </div>
+</header>
+<div class="demo-bar" id="demo-bar" hidden><div class="wrap"><svg class="i" style="color:var(--pre)"><use href="#i-alert"/></svg><span><b>Демо-режим.</b> <i class="l" style="font-style:normal">Аккаунты, токены и заказы живут только в этом браузере, коды из писем показываются на экране.</i><i class="s" style="font-style:normal">Данные только в этом браузере.</i></span><button class="link-btn" type="button" id="demo-reset">Сбросить демо</button></div></div>
+
+<main id="main">
+  <section class="view wrap" id="v-home" data-view="home"></section>
+  <section class="view wrap" id="v-catalog" data-view="catalog" hidden></section>
+  <section class="view wrap" id="v-product" data-view="product" hidden></section>
+  <section class="view wrap" id="v-cart" data-view="cart" hidden></section>
+  <section class="view wrap" id="v-orders" data-view="orders" hidden></section>
+  <section class="view wrap" id="v-favorites" data-view="favorites" hidden></section>
+  <section class="view wrap" id="v-account" data-view="account" hidden></section>
+  <section class="view wrap" id="v-roulette" data-view="roulette" hidden></section>
+  <section class="view wrap" id="v-info" data-view="info" hidden></section>
+</main>
+
+<footer class="ftr">
+  <div class="wrap">
+    <div class="ftr-box">
+      <div class="ftr-in">
+        <div>
+          <a class="brand" href="#"><img src="assets/logo.png" alt="" width="34" height="34"><span>ONION SHOP</span></a>
+          <p class="small" style="margin-top:12px" id="catalog-updated"></p>
+        </div>
+        <div>
+          <h4>Магазин</h4>
+          <ul>
+            <li><a href="#catalog">Каталог</a></li>
+            <li><a href="#stock">В наличии</a></li>
+            <li><a href="#preorder">Предзаказ</a></li>
+            <li><a href="#favorites">Избранное</a></li>
+            <li><a href="#orders">Мои заказы</a></li>
+            <li data-needs-api hidden><a href="#roulette">Игра</a></li>
+            <li><a href="#info">Частые вопросы</a></li>
+          </ul>
+        </div>
+        <div>
+          <h4>Связь</h4>
+          <ul>
+            <li><a href="https://t.me/OnionShop_Support" target="_blank" rel="noopener">Менеджер в Telegram</a></li>
+            <li><a href="https://t.me/ONION_SHOP_OFFICIAL" target="_blank" rel="noopener">Канал магазина</a></li>
+            <li><a href="https://t.me/ONION_SHOP_FEEDBACK" target="_blank" rel="noopener">Отзывы и отправки</a></li>
+            <li><a href="https://onion-shop.github.io/ONION-SHOP/" target="_blank" rel="noopener">Как работает предзаказ</a></li>
+            <li><a href="https://www.tiktok.com/@onion_shop" target="_blank" rel="noopener">TikTok</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="copy"><span>© 2025–<span id="year">2026</span> ONION SHOP</span></div>
+    </div>
+  </div>
+</footer>
+
+<nav class="tabbar" aria-label="Быстрый переход">
+  <a href="#" data-route="home"><span class="ic"><svg class="i"><use href="#i-home"/></svg></span><span>Главная</span></a>
+  <a href="#catalog" data-route="catalog"><span class="ic"><svg class="i"><use href="#i-grid"/></svg></span><span>Каталог</span></a>
+  <a href="#cart" class="mid" data-route="cart" aria-label="Корзина"><span class="bub"><svg class="i"><use href="#i-bag"/></svg></span><span class="dot-n" data-cart-count hidden>0</span></a>
+  <a href="#favorites" data-route="favorites"><span class="ic"><svg class="i"><use href="#i-heart"/></svg></span><span>Избранное</span><span class="dot-n" data-fav-count hidden>0</span></a>
+  <a href="#account" data-route="account" id="tab-acct"><span class="ic"><svg class="i"><use href="#i-user"/></svg></span><span>Кабинет</span></a>
+</nav>
+<div class="buybar" id="buybar" hidden></div>
+
+<div class="toasts" id="toasts" aria-live="polite"></div>
+<div id="modal-root"></div>
+
+<div class="down" id="down" hidden role="alert"><div class="down-card"><span class="down-ic"><svg class="i"><use href="#i-clock"/></svg></span><h1>Магазин сейчас не открывается</h1><p>Похоже, пропала связь или сайт обновляется. Подождите минуту и обновите страницу — товары никуда не делись.</p><div class="acts"><button class="btn" type="button" onclick="location.reload()">Обновить страницу</button><a class="btn btn-ghost" href="https://t.me/OnionShop_Support" target="_blank" rel="noopener">Написать менеджеру</a></div></div></div>
+<script>(function(){function show(){var d=document.getElementById('down');if(d&&!window.__onionBoot)d.hidden=false;}window.addEventListener('error',function(){setTimeout(show,300);});setTimeout(show,7000);window.addEventListener('online',function(){if(!window.__onionBoot)location.reload();});})();</script>
+<script src="assets/config.js"></script>
+<script src="data/catalog.js"></script>
+<script src="data/colors.js"></script>
+<script src="assets/core.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/app.js"></script>
+<!--/BODY-->
+</body>
+</html>
