@@ -735,7 +735,7 @@
   function grid(list, cls) { return '<div class="grid' + (cls ? ' ' + cls : '') + '">' + list.map(card).join('') + '</div>'; }
   function countBy(list, fn) { var m = {}; list.forEach(function (p) { var k = fn(p); m[k] = (m[k] || 0) + 1; }); return m; }
   // картинка категории: рисованная иконка (assets/cat/<ключ>.svg, для тёмной темы assets/cat/dark/), одна и та же на главной, в каталоге и в меню
-  var CAT_V = '5'; // меняется, когда перерисовываются иконки: телефон сразу берёт новые, а не старые из кеша
+  var CAT_V = '6'; // меняется, когда перерисовываются иконки: телефон сразу берёт новые, а не старые из кеша
   var CAT_ART = { other: 'stock' };
   function catSrc(key) { return 'assets/cat/' + (CAT_ART[key] || key) + '.svg?v=' + CAT_V; }
   function catImg(key, art) {
@@ -2112,10 +2112,33 @@
     });
     $('#m-forgot', md).addEventListener('click', function () { closeModal(); API.call('logout'); API.setSession(''); authTab = 'reset'; setUser(null); });
   }
+  /* день рождения: выбор месяца и числа плитками (мини-календарь), без системного поля даты */
   function bdayModal() {
-    var md = openModal(modalHead('День рождения') + '<p class="muted">Указывается один раз. В день рождения вас ждёт подарок: ониксы, XP и промокод. Подарок получают аккаунты старше 30 дней.</p><div class="f"><label for="m-bday">Дата</label><input class="input" id="m-bday" type="date"></div><button class="btn btn-block" type="button" id="m-save">Сохранить</button>', { cls: 'sm' });
+    var MS = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'], MF = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'], DM = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+    var mon = 0, day = 0;
+    var md = openModal(modalHead('День рождения') + '<p class="muted">Указывается один раз. В день рождения вас ждёт подарок: ониксы, XP и промокод. Подарок получают аккаунты старше 30 дней.</p>' +
+      '<div class="bd"><div class="bd-sum" id="bd-sum"><span>' + icon('gift') + '</span><b id="bd-txt">Выберите месяц и число</b></div>' +
+      '<div class="bd-lbl">Месяц</div><div class="bd-mon">' + MS.map(function (m, k) { return '<button type="button" data-m="' + (k + 1) + '">' + m + '</button>'; }).join('') + '</div>' +
+      '<div class="bd-lbl">Число</div><div class="bd-days" id="bd-days"></div></div>' +
+      '<button class="btn btn-block" type="button" id="m-save" disabled>Сохранить</button>', { cls: 'sm' });
+    function draw() {
+      $$('[data-m]', md).forEach(function (b) { b.classList.toggle('on', +b.getAttribute('data-m') === mon); });
+      var n = mon ? DM[mon - 1] : 31, h = '';
+      if (day > n) day = 0;
+      for (var d = 1; d <= n; d++) h += '<button type="button" data-d="' + d + '"' + (d === day ? ' class="on"' : '') + '>' + d + '</button>';
+      $('#bd-days', md).innerHTML = h;
+      $('#bd-txt', md).textContent = mon && day ? day + ' ' + MF[mon - 1] : mon ? MF[mon - 1].charAt(0).toUpperCase() + MF[mon - 1].slice(1) + ', выберите число' : 'Выберите месяц и число';
+      $('#bd-sum', md).classList.toggle('ok', !!(mon && day));
+      $('#m-save', md).disabled = !(mon && day);
+    }
+    md.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-m],[data-d]'); if (!b) return;
+      if (b.hasAttribute('data-m')) mon = +b.getAttribute('data-m'); else day = +b.getAttribute('data-d');
+      draw();
+    });
+    draw();
     $('#m-save', md).addEventListener('click', function () {
-      var val = $('#m-bday', md).value; if (!val) { toast('Выберите дату', null, 'warn'); return; }
+      var val = mon && day ? '2000-' + ('0' + mon).slice(-2) + '-' + ('0' + day).slice(-2) : ''; if (!val) { toast('Выберите дату', null, 'warn'); return; }
       var MON = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'], mm = +val.slice(5, 7), dd = +val.slice(8, 10);
       closeModal();
       confirmBox({ title: 'Это точная дата?', text: 'Вы указываете день рождения: ' + dd + ' ' + MON[mm - 1] + '. После сохранения изменить дату нельзя, в том числе через менеджера.', actions: [
@@ -2282,7 +2305,7 @@
     on('r-logout', function () {
       confirmBox({ tone: 'out', top: '<div class="lo-who"><span class="lo-ava">' + ava(u) + '<i>' + icon('logout') + '</i></span><b>' + esc(u.name) + '</b><small>@' + esc(u.login) + '</small></div>',
         title: 'Выйти из аккаунта?', text: 'Ониксы, заказы и промокоды сохранятся. Вернуться можно в любой момент по логину и паролю.',
-        actions: [{ label: 'Остаться', cls: 'btn-ghost' }, { label: 'Выйти', icon: 'logout', cls: 'btn-danger', run:function () { API.call('logout'); API.setSession(''); setUser(null); toast('Вы вышли из аккаунта'); } }] });
+        actions: [{ label: 'Остаться', cls: 'btn-ghost dl-keep' }, { label: 'Выйти', icon: 'logout', cls: 'go', run: function () { API.call('logout'); API.setSession(''); setUser(null); toast('Вы вышли из аккаунта'); } }] });
     });
     on('checkin-btn', function () { doCheckin($('#checkin-btn', v)); });
     on('ref-share', function () {
@@ -2385,17 +2408,18 @@
   var HG_VEST = ['#ff8a2a', '#ffd23a', '#79d97a', '#ff6b6b', '#58b8ff'], HG_HELM = ['#ffffff', '#ffd23a', '#2d7cff', '#ff8a2a'], HG_SKIN = ['#e9b996', '#c98f66', '#8d5a3b', '#f2cfae'];
   /* рабочий: руки прямые; с коробкой, планшетом или тележкой руки вытянуты вперёд */
   function hgWorkerSvg(vest, helm, skin, hold) {
-    var h = hold === 'box' ? '<rect x="14.5" y="17" width="11" height="9" rx="1" fill="#c99358"/><rect x="14.5" y="20" width="11" height="2" fill="#ecd0a6"/>' : hold === 'tab' ? '<rect x="15" y="17" width="7" height="9" rx="1" fill="#1d2740" stroke="#9fd0ff" stroke-width=".8"/>' : '';
+    // коробка: прямые руки вытянуты вперёд, коробка перед ними; планшет: рука опущена и держит его внизу, шаг обычный
+    var box = hold === 'box' ? '<rect x="21" y="10.5" width="12" height="10" rx="1" fill="#c99358"/><rect x="21" y="14" width="12" height="2.2" fill="#ecd0a6"/><circle cx="21.4" cy="15.6" r="1.7" fill="' + skin + '"/>' : '';
+    var tab = hold === 'tab' ? '<rect x="19.6" y="23.5" width="5.6" height="8" rx="1" fill="#1d2740" stroke="#9fd0ff" stroke-width=".7"/><rect x="20.5" y="24.6" width="3.8" height="5.4" rx=".4" fill="#7fd8ff" opacity=".85"/><circle cx="19.4" cy="27.4" r="1.7" fill="' + skin + '"/>' : '';
     return '<svg viewBox="0 0 28 46" width="28" height="46" aria-hidden="true">' +
       '<g class="hw-l hw-l1"><rect x="8" y="28" width="4.6" height="16" rx="1.8" fill="#263253"/><rect x="7.2" y="42" width="7" height="3.2" rx="1.4" fill="#0f1830"/></g>' +
       '<g class="hw-l hw-l2"><rect x="14" y="28" width="4.6" height="16" rx="1.8" fill="#34426a"/><rect x="13.4" y="42" width="7" height="3.2" rx="1.4" fill="#0f1830"/></g>' +
-      '<g class="hw-a hw-a2"><rect x="17.2" y="14" width="3.6" height="13" rx="1.8" fill="' + vest + '"/></g>' +
+      '<g class="hw-a hw-a2"' + (tab ? ' style="transform-box:view-box;transform-origin:19px 15px"' : '') + '><rect x="17.2" y="14" width="3.6" height="13" rx="1.8" fill="' + vest + '"/>' + tab + '</g>' +
       '<rect x="6" y="12" width="15" height="18" rx="4.5" fill="' + vest + '"/><rect x="6" y="19.5" width="15" height="2.4" fill="#f4f9ff" opacity=".85"/>' +
       '<rect x="11.6" y="9" width="4.2" height="4" fill="' + skin + '"/><circle cx="13.6" cy="7.6" r="5" fill="' + skin + '"/>' +
       '<path d="M8.2 7.4a5.4 5.4 0 0 1 10.8 0z" fill="' + helm + '"/><rect x="7.4" y="6.8" width="12.4" height="1.9" rx=".9" fill="' + helm + '"/>' +
-      '<g class="hw-a hw-a1"><rect x="5" y="14" width="3.6" height="13" rx="1.8" fill="' + vest + '" opacity=".82"/></g>' + h + '</svg>';
-  }
-  function hgCartSvg() {
+      '<g class="hw-a hw-a1"><rect x="5" y="14" width="3.6" height="13" rx="1.8" fill="' + vest + '" opacity=".82"/></g>' + box + '</svg>';
+  }  function hgCartSvg() {
     var bx = '', n = 1 + Math.floor(Math.random() * 3), i;
     for (i = 0; i < n; i++) bx += '<rect x="' + (6 + i * 11) + '" y="' + (6 + (i % 2) * 2) + '" width="' + (9 + Math.floor(Math.random() * 4)) + '" height="' + (11 - (i % 2) * 2) + '" rx="1" fill="' + hgPick(['#c99358', '#b4814a', '#d3a46b']) + '"/>';
     return '<svg class="hg-cart" viewBox="0 0 44 30" width="44" height="30" aria-hidden="true">' + bx + '<rect x="3" y="17" width="38" height="4" rx="1.5" fill="#8794ad"/><path d="M3 17V5" stroke="#8794ad" stroke-width="2.2" stroke-linecap="round"/><circle cx="10" cy="25" r="3.6" fill="#1b2236"/><circle cx="34" cy="25" r="3.6" fill="#1b2236"/></svg>';
@@ -2453,7 +2477,7 @@
       var w = W(), kind = opt.kind || hgPick(['walk', 'walk', 'box', 'box', 'cart', 'check', 'wave']), dir = opt.dir || (Math.random() < .5 ? 1 : -1);
       var vest = hgPick(HG_VEST), helm = hgPick(HG_HELM), skin = hgPick(HG_SKIN), d = opt.d != null ? opt.d : hgRand(.15, .95);
       var hold = kind === 'box' ? 'box' : kind === 'check' ? 'tab' : '';
-      var el = mk('<span class="hg-ppl' + (kind === 'box' || kind === 'check' || kind === 'cart' ? ' hw-carry' : '') + '">' + hgWorkerSvg(vest, helm, skin, hold) + '</span>' + (kind === 'cart' ? hgCartSvg() : ''), 'hg-w', d, kind === 'cart' ? 74 : 28);
+      var el = mk('<span class="hg-ppl' + (kind === 'box' || kind === 'cart' ? ' hw-carry' : '') + '">' + hgWorkerSvg(vest, helm, skin, hold) + '</span>' + (kind === 'cart' ? hgCartSvg() : ''), 'hg-w', d, kind === 'cart' ? 74 : 28);
       var ppl = el.querySelector('.hg-ppl'); ppl.style.setProperty('--st', hgRand(.5, .85).toFixed(2) + 's');
       var speed = (kind === 'cart' ? hgRand(20, 30) : hgRand(26, 50)) * (1 - d * .28), x0 = opt.x0 != null ? opt.x0 : (dir > 0 ? -90 : w + 20), far = dir > 0 ? w + 20 : -90;
       var p1 = opt.stopAt != null ? opt.stopAt : hgRand(.18, .82) * w;

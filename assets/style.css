@@ -2781,9 +2781,6 @@ html,body{touch-action:pan-x pan-y}
 .cbx-x{top:-4px;right:-4px}
 /* кнопки в окнах-вопросах со значком */
 .cbx-acts .btn .i{width:18px;height:18px}
-.cbx-acts .btn-danger{background:var(--danger);color:#fff;box-shadow:0 8px 18px -8px rgba(180,35,24,.6)}
-:root[data-theme="dark"] .cbx-acts .btn-danger{color:#2a0907}
-@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .cbx-acts .btn-danger{color:#2a0907} }
 /* «Удалить аккаунт», когда есть заказы в работе: путь до удаления вместо значка */
 .dl-track{display:flex;align-items:flex-start;justify-content:center;width:100%;max-width:320px;margin:14px 0 4px}
 .dl-track span{display:grid;justify-items:center;gap:6px;flex:none;width:76px;font-size:12px;font-weight:700;color:var(--ink-3)}
@@ -2802,7 +2799,7 @@ html,body{touch-action:pan-x pan-y}
 .lo-who{display:grid;justify-items:center;gap:2px;margin-top:10px}
 .lo-ava{position:relative;display:grid;place-items:center;width:84px;height:84px;margin-bottom:8px}
 .lo-ava .ava{width:68px;height:68px}
-.lo-ava > i{position:absolute;right:2px;bottom:2px;z-index:3;display:grid;place-items:center;width:30px;height:30px;border-radius:50%;background:var(--danger);color:#fff;box-shadow:0 0 0 3px var(--card)}
+.lo-ava > i{position:absolute;right:2px;bottom:2px;z-index:3;display:grid;place-items:center;width:30px;height:30px;border-radius:50%;background:linear-gradient(145deg,#43c9e3,#1a86c0);color:#fff;box-shadow:0 0 0 3px var(--card),0 6px 14px -4px rgba(26,134,192,.6)}
 .lo-ava > i .i{width:15px;height:15px}
 .lo-who b{font:800 16px/1.2 var(--f-d);color:var(--ink)}
 .lo-who small{font-size:13px;color:var(--ink-3)}
@@ -2822,3 +2819,23 @@ html,body{touch-action:pan-x pan-y}
 /* окно «Удалить аккаунт?»: кнопки в цветах магазина. «Удалить навсегда» синяя, «Оставить» светлая с рамкой, в тёмной теме белая */
 :root[data-theme="dark"] .dl-keep{background:#fff;color:#0b1d3a;box-shadow:none}
 @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .dl-keep{background:#fff;color:#0b1d3a;box-shadow:none} }
+/* «Выйти»: значок на аватаре голубой, в тёмной теме белый */
+:root[data-theme="dark"] .lo-ava > i{background:#fff;color:#1a86c0}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .lo-ava > i{background:#fff;color:#1a86c0} }
+/* день рождения: мини-календарь из плиток */
+.bd{display:grid;gap:10px}
+.bd-sum{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:16px;background:var(--tile);color:var(--ink-3);font-size:15px}
+.bd-sum span{display:grid;place-items:center;flex:none;width:36px;height:36px;border-radius:12px;background:var(--card);color:var(--accent)}
+.bd-sum .i{width:19px;height:19px}
+.bd-sum b{font-family:var(--f-d);font-size:1.08rem}
+.bd-sum.ok{background:var(--accent-soft);color:var(--accent-ink)}
+.bd-sum.ok span{background:linear-gradient(145deg,#43c9e3,#1a86c0);color:#fff}
+.bd-lbl{font-size:12.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);margin-bottom:-4px}
+.bd-mon{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.bd-days{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
+.bd button{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:11px;font:700 14px/1 var(--f-b);cursor:pointer;transition:background-color .15s,color .15s,border-color .15s,transform .1s}
+.bd-mon button{height:38px}
+.bd-days button{aspect-ratio:1;min-height:36px;padding:0;border-radius:10px;font-size:14px}
+.bd button:active{transform:scale(.94)}
+.bd button.on{background:linear-gradient(145deg,#43c9e3,#1a86c0);border-color:transparent;color:#fff;box-shadow:0 6px 14px -6px rgba(26,134,192,.7)}
+#m-save:disabled{opacity:.45;box-shadow:none}
