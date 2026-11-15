@@ -2511,7 +2511,6 @@ html,body{touch-action:pan-x pan-y}
 .order .ord-cancel:disabled{opacity:.55;cursor:default}
 /* окно подтверждения отмены: спокойный голубой значок и обычная кнопка вместо красных */
 .cbx-info .cbx-ic{background:var(--accent-soft);color:var(--accent)}
-.cbx-acts .ord-cancel-yes{background:var(--accent-soft);color:var(--accent-ink);box-shadow:inset 0 0 0 1.5px var(--accent-line)}
 /* анимации рамок аватара (подключаются через переменную --fa) */
 @keyframes ear-l{0%,70%,100%{transform:rotate(0)}76%{transform:rotate(-7deg)}84%{transform:rotate(2deg)}}
 @keyframes fr-blink{0%,100%{opacity:1}50%{opacity:.3}}
@@ -2576,3 +2575,19 @@ html,body{touch-action:pan-x pan-y}
 .order .acts{display:flex;flex-wrap:wrap;gap:8px}
 .order .acts .btn{min-height:38px;height:38px;padding:0 14px;font-size:13.5px;border-radius:12px}
 .order .acts .btn .i{width:16px;height:16px}
+/* ===== update 100 ===== */
+/* карточка заказа: кнопки на всю ширину, отмена отдельной строкой в цветах магазина */
+.order .acts{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.order .acts .btn{width:100%;justify-content:center}
+.order .acts .btn.ord-cancel{grid-column:1/-1;display:inline-flex;align-items:center;justify-content:center;gap:6px;margin:0;height:38px;min-height:38px;padding:0 14px;border:0;border-radius:12px;background:transparent;color:var(--accent-ink);box-shadow:inset 0 0 0 1.5px var(--accent-line);font:700 13.5px/1 var(--f-b)}
+.order .acts .btn.ord-cancel .i{width:16px;height:16px;color:var(--accent)}
+.order .acts .btn.ord-cancel:hover{background:var(--accent-soft)}
+/* статус «Оформлен» зелёным, «Отменён» остаётся красным */
+.st-pill.st-new{background:#dcfce7;color:#15803d}
+:root[data-theme="dark"] .st-pill.st-new{background:rgba(34,197,94,.16);color:#6ee7a0}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .st-pill.st-new{background:rgba(34,197,94,.16);color:#6ee7a0}}
+/* ленты на главной: цена в одну строку, чтобы карточки были одной высоты и снизу не было пустоты */
+@media (max-width:759px){
+  .hscroll .pcard .prices{flex-wrap:nowrap}
+  .hscroll .pcard .prices .old{display:none}
+}

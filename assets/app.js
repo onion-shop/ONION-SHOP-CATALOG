@@ -1700,7 +1700,7 @@
     var status = hasSt ? rvTimeline(o) : (o.offline ? '<div class="rc-status todo">' + icon('send') + '<span>Сервер недоступен: напишите менеджеру номер заказа.</span></div>'
       : '<div class="rc-status ok">' + icon('check-circle') + '<span>Заказ у менеджера. Он свяжется с вами в Telegram или по телефону.</span></div>');
     return '<div class="rv-card"><div class="rv-no"><div><span class="rv-l">Номер заказа</span><b>' + esc(o.no) + '</b></div><button class="rv-cp" type="button" data-copy="' + esc(o.no) + '">' + icon('copy') + 'Копировать</button></div>' +
-      '<p class="rv-meta"><span>' + esc(fmtAt(o.at)) + '</span><b>' + rub(o.toPay != null ? o.toPay : o.total) + '</b></p>' + status + '</div>' +
+      '<p class="rv-meta"><span>' + esc(fmtAt(o.at)) + '</span></p>' + status + '</div>' +
       '<details class="rv-det"' + (open ? ' open' : '') + '><summary>Что в заказе' + icon('chevron-down') + '</summary><div class="rv-in">' + (thumbs ? '<div class="rv-th">' + thumbs + '</div>' : '') +
       '<div class="rc-row"><span>Товаров: ' + (o.count || 0) + ' шт.</span><b>' + rub(o.total || 0) + '</b></div>' +
       (o.tokens ? '<div class="rc-row"><span>Списано ' + num(o.tokens) + ' ' + tokWord(o.tokens) + '</span><b>−' + rub(o.tokenRub) + '</b></div>' : '') +
@@ -1728,9 +1728,9 @@
     var its = o.items || [];
     var oi = function (it, cls, more) { var id = it.photo || it.thumb; return '<a class="oi' + cls + '"' + (more ? ' data-more="+' + more + '"' : '') + ' href="#p-' + esc(it.id) + '" title="' + esc(it.title) + '">' + (id ? '<img src="' + thumb(id) + '" alt="' + esc(it.title) + '" loading="lazy">' : '') + (it.qty > 1 && !more ? '<i>×' + it.qty + '</i>' : '') + '</a>'; };
     var pics = its.length ? '<div class="ord-pics">' + oi(its[0], ' big') + (its.length > 1 ? '<div class="col">' + oi(its[1], '', 0) + (its.length > 2 ? oi(its[2], '', its.length > 3 ? its.length - 3 : 0) : '') + '</div>' : '') + '</div>' : '';
-    return '<article class="card order" data-o="' + i + '"><div class="ord-row">' + pics + '<div class="ord-info"><div class="ord-l1"><span class="order-no">№ ' + esc(o.no) + '</span>' + stPill(o) + '</div><p class="date">' + esc(fmtAt(o.at)) + '</p><div class="ord-sum">' + rub(o.toPay != null ? o.toPay : o.total) + '</div>' + (canCancel(o) ? '<button class="ord-cancel" type="button" data-cancel>' + icon('x') + 'Отменить заказ</button>' : '') + '</div></div>' +
+    return '<article class="card order" data-o="' + i + '"><div class="ord-row">' + pics + '<div class="ord-info"><div class="ord-l1"><span class="order-no">№ ' + esc(o.no) + '</span>' + stPill(o) + '</div><p class="date">' + esc(fmtAt(o.at)) + '</p><div class="ord-sum">' + rub(o.toPay != null ? o.toPay : o.total) + '</div>' + '</div></div>' +
       ((o.photos || []).length ? '<div class="ord-photos">' + icon('camera') + '<b>Фотоотчёт</b>' + o.photos.map(function (l, k) { return '<a class="chip" href="' + esc(l) + '" target="_blank" rel="noopener">Фото ' + (k + 1) + '</a>'; }).join('') + '</div>' : '') +
-      '<div class="acts"><button class="btn btn-sm" type="button" data-open>' + icon('receipt') + (o.stages ? 'Статус и чек' : 'Чек') + '</button><button class="btn btn-ghost btn-sm" type="button" data-repeat>' + icon('refresh') + 'Повторить</button>' + reviewBtn(o) + '</div>' + cancelHint(o) + '</article>';
+      '<div class="acts"><button class="btn btn-sm" type="button" data-open>' + icon('receipt') + (o.stages ? 'Статус и чек' : 'Чек') + '</button><button class="btn btn-ghost btn-sm" type="button" data-repeat>' + icon('refresh') + 'Повторить</button>' + reviewBtn(o) + (canCancel(o) ? '<button class="btn ord-cancel" type="button" data-cancel>' + icon('x') + 'Отменить заказ</button>' : '') + '</div>' + cancelHint(o) + '</article>';
   }
   /* пока заказ не «Оформлен», кнопки отмены нет: объясняем почему и куда писать */
   function cancelHint(o) {
