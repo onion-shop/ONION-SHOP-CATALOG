@@ -1420,7 +1420,7 @@
     if (!lines.length) {
       v.innerHTML = '<div class="view-head"><div><span class="eyebrow">Корзина</span><h1>Корзина пуста</h1></div></div>' +
         (gone.length ? '<div class="notice notice-info" style="margin-bottom:12px">' + icon('alert') + '<div>Часть товаров сейчас недоступна (нет в наличии или продана) и убрана из корзины.</div></div>' : '') +
-        '<div class="empty"><span class="ico">' + icon('bag') + '</span><h3>Здесь появятся выбранные вещи</h3><p>Откройте каталог, выберите размер и цвет и нажмите «В корзину».</p><div class="acts" style="justify-content:center"><a class="btn" href="#catalog">' + icon('grid') + 'Перейти в каталог</a>' + (favs.length ? '<a class="btn btn-ghost" href="#favorites">' + icon('heart') + 'Избранное</a>' : '') + '</div></div>';
+        '<div class="empty"><span class="ico">' + icon('bag') + '</span><h3>Здесь появятся выбранные вещи</h3><p>Откройте каталог, выберите размер и цвет и нажмите «В корзину».</p><div class="acts" style="justify-content:center"><a class="btn" href="#catalog">' + icon('grid') + 'Перейти в каталог</a>' + (favs.length ? '<a class="btn btn-white cart-fav" href="#favorites">' + icon('heart') + 'Избранное</a>' : '') + '</div></div>';
       return;
     }
     if (cartStep !== 'checkout' || !selLines().length) { cartStep = 'list'; renderCartList(v, cartLines(), gone); return; }
@@ -1725,8 +1725,10 @@
     return list;
   }
   function orderCard(o, i) {
-    return '<article class="card order" data-o="' + i + '"><div class="order-top"><div><span class="order-no">№ ' + esc(o.no) + '</span><p class="date">' + esc(fmtAt(o.at)) + '</p>' + (canCancel(o) ? '<button class="ord-cancel" type="button" data-cancel>' + icon('x') + 'Отменить заказ</button>' : '') + '</div><div style="display:grid;justify-items:end;gap:6px"><span class="sum">' + rub(o.toPay != null ? o.toPay : o.total) + '</span>' + stPill(o) + '</div></div>' +
-      '<div class="order-items">' + (o.items || []).map(function (it) { var id = it.photo || it.thumb; return '<a class="oi" href="#p-' + esc(it.id) + '" title="' + esc(it.title) + '">' + (id ? '<img src="' + thumb(id) + '" alt="' + esc(it.title) + '" loading="lazy">' : '') + (it.qty > 1 ? '<i>×' + it.qty + '</i>' : '') + '</a>'; }).join('') + '</div>' +
+    var its = o.items || [];
+    var oi = function (it, cls, more) { var id = it.photo || it.thumb; return '<a class="oi' + cls + '"' + (more ? ' data-more="+' + more + '"' : '') + ' href="#p-' + esc(it.id) + '" title="' + esc(it.title) + '">' + (id ? '<img src="' + thumb(id) + '" alt="' + esc(it.title) + '" loading="lazy">' : '') + (it.qty > 1 && !more ? '<i>×' + it.qty + '</i>' : '') + '</a>'; };
+    var pics = its.length ? '<div class="ord-pics">' + oi(its[0], ' big') + (its.length > 1 ? '<div class="col">' + oi(its[1], '', 0) + (its.length > 2 ? oi(its[2], '', its.length > 3 ? its.length - 3 : 0) : '') + '</div>' : '') + '</div>' : '';
+    return '<article class="card order" data-o="' + i + '"><div class="ord-row">' + pics + '<div class="ord-info"><div class="ord-l1"><span class="order-no">№ ' + esc(o.no) + '</span>' + stPill(o) + '</div><p class="date">' + esc(fmtAt(o.at)) + '</p><div class="ord-sum">' + rub(o.toPay != null ? o.toPay : o.total) + '</div>' + (canCancel(o) ? '<button class="ord-cancel" type="button" data-cancel>' + icon('x') + 'Отменить заказ</button>' : '') + '</div></div>' +
       ((o.photos || []).length ? '<div class="ord-photos">' + icon('camera') + '<b>Фотоотчёт</b>' + o.photos.map(function (l, k) { return '<a class="chip" href="' + esc(l) + '" target="_blank" rel="noopener">Фото ' + (k + 1) + '</a>'; }).join('') + '</div>' : '') +
       '<div class="acts"><button class="btn btn-sm" type="button" data-open>' + icon('receipt') + (o.stages ? 'Статус и чек' : 'Чек') + '</button><button class="btn btn-ghost btn-sm" type="button" data-repeat>' + icon('refresh') + 'Повторить</button>' + reviewBtn(o) + '</div>' + cancelHint(o) + '</article>';
   }

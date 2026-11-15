@@ -2537,3 +2537,42 @@ html,body{touch-action:pan-x pan-y}
 /* полоса категорий вверху: иконки крупнее, обувь ещё чуть крупнее */
 .ct-i img{padding:0!important;transform:scale(1.12)}
 .ct[data-cat="shoes"] .ct-i img{transform:scale(1.4)}
+/* ===== update 99: меньше пустоты между блоками и перед подвалом (телефон) ===== */
+@media (max-width:759px){
+  main{min-height:0}
+  .view{padding-block:12px 14px}
+  .ftr{margin-top:0;padding-block:12px 24px}
+  .sec{margin-top:24px}
+  .hscroll{padding-bottom:4px}
+  .hscroll .pcard .sw-row{display:none}
+}
+/* плитки категорий в каталоге: фото крупнее */
+.ctile{width:104px;padding:8px 4px}
+.ctile-i{width:84px;height:84px;border-radius:20px}
+.ctile-i img{padding:2px!important;transform:scale(1.04)}
+.ctile-l{min-height:30px}
+.ctile-n{top:6px;right:10px}
+@media (min-width:760px){.ctile{width:120px}.ctile-i{width:92px;height:92px}}
+/* пустая корзина: «Избранное» белой кнопкой с красным сердечком */
+.btn.cart-fav{background:#fff;color:#0b1d3a;box-shadow:inset 0 0 0 1.5px var(--line-2),0 6px 16px -8px rgba(11,29,58,.25)}
+.btn.cart-fav .i{color:var(--heart);fill:var(--heart)}
+.btn.cart-fav:hover{background:#f1f6fc}
+/* «Мои заказы»: крупное фото слева, данные справа, кнопки компактнее фото */
+.order{padding:14px;gap:12px}
+.ord-row{display:flex;gap:12px;align-items:stretch;min-width:0}
+.ord-pics{display:flex;gap:6px;flex:none}
+.ord-pics .oi{position:relative;display:block;overflow:hidden;background:var(--tile)}
+.ord-pics .oi img{width:100%;height:100%;object-fit:cover;display:block}
+.ord-pics .oi.big{width:96px;height:96px;border-radius:18px}
+.ord-pics .col{display:grid;grid-auto-rows:45px;gap:6px;width:45px;align-content:start}
+.ord-pics .col .oi{width:45px;height:45px;border-radius:12px}
+.ord-pics .oi i{position:absolute;right:4px;bottom:4px;font-style:normal;font-size:11px;font-weight:700;background:rgba(11,29,58,.65);color:#fff;border-radius:6px;padding:0 5px}
+.ord-pics .oi[data-more]::after{content:attr(data-more);position:absolute;inset:0;display:grid;place-items:center;background:rgba(11,29,58,.58);color:#fff;font:800 14px/1 var(--f-b)}
+.ord-info{flex:1;min-width:0;display:grid;align-content:start;gap:3px}
+.ord-l1{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:4px 8px}
+.ord-info .date{margin:0;font-size:12.5px;color:var(--ink-3)}
+.ord-sum{font-family:var(--f-d);font-weight:800;font-size:19px;line-height:1.2;margin-top:2px}
+.ord-info .ord-cancel{justify-self:start;margin-top:6px}
+.order .acts{display:flex;flex-wrap:wrap;gap:8px}
+.order .acts .btn{min-height:38px;height:38px;padding:0 14px;font-size:13.5px;border-radius:12px}
+.order .acts .btn .i{width:16px;height:16px}
