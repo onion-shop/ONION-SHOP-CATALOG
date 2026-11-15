@@ -2502,17 +2502,16 @@ html,body{touch-action:pan-x pan-y}
 .as-bar span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .as-bar button{flex:none;height:30px;padding:0 14px;border:0;border-radius:999px;background:#fff;color:#0b1d3a;font:800 13px/1 var(--f-b);cursor:pointer}
 :root[data-theme="dark"] .as-bar{background:#16294d}
-/* отмена заказа: спокойная кнопка в цветах сайта, красный только в значке и тонкой обводке */
-.order .acts .ord-cancel{background:var(--card);color:var(--ink);box-shadow:inset 0 0 0 1.5px rgba(225,29,72,.38);min-height:40px}
-.order .acts .ord-cancel .i{color:#e11d48}
-.order .acts .ord-cancel:hover{background:var(--tile)}
-.cbx-acts .ord-cancel-yes{background:var(--card);color:#c8102e;box-shadow:inset 0 0 0 1.5px rgba(225,29,72,.45)}
-:root[data-theme="dark"] .cbx-acts .ord-cancel-yes{color:#ff8a9a;background:transparent}
-:root[data-theme="dark"] .order .acts .ord-cancel .i{color:#ff8a9a}
-@media (prefers-color-scheme: dark){
-  :root:not([data-theme="light"]) .cbx-acts .ord-cancel-yes{color:#ff8a9a;background:transparent}
-  :root:not([data-theme="light"]) .order .acts .ord-cancel .i{color:#ff8a9a}
-}
+/* отмена заказа: маленькая «таблетка» под датой, без красного, в цветах магазина */
+.order .ord-cancel{display:inline-flex;align-items:center;gap:6px;margin-top:8px;height:30px;padding:0 13px 0 10px;border:1px solid var(--accent-line);border-radius:999px;background:var(--accent-soft);color:var(--accent-ink);font:700 12.5px/1 var(--f-b);cursor:pointer;transition:background .15s,transform .15s}
+.order .ord-cancel .i{width:14px;height:14px;flex:none;color:var(--accent)}
+.order .ord-cancel:hover{background:var(--tile-2)}
+.order .ord-cancel:active{transform:scale(.96)}
+.order .ord-cancel:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.order .ord-cancel:disabled{opacity:.55;cursor:default}
+/* окно подтверждения отмены: спокойный голубой значок и обычная кнопка вместо красных */
+.cbx-info .cbx-ic{background:var(--accent-soft);color:var(--accent)}
+.cbx-acts .ord-cancel-yes{background:var(--accent-soft);color:var(--accent-ink);box-shadow:inset 0 0 0 1.5px var(--accent-line)}
 /* анимации рамок аватара (подключаются через переменную --fa) */
 @keyframes ear-l{0%,70%,100%{transform:rotate(0)}76%{transform:rotate(-7deg)}84%{transform:rotate(2deg)}}
 @keyframes fr-blink{0%,100%{opacity:1}50%{opacity:.3}}

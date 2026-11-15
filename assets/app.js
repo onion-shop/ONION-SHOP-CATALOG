@@ -1725,10 +1725,10 @@
     return list;
   }
   function orderCard(o, i) {
-    return '<article class="card order" data-o="' + i + '"><div class="order-top"><div><span class="order-no">№ ' + esc(o.no) + '</span><p class="date">' + esc(fmtAt(o.at)) + '</p></div><div style="display:grid;justify-items:end;gap:6px"><span class="sum">' + rub(o.toPay != null ? o.toPay : o.total) + '</span>' + stPill(o) + '</div></div>' +
+    return '<article class="card order" data-o="' + i + '"><div class="order-top"><div><span class="order-no">№ ' + esc(o.no) + '</span><p class="date">' + esc(fmtAt(o.at)) + '</p>' + (canCancel(o) ? '<button class="ord-cancel" type="button" data-cancel>' + icon('x') + 'Отменить заказ</button>' : '') + '</div><div style="display:grid;justify-items:end;gap:6px"><span class="sum">' + rub(o.toPay != null ? o.toPay : o.total) + '</span>' + stPill(o) + '</div></div>' +
       '<div class="order-items">' + (o.items || []).map(function (it) { var id = it.photo || it.thumb; return '<a class="oi" href="#p-' + esc(it.id) + '" title="' + esc(it.title) + '">' + (id ? '<img src="' + thumb(id) + '" alt="' + esc(it.title) + '" loading="lazy">' : '') + (it.qty > 1 ? '<i>×' + it.qty + '</i>' : '') + '</a>'; }).join('') + '</div>' +
       ((o.photos || []).length ? '<div class="ord-photos">' + icon('camera') + '<b>Фотоотчёт</b>' + o.photos.map(function (l, k) { return '<a class="chip" href="' + esc(l) + '" target="_blank" rel="noopener">Фото ' + (k + 1) + '</a>'; }).join('') + '</div>' : '') +
-      '<div class="acts"><button class="btn btn-sm" type="button" data-open>' + icon('receipt') + (o.stages ? 'Статус и чек' : 'Чек') + '</button><button class="btn btn-ghost btn-sm" type="button" data-repeat>' + icon('refresh') + 'Повторить</button>' + reviewBtn(o) + (canCancel(o) ? '<button class="btn btn-sm ord-cancel" type="button" data-cancel>' + icon('x') + 'Отменить заказ</button>' : '') + '</div>' + cancelHint(o) + '</article>';
+      '<div class="acts"><button class="btn btn-sm" type="button" data-open>' + icon('receipt') + (o.stages ? 'Статус и чек' : 'Чек') + '</button><button class="btn btn-ghost btn-sm" type="button" data-repeat>' + icon('refresh') + 'Повторить</button>' + reviewBtn(o) + '</div>' + cancelHint(o) + '</article>';
   }
   /* пока заказ не «Оформлен», кнопки отмены нет: объясняем почему и куда писать */
   function cancelHint(o) {
@@ -1742,7 +1742,7 @@
   function cancelOrderUi(o, btn) {
     if (cancelBusy) return;
     var redraw = function () { if (current === 'orders') renderOrders(); else if (current === 'account') renderAccount(); };
-    confirmBox({ icon: 'x', tone: 'warn', title: 'Отменить заказ ' + o.no + '?', text: 'Заказ отменится сразу, вернуть его потом не получится. Ониксы, если вы ими платили, вернутся на баланс.',
+    confirmBox({ icon: 'x', tone: 'info', title: 'Отменить заказ ' + o.no + '?', text: 'Заказ отменится сразу, вернуть его потом не получится. Ониксы, если вы ими платили, вернутся на баланс.',
       actions: [{ label: 'Да, отменить', cls: 'btn-ghost ord-cancel-yes', run: function () {
         if (cancelBusy) return; cancelBusy = true; if (btn) busy(btn, true);
         API.call('cancelOrder', { no: o.no }).then(function (r) {
@@ -2041,13 +2041,12 @@
 
   function openMenu() {
     if ($('#drawer')) return;
-    var u = acct.user, cats = categories(PRODUCTS).filter(function (c) { return c.key !== 'other'; });
+    var u = acct.user;
     var link = function (ic, label, attrs, sub) { return '<a class="dr-i" ' + attrs + '><span class="dr-ic">' + icon(ic) + '</span><span class="dr-t">' + label + (sub ? '<small>' + sub + '</small>' : '') + '</span>' + icon('chevron-right') + '</a>'; };
     var nSale = PRODUCTS.filter(function (x) { return discount(x) >= 3; }).length;
     var el = document.createElement('div'); el.id = 'drawer'; el.className = 'drawer';
     el.innerHTML = '<div class="dr-bg" data-dr-close></div><aside class="dr-p" role="dialog" aria-modal="true" aria-label="Меню"><div class="dr-h"><b>Меню</b><button class="icon-btn" type="button" data-dr-close aria-label="Закрыть">' + icon('x') + '</button></div><div class="dr-b">' +
       '<div class="dr-g">' + link('home', 'Главная', 'href="#home" data-go="home"') + link('grid', 'Каталог', 'href="#catalog" data-go="catalog" data-reset="1"') + link('box', 'В наличии', 'href="#stock" data-go="stock"') + link('plane', 'Предзаказ из Китая', 'href="#preorder" data-go="preorder"') + link('percent', 'Товары со скидкой', 'href="#catalog" data-go="catalog" data-sale="1"', nSale ? nSale + ' ' + plural(nSale, 'товар', 'товара', 'товаров') : '') + '</div>' +
-      '<div class="dr-s">Категории</div><div class="dr-cats">' + cats.map(function (c) { return '<a class="dr-c' + (c.n ? '' : ' empty') + '" href="#catalog" data-go="catalog" data-cat="' + c.key + '">' + catImg(c.key) + '<span>' + esc(c.label) + '</span></a>'; }).join('') + '</div>' +
       '<div class="dr-s">Мои покупки</div><div class="dr-g">' + link('heart', 'Избранное', 'href="#favorites" data-go="favorites"') + link('bag', 'Корзина', 'href="#cart" data-go="cart"') + link('user', u ? 'Кабинет' : 'Войти', 'href="#account" data-go="account"', u ? esc(u.name || u.login || '') : '') + (API.enabled ? link('receipt', 'Мои заказы', 'href="#orders" data-go="orders"') + link('gift', 'Игра', 'href="#roulette" data-go="roulette"') : '') + '</div>' +
       '<div class="dr-s">Информация</div><div class="dr-g">' + link('info', 'Частые вопросы', 'href="#info" data-go="info"', 'заказ, сроки, доставка, оплата') + link('truck', 'Как работает предзаказ', 'href="' + SHOP.preorderUrl + '" target="_blank" rel="noopener"') + link('pin', 'Магазин и контакты', 'href="#info" data-go="info"', esc(SHOP.address)) + '</div>' +
       '<div class="dr-s">Оформление</div><div class="dr-th" id="dr-th">' + ['auto', 'light', 'dark'].map(function (k) { return '<button type="button" data-th="' + k + '" aria-pressed="' + (themeMode() === k) + '">' + (k === 'auto' ? 'Авто' : THEME_NAMES[k]) + '</button>'; }).join('') + '</div>' +
