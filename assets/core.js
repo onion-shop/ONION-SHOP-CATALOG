@@ -984,22 +984,19 @@ var OnionCore = (function () {
 
   /** Собирает и проверяет строки заказа. items: [{id, size, color, photo, qty, note, title, price, status, link, photos}] */
   function buildLines(db, items) {
-    var lines = [], unverified = false, gone = [];
+    var lines = [], gone = [];
+    if (db.catalogReady && !db.catalogReady()) return { lines: lines, gone: gone, notReady: true }; // каталог не загрузился: заказ не принимаем, цены с сайта не берём никогда
     (items || []).forEach(function (it) {
       var qty = Math.max(1, Math.min(10, parseInt(it.qty, 10) || 1));
       var prod = db.product ? db.product(String(it.id)) : null;
       if (prod && (prod.status === 'sold' || prod.status === 'out')) { gone.push(prod.title || it.id); return; }   // нет в наличии или продано: заказать нельзя никак
-      if (!prod) {
-        if (db.catalogReady && db.catalogReady()) { gone.push(it.title || it.id); return; }
-        unverified = true;
-        prod = { id: it.id, title: String(it.title || 'Товар ' + it.id), price: Math.max(0, parseInt(it.price, 10) || 0), status: it.status === 'preorder' ? 'preorder' : it.status === 'out' ? 'out' : 'stock', link: it.link || '', photos: [] };
-      }
+      if (!prod) { gone.push(it.title || it.id); return; }
       var photoNo = 0;
       if (it.photo && prod.photos) { for (var i = 0; i < prod.photos.length; i++) if (String(prod.photos[i].id) === String(it.photo)) photoNo = i + 1; }
       if (!photoNo && it.photoNo) photoNo = parseInt(it.photoNo, 10) || 0;
       lines.push({ id: String(prod.id), title: prod.title, status: prod.status === 'preorder' ? 'preorder' : prod.status === 'out' ? 'out' : 'stock', category: prod.category || it.category || '', size: it.size ? String(it.size).slice(0, 40) : '', color: it.color ? String(it.color).slice(0, 60) : '', photoNo: photoNo, photo: it.photo || null, note: String(it.note || '').slice(0, 300), qty: qty, price: prod.price, link: prod.link || '', thumb: (prod.photos && prod.photos[0] ? prod.photos[0].id : it.thumb) || null });
     });
-    return { lines: lines, unverified: unverified, gone: gone };
+    return { lines: lines, gone: gone };
   }
 
   /* Скидка по промокоду: личный промокод категории (cat) считается только с товаров этой категории */
@@ -1051,6 +1048,7 @@ var OnionCore = (function () {
       f = Object.assign({}, f, { name: su.name, phone: su.phone, tg: su.tg || '' });
     }
     var built = buildLines(db, p.items);
+    if (built.notReady) return err('Каталог сейчас обновляется. Попробуйте оформить заказ через минуту');
     if (built.gone.length) return err('Сейчас нельзя заказать (нет в наличии или продано): ' + built.gone.join(', ') + '. Уберите из корзины, а такой товар можно добавить в избранное');
     if (!built.lines.length) return err('Корзина пуста');
     var hasPre = built.lines.some(function (l) { return l.status === 'preorder'; });
@@ -1061,8 +1059,6 @@ var OnionCore = (function () {
     var total = 0, cnt = 0;
     built.lines.forEach(function (l) { total += l.price * l.qty; cnt += l.qty; });
     var u = sessionUser(db, p), tokens = 0, tokenRub = 0, promo = '', promoRub = 0, promoNote = '', pack = '';
-    // каталог не загрузился, цены пришли с сайта; скидки ониксами и промокодами в таком заказе не даём, менеджер посчитает сам
-    if (built.unverified && ((parseInt(p.useTokens, 10) || 0) > 0 || String(p.promo || '').trim())) return err('Каталог сейчас обновляется: ониксы и промокод временно недоступны. Оформите заказ без них или попробуйте через минуту');
     if (u) {
       var maxTok = Math.min(u.balance || 0, Math.floor(total * RULES.maxShare / RULES.tokenRub));
       tokens = Math.max(0, Math.min(maxTok, parseInt(p.useTokens, 10) || 0));
@@ -1092,7 +1088,6 @@ var OnionCore = (function () {
     var pk = u ? packInfo(db, u) : null;
     if (pk && pk.available && p.usePack !== false && hasPre) { pack = pk.label + ' (' + pk.level + ')'; u.packMonth = monthKey(at); }
     var text = orderText({ no: no, at: at, f: f, lines: built.lines, total: total, tokens: tokens, tokenRub: tokenRub, promo: promo, promoRub: promoRub, promoNote: promoNote, pack: pack, priority: priority, vipRub: vipRub, toPay: toPay, user: u ? { login: u.login, id: u.id, levelName: li.name } : null });
-    if (built.unverified) text += '\n\n⚠️ Каталог был недоступен, цены взяты с сайта, проверьте.';
     if (u) {
       if (tokens) log(db, u, -tokens, 'Оплата заказа №' + no);
       // сумма идёт в уровень и в «Потрачено всего» только когда заказ получен (статус «Получен»: см. receive)
@@ -1115,6 +1110,30 @@ var OnionCore = (function () {
     return ok({ order: order, notified: notified, user: u ? publicUser(db, u) : null });
   };
 
+  /* Отмена заказа клиентом: только свой заказ и только в статусе «Оформлен». Статус проверяет база в момент записи
+     (db.cancelOrder), поэтому подмена запроса или гонка с менеджером не помогут: побеждает актуальный статус.
+     Возврат ониксов, списание наград за задания «оформить заказ» и возврат личного промокода делает та же сверка,
+     что и при отмене менеджером, с отметкой «возвращено», поэтому дважды ничего не начислится. */
+  var CANCEL_BUSY = 'Заказ уже в работе, отмена недоступна. Напишите менеджеру, он подскажет, что можно сделать';
+  /* общая отмена для сайта и бота: один и тот же код и одна и та же проверка статуса в базе.
+     via: 'site' или 'bot', влияет только на подпись в уведомлении менеджеру. */
+  function cancelFor(db, u, no, via) {
+    no = String(no || '').trim().toUpperCase();
+    if (!u || !/^OS-\d{2}-\d{5}$/.test(no) || !db.cancelOrder) return { ok: false, error: 'Заказ не найден' };
+    var r = db.cancelOrder(no, u.id, via) || {};
+    if (r.missing) return { ok: false, error: 'Заказ не найден' };
+    if (!r.done) return { ok: false, status: r.status || '', already: r.status === 'Отменён', error: r.status === 'Отменён' ? 'Этот заказ уже отменён' : r.status === 'Получен' ? 'Заказ уже у вас, отменить его нельзя. Если что-то не так, напишите менеджеру' : CANCEL_BUSY };
+    u = db.getUser(u.id) || u;
+    var where = via === 'bot' ? 'в боте' : 'на сайте';
+    try { if (db.notify) db.notify('❌ Клиент сам отменил заказ ' + no + ' ' + where + ' (@' + u.login + '). Статус «Отменён» уже стоит, ониксы за заказ вернулись клиенту.', { no: no }); } catch (e) { /* не критично */ }
+    return { ok: true, no: no, status: 'Отменён', user: u };
+  }
+  A.cancelOrder = function (db, p) {
+    var u = sessionUser(db, p); if (!u) return err('auth');
+    var r = cancelFor(db, u, p.no, 'site');
+    if (!r.ok) return r.status !== undefined ? { ok: false, status: r.status, already: !!r.already, error: r.error } : err(r.error);
+    return ok({ no: r.no, status: 'Отменён', user: publicUser(db, r.user) });
+  };
   /* Заказ получен (sign = 1) или статус «Получен» сняли (sign = -1).
      Сумма «К оплате» даёт XP (1 XP за 10 ₽) в уровень месяца и идёт в «Потрачено всего».
      month: месяц, в котором сумму засчитали: при отмене из уровня вычитаем, только если месяц тот же. */
@@ -1316,7 +1335,7 @@ var OnionCore = (function () {
     RULES: RULES, genCode: genCode, handle: handle, orderText: orderText, buildLines: buildLines, checkFields: checkFields,
     offlineNo: offlineNo, levelInfo: levelInfo, levelOf: levelOf, fixIndex: fixIndex, receive: receive, priceDrops: priceDrops, photoLinks: photoLinks, earlyLeft: earlyLeft, phoneConfirm: phoneConfirm, flag: flag, referralOnReceive: referralOnReceive, orderCanceled: orderCanceled, canonEmail: canonEmail, bdayIsToday: bdayIsToday, adjustTokens: adjustTokens, xpOfRub: xpOfRub, wheelFor: wheelFor, framesFor: framesFor, pctText: pctText, promoBase: promoBase, touch: touch, tokensToRub: tokensToRub, settings: settings, dayKey: dayKey, monthKey: monthKey,
     statusMessage: statusMessage, tgBind: tgBind, activePromos: activePromos, hashPass: hashPass,
-    cleanTg: cleanTg, cleanEmail: cleanEmail, phoneKey: phoneKey, fmtPhone: fmtPhone, digits: digits, validEmail: validEmail, taskPick: picksFor, weekKey: weekKey, stagesFor: stagesFor
+    cleanTg: cleanTg, cleanEmail: cleanEmail, phoneKey: phoneKey, fmtPhone: fmtPhone, digits: digits, validEmail: validEmail, taskPick: picksFor, weekKey: weekKey, stagesFor: stagesFor, cancelFor: cancelFor
   };
 })();
 if (typeof module !== 'undefined') module.exports = OnionCore;

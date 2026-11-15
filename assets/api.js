@@ -57,6 +57,18 @@ var OnionAPI = (function () {
     deleteSession: function (t) { mem.sessions = mem.sessions.filter(function (s) { return s.token !== t; }); save(); },
     nextOrderSeq: function () { mem.seq.order += 1; save(); return mem.seq.order; },
     saveOrder: function (o) { mem.orders.push(o); save(); },
+    cancelOrder: function (no, uid) {
+      var o = mem.orders.filter(function (x) { return x.no === no && x.userId === uid; })[0]; if (!o) return { missing: true };
+      var st = o.status || 'Оформлен'; if (st !== 'Оформлен') return { status: st };
+      o.status = 'Отменён'; var u = DemoDB.getUser(uid);
+      if (u && !o.refunded) {
+        o.refunded = 'да';
+        if (o.tokens > 0) OnionCore.adjustTokens(DemoDB, u, o.tokens, 'Возврат ониксов: заказ ' + no + ' отменён');
+        OnionCore.orderCanceled(DemoDB, u, { no: no, at: o.at, total: o.total, kind: o.kind, taskRew: o.taskRew || '' }, 1);
+        (u.promos || []).forEach(function (p) { if (o.promo && String(p.code).toUpperCase() === String(o.promo).toUpperCase()) { delete p.used; delete p.usedAt; } });
+      }
+      save(); return { status: 'Оформлен', done: true };
+    },
     listOrders: function (uid, n) { return mem.orders.filter(function (o) { return o.userId === uid; }).slice(-n).reverse(); },
     log: function (e) { mem.log.push(e); if (mem.log.length > 500) mem.log.shift(); },
     catalogReady: function () { return true; },
