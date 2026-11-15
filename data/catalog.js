@@ -2,7 +2,7 @@
 window.ONION_CATALOG = {
  "channel": "ONION_SHOP_OFFICIAL",
  "source": "t.me",
- "updatedAt": "2026-11-09T21:11:31Z",
+ "updatedAt": "2026-11-15T15:23:46Z",
  "products": [
   {
    "title": "Свитер Polo Ralph Lauren USA flag",
@@ -532,7 +532,7 @@ window.ONION_CATALOG = {
    "brand": "Canada Goose",
    "category": "puffers",
    "categoryLabel": "Пуховики",
-   "status": "stock",
+   "status": "out",
    "price": 4820,
    "oldPrice": null,
    "sizes": [
@@ -871,7 +871,7 @@ window.ONION_CATALOG = {
    "category": "shoes",
    "categoryLabel": "Обувь",
    "status": "stock",
-   "price": 5620,
+   "price": 5260,
    "oldPrice": null,
    "sizes": [
     "36",
@@ -1211,7 +1211,7 @@ window.ONION_CATALOG = {
    "category": "shoes",
    "categoryLabel": "Обувь",
    "status": "stock",
-   "price": 6590,
+   "price": 6290,
    "oldPrice": null,
    "sizes": [
     "36",
@@ -1279,7 +1279,7 @@ window.ONION_CATALOG = {
    "category": "shoes",
    "categoryLabel": "Обувь",
    "status": "stock",
-   "price": 6590,
+   "price": 6290,
    "oldPrice": null,
    "sizes": [
     "36",
@@ -1347,7 +1347,7 @@ window.ONION_CATALOG = {
    "category": "shoes",
    "categoryLabel": "Обувь",
    "status": "stock",
-   "price": 5620,
+   "price": 5260,
    "oldPrice": null,
    "sizes": [
     "36",
@@ -2985,13 +2985,13 @@ window.ONION_CATALOG = {
    "date": "2025-08-11T15:42:31Z"
   },
   {
-   "title": "Футболка GLO GANG",
+   "title": "Футболка GLO BLESS AMERICA",
    "subtitle": "",
-   "brand": "GLO GANG",
+   "brand": "GLO BLESS",
    "category": "tees",
    "categoryLabel": "Футболки",
    "status": "stock",
-   "price": 1650,
+   "price": 2290,
    "oldPrice": null,
    "sizes": [
     "M"
@@ -3085,13 +3085,13 @@ window.ONION_CATALOG = {
    "date": "2025-05-17T19:47:24Z"
   },
   {
-   "title": "Nike Air Force 1 Supreme",
+   "title": "Nike Air Force 1 Low x Supreme",
    "subtitle": "",
    "brand": "Nike",
    "category": "shoes",
    "categoryLabel": "Обувь",
    "status": "stock",
-   "price": 2950,
+   "price": 4070,
    "oldPrice": null,
    "sizes": [
     "41",
