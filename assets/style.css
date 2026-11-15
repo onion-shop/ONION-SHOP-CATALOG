@@ -2534,3 +2534,6 @@ html,body{touch-action:pan-x pan-y}
 .order .ord-nocancel{display:flex;gap:8px;align-items:flex-start;margin:10px 0 0;font-size:12.5px;line-height:1.4;color:var(--ink-3)}
 .order .ord-nocancel .i{flex:none;width:16px;height:16px;margin-top:1px;color:var(--accent)}
 .order .ord-nocancel a{color:var(--accent-ink);font-weight:700;text-decoration:underline;text-underline-offset:2px}
+/* полоса категорий вверху: иконки крупнее, обувь ещё чуть крупнее */
+.ct-i img{padding:0!important;transform:scale(1.12)}
+.ct[data-cat="shoes"] .ct-i img{transform:scale(1.4)}
