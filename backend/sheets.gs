@@ -9,7 +9,7 @@ function allowMail() { Logger.log('Можно отправить писем се
    =================================================================== */
 
 var CATALOG_URL_DEFAULT = 'https://onion-shop.github.io/ONION-SHOP-CATALOG/data/catalog.js';
-var LAYOUT_VER = '16';
+var LAYOUT_VER = '17';
 
 var SHEET = { orders: 'Заказы', users: 'Клиенты', promos: 'Промокоды', log: 'Журнал ониксов', summary: 'Сводка', sessions: 'Сессии', reviews: 'Отзывы', waits: 'Лист ожидания', ledger: 'Учёт бонусов', flags: 'Подозрительное' };
 
@@ -30,7 +30,6 @@ var ORDER_COLS = [
   ['phone', 'Телефон', { w: 130, t: 'text' }],
   ['tg', 'Telegram', { w: 120, t: 'text' }],
   ['kind', 'Тип', { w: 95 }],
-  ['comment', 'Комментарий', { w: 180 }],
   ['note', 'Заметка (для себя)', { w: 180, edit: true }],
   ['photoRep', 'Фотоотчёт (ссылки)', { w: 180, t: 'text', edit: true }],
   ['total', 'Сумма', { w: 90, t: 'money', old: ['Сумма, ₽'] }],
@@ -132,6 +131,59 @@ var C = { navy: '#0b1b4d', navy2: '#13296b', cyan: '#22d3ee', blue: '#3b82f6', e
 
 function ss_() { return SpreadsheetApp.getActive(); }
 function ALL_STAGES_() { return OnionCore.RULES.stagesPre.concat(['Отменён']); }
+/* Список статусов зависит от типа заказа: «в наличии» (и «временно нет») имеет 3 этапа + «Отменён»,
+   предзаказ и смешанный заказ: все этапы + «Отменён». */
+function isStockKind_(kind) { var k = String(kind || '').trim(); return k === 'в наличии' || k === 'временно нет'; }
+function statusRule_(kind) {
+  var stock = isStockKind_(kind);
+  return SpreadsheetApp.newDataValidation().requireValueInList(OnionCore.stagesFor(kind).concat(['Отменён']), true).setAllowInvalid(false)
+    .setHelpText(stock ? 'Заказ «в наличии»: Оформлен, Едет к вам, Получен или Отменён' : 'Предзаказ: Оформлен → Выкуплен → В пути → На складе → Едет к нам → Едет к вам → Получен, либо Отменён').build();
+}
+/* Ставит каждой строке список статусов по её типу. Общий список на весь столбец уже стоит (полный), здесь
+   строкам «в наличии» ставится короткий. Возвращает номера заказов, где текущий статус не подходит типу
+   (только номера, без данных клиентов). */
+function applyStatusRules_(sh) {
+  var last = sh.getLastRow(), bad = [];
+  if (last < 2) return bad;
+  var n = last - 1, iK = ci_(ORDER_COLS, 'kind'), iS = ci_(ORDER_COLS, 'status'), iN = ci_(ORDER_COLS, 'no');
+  var kinds = sh.getRange(2, iK + 1, n, 1).getValues(), sts = sh.getRange(2, iS + 1, n, 1).getValues(), nos = sh.getRange(2, iN + 1, n, 1).getValues();
+  var stockRule = statusRule_('в наличии'), preRule = statusRule_('предзаказ'), i = 0;
+  while (i < n) {
+    var stock = isStockKind_(kinds[i][0]), has = String(nos[i][0]).trim() !== '', j = i;
+    while (j + 1 < n && isStockKind_(kinds[j + 1][0]) === stock) j++;
+    sh.getRange(2 + i, iS + 1, j - i + 1, 1).setDataValidation(stock ? stockRule : preRule);
+    i = j + 1;
+  }
+  for (var q = 0; q < n; q++) {
+    if (String(nos[q][0]).trim() === '') continue;
+    var allowed = OnionCore.stagesFor(kinds[q][0]).concat(['Отменён']);
+    if (sts[q][0] && allowed.indexOf(String(sts[q][0])) < 0) bad.push(String(nos[q][0]));
+  }
+  return bad;
+}
+function checkStatusesUi() {
+  var sh = ss_().getSheetByName(SHEET.orders); if (!sh) return;
+  var bad = applyStatusRules_(sh), ui = SpreadsheetApp.getUi();
+  ui.alert(bad.length ? 'Статус не подходит типу заказа (например, «На складе» у заказа «в наличии») у ' + bad.length + ' заказов:\n\n' + bad.slice(0, 40).join(', ') + (bad.length > 40 ? ' …' : '') + '\n\nВыберите для них правильный статус из списка.' : 'Все статусы подходят типу заказа. Списки статусов обновлены.');
+}
+/* Фотоотчёт: ссылки на фото кладутся в колонку «Фотоотчёт», клиент получает сообщение и видит ссылки в «Моих заказах» */
+function addPhotoReportUi() {
+  var ui = SpreadsheetApp.getUi(), r = ui.prompt('Фотоотчёт: шаг 1 из 2', 'Номер заказа, например OS-26-00012 или 26-00012:', ui.ButtonSet.OK_CANCEL);
+  if (r.getSelectedButton() !== ui.Button.OK) return;
+  var q = r.getResponseText().trim().toUpperCase(); if (!/^OS-/.test(q)) q = 'OS-' + q;
+  var f = orderIdx_(q); if (!f) { ui.alert('Заказ ' + q + ' не найден.'); return; }
+  var l = ui.prompt('Фотоотчёт: шаг 2 из 2', 'Вставьте ссылку на фото заказа ' + q + ' (Google Диск, Telegram или любой сайт, ссылка начинается с https://). Несколько ссылок: через пробел.\n\nКлиент получит сообщение в Telegram и увидит ссылки в «Моих заказах».', ui.ButtonSet.OK_CANCEL);
+  if (l.getSelectedButton() !== ui.Button.OK) return;
+  var links = OnionCore.photoLinks(l.getResponseText());
+  if (!links.length) { ui.alert('Не нашёл ссылку. Она должна начинаться с https://'); return; }
+  var lock = LockService.getScriptLock(); lock.waitLock(15000);
+  try {
+    var sh = ss_().getSheetByName(SHEET.orders), c = sh.getRange(f.row, ci_(ORDER_COLS, 'photoRep') + 1);
+    c.setNumberFormat('@'); c.setValue(links.join('\n'));
+    try { tgPhotos_(); } catch (e) { console.error('photos', e && e.stack || e); }
+  } finally { lock.releaseLock(); }
+  ss_().toast('Фотоотчёт к ' + q + ' добавлен (' + links.length + ' шт.). Клиенту отправлено сообщение.', 'ONION SHOP', 6);
+}
 var STAGE_COLORS = { 'Оформлен': ['#eef2f7', '#3a4b63'], 'Выкуплен': ['#e5edfb', '#1d4fb8'], 'В пути': ['#e5edfb', '#1d4fb8'], 'На складе': ['#e5edfb', '#1d4fb8'], 'Едет к нам': ['#dff1f8', '#0a76a8'], 'Едет к вам': ['#dff1f8', '#0a76a8'], 'Получен': ['#173b8f', '#ffffff'], 'Отменён': ['#fbe9eb', '#b42318'] };
 function props_() { return PropertiesService.getScriptProperties(); }
 function mskText_(ms) { return Utilities.formatDate(new Date(ms), 'Europe/Moscow', 'dd.MM.yyyy HH:mm'); }
@@ -281,8 +333,11 @@ function styleOrders_() {
     var sr = sh.getRange(2, ci_(ORDER_COLS, 'status') + 1, n, 1), sv = sr.getValues(), nr = sh.getRange(2, 1, n, 1).getValues();
     sr.setValues(sv.map(function (r, i) { return [r[0] || (nr[i][0] ? 'Оформлен' : '')]; }));
   }
+  try { applyStatusRules_(sh); } catch (e) { console.error('status rules', e && e.stack || e); }
+  sh.getRange(1, ci_(ORDER_COLS, 'photoRep') + 1).setNote('Фотоотчёт для клиента. Проще всего: меню ONION SHOP → «Заказы» → «Добавить фотоотчёт к заказу…». Или вставьте сюда ссылку на фото (Google Диск, Telegram, любой сайт; начинается с https://), несколько ссылок через пробел. Клиент получит сообщение в Telegram и увидит ссылки в «Моих заказах».');
+  sh.getRange(1, ci_(ORDER_COLS, 'kind') + 1).setNote('Тип заказа определяется сам. «в наличии»: у клиента 3 этапа (Оформлен, Едет к вам, Получен), в списке статусов только они и «Отменён». «предзаказ» и «смешанный»: все этапы.');
   sh.getRange(1, ci_(ORDER_COLS, 'paid') + 1).setNote('Отмечайте, когда клиент оплатил. Строка станет зелёной.');
-  sh.getRange(1, ci_(ORDER_COLS, 'status') + 1).setNote('Выберите статус из списка. Клиент сразу увидит его в «Моих заказах». Предзаказ: Оформлен → Выкуплен → В пути → На складе → Едет к нам → Едет к вам → Получен. В наличии: Оформлен → Едет к вам → Получен.');
+  sh.getRange(1, ci_(ORDER_COLS, 'status') + 1).setNote('Выберите статус из списка. Клиент сразу увидит его в «Моих заказах». Список зависит от типа заказа. Предзаказ: Оформлен → Выкуплен → В пути → На складе → Едет к нам → Едет к вам → Получен. В наличии: Оформлен → Едет к вам → Получен. В обоих случаях можно «Отменён».');
   sh.getRange(1, ci_(ORDER_COLS, 'priority') + 1).setNote('Очередь обработки: №1 Алмаз, №2 Платина, №3 Золото, №4 платный «Приоритетный заказ» (99 ₽) для остальных, затем обычные. Если у клиента есть уровень с приоритетом, очередь определяет уровень.');
   sh.getRange(1, ci_(ORDER_COLS, 'pack') + 1).setNote('Привилегия уровня на этот заказ: «Упаковка −10%» (Платина, только предзаказ) или «Бесплатная упаковка» (Алмаз). 1 раз в месяц. Если заказ отменён: привилегия вернётся клиенту.');
   sh.getRange(1, ci_(ORDER_COLS, 'contact') + 1).setNote('Ссылка открывает чат с клиентом в Telegram (по username или по номеру телефона).');
@@ -760,6 +815,7 @@ var DB = {
     sh.getRange(r, 1, 1, ORDER_COLS.length).setValues([ORDER_COLS.map(function (c) { var v = row[c[0]]; return v === undefined || v === null ? '' : c[0] === 'contact' ? v : safeCell_(v); })]);
     sh.setRowHeight(r, 64);
     sh.getRange(r, ci_(ORDER_COLS, 'paid') + 1).insertCheckboxes();
+    sh.getRange(r, ci_(ORDER_COLS, 'status') + 1).setDataValidation(statusRule_(row.kind)); // список статусов по типу заказа
   },
   /* отмена заказа клиентом: статус читаем из строки прямо сейчас (запрос сайта идёт под общей блокировкой),
      ставим «Отменён» только если там «Оформлен», затем общая сверка возвращает ониксы и снимает награды */
@@ -1273,6 +1329,8 @@ function onOpen() {
     .addSeparator()
     .addSubMenu(ui.createMenu('📦 Заказы')
       .addItem('Найти заказ по номеру…', 'findOrder')
+      .addItem('📸 Добавить фотоотчёт к заказу…', 'addPhotoReportUi')
+      .addItem('Проверить статусы заказов', 'checkStatusesUi')
       .addItem('Показать только активные', 'filterActiveOrders')
       .addItem('Показать неоплаченные', 'filterUnpaidOrders')
       .addItem('Показать все заказы', 'filterAllOrders'))

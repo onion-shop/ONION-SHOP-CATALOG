@@ -290,7 +290,7 @@ function orderCard_(chat, no, msgId) {
   var text = '🧾 <b>Заказ ' + hesc_(o.no) + '</b>\nСтатус: <b>' + hesc_(st) + '</b>' + (isTrue_(o.paid) ? ', 💰 оплачен' : ', не оплачен') +
     '\n\n' + hesc_(String(o.itemsText || '').slice(0, 900)) + '\n\n💰 К оплате: <b>' + rub_(money_(o.toPay)) + '</b> (' + hesc_(o.kind) + ')' +
     '\n👤 ' + hesc_(o.name) + ', ' + hesc_(o.phone) + (o.tg ? ', ' + hesc_(o.tg) : '') + (cu ? (cu.tgChat ? ', 🔔 бот подключён' : ', без бота') : '') +
-    (o.pack ? '\n🎁 ' + hesc_(o.pack) : '') + (o.comment ? '\n💬 ' + hesc_(o.comment) : '') + (o.note ? '\n📝 ' + hesc_(o.note) : '');
+    (o.pack ? '\n🎁 ' + hesc_(o.pack) : '') + (o.note ? '\n📝 ' + hesc_(o.note) : '');
   var kb = adminKeyboard_(o.no, String(o.kind)), row = [];
   kb.push([{ text: '🖼 Фото товаров', callback_data: 'ph|' + o.no }]);
   if (cu && cu.tgChat) row.push({ text: '✉️ Написать', callback_data: 'rp|' + cu.tgChat });
