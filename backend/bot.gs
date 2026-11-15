@@ -83,15 +83,44 @@ function reviewText_(no, r, rt) { return '<b>Как вам заказ? ⭐</b>\n
 
 /* ====================== покупатель ====================== */
 function welcome_(name, linked) {
-  return '<b>Привет' + (name ? ', ' + hesc_(name) : '') + '! Я бот ONION SHOP 👋</b>\n\n' +
-    'Слежу за вашими заказами и сразу пишу, когда меняется статус, приходит фотоотчёт или вещь из избранного дешевеет.\n\n' +
-    'Здесь можно посмотреть заказы, бонусы и промокоды, найти ответ на частый вопрос или написать менеджеру. Покупки и весь каталог на сайте.' +
-    (linked ? '\n\n✅ Уведомления подключены.' : '\n\nЧтобы я видел ваши заказы, подключите меня в кабинете на сайте: «Уведомления в Telegram», затем «Подключить».');
+  return '<b>Привет' + (name ? ', ' + hesc_(name) : '') + ' 👋</b>\n' +
+    'Я бот ONION SHOP: одежда, обувь и аксессуары с доставкой по Москве и из Китая.\n\n' +
+    '<b>Что я умею:</b>\n' +
+    '📦 пишу, когда меняется статус заказа\n' +
+    '📸 присылаю фотоотчёт со склада\n' +
+    '🔥 сообщаю, когда вещь из избранного подешевела\n' +
+    '🎁 считаю ониксы, бонусы и промокоды\n\n' +
+    (linked ? '✅ Уведомления подключены.\nЖми кнопку и заходи 👇' : 'Чтобы я писал вам о заказах, подключите уведомления в кабинете на сайте. Жми кнопку 👇');
 }
-function welcomeKb_(linked) { return [[linked ? btnUrl_('🛍 Открыть магазин', '') : btnUrl_('🔔 Подключить уведомления', 'account')]]; }
+function welcomeKb_(linked) {
+  return linked
+    ? [[btnUrl_('🛍 Открыть каталог', '')], [{ text: '📦 Мои заказы', callback_data: 'mo' }, { text: '🎁 Бонусы', callback_data: 'bn' }]]
+    : [[btnUrl_('🔔 Подключить уведомления', 'account')], [btnUrl_('🛍 Открыть каталог', '')]];
+}
+/* анимированное приветствие (зацикленное видео без звука); id файла запоминаем, дальше Telegram берёт его у себя.
+   Если видео не отправилось, уходит прежняя картинка, а если и она нет, просто текст. */
+var VID_VER_ = '6';
+function vidUrl_(n) { return siteBase_() + 'assets/bot/' + n + '.mp4?v=' + VID_VER_; }
+function tgAnimation_(chat, key, caption, kb) {
+  var fk = 'FID_' + key + '_' + VID_VER_, fid = props_().getProperty(fk);
+  var p = { chat_id: String(chat), animation: fid || vidUrl_(key), caption: String(caption || '').slice(0, 1000), parse_mode: 'HTML', width: 1280, height: 720, duration: 14 };
+  if (kb) p.reply_markup = Array.isArray(kb) ? { inline_keyboard: kb } : kb;
+  var r = tgApi_('sendAnimation', p);
+  if ((!r || !r.ok) && fid) { props_().deleteProperty(fk); p.animation = vidUrl_(key); r = tgApi_('sendAnimation', p); }
+  if (r && r.ok && !fid) { var a = (r.result && (r.result.animation || r.result.document)) || {}; if (a.file_id) props_().setProperty(fk, a.file_id); }
+  return r;
+}
+function sendWelcomeTo_(chat, name, linked) {
+  var r = tgAnimation_(chat, 'welcome', welcome_(name, linked), welcomeKb_(linked));
+  if (!r || !r.ok) {
+    if (r && r.error_code === 403) return r;
+    r = tgPhoto_(chat, IMG_('welcome'), welcome_(name, linked), welcomeKb_(linked));
+    if (!r || !r.ok) tgSend_(chat, welcome_(name, linked), welcomeKb_(linked));
+  }
+  return r;
+}
 function sendWelcome_(m, linked) {
-  var r = tgPhoto_(m.chat.id, IMG_('welcome'), welcome_(m.chat.first_name, linked), welcomeKb_(linked));
-  if (!r || !r.ok) tgSend_(m.chat.id, welcome_(m.chat.first_name, linked), welcomeKb_(linked));
+  sendWelcomeTo_(m.chat.id, m.chat.first_name, linked);
   tgSend_(m.chat.id, 'Меню всегда внизу 👇', custKb_());
 }
 function needLink_(chat) {
@@ -781,7 +810,7 @@ function orderPhotos_(chat, no) {
 /* примеры сообщений бота: приходят только менеджеру, клиентам ничего не уходит */
 function botDemo_(chat) {
   tgSend_(chat, '🧪 <b>Примеры того, что бот пишет клиентам</b>\nЭто пробные сообщения, только вам.');
-  tgPhoto_(chat, IMG_('welcome'), welcome_('Миша', true), welcomeKb_(true));
+  sendWelcomeTo_(chat, 'Миша', true);
   tgSend_(chat, statusText_('OS-26-00001', 'Выкуплен'), statusKb_('OS-26-00001', 'Выкуплен'));
   tgSend_(chat, statusText_('OS-26-00001', 'Едет к вам'), statusKb_('OS-26-00001', 'Едет к вам'));
   tgSend_(chat, payText_('OS-26-00001', 26564), [[btnOrder_('OS-26-00001')]]);
