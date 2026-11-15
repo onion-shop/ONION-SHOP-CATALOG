@@ -145,8 +145,11 @@ function custOrderCard_(cq, no) {
   var chain = o.status === 'Отменён' ? '❌ Отменён' : stages.map(function (s, i) { return (i < cur ? '✅ ' : i === cur ? '🔵 <b>' : '⚪ ') + s + (i === cur ? '</b>' : ''); }).join('\n');
   var items = (o.items || []).map(function (it) { return '🛍 ' + hesc_(it.title || '') + (it.size ? ', ' + hesc_(it.size) : '') + (it.color ? ', ' + hesc_(String(it.color).toLowerCase()) : '') + (it.qty > 1 ? ' × ' + it.qty : ''); }).join('\n');
   tgAnswer_(cq.id, '');
-  var text = '<b>Заказ ' + hesc_(o.no) + '</b>\n' + hesc_(o.at) + '\n\n' + items + '\n\nК оплате: <b>' + rub_(o.toPay) + '</b>' + (isTrue_(o.paid) ? ', оплачен ✅' : '') + '\n\n' + chain;
+  var st = String(o.status || 'Оформлен').trim(), isFinal = OnionCore.RULES.finalStages.indexOf(st) >= 0;
+  var cancelNote = st === 'Оформлен' ? '\n\nПока заказ не взяли в работу, его можно отменить кнопкой ниже.' : isFinal ? '' : '\n\nЗаказ уже в работе, отмена недоступна. Если что-то нужно изменить, нажмите «Вопрос по заказу», менеджер поможет.';
+  var text = '<b>Заказ ' + hesc_(o.no) + '</b>\n' + hesc_(o.at) + '\n\n' + items + '\n\nК оплате: <b>' + rub_(o.toPay) + '</b>' + (isTrue_(o.paid) ? ', оплачен ✅' : '') + '\n\n' + chain + cancelNote;
   var kb = [[{ text: '💬 Вопрос по заказу', callback_data: 'q|' + o.no }]];
+  if (st === 'Оформлен') kb.unshift([{ text: '✖ Отменить заказ', callback_data: 'cx|' + o.no }]);
   if (o.status === 'Получен') kb.unshift([btnUrl_('⭐ Оставить отзыв', 'orders')]);
   kb.push([{ text: '← Все заказы', callback_data: 'mo' }]);
   if (cq.message.text && /^Заказ |^Ваши заказы/.test(String(cq.message.text))) tgEdit_(chat, cq.message.message_id, text, kb); else tgSend_(chat, text, kb);
@@ -179,6 +182,29 @@ function custCallback_(cq, a) {
   var chat = cq.message.chat.id, mid = cq.message.message_id;
   if (a[0] === 'm') { custOrderCard_(cq, a[1]); return true; }
   if (a[0] === 'mo') { tgAnswer_(cq.id, ''); custOrders_(chat, mid); return true; }
+  /* отмена заказа из бота: тот же код и та же проверка статуса, что на сайте (OnionCore.cancelFor).
+     cx: спрашиваем подтверждение, cy: отменяем. Старое сообщение с кнопкой ничего не обойдёт: статус проверяется заново. */
+  if (a[0] === 'cx' || a[0] === 'cy') {
+    var cu = tgUserByChat_(chat); if (!cu) { tgAnswer_(cq.id, 'Сначала подключите бота в кабинете'); return true; }
+    var cno = String(a[1] || '').trim().toUpperCase();
+    var co = DB.listOrders(cu.id, 50).filter(function (x) { return String(x.no) === cno; })[0];
+    if (!co) { tgAnswer_(cq.id, 'Заказ не найден'); return true; }
+    if (a[0] === 'cx') {
+      if (String(co.status || 'Оформлен').trim() !== 'Оформлен') { tgAnswer_(cq.id, co.status === 'Отменён' ? 'Этот заказ уже отменён' : co.status === 'Получен' ? 'Заказ уже получен, отменить его нельзя' : 'Заказ уже в работе, отмена недоступна'); custOrderCard_(cq, cno); return true; }
+      tgAnswer_(cq.id, '');
+      tgEdit_(chat, mid, 'Заказ ' + hesc_(cno) + ': отменить?\n\nОн отменится сразу, вернуть его потом не получится. Ониксы, если вы ими платили, вернутся на баланс.', [[{ text: 'Да, отменить', callback_data: 'cy|' + cno }], [{ text: 'Оставить заказ', callback_data: 'm|' + cno }]]);
+      return true;
+    }
+    var cr = OnionCore.cancelFor(DB, cu, cno, 'bot');
+    if (cr.ok) {
+      tgAnswer_(cq.id, 'Заказ отменён');
+      tgEdit_(chat, mid, 'Заказ ' + hesc_(cno) + ' отменён.\n\nОниксы, если вы ими платили, уже вернулись на баланс. Передумаете, оформите заказ заново на сайте.', [[{ text: '← Все заказы', callback_data: 'mo' }]]);
+    } else if (cr.status !== undefined) {
+      tgAnswer_(cq.id, cr.error);
+      custOrderCard_(cq, cno);
+    } else tgAnswer_(cq.id, cr.error || 'Не получилось отменить, попробуйте ещё раз');
+    return true;
+  }
   if (a[0] === 'q') { tgAnswer_(cq.id, ''); custAsk_(chat, a[1] || ''); return true; }
   if (a[0] === 'bn') { tgAnswer_(cq.id, ''); custBonus_(chat); return true; }
   if (a[0] === 'ns') { tgAnswer_(cq.id, ''); custSettings_(chat); return true; }

@@ -761,6 +761,22 @@ var DB = {
     sh.setRowHeight(r, 64);
     sh.getRange(r, ci_(ORDER_COLS, 'paid') + 1).insertCheckboxes();
   },
+  /* отмена заказа клиентом: статус читаем из строки прямо сейчас (запрос сайта идёт под общей блокировкой),
+     ставим «Отменён» только если там «Оформлен», затем общая сверка возвращает ониксы и снимает награды */
+  cancelOrder: function (no, uid, via) {
+    var f = orderIdx_(no); if (!f) return { missing: true };
+    var sh = ss_().getSheetByName(SHEET.orders), iSt = ci_(ORDER_COLS, 'status'), iU = ci_(ORDER_COLS, 'userId'), iN = ci_(ORDER_COLS, 'notified');
+    if (normId_(sh.getRange(f.row, iU + 1).getValue()) !== String(uid)) return { missing: true };
+    // статус читаем заново прямо перед записью: если менеджер успел сменить его, отмена не пройдёт
+    var st = String(sh.getRange(f.row, iSt + 1).getValue() || '').trim() || 'Оформлен';
+    if (st !== 'Оформлен') return { status: st };
+    sh.getRange(f.row, iSt + 1).setValue('Отменён');
+    // отмена из бота: клиент уже видит ответ в чате, второе уведомление о статусе ему не нужно
+    if (via === 'bot') { var c = sh.getRange(f.row, iN + 1); c.setNumberFormat('@'); c.setValue('Отменён'); }
+    SpreadsheetApp.flush();
+    USERS_CACHE_ = null; syncXp_(); USERS_CACHE_ = null;
+    return { status: 'Оформлен', done: true };
+  },
   listOrders: function (userId, limit) {
     var rows = orderRows_(), out = [], iu = ci_(ORDER_COLS, 'userId');
     for (var i = rows.length - 1; i >= 0 && out.length < limit; i--) {
@@ -1216,16 +1232,6 @@ function tgWebhook_(e, up) {
   } catch (x) { console.error('webhook', x && x.stack || x); }
   finally { lock.releaseLock(); }
   return out_({ ok: true });
-}
-function webAppUrl_() {
-  var u = props_().getProperty('WEBAPP_URL'); if (u) return u;
-  try { var su = ScriptApp.getService().getUrl(); if (su && /\/exec$/.test(su)) { props_().setProperty('WEBAPP_URL', su); return su; } } catch (x) { }
-  try {
-    var s = UrlFetchApp.fetch(siteBase_() + 'assets/config.js?t=' + Date.now(), { muteHttpExceptions: true }).getContentText();
-    var m = /apiUrl:\s*"(https:\/\/script\.google\.com\/macros\/s\/[^"]+)"/.exec(s);
-    if (m) { props_().setProperty('WEBAPP_URL', m[1]); return m[1]; }
-  } catch (x) { }
-  return '';
 }
 /* Включает webhook: Telegram шлёт сообщения сюда сразу, без минутного ожидания. Ответ: '' или текст ошибки. */
 /* Важно: Apps Script на любой POST отвечает Telegram редиректом 302, а Telegram считает это ошибкой и повторяет одно и то же сообщение, из-за чего очередь встаёт и бот молчит.
