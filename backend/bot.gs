@@ -105,7 +105,7 @@ function msgHead_(m) {
    дальше бот шлёт его по file_id. Набор для Telegram (t.me/addstickers/...) создаёт функция stickersSetup(). */
 var STK_VER_ = '1';
 var STICKERS_ = { hello: '👋', catalog: '🛍', accepted: '🧾', onway: '✈️', delivered: '📦', thanks: '🤍', support: '💬', bonus: '💎' };
-var STICKER_AT_ = { 'Оформлен': 'accepted', 'Едет к вам': 'onway', 'Получен': 'delivered' };
+var STICKER_AT_ = { 'Принят': 'accepted', 'Едет к вам': 'onway', 'Получен': 'delivered' };
 function stickerUrl_(key) { return siteBase_() + 'assets/bot/st/' + key + '.webp?v=' + STK_VER_; }
 function sticker_(chat, key, kb) {
   var fk = 'STK_' + key + '_' + STK_VER_, fid = props_().getProperty(fk);
@@ -141,11 +141,11 @@ function btnOrder_(no) { return { text: 'Открыть заказ', callback_da
 function btnUrl_(text, hash) { return { text: text, url: siteUrl_(hash) }; }
 /* статусы заказа: значок, заголовок, текст */
 var ST_ = {
-  'Оформлен': ['🧾', 'Заказ принят', 'Менеджер проверит позиции и пришлёт реквизиты для оплаты в этот чат.'],
+  'Принят': ['🧾', 'Заказ принят', 'Менеджер проверит позиции и пришлёт реквизиты для оплаты в этот чат.'],
   'Выкуплен': ['☑️', 'Заказ выкуплен', 'Вещи выкуплены у поставщика и направляются на наш склад.'],
-  'В пути': ['🔹', 'Заказ едет на склад', 'Поставщик везёт вещи на наш склад, обычно это 3-5 дней.'],
-  'На складе': ['🔎', 'Заказ на складе', 'Проверяем каждую вещь и готовим фотоотчёт перед отправкой.'],
-  'Едет к нам': ['✈️', 'Заказ едет в Россию', 'Посылка покинула склад. Дорога обычно занимает 18-32 дня, мы следим за ней.'],
+  'Едет в Китай': ['🔹', 'Заказ едет на склад', 'Поставщик везёт вещи на наш склад, обычно это 3-5 дней.'],
+  'Проверка товара': ['🔎', 'Заказ на складе', 'Проверяем каждую вещь и готовим фотоотчёт перед отправкой.'],
+  'Едет в Россию': ['✈️', 'Заказ едет в Россию', 'Посылка покинула склад. Дорога обычно занимает 18-32 дня, мы следим за ней.'],
   'Едет к вам': ['📬', 'Заказ едет к вам', 'Передали в доставку. Трек-номер менеджер пришлёт в этот чат.'],
   'Получен': ['🤍', 'Заказ получен', 'Спасибо, что выбрали ONION SHOP. Поделитесь впечатлением: за отзыв начислим до {rt} ониксов.'],
   'Отменён': ['▫️', 'Заказ отменён', 'Если часть суммы была оплачена ониксами, они уже на балансе. Отменили по ошибке? Напишите сюда, разберёмся.']
@@ -243,7 +243,7 @@ var FAQ_ = [
   ['pre', 'предзаказ и сроки', '<table bordered compact><tr><th>этап</th><th>срок</th></tr><tr><td>выкуп у поставщика</td><td>до 12 часов</td></tr><tr><td>дорога до нашего склада</td><td>4-12 дней</td></tr><tr><td>проверка и фотоотчёт</td><td>на складе</td></tr><tr><td>доставка в Россию</td><td>18-32 дня</td></tr></table><p>В сумме выходит примерно <b>24-47 дней</b>. Доставка уже включена в цену. Самолётом быстрее, это обсуждается с менеджером.</p>'],
   ['ship', 'доставка и получение', '<p><b>В наличии</b> (уже в Москве): Авито Доставка по Москве и в другие города, курьер по Москве (не всегда) или самовывоз.</p><p><b>Предзаказ</b>: когда вещь в России, отправим СДЭК, Авито Доставкой или передадим при встрече в Москве. Трек-номер пришлёт менеджер.</p>'],
   ['pay', 'оплата', '<p>Переводом (Сбербанк, Т-Банк, Альфа-Банк, СБП) или наличными при встрече в Москве. На сайте оплаты нет: после проверки заказа менеджер пришлёт реквизиты.</p><p>До 12% заказа можно оплатить ониксами и промокодом вместе.</p>'],
-  ['cancel', 'отмена заказа', '<p>Пока заказ в статусе «Оформлен», его можно отменить самостоятельно: «Мои заказы», нужный заказ, кнопка «Отменить заказ». Ониксы вернутся на баланс.</p><p>Когда заказ уже в работе, изменения согласуйте с менеджером.</p>'],
+  ['cancel', 'отмена заказа', '<p>Пока заказ в статусе «Принят», его можно отменить самостоятельно: «Мои заказы», нужный заказ, кнопка «Отменить заказ». Ониксы вернутся на баланс.</p><p>Когда заказ уже в работе, изменения согласуйте с менеджером.</p>'],
   ['bonus', 'ониксы и уровни', '<p>Ониксы начисляются за регистрацию, ежедневный вход, задания, отзывы, приглашённых друзей и в посылке с сюрпризом. 1 оникс = 0,3 ₽.</p><p>Уровень считается по опыту (XP) за месяц: чем он выше, тем больше заданий, промокоды и приоритет заказа. 1-го числа опыт обнуляется.</p>'],
   ['size', 'размеры', '<p>Если у модели есть замеры, они в карточке товара в разделе «Замеры изделия». Это размеры самой вещи, а не обхват тела: проще всего сравнить с похожей вещью из своего шкафа.</p><p>Сомневаетесь между двумя размерами? Напишите менеджеру свои параметры, он подскажет.</p>']
 ];
@@ -261,47 +261,67 @@ function custAsk_(chat, no) {
 /* ====================== мои заказы ======================
    Список: таблица действующих заказов и кнопка на каждый. Завершённые и отменённые убраны за одну кнопку с количеством.
    Шкала этапов: 🟢 пройден, 🟡 идёт сейчас, 🔴 ещё впереди. Карточка заказа: фото, дата, состав, оплата, путь заказа. */
-var STAGE_NAME_ = { 'Едет к нам': 'Едет в Россию' };
+var STAGE_NAME_ = {};
 function stageName_(s) { return STAGE_NAME_[s] || s; }
 function shortNo_(no) { return String(no).replace(/^OS-/, ''); }
-function orderLine_(o) { return '№' + shortNo_(o.no) + ', ' + (o.status || 'Оформлен') + ', ' + rub_(o.toPay); }
+function orderLine_(o) { return '№' + shortNo_(o.no) + ', ' + (o.status || 'Принят') + ', ' + rub_(o.toPay); }
 function orderNo5_(no) { return String(no).replace(/^OS-\d+-/, ''); }
-function orderSt_(o) { return String(o.status || 'Оформлен').trim(); }
+function orderSt_(o) { var s = String(o.status || 'Принят').trim(); return STATUS_OLD_[s] || s; }
 function isActive_(o) { var st = orderSt_(o); return st !== 'Получен' && st !== 'Отменён'; }
 function dateOf_(o) { return String(o.at || '').split(' ')[0]; }
-function payWord_(o) { return isTrue_(o.paid) ? 'Оплачено' : 'Ждёт оплаты'; }
+function payWord_(o) { return isTrue_(o.paid) ? 'оплачено' : 'ждёт оплаты'; }
 function lowerFirst_(s) { s = String(s || ''); return s.charAt(0).toLowerCase() + s.slice(1); }
 function orderBtn_(o) { return pri_({ text: '№' + orderNo5_(o.no) + ' ' + stageName_(orderSt_(o)), callback_data: 'm|' + o.no }); }
-function custOrders_(chat, msgId) {
+/* Список заказов: таблица рисуется картинкой (tableimg.gs), подпись стоит над ней. Новое сообщение отправляем,
+   старое (delId) удаляем: картинку нельзя заменить текстом. Если картинка не получилась, шлём обычную таблицу Telegram. */
+function ordersSend_(chat, delId, title, head, rows, kb) {
+  var r = null;
+  try { r = tgPhotoBlob_(chat, tableImage_(head, rows), '<b>' + title + '</b>', kb); } catch (e) { console.warn('table image: ' + (e && e.stack || e)); }
+  if (!r || !r.ok) {
+    var html = '<h3>' + title + '</h3><table bordered><tr>' + head.map(function (h) { return '<th>' + hesc_(h) + '</th>'; }).join('') + '</tr>' +
+      rows.map(function (rw) { return '<tr>' + rw.map(function (c) { return '<td>' + hesc_(c) + '</td>'; }).join('') + '</tr>'; }).join('') + '</table>';
+    r = tgRich_(chat, html, kb);
+  }
+  if (delId && r && r.ok !== false) tgApi_('deleteMessage', { chat_id: String(chat), message_id: delId });
+}
+function custOrders_(chat, delId) {
   var u = tgUserByChat_(chat); if (!u) { needLink_(chat); return; }
   var all = DB.listOrders(u.id, 60), act = all.filter(isActive_).slice(0, 8), past = all.filter(function (o) { return !isActive_(o); }).length;
-  if (!all.length) { tgRich_(chat, '<h3>Мои заказы</h3><p>Заказов пока нет. Оформите первый на сайте, он сразу появится здесь, а статусы я буду присылать сам.</p>', [[pri_({ text: 'Открыть каталог', web_app: { url: siteUrl_('') } })]]); return; }
-  var html = '<h3>Мои заказы</h3><p>' + (act.length ? 'В работе ' + act.length : 'Сейчас все заказы завершены') + '</p>' +
-    (act.length ? '<table bordered><tr><th>Заказ</th><th>Статус</th><th>К оплате</th></tr>' + act.map(function (o) { return '<tr><td>' + hesc_(shortNo_(o.no)) + '</td><td>' + hesc_(stageName_(orderSt_(o))) + '</td><td>' + rub_(o.toPay) + '</td></tr>'; }).join('') + '</table>' : '');
+  if (!all.length) { tgRich_(chat, '<h3>Мои заказы</h3><p>Заказов пока нет. Оформите первый на сайте, он сразу появится здесь, а статусы я буду присылать сам.</p>', [[pri_({ text: 'Открыть каталог', web_app: { url: siteUrl_('') } })]]); if (delId) tgApi_('deleteMessage', { chat_id: String(chat), message_id: delId }); return; }
   var kb = act.map(function (o) { return [orderBtn_(o)]; });
   if (past) kb.push([{ text: 'Завершённые и отменённые (' + past + ')', callback_data: 'mh|0' }]);
-  if (msgId) tgRichEdit_(chat, msgId, html, kb); else tgRich_(chat, html, kb);
+  if (!act.length) { tgRich_(chat, '<h3>Мои заказы</h3><p>Сейчас все заказы завершены.</p>', kb); if (delId) tgApi_('deleteMessage', { chat_id: String(chat), message_id: delId }); return; }
+  ordersSend_(chat, delId, 'Мои заказы', ['Заказ', 'Статус', 'К оплате'], act.map(function (o) { return [shortNo_(o.no), stageName_(orderSt_(o)), rub_(o.toPay)]; }), kb);
 }
-function custOrdersPast_(chat, msgId, page) {
+function custOrdersPast_(chat, delId, page) {
   var u = tgUserByChat_(chat); if (!u) { needLink_(chat); return; }
   var past = DB.listOrders(u.id, 60).filter(function (o) { return !isActive_(o); }), per = 8, pages = Math.max(1, Math.ceil(past.length / per));
   page = Math.max(0, Math.min(pages - 1, +page || 0));
   var chunk = past.slice(page * per, page * per + per);
-  var html = '<h3>Завершённые и отменённые</h3>' + (pages > 1 ? '<p>Страница ' + (page + 1) + ' из ' + pages + '</p>' : '') +
-    '<table bordered><tr><th>Заказ</th><th>Дата</th><th>Сумма</th><th>Статус</th></tr>' + chunk.map(function (o) { return '<tr><td>' + hesc_(shortNo_(o.no)) + '</td><td>' + hesc_(dateOf_(o)) + '</td><td>' + rub_(o.toPay) + '</td><td>' + (orderSt_(o) === 'Отменён' ? 'Отменён' : 'Получен') + '</td></tr>'; }).join('') + '</table>';
   var kb = [], row = [];
   chunk.forEach(function (o) { row.push(pri_({ text: '№' + orderNo5_(o.no), callback_data: 'm|' + o.no })); if (row.length === 4) { kb.push(row); row = []; } });
   if (row.length) kb.push(row);
   if (pages > 1) { var nav = []; if (page > 0) nav.push({ text: 'Новее', callback_data: 'mh|' + (page - 1) }); if (page < pages - 1) nav.push({ text: 'Старше', callback_data: 'mh|' + (page + 1) }); kb.push(nav); }
   kb.push([{ text: 'Актуальные заказы', callback_data: 'mo' }]);
-  if (msgId) tgRichEdit_(chat, msgId, html, kb); else tgRich_(chat, html, kb);
-}
-function orderPhotoUrls_(o) {
+  ordersSend_(chat, delId, 'Завершённые и отменённые' + (pages > 1 ? ' (' + (page + 1) + '/' + pages + ')' : ''), ['Заказ', 'Дата', 'Сумма', 'Статус'],
+    chunk.map(function (o) { return [shortNo_(o.no), dateOf_(o), rub_(o.toPay), orderSt_(o) === 'Отменён' ? 'Отменён' : 'Получен']; }), kb);
+}function orderPhotoUrls_(o) {
   var urls = [], seen = {};
   (o.items || []).forEach(function (it) { var id = it.photo || it.thumb; if (id && !seen[id]) { seen[id] = 1; urls.push(photoUrl_(id)); } });
   return urls.slice(0, 6);
 }
-function orderCompose_(o) { var t = (o.items || []).map(function (it) { return lowerFirst_(String(it.title || '').trim()); }).filter(Boolean); return t.length ? t.join(', ') + '.' : ''; }
+/* состав: «· Название.» и с новой строки «Размер M, цвет белый» (материал только если он есть) */
+function itemName_(it) { var s = String(it.title || '').trim(); if (!s) return ''; s = s.charAt(0).toUpperCase() + s.slice(1); return /[.!?]$/.test(s) ? s : s + '.'; }
+function itemOpt_(it) {
+  var a = [];
+  if (it.size) a.push('Размер ' + String(it.size).trim());
+  if (it.color) a.push('цвет ' + lowerFirst_(String(it.color).trim()));
+  if (it.material) a.push('материал ' + lowerFirst_(String(it.material).trim()));
+  if ((it.qty || 1) > 1) a.push(it.qty + ' шт');
+  return a.join(', ');
+}
+function cardItems_(o) { return (o.items || []).map(function (it) { return { n: itemName_(it), o: itemOpt_(it) }; }).filter(function (x) { return x.n; }); }
+function orderPay_(o) { return rub_(o.toPay) + ' (' + payWord_(o) + ')'; }
 /* шкала этапов: список строк */
 function stageLines_(o) {
   var st = orderSt_(o); if (st === 'Отменён') return ['Заказ отменён'];
@@ -310,17 +330,17 @@ function stageLines_(o) {
 }
 /* текстовый вид карточки (подпись к фото, запасной вариант) */
 function orderCardText_(o) {
-  var comp = orderCompose_(o);
-  return '<b>Заказ ' + hesc_(o.no) + '</b>\n' + hesc_(dateOf_(o)) + '\n\n' + (comp ? '<b>Состав:</b> ' + hesc_(comp) + '\n\n' : '') +
-    '<b>К оплате:</b> ' + rub_(o.toPay) + '\n' + payWord_(o) + '\n\n<b>Путь заказа</b>\n' + stageLines_(o).join('\n');
+  var its = cardItems_(o).map(function (x) { return '· ' + hesc_(x.n) + (x.o ? '\n' + hesc_(x.o) : ''); }).join('\n');
+  return '<b>Заказ ' + hesc_(o.no) + '</b>\n' + hesc_(dateOf_(o)) + '\n\n' + (its ? '<b>Состав</b>\n' + its + '\n\n' : '') +
+    '<b>К оплате</b>\n' + hesc_(orderPay_(o)) + '\n\n<b>Путь заказа</b>\n' + stageLines_(o).join('\n');
 }
-/* вид для Rich message: фото сверху, этапы отдельными строками, чтобы кружки не слипались */
+/* вид для Rich message: фото сверху (несколько фото: коллаж, по нажатию листаются), этапы отдельными строками */
 function orderCardRich_(o, urls) {
-  var media = urls.length > 1 ? '<tg-collage>' + urls.map(function (u) { return '<img src="' + u + '">'; }).join('') + '</tg-collage>' : urls.length ? '<img src="' + urls[0] + '">' : '', comp = orderCompose_(o);
-  return media + '<h3>Заказ ' + hesc_(o.no) + '</h3><p>' + hesc_(dateOf_(o)) + '</p>' + (comp ? '<p><b>Состав:</b> ' + hesc_(comp) + '</p>' : '') +
-    '<p><b>К оплате:</b> ' + rub_(o.toPay) + '</p><p>' + payWord_(o) + '</p><h4>Путь заказа</h4>' + stageLines_(o).map(function (l) { return '<p>' + l + '</p>'; }).join('');
-}
-function orderCardKb_(o) { return [[{ text: 'Вопрос по заказу', callback_data: 'q|' + o.no }, { text: 'Все заказы', callback_data: 'mo' }]]; }
+  var media = urls.length > 1 ? '<tg-collage>' + urls.map(function (u) { return '<img src="' + u + '">'; }).join('') + '</tg-collage>' : urls.length ? '<img src="' + urls[0] + '">' : '';
+  var its = cardItems_(o).map(function (x) { return '<p>· ' + hesc_(x.n) + (x.o ? '<br>' + hesc_(x.o) : '') + '</p>'; }).join('');
+  return media + '<h3>Заказ ' + hesc_(o.no) + '</h3><p>' + hesc_(dateOf_(o)) + '</p>' + (its ? '<h4>Состав</h4>' + its : '') +
+    '<h4>К оплате</h4><p>' + hesc_(orderPay_(o)) + '</p><h4>Путь заказа</h4>' + stageLines_(o).map(function (l) { return '<p>' + l + '</p>'; }).join('');
+}function orderCardKb_(o) { return [[{ text: 'Вопрос по заказу', callback_data: 'q|' + o.no }, { text: 'Все заказы', callback_data: 'mo' }]]; }
 function custOrderCard_(cq, no) {
   var chat = cq.message.chat.id, mid = cq.message.message_id, u = tgUserByChat_(chat); if (!u) { tgAnswer_(cq.id, 'Сначала подключите бота в кабинете'); return; }
   var o = DB.listOrders(u.id, 60).filter(function (x) { return String(x.no) === no; })[0];
@@ -385,7 +405,7 @@ var GUIDE_ = [
     'Нет нужного размера? Нажмите «Жду появления», бот напишет, когда вещь вернётся.'],
   ['Оформление заказа', 'корзина и подтверждение',
     '1. В карточке нажмите «В корзину».\n2. Откройте корзину и перейдите к оформлению.\n3. Контакты подставятся из кабинета, выберите способ получения.\n4. По желанию спишите ониксы или введите промокод.\n5. Подтвердите заказ: в бот придёт «Заказ принят».\n6. Менеджер пришлёт реквизиты, после оплаты вещь закреплена за вами.',
-    'Пока заказ в статусе «Оформлен», его можно отменить в «Мои заказы».'],
+    'Пока заказ в статусе «Принят», его можно отменить в «Мои заказы».'],
   ['Доставка и оплата', 'способы и сроки',
     '1. Нажмите «💬 Вопросы» в меню.\n2. Раскройте пункты «доставка и получение» и «оплата».\n\n<b>В наличии:</b> Авито Доставка, курьер по Москве или самовывоз.\n<b>Предзаказ:</b> СДЭК, Авито Доставка или встреча в Москве.\n<b>Оплата:</b> перевод или наличные при встрече.',
     'Трек-номер посылки менеджер пришлёт в этот чат.'],
@@ -396,7 +416,7 @@ var GUIDE_ = [
     '1. Нажмите «✉️ Написать менеджеру» или «Вопрос по заказу» в карточке заказа.\n2. Напишите вопрос одним сообщением, можно с фото.\n3. Ответ менеджера придёт в этот же чат.',
     'Менеджер магазина: @OnionShop_Support.'],
   ['Дополнительные возможности', 'всё остальное',
-    '▫️ Отмена заказа, пока он в статусе «Оформлен».\n▫️ Фотоотчёт со склада по предзаказу.\n▫️ Сообщение, когда вещь из избранного подешевела или снова в продаже.\n▫️ Ониксы за друзей: ссылка-приглашение в «Бонусах».\n▫️ Уровни, задания и посылка с сюрпризом на сайте.',
+    '▫️ Отмена заказа, пока он в статусе «Принят».\n▫️ Фотоотчёт со склада по предзаказу.\n▫️ Сообщение, когда вещь из избранного подешевела или снова в продаже.\n▫️ Ониксы за друзей: ссылка-приглашение в «Бонусах».\n▫️ Уровни, задания и посылка с сюрпризом на сайте.',
     'Все уведомления приходят автоматически, пока бот подключён.']
 ];
 function guideUrl_(i) { return siteBase_() + 'assets/bot/guide-' + (i + 1) + '.mp4?v=' + GUIDE_VER_; }
@@ -440,8 +460,8 @@ function custCallback_(cq, a) {
   /* экран правим на месте, только если кнопку нажали в нём самом; из приветствия или уведомления шлём новый */
   var here = function (re) { return re.test(head) ? mid : null; };
   if (a[0] === 'm') { custOrderCard_(cq, a[1]); return true; }
-  if (a[0] === 'mo') { tgAnswer_(cq.id, ''); if (/^Мои заказы|^Завершённые и отменённые/.test(head)) custOrders_(chat, mid); else { custOrders_(chat, null); tgApi_('deleteMessage', { chat_id: String(chat), message_id: mid }); } return true; }
-  if (a[0] === 'mh') { tgAnswer_(cq.id, ''); custOrdersPast_(chat, /^Мои заказы|^Завершённые и отменённые/.test(head) ? mid : null, a[1]); return true; }
+  if (a[0] === 'mo') { tgAnswer_(cq.id, ''); custOrders_(chat, mid); return true; }
+  if (a[0] === 'mh') { tgAnswer_(cq.id, ''); custOrdersPast_(chat, mid, a[1]); return true; }
   if (a[0] === 'gi') { tgAnswer_(cq.id, ''); guideIndex_(chat, here(/Инструкция$/)); return true; }
   if (a[0] === 'gd') { tgAnswer_(cq.id, ''); guideStep_(chat, cq.message.animation || cq.message.document || /Инструкция$/.test(head) ? mid : null, a[1]); return true; }
   /* отмена заказа из бота: тот же код и та же проверка статуса, что на сайте (OnionCore.cancelFor).
@@ -452,7 +472,7 @@ function custCallback_(cq, a) {
     var co = DB.listOrders(cu.id, 50).filter(function (x) { return String(x.no) === cno; })[0];
     if (!co) { tgAnswer_(cq.id, 'Заказ не найден'); return true; }
     if (a[0] === 'cx') {
-      if (String(co.status || 'Оформлен').trim() !== 'Оформлен') { tgAnswer_(cq.id, co.status === 'Отменён' ? 'Этот заказ уже отменён' : co.status === 'Получен' ? 'Заказ уже получен, отменить его нельзя' : 'Заказ уже в работе, отмена недоступна'); custOrderCard_(cq, cno); return true; }
+      if (String(co.status || 'Принят').trim() !== 'Принят') { tgAnswer_(cq.id, co.status === 'Отменён' ? 'Этот заказ уже отменён' : co.status === 'Получен' ? 'Заказ уже получен, отменить его нельзя' : 'Заказ уже в работе, отмена недоступна'); custOrderCard_(cq, cno); return true; }
       tgAnswer_(cq.id, '');
       tgRichEdit_(chat, mid, '<h3>Заказ ' + hesc_(cno) + ': отменить?</h3><p>Заказ отменится сразу, вернуть его потом не получится. Ониксы, если вы ими платили, вернутся на баланс.</p>', [[dng_({ text: 'Да, отменить', callback_data: 'cy|' + cno })], [pri_({ text: 'Оставить заказ', callback_data: 'm|' + cno })]]);
       return true;
@@ -528,13 +548,13 @@ function isDone_(st) { return st === 'Получен' || st === 'Отменён'
 function openStages_() { var R = OnionCore.RULES, out = []; R.stagesPre.concat(R.stagesStock).forEach(function (s) { if (!isDone_(s) && out.indexOf(s) < 0) out.push(s); }); return out; }
 function adminOrders_(chat, msgId, f, idx) {
   f = f || 'a';
-  var act = ordersAll_().filter(function (o) { return !isDone_(String(o.status || 'Оформлен')); }), stages = openStages_();
-  var list = f === 'u' ? act.filter(function (o) { return !isTrue_(o.paid); }) : f === 's' ? act.filter(function (o) { return String(o.status || 'Оформлен') === stages[+idx]; }) : act;
+  var act = ordersAll_().filter(function (o) { return !isDone_(String(o.status || 'Принят')); }), stages = openStages_();
+  var list = f === 'u' ? act.filter(function (o) { return !isTrue_(o.paid); }) : f === 's' ? act.filter(function (o) { return String(o.status || 'Принят') === stages[+idx]; }) : act;
   list = list.slice().reverse();
   var title = f === 'u' ? 'Неоплаченные' : f === 's' ? 'Статус «' + stages[+idx] + '»' : 'Активные заказы';
   var text = '📦 <b>' + title + ': ' + list.length + '</b>' + (list.length > 12 ? '\nПоказаны 12 последних' : '') + (list.length ? '' : '\nПусто 🎉');
   var kb = list.slice(0, 12).map(function (o) { return [{ text: (isTrue_(o.paid) ? '💰 ' : '') + orderLine_(o), callback_data: 'o|' + o.no }]; });
-  var fr = [], cnt = function (s) { return act.filter(function (o) { return String(o.status || 'Оформлен') === s; }).length; };
+  var fr = [], cnt = function (s) { return act.filter(function (o) { return String(o.status || 'Принят') === s; }).length; };
   stages.forEach(function (s, i) { var c = cnt(s); if (c) fr.push({ text: s + ' ' + c, callback_data: 'ml|s|' + i }); });
   for (var i = 0; i < fr.length; i += 3) kb.push(fr.slice(i, i + 3));
   kb.push([{ text: 'Все ' + act.length, callback_data: 'ml|a' }, { text: '💳 Неоплач. ' + act.filter(function (o) { return !isTrue_(o.paid); }).length, callback_data: 'ml|u' }, { text: '🔄', callback_data: 'ml|' + f + (f === 's' ? '|' + idx : '') }]);
@@ -548,7 +568,7 @@ function orderIdx_(no) {
 function orderCard_(chat, no, msgId) {
   var f = orderIdx_(no);
   if (!f) { tgSend_(chat, 'Заказ ' + hesc_(no) + ' не найден.'); return; }
-  var o = f.o, st = String(o.status || 'Оформлен'), cu = o.userId ? DB.getUser(normId_(o.userId)) : null;
+  var o = f.o, st = String(o.status || 'Принят'), cu = o.userId ? DB.getUser(normId_(o.userId)) : null;
   var text = '🧾 <b>Заказ ' + hesc_(o.no) + '</b>\nСтатус: <b>' + hesc_(st) + '</b>' + (isTrue_(o.paid) ? ', 💰 оплачен' : ', не оплачен') +
     '\n\n' + hesc_(String(o.itemsText || '').slice(0, 900)) + '\n\n💰 К оплате: <b>' + rub_(money_(o.toPay)) + '</b> (' + hesc_(o.kind) + ')' +
     '\n👤 ' + hesc_(o.name) + ', ' + hesc_(o.phone) + (o.tg ? ', ' + hesc_(o.tg) : '') + (cu ? (cu.tgChat ? ', 📲 бот подключён' : ', без бота') : '') +
@@ -567,7 +587,7 @@ function statsText_() {
   var dayOf = function (o, d) { return o.at instanceof Date ? Utilities.formatDate(o.at, 'Europe/Moscow', 'dd.MM.yyyy') === d : String(o.at).indexOf(d) === 0; };
   var yd = Utilities.formatDate(new Date(now - 86400000), 'Europe/Moscow', 'dd.MM.yyyy');
   var today = all.filter(function (o) { return dayOf(o, day); }), yest = all.filter(function (o) { return dayOf(o, yd); });
-  var act = all.filter(function (o) { return !isDone_(String(o.status || 'Оформлен')); });
+  var act = all.filter(function (o) { return !isDone_(String(o.status || 'Принят')); });
   var mk = Utilities.formatDate(new Date(now), 'Europe/Moscow', 'MM.yyyy'), month = all.filter(function (o) { return o.at instanceof Date ? Utilities.formatDate(o.at, 'Europe/Moscow', 'MM.yyyy') === mk : String(o.at).slice(3, 10) === mk; });
   var sum = function (a) { return a.reduce(function (s, o) { return s + (money_(o.toPay) || 0); }, 0); };
   var us = users_();
@@ -583,7 +603,7 @@ function adminDigest_() {
   var now = new Date(), day = Utilities.formatDate(now, 'Europe/Moscow', 'yyyy-MM-dd'), h = +Utilities.formatDate(now, 'Europe/Moscow', 'H');
   if (h < 10 || p.getProperty('digestDay') === day) return;
   p.setProperty('digestDay', day);
-  var old = ordersAll_().filter(function (o) { return !isDone_(String(o.status || 'Оформлен')) && !isTrue_(o.paid) && o.at instanceof Date && Date.now() - o.at.getTime() > 86400000; });
+  var old = ordersAll_().filter(function (o) { return !isDone_(String(o.status || 'Принят')) && !isTrue_(o.paid) && o.at instanceof Date && Date.now() - o.at.getTime() > 86400000; });
   var waitPh = DB.reviewRows_().filter(function (r) { return String(r.photoSt || '').trim() === 'на проверке'; }).length;
   var text = '☀️ <b>Доброе утро!</b>\n\n' + statsText_().replace('📊 <b>Сводка</b>\n\n', '') + (old.length ? '\n\n💳 Не оплачены дольше суток: ' + old.length : '') + (waitPh ? '\n⭐ Отзывов с фото ждут проверки: ' + waitPh : '');
   var kb = old.slice(-8).reverse().map(function (o) { return [{ text: orderLine_(o), callback_data: 'o|' + o.no }]; });
@@ -623,7 +643,7 @@ function adjustClient_(u, d, reason) {
 }
 function broadcastTargets_(mode) {
   var act = {};
-  if (mode === 'a') ordersAll_().forEach(function (o) { if (!isDone_(String(o.status || 'Оформлен'))) act[normId_(o.userId)] = 1; });
+  if (mode === 'a') ordersAll_().forEach(function (o) { if (!isDone_(String(o.status || 'Принят'))) act[normId_(o.userId)] = 1; });
   return users_().filter(function (u) { return u.tgChat && (mode !== 'a' || act[u.id]); });
 }
 function askBroadcast_(chat, text, photo) { bcPreview_(chat, { t: 'custom', text: text || '', photo: photo || '' }); }
@@ -1059,8 +1079,8 @@ function botDemo_(chat) {
   guideIndex_(chat);
   guideStep_(chat, null, 0);
   sticker_(chat, 'accepted');
-  tgSend_(chat, statusText_('OS-26-00001', 'Оформлен'), statusKb_('OS-26-00001', 'Оформлен'));
-  tgSend_(chat, statusText_('OS-26-00001', 'Едет к нам'), statusKb_('OS-26-00001', 'Едет к нам'));
+  tgSend_(chat, statusText_('OS-26-00001', 'Принят'), statusKb_('OS-26-00001', 'Принят'));
+  tgSend_(chat, statusText_('OS-26-00001', 'Едет в Россию'), statusKb_('OS-26-00001', 'Едет в Россию'));
   tgSend_(chat, payText_('OS-26-00001', 26564), [[pri_(btnOrder_('OS-26-00001'))]]);
   sticker_(chat, 'delivered');
   tgSend_(chat, statusText_('OS-26-00001', 'Получен'), statusKb_('OS-26-00001', 'Получен'));

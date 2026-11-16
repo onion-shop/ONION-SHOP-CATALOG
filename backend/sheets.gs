@@ -9,7 +9,7 @@ function allowMail() { Logger.log('Можно отправить писем се
    =================================================================== */
 
 var CATALOG_URL_DEFAULT = 'https://onion-shop.github.io/ONION-SHOP-CATALOG/data/catalog.js';
-var LAYOUT_VER = '17';
+var LAYOUT_VER = '18';
 
 var SHEET = { orders: 'Заказы', users: 'Клиенты', promos: 'Промокоды', log: 'Журнал ониксов', summary: 'Сводка', sessions: 'Сессии', reviews: 'Отзывы', waits: 'Лист ожидания', ledger: 'Учёт бонусов', flags: 'Подозрительное' };
 
@@ -137,7 +137,7 @@ function isStockKind_(kind) { var k = String(kind || '').trim(); return k === '�
 function statusRule_(kind) {
   var stock = isStockKind_(kind);
   return SpreadsheetApp.newDataValidation().requireValueInList(OnionCore.stagesFor(kind).concat(['Отменён']), true).setAllowInvalid(false)
-    .setHelpText(stock ? 'Заказ «в наличии»: Оформлен, Едет к вам, Получен или Отменён' : 'Предзаказ: Оформлен → Выкуплен → В пути → На складе → Едет к нам → Едет к вам → Получен, либо Отменён').build();
+    .setHelpText(stock ? 'Заказ «в наличии»: Принят, Едет к вам, Получен или Отменён' : 'Предзаказ: Принят → Выкуплен → Едет в Китай → Проверка товара → Едет в Россию → Едет к вам → Получен, либо Отменён').build();
 }
 /* Ставит каждой строке список статусов по её типу. Общий список на весь столбец уже стоит (полный), здесь
    строкам «в наличии» ставится короткий. Возвращает номера заказов, где текущий статус не подходит типу
@@ -164,7 +164,7 @@ function applyStatusRules_(sh) {
 function checkStatusesUi() {
   var sh = ss_().getSheetByName(SHEET.orders); if (!sh) return;
   var bad = applyStatusRules_(sh), ui = SpreadsheetApp.getUi();
-  ui.alert(bad.length ? 'Статус не подходит типу заказа (например, «На складе» у заказа «в наличии») у ' + bad.length + ' заказов:\n\n' + bad.slice(0, 40).join(', ') + (bad.length > 40 ? ' …' : '') + '\n\nВыберите для них правильный статус из списка.' : 'Все статусы подходят типу заказа. Списки статусов обновлены.');
+  ui.alert(bad.length ? 'Статус не подходит типу заказа (например, «Проверка товара» у заказа «в наличии») у ' + bad.length + ' заказов:\n\n' + bad.slice(0, 40).join(', ') + (bad.length > 40 ? ' …' : '') + '\n\nВыберите для них правильный статус из списка.' : 'Все статусы подходят типу заказа. Списки статусов обновлены.');
 }
 /* Фотоотчёт: ссылки на фото кладутся в колонку «Фотоотчёт», клиент получает сообщение и видит ссылки в «Моих заказах» */
 function addPhotoReportUi() {
@@ -184,7 +184,7 @@ function addPhotoReportUi() {
   } finally { lock.releaseLock(); }
   ss_().toast('Фотоотчёт к ' + q + ' добавлен (' + links.length + ' шт.). Клиенту отправлено сообщение.', 'ONION SHOP', 6);
 }
-var STAGE_COLORS = { 'Оформлен': ['#eef2f7', '#3a4b63'], 'Выкуплен': ['#e5edfb', '#1d4fb8'], 'В пути': ['#e5edfb', '#1d4fb8'], 'На складе': ['#e5edfb', '#1d4fb8'], 'Едет к нам': ['#dff1f8', '#0a76a8'], 'Едет к вам': ['#dff1f8', '#0a76a8'], 'Получен': ['#173b8f', '#ffffff'], 'Отменён': ['#fbe9eb', '#b42318'] };
+var STAGE_COLORS = { 'Принят': ['#eef2f7', '#3a4b63'], 'Выкуплен': ['#e5edfb', '#1d4fb8'], 'Едет в Китай': ['#e5edfb', '#1d4fb8'], 'Проверка товара': ['#e5edfb', '#1d4fb8'], 'Едет в Россию': ['#dff1f8', '#0a76a8'], 'Едет к вам': ['#dff1f8', '#0a76a8'], 'Получен': ['#173b8f', '#ffffff'], 'Отменён': ['#fbe9eb', '#b42318'] };
 function props_() { return PropertiesService.getScriptProperties(); }
 function mskText_(ms) { return Utilities.formatDate(new Date(ms), 'Europe/Moscow', 'dd.MM.yyyy HH:mm'); }
 function colL_(n) { var s = ''; while (n > 0) { var m = (n - 1) % 26; s = String.fromCharCode(65 + m) + s; n = Math.floor((n - 1) / 26); } return s; }
@@ -301,8 +301,19 @@ function style_(sh, cols, opt) {
   return sh;
 }
 
+/* Старые названия статусов → новые (разовый перенос, безопасно повторять) */
+var STATUS_OLD_ = { 'Оформлен': 'Принят', 'В пути': 'Едет в Китай', 'На складе': 'Проверка товара', 'Едет к нам': 'Едет в Россию' };
+function renameStatuses_(sh) {
+  var last = sh.getLastRow(); if (last < 2) return 0;
+  var col = ci_(ORDER_COLS, 'status') + 1, rg = sh.getRange(2, col, last - 1, 1), v = rg.getValues(), n = 0;
+  v.forEach(function (r) { var s = String(r[0]).trim(); if (STATUS_OLD_[s]) { r[0] = STATUS_OLD_[s]; n++; } });
+  if (n) { rg.clearDataValidations(); rg.setValues(v); props_().setProperty('statusRenamed', String(n)); } /* список статусов ниже ставится заново */
+  return n;
+}
 function styleOrders_() {
-  var sh = style_(migrate_(SHEET.orders, ORDER_COLS), ORDER_COLS, { freezeCols: 1, groups: ORDER_GROUPS });
+  var sh0 = migrate_(SHEET.orders, ORDER_COLS);
+  try { renameStatuses_(sh0); } catch (e) { console.error('rename statuses', e && e.stack || e); }
+  var sh = style_(sh0, ORDER_COLS, { freezeCols: 1, groups: ORDER_GROUPS });
   var maxR = sh.getMaxRows(), L = function (k) { return colL_(ci_(ORDER_COLS, k) + 1); };
   sh.getRange(L('itemsText') + '2:' + L('itemsText')).setWrap(true);
   sh.getRange(L('no') + '2:' + L('no')).setFontWeight('bold');
@@ -331,13 +342,13 @@ function styleOrders_() {
   if (n > 0) {
     sh.setRowHeights(2, n, 64);
     var sr = sh.getRange(2, ci_(ORDER_COLS, 'status') + 1, n, 1), sv = sr.getValues(), nr = sh.getRange(2, 1, n, 1).getValues();
-    sr.setValues(sv.map(function (r, i) { return [r[0] || (nr[i][0] ? 'Оформлен' : '')]; }));
+    sr.setValues(sv.map(function (r, i) { return [r[0] || (nr[i][0] ? 'Принят' : '')]; }));
   }
   try { applyStatusRules_(sh); } catch (e) { console.error('status rules', e && e.stack || e); }
   sh.getRange(1, ci_(ORDER_COLS, 'photoRep') + 1).setNote('Фотоотчёт для клиента. Проще всего: меню ONION SHOP → «Заказы» → «Добавить фотоотчёт к заказу…». Или вставьте сюда ссылку на фото (Google Диск, Telegram, любой сайт; начинается с https://), несколько ссылок через пробел. Клиент получит сообщение в Telegram и увидит ссылки в «Моих заказах».');
-  sh.getRange(1, ci_(ORDER_COLS, 'kind') + 1).setNote('Тип заказа определяется сам. «в наличии»: у клиента 3 этапа (Оформлен, Едет к вам, Получен), в списке статусов только они и «Отменён». «предзаказ» и «смешанный»: все этапы.');
+  sh.getRange(1, ci_(ORDER_COLS, 'kind') + 1).setNote('Тип заказа определяется сам. «в наличии»: у клиента 3 этапа (Принят, Едет к вам, Получен), в списке статусов только они и «Отменён». «предзаказ» и «смешанный»: все этапы.');
   sh.getRange(1, ci_(ORDER_COLS, 'paid') + 1).setNote('Отмечайте, когда клиент оплатил. Строка станет зелёной.');
-  sh.getRange(1, ci_(ORDER_COLS, 'status') + 1).setNote('Выберите статус из списка. Клиент сразу увидит его в «Моих заказах». Список зависит от типа заказа. Предзаказ: Оформлен → Выкуплен → В пути → На складе → Едет к нам → Едет к вам → Получен. В наличии: Оформлен → Едет к вам → Получен. В обоих случаях можно «Отменён».');
+  sh.getRange(1, ci_(ORDER_COLS, 'status') + 1).setNote('Выберите статус из списка. Клиент сразу увидит его в «Моих заказах». Список зависит от типа заказа. Предзаказ: Принят → Выкуплен → Едет в Китай → Проверка товара → Едет в Россию → Едет к вам → Получен. В наличии: Принят → Едет к вам → Получен. В обоих случаях можно «Отменён».');
   sh.getRange(1, ci_(ORDER_COLS, 'priority') + 1).setNote('Очередь обработки: №1 Алмаз, №2 Платина, №3 Золото, №4 платный «Приоритетный заказ» (99 ₽) для остальных, затем обычные. Если у клиента есть уровень с приоритетом, очередь определяет уровень.');
   sh.getRange(1, ci_(ORDER_COLS, 'pack') + 1).setNote('Привилегия уровня на этот заказ: «Упаковка −10%» (Платина, только предзаказ) или «Бесплатная упаковка» (Алмаз). 1 раз в месяц. Если заказ отменён: привилегия вернётся клиенту.');
   sh.getRange(1, ci_(ORDER_COLS, 'contact') + 1).setNote('Ссылка открывает чат с клиентом в Telegram (по username или по номеру телефона).');
@@ -805,7 +816,7 @@ var DB = {
     row.itemsText = o.items.map(function (it) { return it.title + (it.size ? ', ' + it.size : '') + (it.color ? ', ' + it.color : '') + ' × ' + it.qty; }).join('\n');
     row.items = JSON.stringify(o.items);
     row.at = new Date(o.at);
-    row.paid = false; row.status = o.status || 'Оформлен';
+    row.paid = false; row.status = o.status || 'Принят';
     if (!row.tg || row.tg === '@') row.tg = '';
     var tgName = String(row.tg || '').replace(/^@/, ''), digits = String(o.phone || '').replace(/\D/g, '');
     if (digits.length === 10) digits = '7' + digits;
@@ -818,20 +829,20 @@ var DB = {
     sh.getRange(r, ci_(ORDER_COLS, 'status') + 1).setDataValidation(statusRule_(row.kind)); // список статусов по типу заказа
   },
   /* отмена заказа клиентом: статус читаем из строки прямо сейчас (запрос сайта идёт под общей блокировкой),
-     ставим «Отменён» только если там «Оформлен», затем общая сверка возвращает ониксы и снимает награды */
+     ставим «Отменён» только если там «Принят», затем общая сверка возвращает ониксы и снимает награды */
   cancelOrder: function (no, uid, via) {
     var f = orderIdx_(no); if (!f) return { missing: true };
     var sh = ss_().getSheetByName(SHEET.orders), iSt = ci_(ORDER_COLS, 'status'), iU = ci_(ORDER_COLS, 'userId'), iN = ci_(ORDER_COLS, 'notified');
     if (normId_(sh.getRange(f.row, iU + 1).getValue()) !== String(uid)) return { missing: true };
     // статус читаем заново прямо перед записью: если менеджер успел сменить его, отмена не пройдёт
-    var st = String(sh.getRange(f.row, iSt + 1).getValue() || '').trim() || 'Оформлен';
-    if (st !== 'Оформлен') return { status: st };
+    var st = String(sh.getRange(f.row, iSt + 1).getValue() || '').trim() || 'Принят';
+    if (st !== 'Принят') return { status: st };
     sh.getRange(f.row, iSt + 1).setValue('Отменён');
     // отмена из бота: клиент уже видит ответ в чате, второе уведомление о статусе ему не нужно
     if (via === 'bot') { var c = sh.getRange(f.row, iN + 1); c.setNumberFormat('@'); c.setValue('Отменён'); }
     SpreadsheetApp.flush();
     USERS_CACHE_ = null; syncXp_(); USERS_CACHE_ = null;
-    return { status: 'Оформлен', done: true };
+    return { status: 'Принят', done: true };
   },
   listOrders: function (userId, limit) {
     var rows = orderRows_(), out = [], iu = ci_(ORDER_COLS, 'userId');
@@ -1401,7 +1412,7 @@ function pickClient_(title) {
 function clientCardUi() {
   var u = pickClient_('Карточка клиента'); if (!u) return;
   var L = OnionCore.levelOf(u), mine = ordersAll_().filter(function (o) { return normId_(o.userId) === u.id; });
-  var act = mine.filter(function (o) { return !isDone_(String(o.status || 'Оформлен')); }).length;
+  var act = mine.filter(function (o) { return !isDone_(String(o.status || 'Принят')); }).length;
   SpreadsheetApp.getUi().alert('Клиент @' + u.login, [
     'Имя: ' + (u.name || '-'), 'ID: ' + u.id, 'Телефон: ' + (u.phone || '-') + (u.phoneOk === false ? ' (не подтверждён)' : ' (подтверждён)'),
     'Почта: ' + (u.email || '-'), 'Telegram: ' + (u.tg || '-') + (u.tgChat ? ', бот подключён' : ', бот не подключён'), 'Город: ' + (u.city || '-'),
@@ -1718,7 +1729,7 @@ function telegramTick() {
     }
   } finally { if (pollLock) pollLock.releaseLock(); }
 }/* кнопки под новым заказом в чате менеджера: меняют статус прямо из Telegram */
-function adminStages_(kind) { var R = OnionCore.RULES; return (kind === 'в наличии' || kind === 'временно нет' ? R.stagesStock : R.stagesPre).filter(function (x) { return x !== 'Оформлен'; }).concat(['Отменён']); }
+function adminStages_(kind) { var R = OnionCore.RULES; return (kind === 'в наличии' || kind === 'временно нет' ? R.stagesStock : R.stagesPre).filter(function (x) { return x !== 'Принят'; }).concat(['Отменён']); }
 function adminKeyboard_(no, kind) {
   var list = adminStages_(kind), rows = [[{ text: '💰 Оплачен', callback_data: 'p|' + no }]], row = [];
   list.forEach(function (st, i) { row.push({ text: (st === 'Отменён' ? '❌ ' : '') + st, callback_data: 's|' + no + '|' + i }); if (row.length === 2) { rows.push(row); row = []; } });
@@ -1780,7 +1791,7 @@ function tgReminders_() {
     var uid = normId_(r[I('userId')]), u = uid ? DB.getUser(uid) : null; if (!u || !u.tgChat) return;
     var st = String(r[I('status')]).trim(), rm = {}; try { rm = r[I('remind')] ? JSON.parse(r[I('remind')]) : {}; } catch (e) { rm = {}; }
     var at = r[I('at')] instanceof Date ? r[I('at')].getTime() : 0;
-    if (st === 'Оформлен' && !isTrue_(r[I('paid')]) && !rm.pay && at && now - at > 86400000) {
+    if (st === 'Принят' && !isTrue_(r[I('paid')]) && !rm.pay && at && now - at > 86400000) {
       if (autoCfg_().remind) notifyHtml_(u, payText_(no, money_(r[I('toPay')])), [[btnOrder_(no)]]);
       setRemind_(sh, i + 2, I('remind'), r[I('remind')], { pay: 1 }); sent++;
     } else if (st === 'Получен' && rm.got && !rm.rev && now - rm.got > 3 * 86400000) {
