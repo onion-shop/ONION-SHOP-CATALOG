@@ -278,9 +278,16 @@ function ordersSend_(chat, delId, title, head, rows, kb) {
     rows.map(function (rw) { return '<tr>' + rw.map(function (c) { return '<td>' + hesc_(c) + '</td>'; }).join('') + '</tr>'; }).join('') + '</table>';
   var r = tgRich_(chat, html, kb);
   if (delId && r && r.ok !== false) tgApi_('deleteMessage', { chat_id: String(chat), message_id: delId });
+}/* порядок: новые сверху. Завершённых и отменённых показываем по 10 последних, более старые из списка бота уходят (в таблице заказов они остаются) */
+function atMs_(o) { var m = String(o.at || '').match(/(\d+)\.(\d+)\.(\d+)(?:\s+(\d+):(\d+))?/); return m ? new Date(+m[3], +m[2] - 1, +m[1], +(m[4] || 0), +(m[5] || 0)).getTime() : 0; }
+function newestFirst_(list) { return list.map(function (o, i) { return { o: o, i: i, t: atMs_(o) }; }).sort(function (a, b) { return b.t - a.t || a.i - b.i; }).map(function (x) { return x.o; }); }
+function activeOrders_(all) { return newestFirst_(all.filter(isActive_)); }
+function pastOrders_(all) {
+  var done = newestFirst_(all.filter(function (o) { return orderSt_(o) === 'Получен'; })).slice(0, 10), off = newestFirst_(all.filter(function (o) { return orderSt_(o) === 'Отменён'; })).slice(0, 10);
+  return newestFirst_(done.concat(off));
 }function custOrders_(chat, delId, page) {
   var u = tgUserByChat_(chat); if (!u) { needLink_(chat); return; }
-  var all = DB.listOrders(u.id, 60), actAll = all.filter(isActive_), past = all.filter(function (o) { return !isActive_(o); }).length;
+  var all = DB.listOrders(u.id, 150), actAll = activeOrders_(all), past = pastOrders_(all).length;
   var per = 6, pages = Math.max(1, Math.ceil(actAll.length / per)); page = Math.max(0, Math.min(pages - 1, +page || 0));
   var act = actAll.slice(page * per, page * per + per);
   if (!all.length) { tgRich_(chat, '<h3>Мои заказы</h3><p>Заказов пока нет. Оформите первый на сайте, он сразу появится здесь, а статусы я буду присылать сам.</p>', [[pri_({ text: 'Открыть каталог', web_app: { url: siteUrl_('') } })]]); if (delId) tgApi_('deleteMessage', { chat_id: String(chat), message_id: delId }); return; }
@@ -291,7 +298,7 @@ function ordersSend_(chat, delId, title, head, rows, kb) {
   ordersSend_(chat, delId, 'Мои заказы' + (pages > 1 ? ' (' + actAll.length + ')' : ''), ['Заказ', 'Статус', 'К оплате'], act.map(function (o) { return [shortNo_(o.no), stageName_(orderSt_(o)), rub_(o.toPay)]; }), kb);
 }function custOrdersPast_(chat, delId, page) {
   var u = tgUserByChat_(chat); if (!u) { needLink_(chat); return; }
-  var past = DB.listOrders(u.id, 60).filter(function (o) { return !isActive_(o); }), per = 8, pages = Math.max(1, Math.ceil(past.length / per));
+  var past = pastOrders_(DB.listOrders(u.id, 150)), per = 8, pages = Math.max(1, Math.ceil(past.length / per));
   page = Math.max(0, Math.min(pages - 1, +page || 0));
   var chunk = past.slice(page * per, page * per + per);
   var kb = [], row = [];
