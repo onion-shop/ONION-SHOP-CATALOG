@@ -210,11 +210,8 @@ function tgAnimation_(chat, key, caption, kb) {
   if (r && r.ok && !fid) { var a = (r.result && (r.result.animation || r.result.document)) || {}; if (a.file_id) props_().setProperty(fk, a.file_id); }
   return r;
 }
-/* меню внизу чата ставится невидимо: служебное сообщение с клавиатурой отправляется и сразу удаляется, клавиатура остаётся */
-function setMenu_(chat, kb) {
-  var r = tgSend_(chat, '💠', kb);
-  if (r && r.ok && r.result && r.result.message_id) tgApi_('deleteMessage', { chat_id: String(chat), message_id: r.result.message_id });
-}
+/* меню внизу чата: Telegram привязывает клавиатуру к сообщению (если сообщение удалить, меню исчезает), поэтому короткая строка остаётся */
+function setMenu_(chat, kb) { tgSend_(chat, 'Меню внизу 👇', kb); }
 /* приветствие: один пост (видео, текст, кнопка). menuKb: клавиатура меню; менеджеру в «Примерах» передаём null, чтобы не сбить его панель */
 function sendWelcomeTo_(chat, name, linked, menuKb) {
   var cap = welcome_(name, linked), a = tgAnimation_(chat, 'welcome2', cap, welcomeKb_(linked));
