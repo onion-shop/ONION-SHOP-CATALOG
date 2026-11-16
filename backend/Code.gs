@@ -2148,48 +2148,47 @@ function reviewText_(no, r, rt) {
 
 /* ====================== покупатель ====================== */
 function welcome_(name, linked) {
-  var R = OnionCore.RULES;
-  return '<h2>ONION SHOP</h2>' +
-    '<p>' + (name ? hesc_(name) + ', рады' : 'Рады') + ' видеть вас. Здесь всё, что связано с покупками: заказы, бонусы и живая поддержка в одном чате.</p>' +
-    '<table bordered compact>' +
-    '<tr><td>💠 <b>Каталог</b></td><td>новинки, наличие и предзаказ</td></tr>' +
-    '<tr><td>🧾 <b>Заказы</b></td><td>статус, состав и отмена</td></tr>' +
-    '<tr><td>💎 <b>Бонусы</b></td><td>ониксы, уровень, промокоды</td></tr>' +
-    '<tr><td>✉️ <b>Менеджер</b></td><td>ответ приходит сюда же</td></tr>' +
-    '</table>' +
-    '<details><summary>как оформить заказ</summary><ol><li>Откройте каталог и выберите вещь, размер и цвет.</li><li>Оформите корзину в кабинете на сайте.</li><li>Менеджер проверит заказ и пришлёт реквизиты в этот чат.</li></ol></details>' +
-    '<details><summary>доставка и оплата</summary><p>Вещи в наличии отправляем из Москвы. Предзаказ приезжает за 24-47 дней, доставка до России уже в цене. Оплата переводом или наличными при встрече в Москве.</p></details>' +
-    '<details><summary>ониксы и скидки</summary><p>Ониксы начисляются за вход, задания, отзывы и друзей. 1 оникс = ' + String(R.tokenRub).replace('.', ',') + ' ₽. Вместе с промокодом они покрывают до ' + Math.round(R.maxShare * 100) + '% заказа.</p></details>' +
-    '<footer>' + (linked ? '📲 Уведомления подключены: статусы заказов будут приходить сами.' : '📲 Подключите уведомления в кабинете, и статусы заказов начнут приходить сюда.') + ' Разбор по шагам с анимацией в разделе «Инструкция».</footer>';
+  var head = '👋 ' + (name ? hesc_(name) + ', добро' : 'Добро') + ' пожаловать в ONION SHOP BOT';
+  return head + '\n\n' +
+    'Я ваш персональный помощник для комфортного и продуманного шопинга.\n\n' +
+    '🔷 <b>Ваши заказы</b>\nСледите за заказами в любое время. Состав, фотографии товаров, размеры, стоимость и актуальный статус.\n\n' +
+    '🔷 <b>Уведомления</b>\nБот сам сообщает о каждом изменении заказа, присылает фотоотчёт после проверки товаров на складе, рассказывает о новых поступлениях и о снижении цен на избранное.\n\n' +
+    '🔷 <b>Оплата</b>\nРеквизиты приходят сразу после оформления. Оплатите удобным способом сейчас или отложите оплату, а бот вовремя напомнит.\n\n' +
+    '🔷 <b>Поддержка</b>\nОстались вопросы? Напишите менеджеру прямо в чате и при необходимости приложите фото.\n\n' +
+    (linked ? '' : '📲 Чтобы получать уведомления, подключите бота в кабинете на сайте.\n\n') +
+    '◻️ Нажмите «Открыть каталог», чтобы начать';
 }
-function welcomeKb_(linked) {
-  return linked
-    ? [[pri_(btnUrl_('💠 Открыть каталог', ''))], [{ text: '🧾 Мои заказы', callback_data: 'mo' }, { text: '💎 Бонусы', callback_data: 'bn' }], [{ text: '📘 Инструкция', callback_data: 'gi' }]]
-    : [[pri_(btnUrl_('📲 Подключить уведомления', 'account'))], [btnUrl_('💠 Открыть каталог', ''), { text: '📘 Инструкция', callback_data: 'gi' }]];
+/* одна кнопка: каталог открывается мини-приложением; без подключённых уведомлений ещё и кнопка подключения */
+function welcomeKb_(linked, plain) {
+  var cat = plain ? btnUrl_('Открыть каталог', '') : { text: 'Открыть каталог', web_app: { url: siteUrl_('') } };
+  var kb = [[pri_(cat)]];
+  if (!linked) kb.push([btnUrl_('📲 Подключить уведомления', 'account')]);
+  return kb;
 }
-/* анимированная заставка (зацикленное видео без звука); id файла запоминаем, дальше Telegram берёт его у себя */
-var VID_VER_ = '6';
+/* приветственное видео (телефон, «Добро пожаловать»); id файла запоминаем, дальше Telegram берёт его у себя */
+var VID_VER_ = '7';
 function vidUrl_(n) { return siteBase_() + 'assets/bot/' + n + '.mp4?v=' + VID_VER_; }
 function tgAnimation_(chat, key, caption, kb) {
   var fk = 'FID_' + key + '_' + VID_VER_, fid = props_().getProperty(fk);
-  var p = { chat_id: String(chat), animation: fid || vidUrl_(key), caption: String(caption || '').slice(0, 1000), parse_mode: 'HTML', width: 1280, height: 720, duration: 14 };
+  var p = { chat_id: String(chat), animation: fid || vidUrl_(key), caption: String(caption || '').slice(0, 1024), parse_mode: 'HTML', width: 1280, height: 720, duration: 18 };
   if (kb) p.reply_markup = Array.isArray(kb) ? { inline_keyboard: kb } : kb;
   var r = tgApi_('sendAnimation', p);
   if ((!r || !r.ok) && fid) { props_().deleteProperty(fk); p.animation = vidUrl_(key); r = tgApi_('sendAnimation', p); }
   if (r && r.ok && !fid) { var a = (r.result && (r.result.animation || r.result.document)) || {}; if (a.file_id) props_().setProperty(fk, a.file_id); }
   return r;
 }
-/* приветствие: заставка (вместе с ней ставится меню внизу) и подробный экран.
-   menuKb: клавиатура меню; менеджеру в «Примерах» передаём null, чтобы не сбить его панель */
+/* меню внизу чата ставится невидимо: служебное сообщение с клавиатурой отправляется и сразу удаляется, клавиатура остаётся */
+function setMenu_(chat, kb) {
+  var r = tgSend_(chat, '💠', kb);
+  if (r && r.ok && r.result && r.result.message_id) tgApi_('deleteMessage', { chat_id: String(chat), message_id: r.result.message_id });
+}
+/* приветствие: один пост (видео, текст, кнопка). menuKb: клавиатура меню; менеджеру в «Примерах» передаём null, чтобы не сбить его панель */
 function sendWelcomeTo_(chat, name, linked, menuKb) {
-  var cap = '<b>ONION SHOP</b>\n<i>заказы, бонусы и поддержка в одном чате</i>';
-  var a = tgAnimation_(chat, 'welcome', cap, menuKb || null);
+  var cap = welcome_(name, linked), a = tgAnimation_(chat, 'welcome2', cap, welcomeKb_(linked));
   if (a && a.error_code === 403) return a;
-  if (!a || !a.ok) {
-    var s = sticker_(chat, 'hello', menuKb || null);
-    if ((!s || !s.ok) && menuKb) tgSend_(chat, 'Меню всегда внизу 👇', menuKb);
-  }
-  return tgRich_(chat, welcome_(name, linked), welcomeKb_(linked));
+  if (!a || !a.ok) { a = tgSend_(chat, cap, welcomeKb_(linked)); if (!a || !a.ok) a = tgSend_(chat, cap, welcomeKb_(linked, true)); }
+  if (menuKb) setMenu_(chat, menuKb);
+  return a;
 }
 function sendWelcome_(m, linked) { sendWelcomeTo_(m.chat.id, m.chat.first_name, linked, custKb_()); }
 function needLink_(chat) {
