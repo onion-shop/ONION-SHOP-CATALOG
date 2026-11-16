@@ -1628,9 +1628,7 @@ function setupTelegram_() {
   if (!bot) return '';
   var tg = function (m, o) { try { UrlFetchApp.fetch('https://api.telegram.org/bot' + p.getProperty('BOT_TOKEN') + '/' + m, { method: 'post', muteHttpExceptions: true, contentType: 'application/json', payload: JSON.stringify(o) }); } catch (e) { } };
   if (!p.getProperty('tgWebhook')) tg('deleteWebhook', {});
-  tg('setMyDescription', { description: 'ONION SHOP: одежда, обувь и аксессуары в наличии и под заказ из Китая.\n\nЯ пришлю сообщение, когда заказ меняет статус или нужный товар снова в продаже. Нажмите «Старт», чтобы начать.' });
   setBotCommands_();
-  tg('setMyShortDescription', { short_description: 'Статусы заказов ONION SHOP и новости о товарах' });
   ScriptApp.getProjectTriggers().forEach(function (t) { var h = t.getHandlerFunction(); if (h === 'telegramTick' || h === 'onEditInstant') ScriptApp.deleteTrigger(t); });
   ScriptApp.newTrigger('telegramTick').timeBased().everyMinutes(1).create();
   // правка статуса или фотоотчёта в таблице сразу уходит клиенту (а не через минуту)
@@ -2794,8 +2792,8 @@ function phoneContact_(m) {
 
 /* список команд в меню «/» и описание бота («Что умеет этот бот?»): покупателям свои, менеджеру (только его чат) расширенный.
    Картинку или анимацию над описанием Telegram позволяет поставить только вручную в @BotFather (/setdescriptionpic). */
-var BOT_DESCRIPTION_ = '💠 ONION SHOP\n\nЛичный помощник покупателя: заказы, бонусы и поддержка в одном чате.\n\n🔹 Каталог: новинки, наличие и предзаказ\n🔹 Заказы: статус, путь и фотоотчёт\n🔹 Бонусы: ониксы, уровень, промокоды\n🔹 Инструкция с анимацией по шагам\n\nНажмите «Старт», чтобы начать. Бот отвечает в течение минуты.';
-var BOT_SHORT_ = 'Заказы, бонусы и поддержка ONION SHOP в одном чате. Статусы приходят сами.';
+var BOT_DESCRIPTION_ = 'ONION SHOP\nВаш личный помощник в покупках.\n\nСообщу, когда заказ тронется в путь, а любимая вещь подешевеет. Первым расскажу о новинках и подарю бонусы. А если что-то неясно, просто напишите, я на связи.\n\nНажмите «Старт», и начнём.';
+var BOT_SHORT_ = 'Ваш личный помощник в покупках. Следит за заказами, ценами и новинками.';
 function setBotCommands_() {
   tgApi_('setMyCommands', { commands: [{ command: 'menu', description: 'Меню' }, { command: 'catalog', description: 'Каталог на сайте' }, { command: 'orders', description: 'Мои заказы и статусы' }, { command: 'bonus', description: 'Ониксы, уровень, промокоды' }, { command: 'guide', description: 'Инструкция с анимацией' }, { command: 'faq', description: 'Частые вопросы' }, { command: 'ask', description: 'Написать менеджеру' }] });
   tgApi_('setMyDescription', { description: BOT_DESCRIPTION_ });

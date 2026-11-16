@@ -1628,9 +1628,7 @@ function setupTelegram_() {
   if (!bot) return '';
   var tg = function (m, o) { try { UrlFetchApp.fetch('https://api.telegram.org/bot' + p.getProperty('BOT_TOKEN') + '/' + m, { method: 'post', muteHttpExceptions: true, contentType: 'application/json', payload: JSON.stringify(o) }); } catch (e) { } };
   if (!p.getProperty('tgWebhook')) tg('deleteWebhook', {});
-  tg('setMyDescription', { description: 'ONION SHOP: одежда, обувь и аксессуары в наличии и под заказ из Китая.\n\nЯ пришлю сообщение, когда заказ меняет статус или нужный товар снова в продаже. Нажмите «Старт», чтобы начать.' });
   setBotCommands_();
-  tg('setMyShortDescription', { short_description: 'Статусы заказов ONION SHOP и новости о товарах' });
   ScriptApp.getProjectTriggers().forEach(function (t) { var h = t.getHandlerFunction(); if (h === 'telegramTick' || h === 'onEditInstant') ScriptApp.deleteTrigger(t); });
   ScriptApp.newTrigger('telegramTick').timeBased().everyMinutes(1).create();
   // правка статуса или фотоотчёта в таблице сразу уходит клиенту (а не через минуту)
