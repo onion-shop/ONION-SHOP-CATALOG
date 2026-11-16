@@ -392,29 +392,22 @@ function custOrderPage_(cq, no, idx) {
 function custBonus_(chat) {
   var u = tgUserByChat_(chat); if (!u) { needLink_(chat); return; }
   var R = OnionCore.RULES, L = OnionCore.levelOf(u), next = R.levels[L.index + 1], bal = u.balance || 0, xp = u.xp || 0;
-  var html = '<h3>💎 Ваши бонусы</h3><table bordered compact>' +
-    '<tr><td>Ониксы</td><td><b>' + num_(bal) + '</b></td><td>до ' + rub_(Math.floor(bal * R.tokenRub)) + ' скидки</td></tr>' +
-    '<tr><td>Уровень</td><td><b>' + hesc_(L.name) + '</b></td><td>' + num_(xp) + ' XP за месяц</td></tr>' +
-    (next ? '<tr><td>Следующий</td><td><b>' + hesc_(next.name) + '</b></td><td>ещё ' + num_(Math.max(0, next.min - xp)) + ' XP</td></tr>' : '') + '</table>';
+  var pct = next ? Math.max(0, Math.min(100, Math.round(xp / next.min * 100))) : 100, fill = Math.round(pct / 10), bar = '';
+  for (var i = 0; i < 10; i++) bar += i < fill ? '▰' : '▱';
+  var html = '<h3>💎 Ваши бонусы</h3>' +
+    '<p><b>' + hesc_(L.name) + '</b><br>Опыт за месяц: ' + num_(xp) + ' XP<br>' + bar + ' ' + pct + '%<br>' + (next ? 'До уровня ' + hesc_(next.name) + ' ещё ' + num_(Math.max(0, next.min - xp)) + ' XP' : 'Это высший уровень') + '</p>' +
+    '<p><b>Ониксы:</b> ' + num_(bal) + (bal > 0 ? ' ≈ ' + rub_(Math.floor(bal * R.tokenRub)) + ' скидки' : '') + '</p>';
   var pr = []; try { pr = OnionCore.activePromos(DB, u) || []; } catch (e) { pr = []; }
-  if (pr.length) html += '<h4>ваши промокоды</h4><table bordered compact>' + pr.slice(0, 8).map(function (p) {
-    return '<tr><td><code>' + hesc_(p.code) + '</code></td><td>−' + String(p.pct).replace('.', ',') + '%</td><td>' + (p.cat ? 'только «' + hesc_(p.catLabel) + '»' : 'на весь заказ') + '</td></tr>';
-  }).join('') + '</table><p><i>Нажмите на код, чтобы скопировать, и вставьте его при оформлении заказа.</i></p>';
-  html += '<p>Ониксы и промокод вместе покрывают до ' + Math.round(R.maxShare * 100) + '% заказа. 1 оникс = ' + String(R.tokenRub).replace('.', ',') + ' ₽.</p>';
-  html += '<details><summary>как получить больше ониксов</summary><ul><li>ежедневный вход на сайте и задания уровня</li><li>отзыв о заказе: до +' + R.reward.reviewText + '</li><li>друг по вашей ссылке: +' + R.reward.referrer + ' после его первого заказа от ' + rub_(R.refMinOrder) + '</li><li>посылка с сюрпризом на сайте</li></ul></details>';
-  html += '<details><summary>уровни</summary><table bordered compact><tr><th>уровень</th><th>опыт за месяц</th></tr>' +
-    R.levels.map(function (l, i) { return '<tr><td>' + (i === L.index ? '<b>' + hesc_(l.name) + '</b>' : hesc_(l.name)) + '</td><td>от ' + num_(l.min) + ' XP</td></tr>'; }).join('') +
-    '</table><p>Чем выше уровень, тем больше заданий, промокоды и приоритет заказа. 1-го числа опыт обнуляется.</p></details>';
-  var kb = [];
+  html += '<p><b>🎟 Промокоды</b></p>' + (pr.length ? pr.slice(0, 8).map(function (p) {
+    return '<p><code>' + hesc_(p.code) + '</code> −' + String(p.pct).replace('.', ',') + '% ' + (p.cat ? 'только «' + hesc_(p.catLabel) + '»' : 'на весь заказ') + '</p>';
+  }).join('') + '<p><i>Нажмите на код, чтобы скопировать, и вставьте его при оформлении заказа.</i></p>' : '<p>Активных промокодов нет</p>');
+  var kb = null;
   if (u.refCode) {
     var link = siteUrl_('ref=' + u.refCode);
-    html += '<footer>Пригласите друга: ему +' + R.reward.refFriend + ' ониксов при регистрации, вам +' + R.reward.referrer + ', когда он получит первый заказ.</footer>';
-    kb.push([pri_({ text: '📤 Пригласить друга', url: 'https://t.me/share/url?url=' + encodeURIComponent(link) + '&text=' + encodeURIComponent('Загляни в ONION SHOP: по моей ссылке +' + R.reward.refFriend + ' ониксов при регистрации') })]);
+    kb = [[pri_({ text: 'Пригласить друга', url: 'https://t.me/share/url?url=' + encodeURIComponent(link) + '&text=' + encodeURIComponent('Загляни в ONION SHOP: по моей ссылке +' + R.reward.refFriend + ' ониксов при регистрации') })]];
   }
-  kb.push([btnUrl_('💠 Задания и посылка', 'roulette')]);
   tgRich_(chat, html, kb);
-}
-/* уведомления включены всегда и отключить их нельзя: экран только объясняет, что приходит */
+}/* уведомления включены всегда и отключить их нельзя: экран только объясняет, что приходит */
 function custSettings_(chat, msgId) {
   var u = tgUserByChat_(chat); if (!u) { needLink_(chat); return; }
   var html = '<h3>📲 Уведомления</h3><p>Пока бот подключён, всё приходит само:</p><table bordered compact>' +
