@@ -1433,7 +1433,7 @@ function giftPromo_(u, pct, days, reason) {
     done = { u: u, code: code, until: until };
   } finally { lock.releaseLock(); }
   var d = new Date(done.until + 3 * 3600000), ds = ('0' + d.getUTCDate()).slice(-2) + '.' + ('0' + (d.getUTCMonth() + 1)).slice(-2);
-  notice_(done.u, '💎 Подарок от магазина', 'Личный промокод <code>' + done.code + '</code> на −' + pct + '%\n<blockquote>Действует до ' + ds + '. Нажмите на код, чтобы скопировать, и введите его при оформлении заказа.</blockquote>', { text: 'Открыть магазин', url: siteBase_() });
+  notice_(done.u, '💎 Подарок от магазина', 'Личный промокод <code>' + done.code + '</code> на −' + pct + '%\nДействует до ' + ds + '. Нажмите на код, чтобы скопировать, и введите его при оформлении заказа.', { text: 'Открыть магазин', url: siteBase_() });
   return done;
 }
 function giftPromoUi() {
@@ -1745,7 +1745,7 @@ function tgPhotos_() {
     var links = OnionCore.photoLinks(r[iP]), key = links.join(' ');
     if (!links.length || String(r[iS] || '') === key || sent >= 20) return;
     var uid = normId_(r[iU]), u = uid ? DB.getUser(uid) : null, no = String(r[iNo]).trim();
-    if (u && u.tgChat) { notice_(u, '📸 Фотоотчёт готов', '<code>' + hesc_(no) + '</code>\n<blockquote>Сфотографировали вещи на складе. Посмотрите, как они выглядят перед отправкой.</blockquote>', { text: 'Посмотреть фото', url: links[0] }); sent++; }
+    if (u && u.tgChat) { notice_(u, '📸 Фотоотчёт готов', '<code>' + hesc_(no) + '</code>\nСфотографировали вещи на складе. Посмотрите, как они выглядят перед отправкой.', { text: 'Посмотреть фото', url: links[0] }); sent++; }
     var c = sh.getRange(i + 2, iS + 1); c.setNumberFormat('@'); c.setValue(key);
   });
 }
@@ -2065,7 +2065,7 @@ function richToHtml_(h) {
   s = s.replace(/<h\d>([\s\S]*?)<\/h\d>/g, '<b>$1</b>\n');
   s = s.replace(/<p>([\s\S]*?)<\/p>/g, '$1\n\n');
   s = s.replace(/<footer>([\s\S]*?)<\/footer>/g, '<i>$1</i>\n');
-  s = s.replace(/<details[^>]*>\s*<summary>([\s\S]*?)<\/summary>([\s\S]*?)<\/details>/g, function (m, a, b) { return '<b>' + a.trim() + '</b>\n<blockquote expandable>' + b.trim() + '</blockquote>\n\n'; });
+  s = s.replace(/<details[^>]*>\s*<summary>([\s\S]*?)<\/summary>([\s\S]*?)<\/details>/g, function (m, a, b) { return '<b>' + a.trim() + '</b>\n' + b.trim() + '\n\n'; });
   s = s.replace(/<hr\s*\/?>|<\/?mark>/g, '');
   return s.replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
 }
@@ -2147,7 +2147,7 @@ function statusText_(no, st) {
   var s = ST_[st] || ['🔹', 'Статус заказа обновлён', 'Новый статус: ' + st + '.'];
   var bar = st === 'Отменён' ? '' : stageBar_(no, st);
   var body = st === 'Едет к вам' ? recvNote_(no) : s[2];
-  return s[0] + ' <b>' + s[1] + '</b>\n<code>' + hesc_(no) + '</code>' + (bar ? '   ' + bar : '') + '\n<blockquote>' + hesc_(body) + '</blockquote>';
+  return s[0] + ' <b>' + s[1] + '</b>\n<code>' + hesc_(no) + '</code>' + (bar ? '   ' + bar : '') + '\n\n' + hesc_(body);
 }
 function statusKb_(no, st) { return st === 'Получен' ? [[pri_(btnUrl_('🤍 Оставить отзыв', 'orders'))]] : [[pri_(btnOrder_(no))]]; }
 function statusNotice_(u, no, st) {
@@ -2158,11 +2158,11 @@ function statusNotice_(u, no, st) {
   return !!(r && r.ok);
 }
 function payText_(no, sum) {
-  return '🏦 <b>Ожидаем оплату</b>\n<code>' + hesc_(no) + '</code>\nК оплате: <b>' + rub_(sum) + '</b>\n<blockquote>' +
-    pick_(['Уже перевели? Тогда всё в порядке: менеджер отметит оплату, и заказ пойдёт дальше.', 'Реквизиты прислал менеджер. Если оплата уже ушла, ничего делать не нужно.']) + '</blockquote>';
+  return '🏦 <b>Ожидаем оплату</b>\n<code>' + hesc_(no) + '</code>\nК оплате: <b>' + rub_(sum) + '</b>\n' +
+    pick_(['Уже перевели? Тогда всё в порядке: менеджер отметит оплату, и заказ пойдёт дальше.', 'Реквизиты прислал менеджер. Если оплата уже ушла, ничего делать не нужно.']) + '';
 }
 function reviewText_(no, r, rt) {
-  return '🤍 <b>Как вам заказ?</b>\n<code>' + hesc_(no) + '</code>\n<blockquote>Оценка займёт минуту и поможет другим с выбором.\nЗа звёзды +' + r + ' ониксов, с парой слов о посадке и качестве +' + rt + '.</blockquote>';
+  return '🤍 <b>Как вам заказ?</b>\n<code>' + hesc_(no) + '</code>\nОценка займёт минуту и поможет другим с выбором.\nЗа звёзды +' + r + ' ониксов, с парой слов о посадке и качестве +' + rt + '.';
 }
 
 /* ====================== покупатель ====================== */
@@ -2208,7 +2208,7 @@ function sendWelcomeTo_(chat, name, linked, menuKb) {
 }
 function sendWelcome_(m, linked) { sendWelcomeTo_(m.chat.id, m.chat.first_name, linked, custKb_()); }
 function needLink_(chat) {
-  tgSend_(chat, '📲 <b>Кабинет пока не подключён</b>\n<blockquote>Откройте кабинет на сайте, раздел «Уведомления в Telegram», и нажмите «Подключить». Это займёт полминуты.</blockquote>', [[pri_(btnUrl_('Открыть кабинет', 'account'))]]);
+  tgSend_(chat, '📲 <b>Кабинет пока не подключён</b>\nОткройте кабинет на сайте, раздел «Уведомления в Telegram», и нажмите «Подключить». Это займёт полминуты.', [[pri_(btnUrl_('Открыть кабинет', 'account'))]]);
 }
 function custCatalog_(chat) {
   tgRich_(chat, '<h3>💠 Каталог</h3>' +
@@ -2242,7 +2242,7 @@ function custFaq_(chat, msgId, key) {
 }
 function custAsk_(chat, no) {
   cachePut_('q:' + chat, no || '-', 900);
-  tgSend_(chat, '✉️ <b>Сообщение менеджеру</b>\n<blockquote>Напишите вопрос одним сообщением, можно приложить фото.' + (no ? ' Номер заказа <code>' + hesc_(no) + '</code> я передам сам.' : '') + ' Ответ придёт в этот чат.</blockquote>');
+  tgSend_(chat, '✉️ <b>Сообщение менеджеру</b>\nНапишите вопрос одним сообщением, можно приложить фото.' + (no ? ' Номер заказа <code>' + hesc_(no) + '</code> я передам сам.' : '') + ' Ответ придёт в этот чат.');
 }
 /* ====================== мои заказы ======================
    Список: таблица действующих заказов и кнопка на каждый. Завершённые и отменённые убраны за одну кнопку с количеством.
@@ -2372,17 +2372,19 @@ function custBonus_(chat) {
   var R = OnionCore.RULES, L = OnionCore.levelOf(u), next = R.levels[L.index + 1], bal = u.balance || 0, xp = u.xp || 0;
   var pct = next ? Math.max(0, Math.min(100, Math.round(xp / next.min * 100))) : 100, fill = Math.round(pct / 10), bar = '';
   for (var i = 0; i < 10; i++) bar += i < fill ? '▰' : '▱';
+  var gap = '<p> </p>';
   var html = '<h3>💎 Ваши бонусы</h3>' +
-    '<p><b>' + hesc_(L.name) + '</b><br>Опыт за месяц: ' + num_(xp) + ' XP<br>' + bar + ' ' + pct + '%<br>' + (next ? 'До уровня ' + hesc_(next.name) + ' ещё ' + num_(Math.max(0, next.min - xp)) + ' XP' : 'Это высший уровень') + '</p>' +
-    '<p><b>Ониксы:</b> ' + num_(bal) + (bal > 0 ? ' ≈ ' + rub_(Math.floor(bal * R.tokenRub)) + ' скидки' : '') + '</p>';
+    '<p><b>' + hesc_(L.name) + '</b><br>Опыт за месяц: ' + num_(xp) + ' XP<br>' + bar + ' ' + pct + '%<br>' + (next ? 'До уровня ' + hesc_(next.name) + ' ещё ' + num_(Math.max(0, next.min - xp)) + ' XP' : 'Это высший уровень') + '</p>' + gap +
+    '<p><b>Ониксы:</b> ' + num_(bal) + (bal > 0 ? ' ≈ ' + rub_(Math.floor(bal * R.tokenRub)) + ' скидки' : '') + '</p>' + gap +
+    '<p><b>🎟 Промокоды</b></p>' + gap;
   var pr = []; try { pr = OnionCore.activePromos(DB, u) || []; } catch (e) { pr = []; }
-  html += '<p><b>🎟 Промокоды</b></p>' + (pr.length ? pr.slice(0, 8).map(function (p) {
-    return '<p><code>' + hesc_(p.code) + '</code> −' + String(p.pct).replace('.', ',') + '% ' + (p.cat ? 'только «' + hesc_(p.catLabel) + '»' : 'на весь заказ') + '</p>';
-  }).join('') + '<p><i>Нажмите на код, чтобы скопировать, и вставьте его при оформлении заказа.</i></p>' : '<p>Активных промокодов нет</p>');
+  html += pr.length ? '<p>' + pr.slice(0, 8).map(function (p) {
+    return '<code>' + hesc_(p.code) + '</code> −' + String(p.pct).replace('.', ',') + '% ' + (p.cat ? 'только «' + hesc_(p.catLabel) + '»' : 'на весь заказ');
+  }).join('<br>') + '</p>' + gap + '<p><i>Нажмите на код, чтобы скопировать, и вставьте его при оформлении заказа.</i></p>' : '<p>Активных промокодов нет</p>';
   var kb = null;
   if (u.refCode) {
     var link = siteUrl_('ref=' + u.refCode);
-    kb = [[pri_({ text: 'Пригласить друга', url: 'https://t.me/share/url?url=' + encodeURIComponent(link) + '&text=' + encodeURIComponent('Загляни в ONION SHOP: по моей ссылке +' + R.reward.refFriend + ' ониксов при регистрации') })]];
+    kb = [[pri_({ text: '📥 Пригласить друга', url: 'https://t.me/share/url?url=' + encodeURIComponent(link) + '&text=' + encodeURIComponent('Загляни в ONION SHOP: по моей ссылке +' + R.reward.refFriend + ' ониксов при регистрации') })]];
   }
   tgRich_(chat, html, kb);
 }/* уведомления включены всегда и отключить их нельзя: экран только объясняет, что приходит */
@@ -2429,7 +2431,7 @@ var GUIDE_ = [
 function guideUrl_(i) { return siteBase_() + 'assets/bot/guide-' + (i + 1) + '.mp4?v=' + GUIDE_VER_; }
 function guideCaption_(i) {
   var g = GUIDE_[i];
-  return '📘 <b>' + g[0] + '</b>   ' + (i + 1) + '/' + GUIDE_.length + '\n\n<blockquote>' + g[2] + '</blockquote>\n<i>' + g[3] + '</i>';
+  return '📘 <b>' + g[0] + '</b>   ' + (i + 1) + '/' + GUIDE_.length + '\n\n' + g[2] + '\n<i>' + g[3] + '</i>';
 }
 function guideKb_(i) {
   var row = [];
@@ -2658,7 +2660,7 @@ function askBroadcast_(chat, text, photo) { bcPreview_(chat, { t: 'custom', text
 /* ответ менеджера покупателю */
 function replyToClient_(admin, chat, m) {
   var u = tgUserByChat_(chat), r;
-  if (m.text) r = tgSend_(chat, '✉️ <b>Ответ менеджера</b>\n<blockquote>' + hesc_(m.text) + '</blockquote>\n<i>Ответить можно прямо здесь.</i>');
+  if (m.text) r = tgSend_(chat, '✉️ <b>Ответ менеджера</b>\n' + hesc_(m.text) + '\n<i>Ответить можно прямо здесь.</i>');
   else r = tgApi_('copyMessage', { chat_id: chat, from_chat_id: admin, message_id: m.message_id });
   tgSend_(admin, r && r.ok ? '✅ Отправлено' + (u ? ' @' + hesc_(u.login) : '') : '⚠️ Не доставлено: похоже, покупатель заблокировал бота.');
 }
@@ -2852,7 +2854,7 @@ function tgHandle_(updates) {
       if (/^\/start\s+T\d{12}/.test(text)) {
         var r = OnionCore.tgBind(DB, text, c, who);
         if (r && r.ok) { if (r.user && r.user.phoneOk === false) askPhone_(c); else sendWelcome_(m, true); }
-        else tgSend_(c, '📲 <b>Ссылка устарела</b>\n<blockquote>Откройте на сайте кабинет, раздел «Уведомления в Telegram», и нажмите «Подключить» ещё раз.</blockquote>', [[pri_(btnUrl_('Открыть кабинет', 'account'))]]);
+        else tgSend_(c, '📲 <b>Ссылка устарела</b>\nОткройте на сайте кабинет, раздел «Уведомления в Telegram», и нажмите «Подключить» ещё раз.', [[pri_(btnUrl_('Открыть кабинет', 'account'))]]);
         return;
       }
       if (m.contact) { phoneContact_(m); return; }
@@ -2877,7 +2879,7 @@ function tgHandle_(updates) {
 
 /* подтверждение телефона: кнопка Telegram «Поделиться номером» (Telegram сам подтверждает, что номер владельца) */
 function askPhone_(chat) {
-  tgSend_(chat, '📱 <b>Последний шаг: подтвердите телефон</b>\n<blockquote>Нажмите кнопку внизу «Поделиться номером». Telegram передаст только ваш номер, так мы защищаем бонусы от накруток.</blockquote>\nПосле этого начислим приветственные ониксы, а ещё откроются бонусы за друзей и подарок на день рождения.',
+  tgSend_(chat, '📱 <b>Последний шаг: подтвердите телефон</b>\nНажмите кнопку внизу «Поделиться номером». Telegram передаст только ваш номер, так мы защищаем бонусы от накруток.\nПосле этого начислим приветственные ониксы, а ещё откроются бонусы за друзей и подарок на день рождения.',
     { keyboard: [[{ text: '📱 Поделиться номером', request_contact: true, style: 'primary' }]], resize_keyboard: true, one_time_keyboard: true });
 }
 function phoneContact_(m) {
@@ -2931,7 +2933,7 @@ function postCaption_(c) {
   if (c.colors && c.colors.length) D.push('▫️ Цвет: ' + hesc_(c.colors.join(', ')));
   if (c.sizes && c.sizes.length) D.push('▫️ Размеры: ' + hesc_(c.sizes.join(', ')));
   D.push(c.status === 'preorder' ? '✈️ Предзаказ, доставка уже в цене' : '🏙 В наличии в Москве');
-  L.push('<blockquote>' + D.join('\n') + '</blockquote>');
+  L.push('' + D.join('\n') + '');
   return L.join('\n');
 }
 function freshList_(n, cat) {

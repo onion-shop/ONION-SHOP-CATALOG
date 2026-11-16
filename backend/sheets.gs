@@ -1433,7 +1433,7 @@ function giftPromo_(u, pct, days, reason) {
     done = { u: u, code: code, until: until };
   } finally { lock.releaseLock(); }
   var d = new Date(done.until + 3 * 3600000), ds = ('0' + d.getUTCDate()).slice(-2) + '.' + ('0' + (d.getUTCMonth() + 1)).slice(-2);
-  notice_(done.u, '💎 Подарок от магазина', 'Личный промокод <code>' + done.code + '</code> на −' + pct + '%\n<blockquote>Действует до ' + ds + '. Нажмите на код, чтобы скопировать, и введите его при оформлении заказа.</blockquote>', { text: 'Открыть магазин', url: siteBase_() });
+  notice_(done.u, '💎 Подарок от магазина', 'Личный промокод <code>' + done.code + '</code> на −' + pct + '%\nДействует до ' + ds + '. Нажмите на код, чтобы скопировать, и введите его при оформлении заказа.', { text: 'Открыть магазин', url: siteBase_() });
   return done;
 }
 function giftPromoUi() {
@@ -1745,7 +1745,7 @@ function tgPhotos_() {
     var links = OnionCore.photoLinks(r[iP]), key = links.join(' ');
     if (!links.length || String(r[iS] || '') === key || sent >= 20) return;
     var uid = normId_(r[iU]), u = uid ? DB.getUser(uid) : null, no = String(r[iNo]).trim();
-    if (u && u.tgChat) { notice_(u, '📸 Фотоотчёт готов', '<code>' + hesc_(no) + '</code>\n<blockquote>Сфотографировали вещи на складе. Посмотрите, как они выглядят перед отправкой.</blockquote>', { text: 'Посмотреть фото', url: links[0] }); sent++; }
+    if (u && u.tgChat) { notice_(u, '📸 Фотоотчёт готов', '<code>' + hesc_(no) + '</code>\nСфотографировали вещи на складе. Посмотрите, как они выглядят перед отправкой.', { text: 'Посмотреть фото', url: links[0] }); sent++; }
     var c = sh.getRange(i + 2, iS + 1); c.setNumberFormat('@'); c.setValue(key);
   });
 }
