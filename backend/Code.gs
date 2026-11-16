@@ -9,7 +9,7 @@ function allowMail() { Logger.log('Можно отправить писем се
    =================================================================== */
 
 var CATALOG_URL_DEFAULT = 'https://onion-shop.github.io/ONION-SHOP-CATALOG/data/catalog.js';
-var LAYOUT_VER = '16';
+var LAYOUT_VER = '17';
 
 var SHEET = { orders: 'Заказы', users: 'Клиенты', promos: 'Промокоды', log: 'Журнал ониксов', summary: 'Сводка', sessions: 'Сессии', reviews: 'Отзывы', waits: 'Лист ожидания', ledger: 'Учёт бонусов', flags: 'Подозрительное' };
 
@@ -30,7 +30,6 @@ var ORDER_COLS = [
   ['phone', 'Телефон', { w: 130, t: 'text' }],
   ['tg', 'Telegram', { w: 120, t: 'text' }],
   ['kind', 'Тип', { w: 95 }],
-  ['comment', 'Комментарий', { w: 180 }],
   ['note', 'Заметка (для себя)', { w: 180, edit: true }],
   ['photoRep', 'Фотоотчёт (ссылки)', { w: 180, t: 'text', edit: true }],
   ['total', 'Сумма', { w: 90, t: 'money', old: ['Сумма, ₽'] }],
@@ -132,6 +131,59 @@ var C = { navy: '#0b1b4d', navy2: '#13296b', cyan: '#22d3ee', blue: '#3b82f6', e
 
 function ss_() { return SpreadsheetApp.getActive(); }
 function ALL_STAGES_() { return OnionCore.RULES.stagesPre.concat(['Отменён']); }
+/* Список статусов зависит от типа заказа: «в наличии» (и «временно нет») имеет 3 этапа + «Отменён»,
+   предзаказ и смешанный заказ: все этапы + «Отменён». */
+function isStockKind_(kind) { var k = String(kind || '').trim(); return k === 'в наличии' || k === 'временно нет'; }
+function statusRule_(kind) {
+  var stock = isStockKind_(kind);
+  return SpreadsheetApp.newDataValidation().requireValueInList(OnionCore.stagesFor(kind).concat(['Отменён']), true).setAllowInvalid(false)
+    .setHelpText(stock ? 'Заказ «в наличии»: Оформлен, Едет к вам, Получен или Отменён' : 'Предзаказ: Оформлен → Выкуплен → В пути → На складе → Едет к нам → Едет к вам → Получен, либо Отменён').build();
+}
+/* Ставит каждой строке список статусов по её типу. Общий список на весь столбец уже стоит (полный), здесь
+   строкам «в наличии» ставится короткий. Возвращает номера заказов, где текущий статус не подходит типу
+   (только номера, без данных клиентов). */
+function applyStatusRules_(sh) {
+  var last = sh.getLastRow(), bad = [];
+  if (last < 2) return bad;
+  var n = last - 1, iK = ci_(ORDER_COLS, 'kind'), iS = ci_(ORDER_COLS, 'status'), iN = ci_(ORDER_COLS, 'no');
+  var kinds = sh.getRange(2, iK + 1, n, 1).getValues(), sts = sh.getRange(2, iS + 1, n, 1).getValues(), nos = sh.getRange(2, iN + 1, n, 1).getValues();
+  var stockRule = statusRule_('в наличии'), preRule = statusRule_('предзаказ'), i = 0;
+  while (i < n) {
+    var stock = isStockKind_(kinds[i][0]), has = String(nos[i][0]).trim() !== '', j = i;
+    while (j + 1 < n && isStockKind_(kinds[j + 1][0]) === stock) j++;
+    sh.getRange(2 + i, iS + 1, j - i + 1, 1).setDataValidation(stock ? stockRule : preRule);
+    i = j + 1;
+  }
+  for (var q = 0; q < n; q++) {
+    if (String(nos[q][0]).trim() === '') continue;
+    var allowed = OnionCore.stagesFor(kinds[q][0]).concat(['Отменён']);
+    if (sts[q][0] && allowed.indexOf(String(sts[q][0])) < 0) bad.push(String(nos[q][0]));
+  }
+  return bad;
+}
+function checkStatusesUi() {
+  var sh = ss_().getSheetByName(SHEET.orders); if (!sh) return;
+  var bad = applyStatusRules_(sh), ui = SpreadsheetApp.getUi();
+  ui.alert(bad.length ? 'Статус не подходит типу заказа (например, «На складе» у заказа «в наличии») у ' + bad.length + ' заказов:\n\n' + bad.slice(0, 40).join(', ') + (bad.length > 40 ? ' …' : '') + '\n\nВыберите для них правильный статус из списка.' : 'Все статусы подходят типу заказа. Списки статусов обновлены.');
+}
+/* Фотоотчёт: ссылки на фото кладутся в колонку «Фотоотчёт», клиент получает сообщение и видит ссылки в «Моих заказах» */
+function addPhotoReportUi() {
+  var ui = SpreadsheetApp.getUi(), r = ui.prompt('Фотоотчёт: шаг 1 из 2', 'Номер заказа, например OS-26-00012 или 26-00012:', ui.ButtonSet.OK_CANCEL);
+  if (r.getSelectedButton() !== ui.Button.OK) return;
+  var q = r.getResponseText().trim().toUpperCase(); if (!/^OS-/.test(q)) q = 'OS-' + q;
+  var f = orderIdx_(q); if (!f) { ui.alert('Заказ ' + q + ' не найден.'); return; }
+  var l = ui.prompt('Фотоотчёт: шаг 2 из 2', 'Вставьте ссылку на фото заказа ' + q + ' (Google Диск, Telegram или любой сайт, ссылка начинается с https://). Несколько ссылок: через пробел.\n\nКлиент получит сообщение в Telegram и увидит ссылки в «Моих заказах».', ui.ButtonSet.OK_CANCEL);
+  if (l.getSelectedButton() !== ui.Button.OK) return;
+  var links = OnionCore.photoLinks(l.getResponseText());
+  if (!links.length) { ui.alert('Не нашёл ссылку. Она должна начинаться с https://'); return; }
+  var lock = LockService.getScriptLock(); lock.waitLock(15000);
+  try {
+    var sh = ss_().getSheetByName(SHEET.orders), c = sh.getRange(f.row, ci_(ORDER_COLS, 'photoRep') + 1);
+    c.setNumberFormat('@'); c.setValue(links.join('\n'));
+    try { tgPhotos_(); } catch (e) { console.error('photos', e && e.stack || e); }
+  } finally { lock.releaseLock(); }
+  ss_().toast('Фотоотчёт к ' + q + ' добавлен (' + links.length + ' шт.). Клиенту отправлено сообщение.', 'ONION SHOP', 6);
+}
 var STAGE_COLORS = { 'Оформлен': ['#eef2f7', '#3a4b63'], 'Выкуплен': ['#e5edfb', '#1d4fb8'], 'В пути': ['#e5edfb', '#1d4fb8'], 'На складе': ['#e5edfb', '#1d4fb8'], 'Едет к нам': ['#dff1f8', '#0a76a8'], 'Едет к вам': ['#dff1f8', '#0a76a8'], 'Получен': ['#173b8f', '#ffffff'], 'Отменён': ['#fbe9eb', '#b42318'] };
 function props_() { return PropertiesService.getScriptProperties(); }
 function mskText_(ms) { return Utilities.formatDate(new Date(ms), 'Europe/Moscow', 'dd.MM.yyyy HH:mm'); }
@@ -281,8 +333,11 @@ function styleOrders_() {
     var sr = sh.getRange(2, ci_(ORDER_COLS, 'status') + 1, n, 1), sv = sr.getValues(), nr = sh.getRange(2, 1, n, 1).getValues();
     sr.setValues(sv.map(function (r, i) { return [r[0] || (nr[i][0] ? 'Оформлен' : '')]; }));
   }
+  try { applyStatusRules_(sh); } catch (e) { console.error('status rules', e && e.stack || e); }
+  sh.getRange(1, ci_(ORDER_COLS, 'photoRep') + 1).setNote('Фотоотчёт для клиента. Проще всего: меню ONION SHOP → «Заказы» → «Добавить фотоотчёт к заказу…». Или вставьте сюда ссылку на фото (Google Диск, Telegram, любой сайт; начинается с https://), несколько ссылок через пробел. Клиент получит сообщение в Telegram и увидит ссылки в «Моих заказах».');
+  sh.getRange(1, ci_(ORDER_COLS, 'kind') + 1).setNote('Тип заказа определяется сам. «в наличии»: у клиента 3 этапа (Оформлен, Едет к вам, Получен), в списке статусов только они и «Отменён». «предзаказ» и «смешанный»: все этапы.');
   sh.getRange(1, ci_(ORDER_COLS, 'paid') + 1).setNote('Отмечайте, когда клиент оплатил. Строка станет зелёной.');
-  sh.getRange(1, ci_(ORDER_COLS, 'status') + 1).setNote('Выберите статус из списка. Клиент сразу увидит его в «Моих заказах». Предзаказ: Оформлен → Выкуплен → В пути → На складе → Едет к нам → Едет к вам → Получен. В наличии: Оформлен → Едет к вам → Получен.');
+  sh.getRange(1, ci_(ORDER_COLS, 'status') + 1).setNote('Выберите статус из списка. Клиент сразу увидит его в «Моих заказах». Список зависит от типа заказа. Предзаказ: Оформлен → Выкуплен → В пути → На складе → Едет к нам → Едет к вам → Получен. В наличии: Оформлен → Едет к вам → Получен. В обоих случаях можно «Отменён».');
   sh.getRange(1, ci_(ORDER_COLS, 'priority') + 1).setNote('Очередь обработки: №1 Алмаз, №2 Платина, №3 Золото, №4 платный «Приоритетный заказ» (99 ₽) для остальных, затем обычные. Если у клиента есть уровень с приоритетом, очередь определяет уровень.');
   sh.getRange(1, ci_(ORDER_COLS, 'pack') + 1).setNote('Привилегия уровня на этот заказ: «Упаковка −10%» (Платина, только предзаказ) или «Бесплатная упаковка» (Алмаз). 1 раз в месяц. Если заказ отменён: привилегия вернётся клиенту.');
   sh.getRange(1, ci_(ORDER_COLS, 'contact') + 1).setNote('Ссылка открывает чат с клиентом в Telegram (по username или по номеру телефона).');
@@ -760,6 +815,23 @@ var DB = {
     sh.getRange(r, 1, 1, ORDER_COLS.length).setValues([ORDER_COLS.map(function (c) { var v = row[c[0]]; return v === undefined || v === null ? '' : c[0] === 'contact' ? v : safeCell_(v); })]);
     sh.setRowHeight(r, 64);
     sh.getRange(r, ci_(ORDER_COLS, 'paid') + 1).insertCheckboxes();
+    sh.getRange(r, ci_(ORDER_COLS, 'status') + 1).setDataValidation(statusRule_(row.kind)); // список статусов по типу заказа
+  },
+  /* отмена заказа клиентом: статус читаем из строки прямо сейчас (запрос сайта идёт под общей блокировкой),
+     ставим «Отменён» только если там «Оформлен», затем общая сверка возвращает ониксы и снимает награды */
+  cancelOrder: function (no, uid, via) {
+    var f = orderIdx_(no); if (!f) return { missing: true };
+    var sh = ss_().getSheetByName(SHEET.orders), iSt = ci_(ORDER_COLS, 'status'), iU = ci_(ORDER_COLS, 'userId'), iN = ci_(ORDER_COLS, 'notified');
+    if (normId_(sh.getRange(f.row, iU + 1).getValue()) !== String(uid)) return { missing: true };
+    // статус читаем заново прямо перед записью: если менеджер успел сменить его, отмена не пройдёт
+    var st = String(sh.getRange(f.row, iSt + 1).getValue() || '').trim() || 'Оформлен';
+    if (st !== 'Оформлен') return { status: st };
+    sh.getRange(f.row, iSt + 1).setValue('Отменён');
+    // отмена из бота: клиент уже видит ответ в чате, второе уведомление о статусе ему не нужно
+    if (via === 'bot') { var c = sh.getRange(f.row, iN + 1); c.setNumberFormat('@'); c.setValue('Отменён'); }
+    SpreadsheetApp.flush();
+    USERS_CACHE_ = null; syncXp_(); USERS_CACHE_ = null;
+    return { status: 'Оформлен', done: true };
   },
   listOrders: function (userId, limit) {
     var rows = orderRows_(), out = [], iu = ci_(ORDER_COLS, 'userId');
@@ -1217,16 +1289,6 @@ function tgWebhook_(e, up) {
   finally { lock.releaseLock(); }
   return out_({ ok: true });
 }
-function webAppUrl_() {
-  var u = props_().getProperty('WEBAPP_URL'); if (u) return u;
-  try { var su = ScriptApp.getService().getUrl(); if (su && /\/exec$/.test(su)) { props_().setProperty('WEBAPP_URL', su); return su; } } catch (x) { }
-  try {
-    var s = UrlFetchApp.fetch(siteBase_() + 'assets/config.js?t=' + Date.now(), { muteHttpExceptions: true }).getContentText();
-    var m = /apiUrl:\s*"(https:\/\/script\.google\.com\/macros\/s\/[^"]+)"/.exec(s);
-    if (m) { props_().setProperty('WEBAPP_URL', m[1]); return m[1]; }
-  } catch (x) { }
-  return '';
-}
 /* Включает webhook: Telegram шлёт сообщения сюда сразу, без минутного ожидания. Ответ: '' или текст ошибки. */
 /* Важно: Apps Script на любой POST отвечает Telegram редиректом 302, а Telegram считает это ошибкой и повторяет одно и то же сообщение, из-за чего очередь встаёт и бот молчит.
    Поэтому webhook включается ТОЛЬКО через прокси-адрес (свойство WEBHOOK_RELAY, например Cloudflare Worker), который отвечает Telegram кодом 200 сразу и сам передаёт сообщение сюда.
@@ -1267,6 +1329,8 @@ function onOpen() {
     .addSeparator()
     .addSubMenu(ui.createMenu('📦 Заказы')
       .addItem('Найти заказ по номеру…', 'findOrder')
+      .addItem('📸 Добавить фотоотчёт к заказу…', 'addPhotoReportUi')
+      .addItem('Проверить статусы заказов', 'checkStatusesUi')
       .addItem('Показать только активные', 'filterActiveOrders')
       .addItem('Показать неоплаченные', 'filterUnpaidOrders')
       .addItem('Показать все заказы', 'filterAllOrders'))
@@ -1358,7 +1422,7 @@ function giftPromo_(u, pct, days, reason) {
     done = { u: u, code: code, until: until };
   } finally { lock.releaseLock(); }
   var d = new Date(done.until + 3 * 3600000), ds = ('0' + d.getUTCDate()).slice(-2) + '.' + ('0' + (d.getUTCMonth() + 1)).slice(-2);
-  notice_(done.u, '🎁 Подарок от магазина', 'Личный промокод <code>' + done.code + '</code> на −' + pct + '%. Действует до ' + ds + '. Введите его при оформлении заказа.', { text: 'Открыть магазин', url: siteBase_() });
+  notice_(done.u, '💎 Подарок от магазина', 'Личный промокод <code>' + done.code + '</code> на −' + pct + '%\n<blockquote>Действует до ' + ds + '. Нажмите на код, чтобы скопировать, и введите его при оформлении заказа.</blockquote>', { text: 'Открыть магазин', url: siteBase_() });
   return done;
 }
 function giftPromoUi() {
@@ -1672,7 +1736,7 @@ function tgPhotos_() {
     var links = OnionCore.photoLinks(r[iP]), key = links.join(' ');
     if (!links.length || String(r[iS] || '') === key || sent >= 20) return;
     var uid = normId_(r[iU]), u = uid ? DB.getUser(uid) : null, no = String(r[iNo]).trim();
-    if (u && u.tgChat) { notice_(u, 'Фотоотчёт готов 📸', 'Сфотографировали вещи из заказа ' + hesc_(no) + ' на складе. Посмотрите, как они выглядят перед отправкой.', { text: 'Посмотреть фото', url: links[0] }); sent++; }
+    if (u && u.tgChat) { notice_(u, '📸 Фотоотчёт готов', '<code>' + hesc_(no) + '</code>\n<blockquote>Сфотографировали вещи на складе. Посмотрите, как они выглядят перед отправкой.</blockquote>', { text: 'Посмотреть фото', url: links[0] }); sent++; }
     var c = sh.getRange(i + 2, iS + 1); c.setNumberFormat('@'); c.setValue(key);
   });
 }
@@ -1685,7 +1749,7 @@ function tgWatch_() {
     if (!u.watch || sent >= 40) return;
     var before = JSON.stringify(u.watch), drops = OnionCore.priceDrops(DB, u);
     if (drops.length && u.tgChat) {
-      var body = drops.slice(0, 3).map(function (d) { return hesc_(d.title) + ': ' + rub_(d.now) + ' вместо ' + rub_(d.was); }).join('\n');
+      var body = drops.slice(0, 3).map(function (d) { return '🔹 ' + hesc_(d.title) + ': <b>' + rub_(d.now) + '</b> вместо <s>' + rub_(d.was) + '</s>'; }).join('\n');
       notice_(u, pick_(V_.drop), body, drops.length === 1 ? btnUrl_('Посмотреть', 'p-' + drops[0].id) : btnUrl_('Открыть избранное', 'favorites')); sent++;
     }
     if (JSON.stringify(u.watch) !== before) DB.saveUser(u);
@@ -1770,7 +1834,7 @@ function tgNudge_() {
     if (!u.tgChat || sent >= 20) return;
     var reg = u.createdAt ? new Date(u.createdAt).getTime() : 0, lo = Math.max(last[u.id] || 0, reg);
     if (!lo || now - lo < 30 * 86400000 || (u.lastNudge && now - u.lastNudge < 21 * 86400000) || !canPush_(u, 20)) return;
-    if (notice_(u, pick_(V_.winback), 'Пока вас не было, в каталоге появились новые вещи. Например, ' + hesc_(L[0].title) + ' за ' + rub_(L[0].price) + '.', btnUrl_('Смотреть новинки', 'catalog'))) { u.lastNudge = now; markPush_(u); sent++; }
+    if (notice_(u, pick_(V_.winback), 'В каталоге появились новые вещи. Например, ' + hesc_(L[0].title) + ' за <b>' + rub_(L[0].price) + '</b>.', btnUrl_('Смотреть новинки', 'catalog'))) { u.lastNudge = now; markPush_(u); sent++; }
   });
 }function tgWaits_() {
   var sh = ss_().getSheetByName(SHEET.waits); if (!sh) return;
@@ -1781,7 +1845,7 @@ function tgNudge_() {
     if (!pr || pr.status === 'out' || pr.status === 'sold') return;
     var u = DB.getUser(w.userId);
     if (u && u.tgChat) {
-      notice_(u, pick_(V_.restock), hesc_(w.title) + ' снова можно заказать' + (pr && pr.price ? ', ' + rub_(pr.price) : '') + '. Вы просили сообщить.', btnUrl_('Посмотреть', 'p-' + w.productId)); sent++;
+      notice_(u, pick_(V_.restock), hesc_(w.title) + ' снова можно заказать' + (pr && pr.price ? ', <b>' + rub_(pr.price) + '</b>' : '') + '.\n<i>Вы просили сообщить.</i>', btnUrl_('Посмотреть', 'p-' + w.productId)); sent++;
     }
     var c = sh.getRange(w._row, iS + 1); c.setNumberFormat('@'); c.setValue(mskText_(Date.now()));
   });
@@ -1929,10 +1993,11 @@ function rub_(n) { return num_(n) + ' ₽'; }
 function plural_(n, a, b, c) { n = Math.abs(n) % 100; var m = n % 10; return n > 10 && n < 20 ? c : m > 1 && m < 5 ? b : m === 1 ? a : c; }
 var SUPPORT_URL_ = 'https://t.me/OnionShop_Support';
 /* кнопки меню покупателя; старые подписи тоже понимаем (у кого-то клавиатура осталась от прошлой версии) */
-var BTN_ = { ord: '📦 Мои заказы', bon: '🎁 Бонусы', cat: '🛍 Каталог', faq: '❓ Вопросы', sup: '💬 Написать менеджеру',
+var BTN_ = { cat: '💠 Каталог', ord: '🧾 Мои заказы', bon: '💎 Бонусы', guide: '📘 Инструкция', faq: '💬 Вопросы', sup: '✉️ Написать менеджеру',
   aOrd: '📦 Заказы', aUnp: '💳 Неоплаченные', aSum: '📊 Сводка', aCli: '👤 Клиент', aBc: '📣 Рассылка', aPromo: '🏷 Промокоды', aRev: '⭐ Отзывы', aHelp: '❓ Подсказка' };
-var OLD_BTN_ = { '🆕 Новинки': 'cat', '🔥 Скидки': 'cat', 'ℹ️ Условия и сроки': 'faq', '💬 Задать вопрос': 'sup', '⚙️ Настройки': 'set', '💬 Менеджер': 'sup' };
-function custKb_() { return { keyboard: [[{ text: BTN_.ord }, { text: BTN_.bon }], [{ text: BTN_.cat }, { text: BTN_.faq }], [{ text: BTN_.sup }]], resize_keyboard: true, is_persistent: true, input_field_placeholder: 'Напишите вопрос или выберите пункт' }; }
+var OLD_BTN_ = { '🆕 Новинки': 'cat', '🔥 Скидки': 'cat', '🛍 Каталог': 'cat', 'ℹ️ Условия и сроки': 'faq', '❓ Вопросы': 'faq', '💬 Задать вопрос': 'sup', '💬 Написать менеджеру': 'sup', '⚙️ Настройки': 'set', '💬 Менеджер': 'sup', '📦 Мои заказы': 'ord', '🎁 Бонусы': 'bon' };
+/* меню внизу: каталог главной синей кнопкой, остальное парами */
+function custKb_() { return { keyboard: [[{ text: BTN_.cat, style: 'primary' }], [{ text: BTN_.ord }, { text: BTN_.bon }], [{ text: BTN_.guide }, { text: BTN_.faq }], [{ text: BTN_.sup }]], resize_keyboard: true, is_persistent: true, input_field_placeholder: 'Вопрос менеджеру или пункт меню' }; }
 function adminKb_() { return { keyboard: [[{ text: BTN_.aOrd }, { text: BTN_.aUnp }], [{ text: BTN_.aSum }, { text: BTN_.aCli }], [{ text: BTN_.aBc }, { text: BTN_.aPromo }], [{ text: BTN_.aRev }, { text: BTN_.aHelp }]], resize_keyboard: true, is_persistent: true }; }
 function cacheGet_(k) { try { return CacheService.getScriptCache().get(k); } catch (e) { return null; } }
 function cachePut_(k, v, sec) { try { CacheService.getScriptCache().put(k, String(v), sec); } catch (e) { } }
@@ -1953,141 +2018,391 @@ function claimAdmin_(m) {
   return true;
 }
 
-/* ====================== уведомления покупателю: только текст и одна кнопка ======================
-   Формат как у больших магазинов: жирный заголовок, одна-две строки по делу, одна кнопка. */
+/* ====================== оформление сообщений ======================
+   Единый стиль ONION SHOP: значки только из сине-бело-серой гаммы (💠 🔹 ▫️ 🧾 💎 ✉️ 📘 🤍 ☑️), короткие заголовки,
+   данные в таблицах, подробности в раскрывающихся пунктах. Главная кнопка сообщения синяя (style primary),
+   остальные обычные, красная только у отмены заказа.
+   Большие экраны (приветствие, каталог, заказы, бонусы, вопросы, инструкция) уходят форматом Telegram Rich messages
+   (sendRichMessage, Bot API 10.1+): заголовки, таблицы, раскрывающиеся пункты. Если Telegram отказал (ошибка разметки,
+   старый API), уходит то же содержимое обычным HTML (richToHtml_).
+   Уведомления о заказах остаются обычным текстом: их должны увидеть все, даже на старых версиях Telegram. */
+function pri_(b) { b.style = 'primary'; return b; }
+function dng_(b) { b.style = 'danger'; return b; }
+function tgRich_(chat, html, kb) {
+  var p = { chat_id: String(chat), rich_message: { html: html, skip_entity_detection: true } };
+  if (kb) p.reply_markup = Array.isArray(kb) ? { inline_keyboard: kb } : kb;
+  var r = tgApi_('sendRichMessage', p);
+  if (r && (r.ok || r.error_code === 403)) return r;
+  console.warn('rich -> html: ' + (r && r.description));
+  return tgSend_(chat, richToHtml_(html), kb);
+}
+function tgRichEdit_(chat, msgId, html, kb) {
+  var r = tgApi_('editMessageText', { chat_id: String(chat), message_id: msgId, rich_message: { html: html, skip_entity_detection: true }, reply_markup: { inline_keyboard: kb || [] } });
+  if (r && (r.ok || /not modified/i.test(r.description || ''))) return r;
+  return tgEdit_(chat, msgId, richToHtml_(html), kb);
+}
+/* запасной вид для старых клиентов: таблицы в строки, раскрывающиеся пункты в сворачиваемые цитаты */
+function richToHtml_(h) {
+  var s = String(h);
+  s = s.replace(/<table[^>]*>([\s\S]*?)<\/table>/g, function (m, t) {
+    return (t.match(/<tr>[\s\S]*?<\/tr>/g) || []).filter(function (r) { return r.indexOf('<th') < 0; }).map(function (r) {
+      var c = (r.match(/<td[^>]*>[\s\S]*?<\/td>/g) || []).map(function (x) { return x.replace(/<\/?td[^>]*>/g, '').trim(); }).filter(Boolean);
+      if (c.length < 2) return c[0] || '';
+      return c[0] + (c[0].replace(/<[^>]+>/g, '').length <= 3 ? ' ' : ': ') + c.slice(1).join(', ');
+    }).join('\n') + '\n\n';
+  });
+  s = s.replace(/<ol>([\s\S]*?)<\/ol>/g, function (m, t) { var i = 0; return t.replace(/<li>([\s\S]*?)<\/li>/g, function (x, y) { return (++i) + '. ' + y.trim() + '\n'; }) + '\n'; });
+  s = s.replace(/<ul>([\s\S]*?)<\/ul>/g, function (m, t) { return t.replace(/<li>([\s\S]*?)<\/li>/g, function (x, y) { return '▫️ ' + y.trim() + '\n'; }) + '\n'; });
+  s = s.replace(/<h\d>([\s\S]*?)<\/h\d>/g, '<b>$1</b>\n');
+  s = s.replace(/<p>([\s\S]*?)<\/p>/g, '$1\n\n');
+  s = s.replace(/<footer>([\s\S]*?)<\/footer>/g, '<i>$1</i>\n');
+  s = s.replace(/<details[^>]*>\s*<summary>([\s\S]*?)<\/summary>([\s\S]*?)<\/details>/g, function (m, a, b) { return '<b>' + a.trim() + '</b>\n<blockquote expandable>' + b.trim() + '</blockquote>\n\n'; });
+  s = s.replace(/<hr\s*\/?>|<\/?mark>/g, '');
+  return s.replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+}
+/* первая строка сообщения (обычного или rich): по ней понимаем, какой экран открыт, и правим его, а не шлём новый */
+function rtPlain_(x) { if (x == null) return ''; if (typeof x === 'string') return x; if (Array.isArray(x)) return x.map(rtPlain_).join(''); return rtPlain_(x.text); }
+function msgHead_(m) {
+  if (!m) return '';
+  if (m.text) return String(m.text).split('\n')[0];
+  var b = m.rich_message && m.rich_message.blocks && m.rich_message.blocks[0];
+  return b ? rtPlain_(b.text) : '';
+}
+
+/* ====================== фирменные стикеры ======================
+   Картинки 512×512 WEBP лежат на сайте (assets/bot/st/*.webp). Первый раз Telegram берёт файл по ссылке,
+   дальше бот шлёт его по file_id. Набор для Telegram (t.me/addstickers/...) создаёт функция stickersSetup(). */
+var STK_VER_ = '1';
+var STICKERS_ = { hello: '👋', catalog: '🛍', accepted: '🧾', onway: '✈️', delivered: '📦', thanks: '🤍', support: '💬', bonus: '💎' };
+var STICKER_AT_ = { 'Оформлен': 'accepted', 'Едет к вам': 'onway', 'Получен': 'delivered' };
+function stickerUrl_(key) { return siteBase_() + 'assets/bot/st/' + key + '.webp?v=' + STK_VER_; }
+function sticker_(chat, key, kb) {
+  var fk = 'STK_' + key + '_' + STK_VER_, fid = props_().getProperty(fk);
+  var p = { chat_id: String(chat), sticker: fid || stickerUrl_(key) };
+  if (kb) p.reply_markup = Array.isArray(kb) ? { inline_keyboard: kb } : kb;
+  var r = tgApi_('sendSticker', p);
+  if ((!r || !r.ok) && fid) { props_().deleteProperty(fk); p.sticker = stickerUrl_(key); r = tgApi_('sendSticker', p); }
+  if (r && r.ok && !fid && r.result && r.result.sticker) props_().setProperty(fk, r.result.sticker.file_id);
+  return r;
+}
+/* Запустить один раз из редактора Apps Script: создаёт набор стикеров ONION SHOP на аккаунт менеджера */
+function stickersSetup() {
+  var admin = props_().getProperty('ADMIN_CHAT_ID');
+  if (!admin) { Logger.log('Сначала привяжите менеджера: напишите боту /start с аккаунта @' + adminUser_()); return; }
+  var me = tgApi_('getMe', {}), bot = me && me.result && me.result.username;
+  if (!bot) { Logger.log('Не удалось узнать имя бота, проверьте BOT_TOKEN'); return; }
+  var name = 'onionshop_by_' + bot;
+  var list = Object.keys(STICKERS_).map(function (k) { return { sticker: stickerUrl_(k), format: 'static', emoji_list: [STICKERS_[k]] }; });
+  var r = tgApi_('createNewStickerSet', { user_id: Number(admin), name: name, title: 'ONION SHOP', stickers: list });
+  if (r && r.ok) { tgSend_(admin, '🤍 <b>Набор стикеров ONION SHOP готов</b>\nhttps://t.me/addstickers/' + name); Logger.log('Готово: https://t.me/addstickers/' + name); }
+  else Logger.log('Не получилось: ' + (r && r.description));
+}
+
+/* ====================== уведомления покупателю: короткий текст и одна синяя кнопка ====================== */
 function notice_(u, title, body, btn) {
   if (!u || !u.tgChat) return false;
+  if (btn && !btn.style) btn.style = 'primary';
   var r = tgSend_(u.tgChat, '<b>' + title + '</b>\n' + body, btn ? [[btn]] : null);
   if (r && r.error_code === 403) { u.tgChat = ''; u.tgName = ''; DB.saveUser(u); return false; }
   return !!(r && r.ok);
 }
 function btnOrder_(no) { return { text: 'Открыть заказ', callback_data: 'm|' + no }; }
 function btnUrl_(text, hash) { return { text: text, url: siteUrl_(hash) }; }
-/* статусы заказа: заголовок и текст; {no}: номер заказа */
+/* статусы заказа: значок, заголовок, текст */
 var ST_ = {
-  'Оформлен': ['Заказ принят 🧾', 'Заказ {no} у нас. Менеджер проверит его и пришлёт реквизиты для оплаты.'],
-  'Выкуплен': ['Заказ выкуплен ✅', 'Выкупили {no} у поставщика. Теперь он едет на наш склад в Китае.'],
-  'В пути': ['Заказ едет на склад 🚚', '{no} в пути к нашему складу в Китае, обычно это 3-5 дней.'],
-  'На складе': ['Заказ на складе 📦', '{no} уже на складе: проверяем вещи и готовим отправку в Россию.'],
-  'Едет к нам': ['Заказ едет в Россию ✈️', '{no} отправили из Китая. Дорога обычно занимает 18-32 дня, мы следим за ней.'],
-  'Едет к вам': ['Заказ едет к вам 🚚', '{no} передали в доставку. Трек-номер пришлёт менеджер.'],
-  'Получен': ['Заказ получен 🎉', 'Спасибо, что выбрали ONION SHOP! Расскажите, как вам вещи: за отзыв начислим до {rt} ониксов.'],
-  'Отменён': ['Заказ отменён', '{no} отменён. Если вы оплачивали часть ониксами, они уже вернулись на баланс. Если это ошибка, просто напишите сюда.']
+  'Оформлен': ['🧾', 'Заказ принят', 'Менеджер проверит позиции и пришлёт реквизиты для оплаты в этот чат.'],
+  'Выкуплен': ['☑️', 'Заказ выкуплен', 'Вещи выкуплены у поставщика и направляются на наш склад.'],
+  'В пути': ['🔹', 'Заказ едет на склад', 'Поставщик везёт вещи на наш склад, обычно это 3-5 дней.'],
+  'На складе': ['🔎', 'Заказ на складе', 'Проверяем каждую вещь и готовим фотоотчёт перед отправкой.'],
+  'Едет к нам': ['✈️', 'Заказ едет в Россию', 'Посылка покинула склад. Дорога обычно занимает 18-32 дня, мы следим за ней.'],
+  'Едет к вам': ['📬', 'Заказ едет к вам', 'Передали в доставку. Трек-номер менеджер пришлёт в этот чат.'],
+  'Получен': ['🤍', 'Заказ получен', 'Спасибо, что выбрали ONION SHOP. Поделитесь впечатлением: за отзыв начислим до {rt} ониксов.'],
+  'Отменён': ['▫️', 'Заказ отменён', 'Если часть суммы была оплачена ониксами, они уже на балансе. Отменили по ошибке? Напишите сюда, разберёмся.']
 };
-function statusNotice_(u, no, st) {
-  var s = ST_[st] || ['Статус заказа обновлён', '{no}: ' + st];
-  var body = fill_(s[1], { no: no, rt: OnionCore.RULES.reward.reviewText });
-  if (st === 'Получен') return notice_(u, s[0], body, btnUrl_('Оставить отзыв', 'orders'));
-  return notice_(u, s[0], body, btnOrder_(no));
+/* шкала пути заказа: ▰▰▰▱▱▱▱ 3/7 (у заказа в наличии своя, короткая) */
+function stageBar_(no, st) {
+  var stages = OnionCore.RULES.stagesPre;
+  try { var f = orderIdx_(no); if (f && f.o) stages = OnionCore.stagesFor(f.o.kind); } catch (e) { }
+  var i = stages.indexOf(st); if (i < 0) return '';
+  var s = ''; for (var k = 0; k < stages.length; k++) s += k <= i ? '▰' : '▱';
+  return s + '  ' + (i + 1) + '/' + stages.length;
 }
-/* для превью в «Примерах» и старого кода: текст статуса без отправки */
-function statusText_(no, st) { var s = ST_[st] || ['Статус заказа обновлён', '{no}: ' + st]; return '<b>' + s[0] + '</b>\n' + fill_(s[1], { no: hesc_(no), rt: OnionCore.RULES.reward.reviewText }); }
-function statusKb_(no, st) { return st === 'Получен' ? [[btnUrl_('Оставить отзыв', 'orders')]] : [[btnOrder_(no)]]; }
-function payText_(no, sum) { return '<b>Заказ ждёт оплаты 💳</b>\n' + pick_(['К оплате по заказу ' + hesc_(no) + ': ' + rub_(sum) + '. Если уже оплатили, ничего делать не нужно, менеджер отметит.', 'Напоминаем про оплату заказа ' + hesc_(no) + ': ' + rub_(sum) + '. Оплатили? Тогда всё в порядке, менеджер скоро отметит.']); }
-function reviewText_(no, r, rt) { return '<b>Как вам заказ? ⭐</b>\n' + pick_(['Оцените вещи из заказа ' + hesc_(no) + ': за оценку +' + r + ' ониксов, а с парой слов о посадке и качестве +' + rt + '.', 'Поделитесь впечатлением о заказе ' + hesc_(no) + '. Это займёт минуту, а другим поможет с выбором. За отзыв до +' + rt + ' ониксов.']); }
+function statusText_(no, st) {
+  var s = ST_[st] || ['🔹', 'Статус заказа обновлён', 'Новый статус: ' + st + '.'];
+  var bar = st === 'Отменён' ? '' : stageBar_(no, st);
+  return s[0] + ' <b>' + s[1] + '</b>\n<code>' + hesc_(no) + '</code>' + (bar ? '   ' + bar : '') + '\n<blockquote>' + hesc_(fill_(s[2], { rt: OnionCore.RULES.reward.reviewText })) + '</blockquote>';
+}
+function statusKb_(no, st) { return st === 'Получен' ? [[pri_(btnUrl_('🤍 Оставить отзыв', 'orders'))]] : [[pri_(btnOrder_(no))]]; }
+function statusNotice_(u, no, st) {
+  if (!u || !u.tgChat) return false;
+  if (STICKER_AT_[st]) sticker_(u.tgChat, STICKER_AT_[st]);
+  var r = tgSend_(u.tgChat, statusText_(no, st), statusKb_(no, st));
+  if (r && r.error_code === 403) { u.tgChat = ''; u.tgName = ''; DB.saveUser(u); return false; }
+  return !!(r && r.ok);
+}
+function payText_(no, sum) {
+  return '🏦 <b>Ожидаем оплату</b>\n<code>' + hesc_(no) + '</code>\nК оплате: <b>' + rub_(sum) + '</b>\n<blockquote>' +
+    pick_(['Уже перевели? Тогда всё в порядке: менеджер отметит оплату, и заказ пойдёт дальше.', 'Реквизиты прислал менеджер. Если оплата уже ушла, ничего делать не нужно.']) + '</blockquote>';
+}
+function reviewText_(no, r, rt) {
+  return '🤍 <b>Как вам заказ?</b>\n<code>' + hesc_(no) + '</code>\n<blockquote>Оценка займёт минуту и поможет другим с выбором.\nЗа звёзды +' + r + ' ониксов, с парой слов о посадке и качестве +' + rt + '.</blockquote>';
+}
 
 /* ====================== покупатель ====================== */
 function welcome_(name, linked) {
-  return '<b>Привет' + (name ? ', ' + hesc_(name) : '') + '! Я бот ONION SHOP 👋</b>\n\n' +
-    'Слежу за вашими заказами и сразу пишу, когда меняется статус, приходит фотоотчёт или вещь из избранного дешевеет.\n\n' +
-    'Здесь можно посмотреть заказы, бонусы и промокоды, найти ответ на частый вопрос или написать менеджеру. Покупки и весь каталог на сайте.' +
-    (linked ? '\n\n✅ Уведомления подключены.' : '\n\nЧтобы я видел ваши заказы, подключите меня в кабинете на сайте: «Уведомления в Telegram», затем «Подключить».');
+  var R = OnionCore.RULES;
+  return '<h2>ONION SHOP</h2>' +
+    '<p>' + (name ? hesc_(name) + ', рады' : 'Рады') + ' видеть вас. Здесь всё, что связано с покупками: заказы, бонусы и живая поддержка в одном чате.</p>' +
+    '<table bordered compact>' +
+    '<tr><td>💠 <b>Каталог</b></td><td>новинки, наличие и предзаказ</td></tr>' +
+    '<tr><td>🧾 <b>Заказы</b></td><td>статус, состав и отмена</td></tr>' +
+    '<tr><td>💎 <b>Бонусы</b></td><td>ониксы, уровень, промокоды</td></tr>' +
+    '<tr><td>✉️ <b>Менеджер</b></td><td>ответ приходит сюда же</td></tr>' +
+    '</table>' +
+    '<details><summary>как оформить заказ</summary><ol><li>Откройте каталог и выберите вещь, размер и цвет.</li><li>Оформите корзину в кабинете на сайте.</li><li>Менеджер проверит заказ и пришлёт реквизиты в этот чат.</li></ol></details>' +
+    '<details><summary>доставка и оплата</summary><p>Вещи в наличии отправляем из Москвы. Предзаказ приезжает за 24-47 дней, доставка до России уже в цене. Оплата переводом или наличными при встрече в Москве.</p></details>' +
+    '<details><summary>ониксы и скидки</summary><p>Ониксы начисляются за вход, задания, отзывы и друзей. 1 оникс = ' + String(R.tokenRub).replace('.', ',') + ' ₽. Вместе с промокодом они покрывают до ' + Math.round(R.maxShare * 100) + '% заказа.</p></details>' +
+    '<footer>' + (linked ? '📲 Уведомления подключены: статусы заказов будут приходить сами.' : '📲 Подключите уведомления в кабинете, и статусы заказов начнут приходить сюда.') + ' Разбор по шагам с анимацией в разделе «Инструкция».</footer>';
 }
-function welcomeKb_(linked) { return [[linked ? btnUrl_('🛍 Открыть магазин', '') : btnUrl_('🔔 Подключить уведомления', 'account')]]; }
-function sendWelcome_(m, linked) {
-  var r = tgPhoto_(m.chat.id, IMG_('welcome'), welcome_(m.chat.first_name, linked), welcomeKb_(linked));
-  if (!r || !r.ok) tgSend_(m.chat.id, welcome_(m.chat.first_name, linked), welcomeKb_(linked));
-  tgSend_(m.chat.id, 'Меню всегда внизу 👇', custKb_());
+function welcomeKb_(linked) {
+  return linked
+    ? [[pri_(btnUrl_('💠 Открыть каталог', ''))], [{ text: '🧾 Мои заказы', callback_data: 'mo' }, { text: '💎 Бонусы', callback_data: 'bn' }], [{ text: '📘 Инструкция', callback_data: 'gi' }]]
+    : [[pri_(btnUrl_('📲 Подключить уведомления', 'account'))], [btnUrl_('💠 Открыть каталог', ''), { text: '📘 Инструкция', callback_data: 'gi' }]];
 }
+/* анимированная заставка (зацикленное видео без звука); id файла запоминаем, дальше Telegram берёт его у себя */
+var VID_VER_ = '6';
+function vidUrl_(n) { return siteBase_() + 'assets/bot/' + n + '.mp4?v=' + VID_VER_; }
+function tgAnimation_(chat, key, caption, kb) {
+  var fk = 'FID_' + key + '_' + VID_VER_, fid = props_().getProperty(fk);
+  var p = { chat_id: String(chat), animation: fid || vidUrl_(key), caption: String(caption || '').slice(0, 1000), parse_mode: 'HTML', width: 1280, height: 720, duration: 14 };
+  if (kb) p.reply_markup = Array.isArray(kb) ? { inline_keyboard: kb } : kb;
+  var r = tgApi_('sendAnimation', p);
+  if ((!r || !r.ok) && fid) { props_().deleteProperty(fk); p.animation = vidUrl_(key); r = tgApi_('sendAnimation', p); }
+  if (r && r.ok && !fid) { var a = (r.result && (r.result.animation || r.result.document)) || {}; if (a.file_id) props_().setProperty(fk, a.file_id); }
+  return r;
+}
+/* приветствие: заставка (вместе с ней ставится меню внизу) и подробный экран.
+   menuKb: клавиатура меню; менеджеру в «Примерах» передаём null, чтобы не сбить его панель */
+function sendWelcomeTo_(chat, name, linked, menuKb) {
+  var cap = '<b>ONION SHOP</b>\n<i>заказы, бонусы и поддержка в одном чате</i>';
+  var a = tgAnimation_(chat, 'welcome', cap, menuKb || null);
+  if (a && a.error_code === 403) return a;
+  if (!a || !a.ok) {
+    var s = sticker_(chat, 'hello', menuKb || null);
+    if ((!s || !s.ok) && menuKb) tgSend_(chat, 'Меню всегда внизу 👇', menuKb);
+  }
+  return tgRich_(chat, welcome_(name, linked), welcomeKb_(linked));
+}
+function sendWelcome_(m, linked) { sendWelcomeTo_(m.chat.id, m.chat.first_name, linked, custKb_()); }
 function needLink_(chat) {
-  tgSend_(chat, 'Пока я не вижу ваш кабинет. Откройте на сайте кабинет, раздел «Уведомления в Telegram», и нажмите «Подключить». Это полминуты.', [[btnUrl_('🔔 Открыть кабинет', 'account')]]);
+  tgSend_(chat, '📲 <b>Кабинет пока не подключён</b>\n<blockquote>Откройте кабинет на сайте, раздел «Уведомления в Telegram», и нажмите «Подключить». Это займёт полминуты.</blockquote>', [[pri_(btnUrl_('Открыть кабинет', 'account'))]]);
 }
 function custCatalog_(chat) {
-  tgSend_(chat, '<b>Каталог ONION SHOP</b>\nОдежда, обувь и аксессуары: в наличии в Москве и под заказ из Китая. Выберите раздел, откроется на сайте.', [
-    [btnUrl_('✨ Новинки', 'catalog'), btnUrl_('🔥 Скидки', 'catalog')],
-    [btnUrl_('📍 В наличии', 'stock'), btnUrl_('✈️ Предзаказ', 'preorder')]]);
+  tgRich_(chat, '<h3>💠 Каталог</h3>' +
+    '<p>Коллекция регулярно пополняется. Выберите, с чего начать: раздел откроется на сайте.</p>' +
+    '<table bordered compact>' +
+    '<tr><td>🆕 <b>Новинки</b></td><td>свежие поступления</td></tr>' +
+    '<tr><td>📉 <b>Скидки</b></td><td>вещи со сниженной ценой</td></tr>' +
+    '<tr><td>🏙 <b>В наличии</b></td><td>уже в Москве, без ожидания</td></tr>' +
+    '<tr><td>✈️ <b>Предзаказ</b></td><td>24-47 дней, доставка уже в цене</td></tr>' +
+    '</table>' +
+    '<footer>Добавьте вещь в избранное, и бот напишет, когда она подешевеет.</footer>', [
+    [pri_(btnUrl_('🆕 Новинки', 'catalog')), btnUrl_('📉 Скидки', 'catalog')],
+    [btnUrl_('🏙 В наличии', 'stock'), btnUrl_('✈️ Предзаказ', 'preorder')]]);
 }
-/* частые вопросы прямо в боте: одно сообщение, которое меняется при выборе темы */
+/* частые вопросы: один экран, каждая тема раскрывается на месте */
 var FAQ_ = [
-  ['order', 'Как оформить заказ', 'Выберите вещь на сайте, отметьте размер и цвет и добавьте в корзину. Контакты подставятся из кабинета, останется выбрать способ получения и, если хотите, ониксы или промокод.\n\nПосле оформления заказ получает номер, а менеджер проверяет его и присылает реквизиты для оплаты. Вещь закрепляется за вами после оплаты.'],
-  ['pre', 'Предзаказ и сроки', 'Предзаказ значит, что вещь пока в Китае. После оплаты мы выкупаем её у поставщика (до 12 часов), она едет на наш склад (4-12 дней), там её проверяют и фотографируют, а потом фура везёт её в Россию (18-32 дня).\n\nВ сумме выходит примерно <b>24-47 дней</b>. Доставка из Китая уже включена в цену. Самолётом быстрее, это обсуждается с менеджером.'],
-  ['ship', 'Доставка и получение', '<b>Вещи в наличии</b> (уже в Москве): Авито Доставка по Москве и в другие города, курьер по Москве (не всегда) или самовывоз.\n\n<b>Предзаказ</b>: когда вещь в России, отправим СДЭК, Авито Доставкой или передадим при встрече в Москве. Трек-номер пришлёт менеджер.'],
-  ['pay', 'Оплата', 'Переводом (Сбербанк, Т-Банк, Альфа-Банк, СБП) или наличными при встрече в Москве. На сайте оплаты нет: после проверки заказа менеджер пришлёт реквизиты.\n\nДо 12% заказа можно оплатить ониксами и промокодом вместе.'],
-  ['bonus', 'Ониксы и уровни', 'Ониксы начисляются за регистрацию, ежедневный вход, задания, отзывы, приглашённых друзей и в посылке с сюрпризом. 1 оникс равен 0,3 ₽.\n\nУровень считается по опыту (XP) за месяц: чем выше уровень, тем больше заданий, промокоды и приоритет заказа. 1-го числа опыт обнуляется.'],
-  ['size', 'Размеры', 'Если у модели есть замеры, они в карточке товара в разделе «Замеры изделия». Это размеры самой вещи, а не обхват тела: проще всего сравнить с похожей вещью из своего шкафа.\n\nСомневаетесь между двумя размерами? Напишите менеджеру свои параметры, он подскажет.']
+  ['order', 'как оформить заказ', '<p>Выберите вещь на сайте, отметьте размер и цвет и добавьте в корзину. Контакты подставятся из кабинета, останется выбрать способ получения и, если хотите, ониксы или промокод.</p><p>После оформления заказ получает номер, менеджер проверяет его и присылает реквизиты для оплаты. Вещь закрепляется за вами после оплаты.</p>'],
+  ['pre', 'предзаказ и сроки', '<table bordered compact><tr><th>этап</th><th>срок</th></tr><tr><td>выкуп у поставщика</td><td>до 12 часов</td></tr><tr><td>дорога до нашего склада</td><td>4-12 дней</td></tr><tr><td>проверка и фотоотчёт</td><td>на складе</td></tr><tr><td>доставка в Россию</td><td>18-32 дня</td></tr></table><p>В сумме выходит примерно <b>24-47 дней</b>. Доставка уже включена в цену. Самолётом быстрее, это обсуждается с менеджером.</p>'],
+  ['ship', 'доставка и получение', '<p><b>В наличии</b> (уже в Москве): Авито Доставка по Москве и в другие города, курьер по Москве (не всегда) или самовывоз.</p><p><b>Предзаказ</b>: когда вещь в России, отправим СДЭК, Авито Доставкой или передадим при встрече в Москве. Трек-номер пришлёт менеджер.</p>'],
+  ['pay', 'оплата', '<p>Переводом (Сбербанк, Т-Банк, Альфа-Банк, СБП) или наличными при встрече в Москве. На сайте оплаты нет: после проверки заказа менеджер пришлёт реквизиты.</p><p>До 12% заказа можно оплатить ониксами и промокодом вместе.</p>'],
+  ['cancel', 'отмена заказа', '<p>Пока заказ в статусе «Оформлен», его можно отменить самостоятельно: «Мои заказы», нужный заказ, кнопка «Отменить заказ». Ониксы вернутся на баланс.</p><p>Когда заказ уже в работе, изменения согласуйте с менеджером.</p>'],
+  ['bonus', 'ониксы и уровни', '<p>Ониксы начисляются за регистрацию, ежедневный вход, задания, отзывы, приглашённых друзей и в посылке с сюрпризом. 1 оникс = 0,3 ₽.</p><p>Уровень считается по опыту (XP) за месяц: чем он выше, тем больше заданий, промокоды и приоритет заказа. 1-го числа опыт обнуляется.</p>'],
+  ['size', 'размеры', '<p>Если у модели есть замеры, они в карточке товара в разделе «Замеры изделия». Это размеры самой вещи, а не обхват тела: проще всего сравнить с похожей вещью из своего шкафа.</p><p>Сомневаетесь между двумя размерами? Напишите менеджеру свои параметры, он подскажет.</p>']
 ];
 function custFaq_(chat, msgId, key) {
-  var it = FAQ_.filter(function (x) { return x[0] === key; })[0];
-  var text, kb;
-  if (!it) {
-    text = '<b>Частые вопросы</b>\nВыберите тему, отвечу прямо здесь.';
-    kb = []; for (var i = 0; i < FAQ_.length; i += 2) kb.push(FAQ_.slice(i, i + 2).map(function (x) { return { text: x[1], callback_data: 'fq|' + x[0] }; }));
-    kb.push([{ text: '💬 Спросить менеджера', callback_data: 'q|' }]);
-  } else {
-    text = '<b>' + it[1] + '</b>\n\n' + it[2];
-    kb = [[{ text: '← Все вопросы', callback_data: 'fq|' }, { text: '💬 Спросить', callback_data: 'q|' }]];
-  }
-  if (msgId) tgEdit_(chat, msgId, text, kb); else tgSend_(chat, text, kb);
+  var html = '<h3>💬 Частые вопросы</h3><p>Главное о заказах, сроках и оплате. Нажмите на тему, чтобы раскрыть ответ.</p>' +
+    FAQ_.map(function (x) { return '<details' + (x[0] === key ? ' open' : '') + '><summary>' + x[1] + '</summary>' + x[2] + '</details>'; }).join('') +
+    '<footer>Не нашли ответ? Менеджер ответит в этом чате.</footer>';
+  var kb = [[pri_({ text: '✉️ Спросить менеджера', callback_data: 'q|' }), { text: '📘 Инструкция', callback_data: 'gi' }]];
+  if (msgId) tgRichEdit_(chat, msgId, html, kb); else tgRich_(chat, html, kb);
 }
 function custAsk_(chat, no) {
   cachePut_('q:' + chat, no || '-', 900);
-  tgSend_(chat, 'Напишите вопрос одним сообщением' + (no ? ', я передам его менеджеру вместе с номером заказа <b>' + hesc_(no) + '</b>' : ', я сразу передам его менеджеру') + '. Можно приложить фото. Ответ придёт сюда же.');
+  tgSend_(chat, '✉️ <b>Сообщение менеджеру</b>\n<blockquote>Напишите вопрос одним сообщением, можно приложить фото.' + (no ? ' Номер заказа <code>' + hesc_(no) + '</code> я передам сам.' : '') + ' Ответ придёт в этот чат.</blockquote>');
 }
-function orderLine_(o) { return '№' + String(o.no).replace(/^OS-/, '') + ', ' + (o.status || 'Оформлен') + ', ' + rub_(o.toPay); }
+function shortNo_(no) { return String(no).replace(/^OS-/, ''); }
+function orderLine_(o) { return '№' + shortNo_(o.no) + ', ' + (o.status || 'Оформлен') + ', ' + rub_(o.toPay); }
 function custOrders_(chat, msgId) {
   var u = tgUserByChat_(chat); if (!u) { needLink_(chat); return; }
   var list = DB.listOrders(u.id, 8);
-  if (!list.length) { tgSend_(chat, 'Заказов пока нет. Когда оформите заказ на сайте, он появится здесь, а статусы я буду присылать сам.', [[btnUrl_('🛍 Перейти в каталог', 'catalog')]]); return; }
-  var text = '<b>Ваши заказы</b>\nНажмите на заказ, чтобы увидеть статус и состав.';
+  if (!list.length) { tgRich_(chat, '<h3>🧾 Мои заказы</h3><p>Заказов пока нет. Оформите первый на сайте: он появится здесь, а статусы я буду присылать сам.</p>', [[pri_(btnUrl_('💠 Перейти в каталог', 'catalog'))]]); return; }
+  var html = '<h3>🧾 Мои заказы</h3><table bordered compact striped><tr><th>заказ</th><th>статус</th><th>к оплате</th></tr>' +
+    list.map(function (o) { return '<tr><td>' + hesc_(shortNo_(o.no)) + '</td><td>' + hesc_(o.status || 'Оформлен') + '</td><td>' + rub_(o.toPay) + '</td></tr>'; }).join('') +
+    '</table><footer>Откройте заказ кнопкой ниже: состав, путь и отмена.</footer>';
   var kb = list.map(function (o) { return [{ text: orderLine_(o), callback_data: 'm|' + o.no }]; });
-  if (msgId) tgEdit_(chat, msgId, text, kb); else tgSend_(chat, text, kb);
+  if (msgId) tgRichEdit_(chat, msgId, html, kb); else tgRich_(chat, html, kb);
 }
 function custOrderCard_(cq, no) {
   var chat = cq.message.chat.id, u = tgUserByChat_(chat); if (!u) { tgAnswer_(cq.id, 'Сначала подключите бота в кабинете'); return; }
   var o = DB.listOrders(u.id, 50).filter(function (x) { return String(x.no) === no; })[0];
   if (!o) { tgAnswer_(cq.id, 'Заказ не найден'); return; }
   var stages = OnionCore.stagesFor(o.kind), cur = stages.indexOf(o.status || 'Оформлен');
-  var chain = o.status === 'Отменён' ? '❌ Отменён' : stages.map(function (s, i) { return (i < cur ? '✅ ' : i === cur ? '🔵 <b>' : '⚪ ') + s + (i === cur ? '</b>' : ''); }).join('\n');
-  var items = (o.items || []).map(function (it) { return '🛍 ' + hesc_(it.title || '') + (it.size ? ', ' + hesc_(it.size) : '') + (it.color ? ', ' + hesc_(String(it.color).toLowerCase()) : '') + (it.qty > 1 ? ' × ' + it.qty : ''); }).join('\n');
+  var chain = o.status === 'Отменён' ? '<p>▫️ Заказ отменён</p>' : '<table compact>' + stages.map(function (s, i) {
+    return '<tr><td>' + (i < cur ? '☑️' : i === cur ? '🔹' : '▫️') + '</td><td>' + (i === cur ? '<b>' + s + '</b>' : s) + '</td></tr>';
+  }).join('') + '</table>';
+  var items = '<table bordered compact><tr><th>вещь</th><th>размер, цвет</th><th>шт</th></tr>' + (o.items || []).map(function (it) {
+    var opt = [it.size, it.color ? String(it.color).toLowerCase() : ''].filter(Boolean).join(', ');
+    return '<tr><td>' + hesc_(it.title || '') + '</td><td>' + hesc_(opt || '—') + '</td><td>' + (it.qty || 1) + '</td></tr>';
+  }).join('') + '</table>';
   tgAnswer_(cq.id, '');
-  var text = '<b>Заказ ' + hesc_(o.no) + '</b>\n' + hesc_(o.at) + '\n\n' + items + '\n\nК оплате: <b>' + rub_(o.toPay) + '</b>' + (isTrue_(o.paid) ? ', оплачен ✅' : '') + '\n\n' + chain;
-  var kb = [[{ text: '💬 Вопрос по заказу', callback_data: 'q|' + o.no }]];
-  if (o.status === 'Получен') kb.unshift([btnUrl_('⭐ Оставить отзыв', 'orders')]);
+  var st = String(o.status || 'Оформлен').trim(), isFinal = OnionCore.RULES.finalStages.indexOf(st) >= 0;
+  var note = st === 'Оформлен' ? 'Пока заказ не взяли в работу, его можно отменить кнопкой ниже.' : isFinal ? '' : 'Заказ уже в работе, отмена недоступна. Если нужно что-то изменить, нажмите «Вопрос по заказу».';
+  var html = '<h3>Заказ ' + hesc_(o.no) + '</h3><p><i>' + hesc_(o.at) + '</i></p>' + items +
+    '<p>К оплате: <b>' + rub_(o.toPay) + '</b>' + (isTrue_(o.paid) ? '   ☑️ оплачен' : '') + '</p><h4>путь заказа</h4>' + chain + (note ? '<footer>' + note + '</footer>' : '');
+  var kb = [[{ text: '✉️ Вопрос по заказу', callback_data: 'q|' + o.no }]];
+  if (st === 'Оформлен') kb.unshift([dng_({ text: 'Отменить заказ', callback_data: 'cx|' + o.no })]);
+  if (st === 'Получен') kb.unshift([pri_(btnUrl_('🤍 Оставить отзыв', 'orders'))]);
   kb.push([{ text: '← Все заказы', callback_data: 'mo' }]);
-  if (cq.message.text && /^Заказ |^Ваши заказы/.test(String(cq.message.text))) tgEdit_(chat, cq.message.message_id, text, kb); else tgSend_(chat, text, kb);
+  if (/Мои заказы|Ваши заказы|^Заказ /.test(msgHead_(cq.message))) tgRichEdit_(chat, cq.message.message_id, html, kb); else tgRich_(chat, html, kb);
 }
 function custBonus_(chat) {
   var u = tgUserByChat_(chat); if (!u) { needLink_(chat); return; }
-  var R = OnionCore.RULES, L = OnionCore.levelOf(u), next = R.levels[L.index + 1], bal = u.balance || 0;
-  var text = '<b>Ваши бонусы</b>\n\n🪙 Ониксы: <b>' + num_(bal) + '</b>, это до ' + rub_(Math.floor(bal * R.tokenRub)) + ' скидки\n⭐ Уровень: <b>' + hesc_(L.name) + '</b>, ' + num_(u.xp || 0) + ' XP за месяц' +
-    (next ? '\nДо уровня «' + hesc_(next.name) + '» осталось ' + num_(Math.max(0, next.min - (u.xp || 0))) + ' XP' : '');
+  var R = OnionCore.RULES, L = OnionCore.levelOf(u), next = R.levels[L.index + 1], bal = u.balance || 0, xp = u.xp || 0;
+  var html = '<h3>💎 Ваши бонусы</h3><table bordered compact>' +
+    '<tr><td>Ониксы</td><td><b>' + num_(bal) + '</b></td><td>до ' + rub_(Math.floor(bal * R.tokenRub)) + ' скидки</td></tr>' +
+    '<tr><td>Уровень</td><td><b>' + hesc_(L.name) + '</b></td><td>' + num_(xp) + ' XP за месяц</td></tr>' +
+    (next ? '<tr><td>Следующий</td><td><b>' + hesc_(next.name) + '</b></td><td>ещё ' + num_(Math.max(0, next.min - xp)) + ' XP</td></tr>' : '') + '</table>';
   var pr = []; try { pr = OnionCore.activePromos(DB, u) || []; } catch (e) { pr = []; }
-  if (pr.length) text += '\n\n<b>Промокоды</b> (нажмите, чтобы скопировать)\n' + pr.slice(0, 8).map(function (p) { return '<code>' + hesc_(p.code) + '</code> −' + String(p.pct).replace('.', ',') + '%' + (p.cat ? ', только «' + hesc_(p.catLabel) + '»' : ''); }).join('\n');
-  text += '\n\nОниксами и промокодом вместе можно оплатить до 12% заказа.';
+  if (pr.length) html += '<h4>ваши промокоды</h4><table bordered compact>' + pr.slice(0, 8).map(function (p) {
+    return '<tr><td><code>' + hesc_(p.code) + '</code></td><td>−' + String(p.pct).replace('.', ',') + '%</td><td>' + (p.cat ? 'только «' + hesc_(p.catLabel) + '»' : 'на весь заказ') + '</td></tr>';
+  }).join('') + '</table><p><i>Нажмите на код, чтобы скопировать, и вставьте его при оформлении заказа.</i></p>';
+  html += '<p>Ониксы и промокод вместе покрывают до ' + Math.round(R.maxShare * 100) + '% заказа. 1 оникс = ' + String(R.tokenRub).replace('.', ',') + ' ₽.</p>';
+  html += '<details><summary>как получить больше ониксов</summary><ul><li>ежедневный вход на сайте и задания уровня</li><li>отзыв о заказе: до +' + R.reward.reviewText + '</li><li>друг по вашей ссылке: +' + R.reward.referrer + ' после его первого заказа от ' + rub_(R.refMinOrder) + '</li><li>посылка с сюрпризом на сайте</li></ul></details>';
+  html += '<details><summary>уровни</summary><table bordered compact><tr><th>уровень</th><th>опыт за месяц</th></tr>' +
+    R.levels.map(function (l, i) { return '<tr><td>' + (i === L.index ? '<b>' + hesc_(l.name) + '</b>' : hesc_(l.name)) + '</td><td>от ' + num_(l.min) + ' XP</td></tr>'; }).join('') +
+    '</table><p>Чем выше уровень, тем больше заданий, промокоды и приоритет заказа. 1-го числа опыт обнуляется.</p></details>';
   var kb = [];
   if (u.refCode) {
     var link = siteUrl_('ref=' + u.refCode);
-    text += '\n\n👥 <b>Пригласите друга</b>: ему +' + R.reward.refFriend + ' ониксов при регистрации, вам +' + R.reward.referrer + ', когда он получит первый заказ от ' + rub_(R.refMinOrder) + '.';
-    kb.push([{ text: '📤 Пригласить друга', url: 'https://t.me/share/url?url=' + encodeURIComponent(link) + '&text=' + encodeURIComponent('Одежда и обувь в наличии и из Китая, ONION SHOP. По моей ссылке +' + R.reward.refFriend + ' ониксов при регистрации') }]);
+    html += '<footer>Пригласите друга: ему +' + R.reward.refFriend + ' ониксов при регистрации, вам +' + R.reward.referrer + ', когда он получит первый заказ.</footer>';
+    kb.push([pri_({ text: '📤 Пригласить друга', url: 'https://t.me/share/url?url=' + encodeURIComponent(link) + '&text=' + encodeURIComponent('Загляни в ONION SHOP: по моей ссылке +' + R.reward.refFriend + ' ониксов при регистрации') })]);
   }
-  kb.push([btnUrl_('🎁 Задания и посылка', 'roulette')]);
-  tgSend_(chat, text, kb);
+  kb.push([btnUrl_('💠 Задания и посылка', 'roulette')]);
+  tgRich_(chat, html, kb);
 }
 /* уведомления включены всегда и отключить их нельзя: экран только объясняет, что приходит */
 function custSettings_(chat, msgId) {
   var u = tgUserByChat_(chat); if (!u) { needLink_(chat); return; }
-  var text = '<b>Что я присылаю</b>\n\n📦 статусы заказов и напоминания об оплате\n📸 фотоотчёты со склада\n🔔 «Жду появления»: вещь снова в продаже\n📉 скидки на вещи из избранного\n🎁 бонусы, ониксы и подарки\n\nВсё приходит автоматически, пока бот подключён.';
-  var kb = [[{ text: '📦 Мои заказы', callback_data: 'mo' }]];
-  if (msgId) tgEdit_(chat, msgId, text, kb); else tgSend_(chat, text, kb);
+  var html = '<h3>📲 Уведомления</h3><p>Пока бот подключён, всё приходит само:</p><table bordered compact>' +
+    '<tr><td>🧾</td><td>статусы заказов и напоминания об оплате</td></tr><tr><td>📸</td><td>фотоотчёты со склада</td></tr>' +
+    '<tr><td>🔹</td><td>вещь из списка ожидания снова в продаже</td></tr><tr><td>📉</td><td>вещь из избранного подешевела</td></tr>' +
+    '<tr><td>💎</td><td>бонусы, ониксы и подарки</td></tr></table>';
+  var kb = [[pri_({ text: '🧾 Мои заказы', callback_data: 'mo' })]];
+  if (msgId) tgRichEdit_(chat, msgId, html, kb); else tgRich_(chat, html, kb);
+}
+
+/* ====================== инструкция: 8 уроков с анимацией ======================
+   Оглавление (rich) и урок: анимация assets/bot/guide-N.mp4 с подписью. Кнопки «назад/далее» меняют анимацию
+   и подпись в том же сообщении (editMessageMedia), чат не засоряется. Пока анимация не выложена, урок уходит текстом. */
+var GUIDE_VER_ = '1';
+var GUIDE_ = [
+  ['Начало работы', 'меню и разделы',
+    '1. Нажмите «Старт» или отправьте /start.\n2. Внизу появится меню: Каталог, Мои заказы, Бонусы, Инструкция, Вопросы и связь с менеджером.\n3. Если меню скрылось, нажмите значок с квадратиками справа от поля ввода.',
+    'Подключите уведомления в кабинете на сайте, и статусы заказов начнут приходить сами.'],
+  ['Каталог', 'новинки, наличие, предзаказ',
+    '1. Нажмите «💠 Каталог» в меню.\n2. Выберите раздел: Новинки, Скидки, В наличии или Предзаказ.\n3. Каталог откроется на сайте: листайте карточки и переключайте категории сверху.',
+    'Вещи «в наличии» уже в Москве, предзаказ приезжает за 24-47 дней.'],
+  ['Карточка товара', 'фото, размеры, наличие',
+    '1. Нажмите на карточку, чтобы открыть товар.\n2. Листайте фото свайпом, нажмите на фото для увеличения.\n3. Выберите цвет и размер.\n4. Под ценой видно, в наличии вещь или под заказ.\n5. Замеры изделия, если они есть, ниже в карточке.',
+    'Нет нужного размера? Нажмите «Жду появления», бот напишет, когда вещь вернётся.'],
+  ['Оформление заказа', 'корзина и подтверждение',
+    '1. В карточке нажмите «В корзину».\n2. Откройте корзину и перейдите к оформлению.\n3. Контакты подставятся из кабинета, выберите способ получения.\n4. По желанию спишите ониксы или введите промокод.\n5. Подтвердите заказ: в бот придёт «Заказ принят».\n6. Менеджер пришлёт реквизиты, после оплаты вещь закреплена за вами.',
+    'Пока заказ в статусе «Оформлен», его можно отменить в «Мои заказы».'],
+  ['Доставка и оплата', 'способы и сроки',
+    '1. Нажмите «💬 Вопросы» в меню.\n2. Раскройте пункты «доставка и получение» и «оплата».\n\n<b>В наличии:</b> Авито Доставка, курьер по Москве или самовывоз.\n<b>Предзаказ:</b> СДЭК, Авито Доставка или встреча в Москве.\n<b>Оплата:</b> перевод или наличные при встрече.',
+    'Трек-номер посылки менеджер пришлёт в этот чат.'],
+  ['Промокоды и скидки', 'ониксы и коды',
+    '1. Нажмите «💎 Бонусы»: там баланс ониксов и ваши промокоды.\n2. Нажмите на код, он скопируется.\n3. При оформлении заказа вставьте код в поле промокода и включите списание ониксов.',
+    'Ониксы и промокод вместе покрывают до 12% заказа.'],
+  ['Поддержка', 'связь с менеджером',
+    '1. Нажмите «✉️ Написать менеджеру» или «Вопрос по заказу» в карточке заказа.\n2. Напишите вопрос одним сообщением, можно с фото.\n3. Ответ менеджера придёт в этот же чат.',
+    'Менеджер магазина: @OnionShop_Support.'],
+  ['Дополнительные возможности', 'всё остальное',
+    '▫️ Отмена заказа, пока он в статусе «Оформлен».\n▫️ Фотоотчёт со склада по предзаказу.\n▫️ Сообщение, когда вещь из избранного подешевела или снова в продаже.\n▫️ Ониксы за друзей: ссылка-приглашение в «Бонусах».\n▫️ Уровни, задания и посылка с сюрпризом на сайте.',
+    'Все уведомления приходят автоматически, пока бот подключён.']
+];
+function guideUrl_(i) { return siteBase_() + 'assets/bot/guide-' + (i + 1) + '.mp4?v=' + GUIDE_VER_; }
+function guideCaption_(i) {
+  var g = GUIDE_[i];
+  return '📘 <b>' + g[0] + '</b>   ' + (i + 1) + '/' + GUIDE_.length + '\n\n<blockquote>' + g[2] + '</blockquote>\n<i>' + g[3] + '</i>';
+}
+function guideKb_(i) {
+  var row = [];
+  if (i > 0) row.push({ text: '← Назад', callback_data: 'gd|' + (i - 1) });
+  row.push(i < GUIDE_.length - 1 ? pri_({ text: 'Далее →', callback_data: 'gd|' + (i + 1) }) : pri_(btnUrl_('💠 Открыть каталог', '')));
+  return [row, [{ text: '📘 Все уроки', callback_data: 'gi' }]];
+}
+function guideIndex_(chat, msgId) {
+  var html = '<h3>📘 Инструкция</h3><p>Восемь коротких уроков с анимацией: что нажимать и в каком порядке. Смотрите по порядку или сразу нужный.</p><table bordered compact>' +
+    GUIDE_.map(function (g, i) { return '<tr><td><b>' + (i + 1) + '</b></td><td><b>' + g[0] + '</b></td><td>' + g[1] + '</td></tr>'; }).join('') +
+    '</table><footer>Остались вопросы? Напишите менеджеру, ответ придёт в этот чат.</footer>';
+  var kb = [[pri_({ text: '▶ Смотреть по порядку', callback_data: 'gd|0' })]];
+  for (var i = 0; i < GUIDE_.length; i += 2) kb.push(GUIDE_.slice(i, i + 2).map(function (g, j) { return { text: (i + j + 1) + '. ' + g[0], callback_data: 'gd|' + (i + j) }; }));
+  if (msgId) tgRichEdit_(chat, msgId, html, kb); else tgRich_(chat, html, kb);
+}
+function guideStep_(chat, msgId, i) {
+  i = Math.max(0, Math.min(GUIDE_.length - 1, +i || 0));
+  var fk = 'FID_guide' + i + '_' + GUIDE_VER_, fid = props_().getProperty(fk), cap = guideCaption_(i), kb = { inline_keyboard: guideKb_(i) };
+  var keep = function (r) { var a = r && r.ok && r.result && (r.result.animation || r.result.document); if (a && a.file_id && !fid) props_().setProperty(fk, a.file_id); return r; };
+  var r;
+  if (msgId) {
+    var edit = function (media) { return tgApi_('editMessageMedia', { chat_id: String(chat), message_id: msgId, media: { type: 'animation', media: media, caption: cap, parse_mode: 'HTML' }, reply_markup: kb }); };
+    r = edit(fid || guideUrl_(i));
+    if ((!r || !r.ok) && fid) { props_().deleteProperty(fk); fid = null; r = edit(guideUrl_(i)); }
+    if (r && r.ok) return keep(r);
+  }
+  var send = function (media) { return tgApi_('sendAnimation', { chat_id: String(chat), animation: media, caption: cap, parse_mode: 'HTML', reply_markup: kb }); };
+  r = send(fid || guideUrl_(i));
+  if ((!r || !r.ok) && fid) { props_().deleteProperty(fk); fid = null; r = send(guideUrl_(i)); }
+  if (r && r.ok) return keep(r);
+  return tgSend_(chat, cap, kb.inline_keyboard);
 }
 function custCallback_(cq, a) {
-  var chat = cq.message.chat.id, mid = cq.message.message_id;
+  var chat = cq.message.chat.id, mid = cq.message.message_id, head = msgHead_(cq.message);
+  /* экран правим на месте, только если кнопку нажали в нём самом; из приветствия или уведомления шлём новый */
+  var here = function (re) { return re.test(head) ? mid : null; };
   if (a[0] === 'm') { custOrderCard_(cq, a[1]); return true; }
-  if (a[0] === 'mo') { tgAnswer_(cq.id, ''); custOrders_(chat, mid); return true; }
+  if (a[0] === 'mo') { tgAnswer_(cq.id, ''); custOrders_(chat, here(/Мои заказы|Ваши заказы|^Заказ /)); return true; }
+  if (a[0] === 'gi') { tgAnswer_(cq.id, ''); guideIndex_(chat, here(/Инструкция$/)); return true; }
+  if (a[0] === 'gd') { tgAnswer_(cq.id, ''); guideStep_(chat, cq.message.animation || cq.message.document || /Инструкция$/.test(head) ? mid : null, a[1]); return true; }
+  /* отмена заказа из бота: тот же код и та же проверка статуса, что на сайте (OnionCore.cancelFor).
+     cx: спрашиваем подтверждение, cy: отменяем. Старое сообщение с кнопкой ничего не обойдёт: статус проверяется заново. */
+  if (a[0] === 'cx' || a[0] === 'cy') {
+    var cu = tgUserByChat_(chat); if (!cu) { tgAnswer_(cq.id, 'Сначала подключите бота в кабинете'); return true; }
+    var cno = String(a[1] || '').trim().toUpperCase();
+    var co = DB.listOrders(cu.id, 50).filter(function (x) { return String(x.no) === cno; })[0];
+    if (!co) { tgAnswer_(cq.id, 'Заказ не найден'); return true; }
+    if (a[0] === 'cx') {
+      if (String(co.status || 'Оформлен').trim() !== 'Оформлен') { tgAnswer_(cq.id, co.status === 'Отменён' ? 'Этот заказ уже отменён' : co.status === 'Получен' ? 'Заказ уже получен, отменить его нельзя' : 'Заказ уже в работе, отмена недоступна'); custOrderCard_(cq, cno); return true; }
+      tgAnswer_(cq.id, '');
+      tgRichEdit_(chat, mid, '<h3>Заказ ' + hesc_(cno) + ': отменить?</h3><p>Заказ отменится сразу, вернуть его потом не получится. Ониксы, если вы ими платили, вернутся на баланс.</p>', [[dng_({ text: 'Да, отменить', callback_data: 'cy|' + cno })], [pri_({ text: 'Оставить заказ', callback_data: 'm|' + cno })]]);
+      return true;
+    }
+    var cr = OnionCore.cancelFor(DB, cu, cno, 'bot');
+    if (cr.ok) {
+      tgAnswer_(cq.id, 'Заказ отменён');
+      tgRichEdit_(chat, mid, '<h3>Заказ ' + hesc_(cno) + ' отменён</h3><p>Ониксы, если вы ими платили, уже на балансе. Передумаете, оформите заказ заново на сайте.</p>', [[pri_(btnUrl_('💠 Открыть каталог', ''))], [{ text: '← Все заказы', callback_data: 'mo' }]]);
+    } else if (cr.status !== undefined) {
+      tgAnswer_(cq.id, cr.error);
+      custOrderCard_(cq, cno);
+    } else tgAnswer_(cq.id, cr.error || 'Не получилось отменить, попробуйте ещё раз');
+    return true;
+  }
   if (a[0] === 'q') { tgAnswer_(cq.id, ''); custAsk_(chat, a[1] || ''); return true; }
   if (a[0] === 'bn') { tgAnswer_(cq.id, ''); custBonus_(chat); return true; }
   if (a[0] === 'ns') { tgAnswer_(cq.id, ''); custSettings_(chat); return true; }
-  if (a[0] === 'fq') { tgAnswer_(cq.id, ''); custFaq_(chat, mid, a[1] || ''); return true; }
+  if (a[0] === 'fq') { tgAnswer_(cq.id, ''); custFaq_(chat, here(/Частые вопросы/), a[1] || ''); return true; }
   if (a[0] === 'ph') { // фото товаров заказа: только своему заказу (менеджеру любому)
     tgAnswer_(cq.id, '');
     if (!isAdmin_(chat)) { var pu = tgUserByChat_(chat); if (!pu || !DB.listOrders(pu.id, 50).some(function (x) { return String(x.no) === a[1]; })) { tgSend_(chat, 'Заказ не найден.'); return true; } }
@@ -2100,7 +2415,7 @@ function custCallback_(cq, a) {
    Берём именно последнюю метку: покупатель мог вписать «#c…» в свой текст, чтобы ответ ушёл чужому человеку. */
 function relayToManager_(m) {
   var chat = m.chat.id, admin = props_().getProperty('ADMIN_CHAT_ID');
-  if (!admin) { tgSend_(chat, 'Сейчас удобнее написать менеджеру напрямую 👇', [[{ text: '💬 @OnionShop_Support', url: SUPPORT_URL_ }]]); return; }
+  if (!admin) { tgSend_(chat, '✉️ <b>Напишите менеджеру напрямую</b>\nТак ответ придёт быстрее.', [[pri_({ text: '✉️ @OnionShop_Support', url: SUPPORT_URL_ })]]); return; }
   var n = +(cacheGet_('qn:' + chat) || 0);
   if (n >= 8) { tgSend_(chat, 'Вы прислали много сообщений подряд. Менеджер уже видит их и ответит, как только сможет.'); return; }
   cachePut_('qn:' + chat, n + 1, 600);
@@ -2113,7 +2428,7 @@ function relayToManager_(m) {
   if (q && q !== '-') kb.push([{ text: '🧾 Заказ ' + q, callback_data: 'o|' + q }]);
   if (m.text) tgSend_(admin, head + '\n\n' + hesc_(m.text) + '\n\n#c' + chat, kb);
   else { tgSend_(admin, head + '\n(вложение ниже)\n\n#c' + chat, kb); tgApi_('copyMessage', { chat_id: admin, from_chat_id: chat, message_id: m.message_id }); }
-  if (n === 0) tgSend_(chat, pick_(V_.asked)); // подтверждаем один раз, а не на каждое сообщение подряд
+  if (n === 0) { sticker_(chat, 'support'); tgSend_(chat, pick_(V_.asked)); } // подтверждаем один раз, а не на каждое сообщение подряд
 }
 function tgUserByChat_(chat) { return users_().filter(function (u) { return u.tgChat === String(chat); })[0] || null; }
 function tgAnswer_(id, text) { tgApi_('answerCallbackQuery', { callback_query_id: id, text: text || '' }); }
@@ -2168,8 +2483,8 @@ function orderCard_(chat, no, msgId) {
   var o = f.o, st = String(o.status || 'Оформлен'), cu = o.userId ? DB.getUser(normId_(o.userId)) : null;
   var text = '🧾 <b>Заказ ' + hesc_(o.no) + '</b>\nСтатус: <b>' + hesc_(st) + '</b>' + (isTrue_(o.paid) ? ', 💰 оплачен' : ', не оплачен') +
     '\n\n' + hesc_(String(o.itemsText || '').slice(0, 900)) + '\n\n💰 К оплате: <b>' + rub_(money_(o.toPay)) + '</b> (' + hesc_(o.kind) + ')' +
-    '\n👤 ' + hesc_(o.name) + ', ' + hesc_(o.phone) + (o.tg ? ', ' + hesc_(o.tg) : '') + (cu ? (cu.tgChat ? ', 🔔 бот подключён' : ', без бота') : '') +
-    (o.pack ? '\n🎁 ' + hesc_(o.pack) : '') + (o.comment ? '\n💬 ' + hesc_(o.comment) : '') + (o.note ? '\n📝 ' + hesc_(o.note) : '');
+    '\n👤 ' + hesc_(o.name) + ', ' + hesc_(o.phone) + (o.tg ? ', ' + hesc_(o.tg) : '') + (cu ? (cu.tgChat ? ', 📲 бот подключён' : ', без бота') : '') +
+    (o.pack ? '\n🎁 ' + hesc_(o.pack) : '') + (o.note ? '\n📝 ' + hesc_(o.note) : '');
   var kb = adminKeyboard_(o.no, String(o.kind)), row = [];
   kb.push([{ text: '🖼 Фото товаров', callback_data: 'ph|' + o.no }]);
   if (cu && cu.tgChat) row.push({ text: '✉️ Написать', callback_data: 'rp|' + cu.tgChat });
@@ -2247,7 +2562,7 @@ function askBroadcast_(chat, text, photo) { bcPreview_(chat, { t: 'custom', text
 /* ответ менеджера покупателю */
 function replyToClient_(admin, chat, m) {
   var u = tgUserByChat_(chat), r;
-  if (m.text) r = tgSend_(chat, '<b>Ответ менеджера 💬</b>\n' + hesc_(m.text) + '\n\n<i>Ответить можно прямо здесь.</i>');
+  if (m.text) r = tgSend_(chat, '✉️ <b>Ответ менеджера</b>\n<blockquote>' + hesc_(m.text) + '</blockquote>\n<i>Ответить можно прямо здесь.</i>');
   else r = tgApi_('copyMessage', { chat_id: chat, from_chat_id: admin, message_id: m.message_id });
   tgSend_(admin, r && r.ok ? '✅ Отправлено' + (u ? ' @' + hesc_(u.login) : '') : '⚠️ Не доставлено: похоже, покупатель заблокировал бота.');
 }
@@ -2311,7 +2626,7 @@ function adminCallback_(cq) {
   if (!cq.message) return;
   var chat = cq.message.chat.id, mid = cq.message.message_id, a = String(cq.data || '').split('|');
   if (!isAdmin_(chat)) { if (!custCallback_(cq, a)) tgAnswer_(cq.id, 'Эта кнопка больше не работает'); return; }
-  if (['m', 'mo', 'q', 'ns', 'fq', 'ph'].indexOf(a[0]) >= 0 || (a[0] === 'bn' && a.length === 1)) { custCallback_(cq, a); return; }
+  if (['m', 'mo', 'q', 'ns', 'fq', 'ph', 'gi', 'gd'].indexOf(a[0]) >= 0 || (a[0] === 'bn' && a.length === 1)) { custCallback_(cq, a); return; }
   var p = props_();
   // ---- рассылки и авто-сообщения ----
   if (a[0] === 'bm') { tgAnswer_(cq.id, ''); bcMenu_(chat); return; }
@@ -2441,7 +2756,7 @@ function tgHandle_(updates) {
       if (/^\/start\s+T\d{12}/.test(text)) {
         var r = OnionCore.tgBind(DB, text, c, who);
         if (r && r.ok) { if (r.user && r.user.phoneOk === false) askPhone_(c); else sendWelcome_(m, true); }
-        else tgSend_(c, 'Ссылка устарела. Откройте на сайте кабинет, раздел «Уведомления в Telegram», и нажмите «Подключить» ещё раз.', [[btnUrl_('🔔 Открыть кабинет', 'account')]]);
+        else tgSend_(c, '📲 <b>Ссылка устарела</b>\n<blockquote>Откройте на сайте кабинет, раздел «Уведомления в Telegram», и нажмите «Подключить» ещё раз.</blockquote>', [[pri_(btnUrl_('Открыть кабинет', 'account'))]]);
         return;
       }
       if (m.contact) { phoneContact_(m); return; }
@@ -2449,13 +2764,14 @@ function tgHandle_(updates) {
       if (isAdmin_(c)) { adminText_(m, text); return; }
       var old = OLD_BTN_[text];
       if (/^\/start/.test(text)) sendWelcome_(m, !!tgUserByChat_(c));
-      else if (text === BTN_.ord || /^\/orders/.test(text)) custOrders_(c);
-      else if (text === BTN_.bon || /^\/bonus/.test(text)) custBonus_(c);
+      else if (text === BTN_.ord || old === 'ord' || /^\/orders/.test(text)) custOrders_(c);
+      else if (text === BTN_.bon || old === 'bon' || /^\/bonus/.test(text)) custBonus_(c);
       else if (text === BTN_.cat || old === 'cat' || /^\/catalog/.test(text)) custCatalog_(c);
+      else if (text === BTN_.guide || /^\/(guide|help)/.test(text)) guideIndex_(c);
       else if (text === BTN_.faq || old === 'faq' || /^\/(faq|terms|info)/.test(text)) custFaq_(c, null, '');
       else if (old === 'set' || /^\/settings/.test(text)) custSettings_(c);
-      else if (text === BTN_.sup || old === 'sup' || /^\/(help|support|ask)/.test(text)) custAsk_(c, '');
-      else if (/^\/menu/.test(text)) tgSend_(c, pick_(V_.welcomeBack), custKb_());
+      else if (text === BTN_.sup || old === 'sup' || /^\/(support|ask)/.test(text)) custAsk_(c, '');
+      else if (/^\/menu/.test(text)) { var s = sticker_(c, 'hello', custKb_()); if (!s || !s.ok) tgSend_(c, pick_(V_.welcomeBack), custKb_()); }
       else if (/^\//.test(text)) tgSend_(c, 'Такой команды нет, но меню всегда внизу 👇', custKb_());
       else relayToManager_(m);
     } catch (e) { console.error('tg', e && e.stack || e); }
@@ -2464,20 +2780,26 @@ function tgHandle_(updates) {
 
 /* подтверждение телефона: кнопка Telegram «Поделиться номером» (Telegram сам подтверждает, что номер владельца) */
 function askPhone_(chat) {
-  tgSend_(chat, '<b>Последний шаг: подтвердите телефон 📱</b>\nНажмите кнопку внизу «Поделиться номером». Telegram передаст только ваш номер, так мы защищаем бонусы от накруток.\n\nПосле этого начислим приветственные ониксы, а ещё станут доступны бонусы за друзей и подарок на день рождения.',
-    { keyboard: [[{ text: '📱 Поделиться номером', request_contact: true }]], resize_keyboard: true, one_time_keyboard: true });
+  tgSend_(chat, '📱 <b>Последний шаг: подтвердите телефон</b>\n<blockquote>Нажмите кнопку внизу «Поделиться номером». Telegram передаст только ваш номер, так мы защищаем бонусы от накруток.</blockquote>\nПосле этого начислим приветственные ониксы, а ещё откроются бонусы за друзей и подарок на день рождения.',
+    { keyboard: [[{ text: '📱 Поделиться номером', request_contact: true, style: 'primary' }]], resize_keyboard: true, one_time_keyboard: true });
 }
 function phoneContact_(m) {
   var c = m.chat.id, u = tgUserByChat_(c);
   if (!u) { tgSend_(c, 'Сначала откройте на сайте кабинет и нажмите «Подтвердить телефон»: бот привяжется к вашему аккаунту.', custKb_()); return; }
   var r = OnionCore.phoneConfirm(DB, u, m.contact, m.from && m.from.id);
   if (!r.ok) { tgSend_(c, '⚠️ ' + hesc_(r.msg), custKb_()); return; }
-  tgSend_(c, '<b>Телефон подтверждён ✅</b>' + (r.changed ? '\nВ кабинете теперь номер из Telegram.' : '') + (r.got ? '\nНа баланс начислено ' + r.got + ' ониксов 🎁' : '') + '\nБонусы магазина теперь доступны.', custKb_());
+  if (r.got) sticker_(c, 'bonus');
+  tgSend_(c, '☑️ <b>Телефон подтверждён</b>' + (r.changed ? '\nВ кабинете теперь номер из Telegram.' : '') + (r.got ? '\n💎 На баланс начислено <b>' + r.got + '</b> ониксов.' : '') + '\nБонусы магазина теперь доступны.', custKb_());
 }
 
-/* список команд в меню «/»: покупателям свои, менеджеру (только его чат) расширенный */
+/* список команд в меню «/» и описание бота («Что умеет этот бот?»): покупателям свои, менеджеру (только его чат) расширенный.
+   Картинку или анимацию над описанием Telegram позволяет поставить только вручную в @BotFather (/setdescriptionpic). */
+var BOT_DESCRIPTION_ = '💠 ONION SHOP\n\nЛичный помощник покупателя: заказы, бонусы и поддержка в одном чате.\n\n🔹 Каталог: новинки, наличие и предзаказ\n🔹 Заказы: статус, путь и фотоотчёт\n🔹 Бонусы: ониксы, уровень, промокоды\n🔹 Инструкция с анимацией по шагам\n\nНажмите «Старт», чтобы начать. Бот отвечает в течение минуты.';
+var BOT_SHORT_ = 'Заказы, бонусы и поддержка ONION SHOP в одном чате. Статусы приходят сами.';
 function setBotCommands_() {
-  tgApi_('setMyCommands', { commands: [{ command: 'menu', description: 'Меню' }, { command: 'orders', description: 'Мои заказы и статусы' }, { command: 'bonus', description: 'Ониксы, уровень, промокоды' }, { command: 'faq', description: 'Частые вопросы' }, { command: 'catalog', description: 'Каталог на сайте' }, { command: 'ask', description: 'Написать менеджеру' }] });
+  tgApi_('setMyCommands', { commands: [{ command: 'menu', description: 'Меню' }, { command: 'catalog', description: 'Каталог на сайте' }, { command: 'orders', description: 'Мои заказы и статусы' }, { command: 'bonus', description: 'Ониксы, уровень, промокоды' }, { command: 'guide', description: 'Инструкция с анимацией' }, { command: 'faq', description: 'Частые вопросы' }, { command: 'ask', description: 'Написать менеджеру' }] });
+  tgApi_('setMyDescription', { description: BOT_DESCRIPTION_ });
+  tgApi_('setMyShortDescription', { short_description: BOT_SHORT_ });
   var a = props_().getProperty('ADMIN_CHAT_ID');
   if (a) tgApi_('setMyCommands', { scope: { type: 'chat', chat_id: Number(a) }, commands: [{ command: 'menu', description: 'Панель менеджера' }, { command: 'orders', description: 'Активные заказы' }, { command: 'stats', description: 'Сводка' }, { command: 'promos', description: 'Промокоды' }, { command: 'promo', description: '/promo КОД 10: новый промокод' }, { command: 'reviews', description: 'Фото из отзывов на проверке' }, { command: 'client', description: '/client логин: карточка клиента' }, { command: 'tokens', description: '/tokens логин +50 причина' }, { command: 'delete', description: '/delete логин: удалить клиента' }, { command: 'broadcast', description: '/broadcast текст: рассылка' }, { command: 'cancel', description: 'Отменить ввод' }, { command: 'help', description: 'Как работать с ботом' }] });
 }
@@ -2488,15 +2810,15 @@ function pick_(a) { return a[Math.floor(Math.random() * a.length)]; }
 function pickAt_(a, i) { return a[(i || 0) % a.length]; }
 function fill_(s, o) { return String(s).replace(/\{(\w+)\}/g, function (m, k) { return o && o[k] !== undefined ? o[k] : m; }); }
 var V_ = {
-  fresh1: ['Свежая вещь в каталоге 👀', 'Пополнение: вот что приехало', 'Новинка, таких у нас обычно немного', 'Выложили новую вещь, загляните'],
+  fresh1: ['🆕 Новая вещь в каталоге', '🆕 Пополнение коллекции', '🆕 Свежее поступление, таких обычно немного', '🆕 Выложили новую вещь'],
   freshN: ['Пополнение: {n} новых вещей', 'В каталоге {n} новинок', 'Выложили {n} новых вещей'],
-  sale: ['Цены снизили, пока действует 🔥', 'Скидки до {pct}%', 'Подборка со скидкой', 'Хорошая цена на эти вещи, долго не продержится'],
-  feat: ['Новое у нас: {f}. Загляните, должно быть удобнее', 'Добавили {f}, попробуйте', 'Теперь на сайте есть {f}'],
-  drop: ['Вещь из избранного подешевела 📉', 'Цена в избранном снизилась 📉', 'Из избранного стало дешевле 📉'],
-  restock: ['Снова в продаже 🛍', 'Вы ждали, и вот она 🛍', 'Вернулась в каталог 🛍'],
-  winback: ['Давно не виделись 👋', 'Заглядывайте, у нас много нового 👋', 'Скучаем! Вот что появилось 👋'],
-  welcomeBack: ['Привет! Меню внизу 👇', 'Здравствуйте! Чем помочь? Меню внизу 👇'],
-  asked: ['✅ Передал менеджеру, ответ придёт сюда же.', '✅ Принял, менеджер уже видит ваше сообщение. Ответ придёт в этот чат.', '✅ Отправил менеджеру. Как только он ответит, сообщение появится здесь.']
+  sale: ['📉 Цены снижены, пока действует', '📉 Скидки до {pct}%', '📉 Подборка со скидкой', '📉 Хорошая цена, долго не продержится'],
+  feat: ['Новое у нас: {f}. Загляните, должно стать удобнее', 'Добавили {f}, попробуйте', 'Теперь на сайте есть {f}'],
+  drop: ['📉 Вещь из избранного подешевела', '📉 Цена в избранном снизилась', '📉 Из избранного стало дешевле'],
+  restock: ['🔹 Снова в продаже', '🔹 Вы ждали, и вот она', '🔹 Вернулась в каталог'],
+  winback: ['🤍 Давно не виделись', '🤍 Загляните, у нас много нового', '🤍 Пока вас не было, коллекция обновилась'],
+  welcomeBack: ['Меню внизу 👇', 'Чем помочь? Меню внизу 👇'],
+  asked: ['☑️ Передал менеджеру, ответ придёт сюда же.', '☑️ Принял, менеджер уже видит ваше сообщение. Ответ придёт в этот чат.', '☑️ Отправил менеджеру. Как только он ответит, сообщение появится здесь.']
 };
 function IMG_(n) { return siteBase_() + 'assets/bot/' + n + '.jpg'; }
 function photoUrl_(id) { return siteBase_() + 'img/full/' + id + '.jpg'; }
@@ -2506,11 +2828,13 @@ function cap1_(s) { s = String(s || ''); return s.charAt(0).toUpperCase() + s.sl
 /* подпись к товару для ручной рассылки: название, цена, цвета, размеры, по строкам */
 function postCaption_(c) {
   var st = detailOf_(c, 'состояние'), L = ['<b>' + hesc_(c.title) + '</b>'];
-  L.push('💰 ' + (c.oldPrice > c.price ? '<s>' + rub_(c.oldPrice) + '</s> ' : '') + '<b>' + rub_(c.price) + '</b>');
-  if (st) L.push('✨ Состояние: ' + hesc_(st));
-  if (c.colors && c.colors.length) L.push('🎨 ' + hesc_(cap1_(c.colors.join(', '))));
-  if (c.sizes && c.sizes.length) L.push('📏 Размеры: ' + hesc_(c.sizes.join(', ')));
-  L.push(c.status === 'preorder' ? '✈️ Под заказ из Китая' : '📍 В наличии в Москве');
+  L.push((c.oldPrice > c.price ? '<s>' + rub_(c.oldPrice) + '</s>  ' : '') + '<b>' + rub_(c.price) + '</b>');
+  var D = [];
+  if (st) D.push('▫️ Состояние: ' + hesc_(st));
+  if (c.colors && c.colors.length) D.push('▫️ Цвет: ' + hesc_(c.colors.join(', ')));
+  if (c.sizes && c.sizes.length) D.push('▫️ Размеры: ' + hesc_(c.sizes.join(', ')));
+  D.push(c.status === 'preorder' ? '✈️ Предзаказ, доставка уже в цене' : '🏙 В наличии в Москве');
+  L.push('<blockquote>' + D.join('\n') + '</blockquote>');
   return L.join('\n');
 }
 function freshList_(n, cat) {
@@ -2536,6 +2860,7 @@ function tgPhoto_(chat, url, caption, kb) {
   return r;
 }
 function notifyHtml_(u, text, kb) {
+  if (kb && kb[0] && kb[0][0] && !kb[0][0].style) kb[0][0].style = 'primary';
   var r = tgSend_(u.tgChat, text, kb);
   if (r && r.error_code === 403) { u.tgChat = ''; u.tgName = ''; DB.saveUser(u); }
   return !!(r && r.ok);
@@ -2557,9 +2882,9 @@ function mskHour_() { return +Utilities.formatDate(new Date(), 'Europe/Moscow', 
 
 /* ---------- авто-сообщения клиентам: только текст и одна кнопка ---------- */
 function autoFresh_(fresh, cat) {
-  if (fresh.length === 1) { var c = cat[fresh[0]]; return { title: pick_(V_.fresh1), body: hesc_(c.title) + ', ' + rub_(c.price) + (c.status === 'preorder' ? ', под заказ из Китая.' : ', в наличии в Москве.'), btn: btnUrl_('Посмотреть', 'p-' + c.id) }; }
+  if (fresh.length === 1) { var c = cat[fresh[0]]; return { title: pick_(V_.fresh1), body: hesc_(c.title) + ', <b>' + rub_(c.price) + '</b>' + (c.status === 'preorder' ? '\n✈️ Предзаказ, доставка уже в цене' : '\n🏙 В наличии в Москве'), btn: btnUrl_('Посмотреть', 'p-' + c.id) }; }
   var L = fresh.slice(0, 3).map(function (id) { return cat[id]; });
-  return { title: fill_(pick_(V_.freshN), { n: fresh.length }) + ' ✨', body: L.map(function (c) { return hesc_(c.title) + ', ' + rub_(c.price); }).join('\n') + (fresh.length > 3 ? '\nи ещё ' + (fresh.length - 3) + ' в каталоге' : ''), btn: btnUrl_('Смотреть новинки', 'catalog') };
+  return { title: '🆕 ' + fill_(pick_(V_.freshN), { n: fresh.length }), body: L.map(function (c) { return hesc_(c.title) + ', ' + rub_(c.price); }).join('\n') + (fresh.length > 3 ? '\nи ещё ' + (fresh.length - 3) + ' в каталоге' : ''), btn: btnUrl_('Смотреть новинки', 'catalog') };
 }
 function autoSale_() {
   var S = saleList_(3); if (!S.length) return null;
@@ -2584,13 +2909,13 @@ function bcBuild_(d) {
   if (d.t === 'fresh') {
     var L = freshList_(d.n || 3, cat); if (!L.length) return null;
     if (L.length === 1) return bcBuild_({ t: 'prod', id: L[0].id, iv: iv });
-    out.text = '<b>' + fill_(pickAt_(V_.freshN, iv), { n: L.length }) + ' ✨</b>\n\n' + L.map(function (c) { return '🛍 ' + hesc_(c.title) + ', <b>' + rub_(c.price) + '</b>'; }).join('\n');
+    out.text = '<b>🆕 ' + fill_(pickAt_(V_.freshN, iv), { n: L.length }) + '</b>\n\n' + L.map(function (c) { return '🔹 ' + hesc_(c.title) + ', <b>' + rub_(c.price) + '</b>'; }).join('\n');
     out.photo = prodPhoto_(L[0]); out.kb = [[btnUrl_('Смотреть новинки', 'catalog')]];
     return out;
   }
   if (d.t === 'sale') {
     var S = saleList_(3); if (!S.length) return null;
-    out.text = '<b>' + fill_(pickAt_(V_.sale, iv), { pct: Math.max(5, Math.floor(S[0].d / 5) * 5) }) + '</b>\n\n' + S.map(function (x) { return '🔥 ' + hesc_(x.c.title) + '\n<s>' + rub_(x.c.oldPrice) + '</s> <b>' + rub_(x.c.price) + '</b>, −' + x.d + '%'; }).join('\n');
+    out.text = '<b>' + fill_(pickAt_(V_.sale, iv), { pct: Math.max(5, Math.floor(S[0].d / 5) * 5) }) + '</b>\n\n' + S.map(function (x) { return '🔹 ' + hesc_(x.c.title) + '\n<s>' + rub_(x.c.oldPrice) + '</s> <b>' + rub_(x.c.price) + '</b>, −' + x.d + '%'; }).join('\n');
     out.photo = prodPhoto_(S[0].c); out.kb = [[btnUrl_('Смотреть скидки', 'catalog')]];
     return out;
   }
@@ -2660,20 +2985,26 @@ function orderPhotos_(chat, no) {
 /* примеры сообщений бота: приходят только менеджеру, клиентам ничего не уходит */
 function botDemo_(chat) {
   tgSend_(chat, '🧪 <b>Примеры того, что бот пишет клиентам</b>\nЭто пробные сообщения, только вам.');
-  tgPhoto_(chat, IMG_('welcome'), welcome_('Миша', true), welcomeKb_(true));
-  tgSend_(chat, statusText_('OS-26-00001', 'Выкуплен'), statusKb_('OS-26-00001', 'Выкуплен'));
-  tgSend_(chat, statusText_('OS-26-00001', 'Едет к вам'), statusKb_('OS-26-00001', 'Едет к вам'));
-  tgSend_(chat, payText_('OS-26-00001', 26564), [[btnOrder_('OS-26-00001')]]);
+  sendWelcomeTo_(chat, 'Миша', true, null);
+  custCatalog_(chat);
+  custFaq_(chat, null, 'pre');
+  guideIndex_(chat);
+  guideStep_(chat, null, 0);
+  sticker_(chat, 'accepted');
+  tgSend_(chat, statusText_('OS-26-00001', 'Оформлен'), statusKb_('OS-26-00001', 'Оформлен'));
+  tgSend_(chat, statusText_('OS-26-00001', 'Едет к нам'), statusKb_('OS-26-00001', 'Едет к нам'));
+  tgSend_(chat, payText_('OS-26-00001', 26564), [[pri_(btnOrder_('OS-26-00001'))]]);
+  sticker_(chat, 'delivered');
   tgSend_(chat, statusText_('OS-26-00001', 'Получен'), statusKb_('OS-26-00001', 'Получен'));
   var cat = DB.loadCatalog_() || {}, L = freshList_(3, cat);
-  if (L.length) { var a = autoFresh_(L.map(function (c) { return c.id; }), cat); tgSend_(chat, '<b>' + a.title + '</b>\n' + a.body, [[a.btn]]); }
-  var s = autoSale_(); if (s) tgSend_(chat, '<b>' + s.title + '</b>\n' + s.body, [[s.btn]]);
-  if (L.length) tgSend_(chat, '<b>' + pick_(V_.drop) + '</b>\n' + hesc_(L[0].title) + ': ' + rub_(L[0].price) + ' вместо ' + rub_(L[0].price + 500), [[btnUrl_('Посмотреть', 'p-' + L[0].id)]]);
+  if (L.length) { var a = autoFresh_(L.map(function (c) { return c.id; }), cat); tgSend_(chat, '<b>' + a.title + '</b>\n' + a.body, [[pri_(a.btn)]]); }
+  var s = autoSale_(); if (s) tgSend_(chat, '<b>' + s.title + '</b>\n' + s.body, [[pri_(s.btn)]]);
+  if (L.length) tgSend_(chat, '<b>' + pick_(V_.drop) + '</b>\n' + hesc_(L[0].title) + ': <b>' + rub_(L[0].price) + '</b> вместо <s>' + rub_(L[0].price + 500) + '</s>', [[pri_(btnUrl_('Посмотреть', 'p-' + L[0].id))]]);
 }
 function botDemo() { var a = props_().getProperty('ADMIN_CHAT_ID'); if (a) botDemo_(a); else Logger.log('Менеджер ещё не привязан: напишите боту /start с аккаунта @' + adminUser_()); }
 
 
-/* ====================== РџСЂР°РІРёР»Р° РјР°РіР°Р·РёРЅР° (РѕР±С‰РёРµ СЃ СЃР°Р№С‚РѕРј) ====================== */
+/* ====================== Правила магазина (общие с сайтом) ====================== */
 /* ONION SHOP, правила магазина (один файл для сайта и для Google Таблицы).
    Здесь: ониксы, уровни, задания, посылка, партнёрка, номера заказов и текст заказа.
    На сервере (Google Apps Script) этот же код работает с таблицей,
@@ -3654,28 +3985,24 @@ var OnionCore = (function () {
       L.push('☑️ С условиями предзаказа ознакомлен(а)');
     }
     if (hasStock && hasPre) L.push(f.together === 'together' ? '📮 ПОЛУЧЕНИЕ ЗАКАЗА: ВСЁ ВМЕСТЕ: товар в наличии дождётся предзаказа, клиент получает всё сразу' : '📮 ПОЛУЧЕНИЕ ЗАКАЗА: РАЗДЕЛЬНО: сначала товары в наличии, а предзаказ после приезда из Китая');
-    if (String(f.comment || '').trim()) { L.push(''); L.push('💬 Комментарий: ' + String(f.comment).trim()); }
     return L.join('\n');
   }
 
   /** Собирает и проверяет строки заказа. items: [{id, size, color, photo, qty, note, title, price, status, link, photos}] */
   function buildLines(db, items) {
-    var lines = [], unverified = false, gone = [];
+    var lines = [], gone = [];
+    if (db.catalogReady && !db.catalogReady()) return { lines: lines, gone: gone, notReady: true }; // каталог не загрузился: заказ не принимаем, цены с сайта не берём никогда
     (items || []).forEach(function (it) {
       var qty = Math.max(1, Math.min(10, parseInt(it.qty, 10) || 1));
       var prod = db.product ? db.product(String(it.id)) : null;
       if (prod && (prod.status === 'sold' || prod.status === 'out')) { gone.push(prod.title || it.id); return; }   // нет в наличии или продано: заказать нельзя никак
-      if (!prod) {
-        if (db.catalogReady && db.catalogReady()) { gone.push(it.title || it.id); return; }
-        unverified = true;
-        prod = { id: it.id, title: String(it.title || 'Товар ' + it.id), price: Math.max(0, parseInt(it.price, 10) || 0), status: it.status === 'preorder' ? 'preorder' : it.status === 'out' ? 'out' : 'stock', link: it.link || '', photos: [] };
-      }
+      if (!prod) { gone.push(it.title || it.id); return; }
       var photoNo = 0;
       if (it.photo && prod.photos) { for (var i = 0; i < prod.photos.length; i++) if (String(prod.photos[i].id) === String(it.photo)) photoNo = i + 1; }
       if (!photoNo && it.photoNo) photoNo = parseInt(it.photoNo, 10) || 0;
       lines.push({ id: String(prod.id), title: prod.title, status: prod.status === 'preorder' ? 'preorder' : prod.status === 'out' ? 'out' : 'stock', category: prod.category || it.category || '', size: it.size ? String(it.size).slice(0, 40) : '', color: it.color ? String(it.color).slice(0, 60) : '', photoNo: photoNo, photo: it.photo || null, note: String(it.note || '').slice(0, 300), qty: qty, price: prod.price, link: prod.link || '', thumb: (prod.photos && prod.photos[0] ? prod.photos[0].id : it.thumb) || null });
     });
-    return { lines: lines, unverified: unverified, gone: gone };
+    return { lines: lines, gone: gone };
   }
 
   /* Скидка по промокоду: личный промокод категории (cat) считается только с товаров этой категории */
@@ -3727,6 +4054,7 @@ var OnionCore = (function () {
       f = Object.assign({}, f, { name: su.name, phone: su.phone, tg: su.tg || '' });
     }
     var built = buildLines(db, p.items);
+    if (built.notReady) return err('Каталог сейчас обновляется. Попробуйте оформить заказ через минуту');
     if (built.gone.length) return err('Сейчас нельзя заказать (нет в наличии или продано): ' + built.gone.join(', ') + '. Уберите из корзины, а такой товар можно добавить в избранное');
     if (!built.lines.length) return err('Корзина пуста');
     var hasPre = built.lines.some(function (l) { return l.status === 'preorder'; });
@@ -3737,8 +4065,6 @@ var OnionCore = (function () {
     var total = 0, cnt = 0;
     built.lines.forEach(function (l) { total += l.price * l.qty; cnt += l.qty; });
     var u = sessionUser(db, p), tokens = 0, tokenRub = 0, promo = '', promoRub = 0, promoNote = '', pack = '';
-    // каталог не загрузился, цены пришли с сайта; скидки ониксами и промокодами в таком заказе не даём, менеджер посчитает сам
-    if (built.unverified && ((parseInt(p.useTokens, 10) || 0) > 0 || String(p.promo || '').trim())) return err('Каталог сейчас обновляется: ониксы и промокод временно недоступны. Оформите заказ без них или попробуйте через минуту');
     if (u) {
       var maxTok = Math.min(u.balance || 0, Math.floor(total * RULES.maxShare / RULES.tokenRub));
       tokens = Math.max(0, Math.min(maxTok, parseInt(p.useTokens, 10) || 0));
@@ -3768,7 +4094,6 @@ var OnionCore = (function () {
     var pk = u ? packInfo(db, u) : null;
     if (pk && pk.available && p.usePack !== false && hasPre) { pack = pk.label + ' (' + pk.level + ')'; u.packMonth = monthKey(at); }
     var text = orderText({ no: no, at: at, f: f, lines: built.lines, total: total, tokens: tokens, tokenRub: tokenRub, promo: promo, promoRub: promoRub, promoNote: promoNote, pack: pack, priority: priority, vipRub: vipRub, toPay: toPay, user: u ? { login: u.login, id: u.id, levelName: li.name } : null });
-    if (built.unverified) text += '\n\n⚠️ Каталог был недоступен, цены взяты с сайта, проверьте.';
     if (u) {
       if (tokens) log(db, u, -tokens, 'Оплата заказа №' + no);
       // сумма идёт в уровень и в «Потрачено всего» только когда заказ получен (статус «Получен»: см. receive)
@@ -3780,7 +4105,7 @@ var OnionCore = (function () {
       no: no, seq: seq, at: at, userId: u ? u.id : '', login: u ? u.login : '', name: String(f.name).trim(), phone: fmtPhone(f.phone), tg: cleanTg(f.tg) ? '@' + cleanTg(f.tg) : '', status: 'Оформлен',
       items: built.lines.map(function (l) { return { id: l.id, title: l.title, qty: l.qty, price: l.price, size: l.size, color: l.color, photo: l.photo, thumb: l.thumb, status: l.status }; }),
       count: cnt, total: total, tokens: tokens, tokenRub: tokenRub, promo: promo, promoRub: promoRub, vipRub: vipRub, toPay: toPay, priority: prioCell(priority, li, f.vip === true, u), pack: pack, level: li ? li.name : '',
-      kind: hasPre && hasStock ? 'смешанный' : hasPre ? 'предзаказ' : (hasOut && !built.lines.some(function (l) { return l.status === 'stock'; })) ? 'временно нет' : 'в наличии', comment: String(f.comment || '').trim(), text: text
+      kind: hasPre && hasStock ? 'смешанный' : hasPre ? 'предзаказ' : (hasOut && !built.lines.some(function (l) { return l.status === 'stock'; })) ? 'временно нет' : 'в наличии', text: text
     };
     if (u && taskRew.length) order.taskRew = JSON.stringify(taskRew);
     db.saveOrder(order);
@@ -3791,6 +4116,30 @@ var OnionCore = (function () {
     return ok({ order: order, notified: notified, user: u ? publicUser(db, u) : null });
   };
 
+  /* Отмена заказа клиентом: только свой заказ и только в статусе «Оформлен». Статус проверяет база в момент записи
+     (db.cancelOrder), поэтому подмена запроса или гонка с менеджером не помогут: побеждает актуальный статус.
+     Возврат ониксов, списание наград за задания «оформить заказ» и возврат личного промокода делает та же сверка,
+     что и при отмене менеджером, с отметкой «возвращено», поэтому дважды ничего не начислится. */
+  var CANCEL_BUSY = 'Заказ уже в работе, отмена недоступна. Напишите менеджеру, он подскажет, что можно сделать';
+  /* общая отмена для сайта и бота: один и тот же код и одна и та же проверка статуса в базе.
+     via: 'site' или 'bot', влияет только на подпись в уведомлении менеджеру. */
+  function cancelFor(db, u, no, via) {
+    no = String(no || '').trim().toUpperCase();
+    if (!u || !/^OS-\d{2}-\d{5}$/.test(no) || !db.cancelOrder) return { ok: false, error: 'Заказ не найден' };
+    var r = db.cancelOrder(no, u.id, via) || {};
+    if (r.missing) return { ok: false, error: 'Заказ не найден' };
+    if (!r.done) return { ok: false, status: r.status || '', already: r.status === 'Отменён', error: r.status === 'Отменён' ? 'Этот заказ уже отменён' : r.status === 'Получен' ? 'Заказ уже у вас, отменить его нельзя. Если что-то не так, напишите менеджеру' : CANCEL_BUSY };
+    u = db.getUser(u.id) || u;
+    var where = via === 'bot' ? 'в боте' : 'на сайте';
+    try { if (db.notify) db.notify('❌ Клиент сам отменил заказ ' + no + ' ' + where + ' (@' + u.login + '). Статус «Отменён» уже стоит, ониксы за заказ вернулись клиенту.', { no: no }); } catch (e) { /* не критично */ }
+    return { ok: true, no: no, status: 'Отменён', user: u };
+  }
+  A.cancelOrder = function (db, p) {
+    var u = sessionUser(db, p); if (!u) return err('auth');
+    var r = cancelFor(db, u, p.no, 'site');
+    if (!r.ok) return r.status !== undefined ? { ok: false, status: r.status, already: !!r.already, error: r.error } : err(r.error);
+    return ok({ no: r.no, status: 'Отменён', user: publicUser(db, r.user) });
+  };
   /* Заказ получен (sign = 1) или статус «Получен» сняли (sign = -1).
      Сумма «К оплате» даёт XP (1 XP за 10 ₽) в уровень месяца и идёт в «Потрачено всего».
      month: месяц, в котором сумму засчитали: при отмене из уровня вычитаем, только если месяц тот же. */
@@ -3992,7 +4341,7 @@ var OnionCore = (function () {
     RULES: RULES, genCode: genCode, handle: handle, orderText: orderText, buildLines: buildLines, checkFields: checkFields,
     offlineNo: offlineNo, levelInfo: levelInfo, levelOf: levelOf, fixIndex: fixIndex, receive: receive, priceDrops: priceDrops, photoLinks: photoLinks, earlyLeft: earlyLeft, phoneConfirm: phoneConfirm, flag: flag, referralOnReceive: referralOnReceive, orderCanceled: orderCanceled, canonEmail: canonEmail, bdayIsToday: bdayIsToday, adjustTokens: adjustTokens, xpOfRub: xpOfRub, wheelFor: wheelFor, framesFor: framesFor, pctText: pctText, promoBase: promoBase, touch: touch, tokensToRub: tokensToRub, settings: settings, dayKey: dayKey, monthKey: monthKey,
     statusMessage: statusMessage, tgBind: tgBind, activePromos: activePromos, hashPass: hashPass,
-    cleanTg: cleanTg, cleanEmail: cleanEmail, phoneKey: phoneKey, fmtPhone: fmtPhone, digits: digits, validEmail: validEmail, taskPick: picksFor, weekKey: weekKey, stagesFor: stagesFor
+    cleanTg: cleanTg, cleanEmail: cleanEmail, phoneKey: phoneKey, fmtPhone: fmtPhone, digits: digits, validEmail: validEmail, taskPick: picksFor, weekKey: weekKey, stagesFor: stagesFor, cancelFor: cancelFor
   };
 })();
 

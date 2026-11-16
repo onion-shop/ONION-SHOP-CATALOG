@@ -1422,7 +1422,7 @@ function giftPromo_(u, pct, days, reason) {
     done = { u: u, code: code, until: until };
   } finally { lock.releaseLock(); }
   var d = new Date(done.until + 3 * 3600000), ds = ('0' + d.getUTCDate()).slice(-2) + '.' + ('0' + (d.getUTCMonth() + 1)).slice(-2);
-  notice_(done.u, '🎁 Подарок от магазина', 'Личный промокод <code>' + done.code + '</code> на −' + pct + '%. Действует до ' + ds + '. Введите его при оформлении заказа.', { text: 'Открыть магазин', url: siteBase_() });
+  notice_(done.u, '💎 Подарок от магазина', 'Личный промокод <code>' + done.code + '</code> на −' + pct + '%\n<blockquote>Действует до ' + ds + '. Нажмите на код, чтобы скопировать, и введите его при оформлении заказа.</blockquote>', { text: 'Открыть магазин', url: siteBase_() });
   return done;
 }
 function giftPromoUi() {
@@ -1736,7 +1736,7 @@ function tgPhotos_() {
     var links = OnionCore.photoLinks(r[iP]), key = links.join(' ');
     if (!links.length || String(r[iS] || '') === key || sent >= 20) return;
     var uid = normId_(r[iU]), u = uid ? DB.getUser(uid) : null, no = String(r[iNo]).trim();
-    if (u && u.tgChat) { notice_(u, 'Фотоотчёт готов 📸', 'Сфотографировали вещи из заказа ' + hesc_(no) + ' на складе. Посмотрите, как они выглядят перед отправкой.', { text: 'Посмотреть фото', url: links[0] }); sent++; }
+    if (u && u.tgChat) { notice_(u, '📸 Фотоотчёт готов', '<code>' + hesc_(no) + '</code>\n<blockquote>Сфотографировали вещи на складе. Посмотрите, как они выглядят перед отправкой.</blockquote>', { text: 'Посмотреть фото', url: links[0] }); sent++; }
     var c = sh.getRange(i + 2, iS + 1); c.setNumberFormat('@'); c.setValue(key);
   });
 }
@@ -1749,7 +1749,7 @@ function tgWatch_() {
     if (!u.watch || sent >= 40) return;
     var before = JSON.stringify(u.watch), drops = OnionCore.priceDrops(DB, u);
     if (drops.length && u.tgChat) {
-      var body = drops.slice(0, 3).map(function (d) { return hesc_(d.title) + ': ' + rub_(d.now) + ' вместо ' + rub_(d.was); }).join('\n');
+      var body = drops.slice(0, 3).map(function (d) { return '🔹 ' + hesc_(d.title) + ': <b>' + rub_(d.now) + '</b> вместо <s>' + rub_(d.was) + '</s>'; }).join('\n');
       notice_(u, pick_(V_.drop), body, drops.length === 1 ? btnUrl_('Посмотреть', 'p-' + drops[0].id) : btnUrl_('Открыть избранное', 'favorites')); sent++;
     }
     if (JSON.stringify(u.watch) !== before) DB.saveUser(u);
@@ -1834,7 +1834,7 @@ function tgNudge_() {
     if (!u.tgChat || sent >= 20) return;
     var reg = u.createdAt ? new Date(u.createdAt).getTime() : 0, lo = Math.max(last[u.id] || 0, reg);
     if (!lo || now - lo < 30 * 86400000 || (u.lastNudge && now - u.lastNudge < 21 * 86400000) || !canPush_(u, 20)) return;
-    if (notice_(u, pick_(V_.winback), 'Пока вас не было, в каталоге появились новые вещи. Например, ' + hesc_(L[0].title) + ' за ' + rub_(L[0].price) + '.', btnUrl_('Смотреть новинки', 'catalog'))) { u.lastNudge = now; markPush_(u); sent++; }
+    if (notice_(u, pick_(V_.winback), 'В каталоге появились новые вещи. Например, ' + hesc_(L[0].title) + ' за <b>' + rub_(L[0].price) + '</b>.', btnUrl_('Смотреть новинки', 'catalog'))) { u.lastNudge = now; markPush_(u); sent++; }
   });
 }function tgWaits_() {
   var sh = ss_().getSheetByName(SHEET.waits); if (!sh) return;
@@ -1845,7 +1845,7 @@ function tgNudge_() {
     if (!pr || pr.status === 'out' || pr.status === 'sold') return;
     var u = DB.getUser(w.userId);
     if (u && u.tgChat) {
-      notice_(u, pick_(V_.restock), hesc_(w.title) + ' снова можно заказать' + (pr && pr.price ? ', ' + rub_(pr.price) : '') + '. Вы просили сообщить.', btnUrl_('Посмотреть', 'p-' + w.productId)); sent++;
+      notice_(u, pick_(V_.restock), hesc_(w.title) + ' снова можно заказать' + (pr && pr.price ? ', <b>' + rub_(pr.price) + '</b>' : '') + '.\n<i>Вы просили сообщить.</i>', btnUrl_('Посмотреть', 'p-' + w.productId)); sent++;
     }
     var c = sh.getRange(w._row, iS + 1); c.setNumberFormat('@'); c.setValue(mskText_(Date.now()));
   });
