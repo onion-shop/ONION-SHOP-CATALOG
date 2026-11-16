@@ -59,7 +59,7 @@ var OnionAPI = (function () {
     saveOrder: function (o) { mem.orders.push(o); save(); },
     cancelOrder: function (no, uid) {
       var o = mem.orders.filter(function (x) { return x.no === no && x.userId === uid; })[0]; if (!o) return { missing: true };
-      var st = o.status || 'Оформлен'; if (st !== 'Оформлен') return { status: st };
+      var st = o.status || 'Принят'; if (st !== 'Принят') return { status: st };
       o.status = 'Отменён'; var u = DemoDB.getUser(uid);
       if (u && !o.refunded) {
         o.refunded = 'да';
@@ -67,7 +67,7 @@ var OnionAPI = (function () {
         OnionCore.orderCanceled(DemoDB, u, { no: no, at: o.at, total: o.total, kind: o.kind, taskRew: o.taskRew || '' }, 1);
         (u.promos || []).forEach(function (p) { if (o.promo && String(p.code).toUpperCase() === String(o.promo).toUpperCase()) { delete p.used; delete p.usedAt; } });
       }
-      save(); return { status: 'Оформлен', done: true };
+      save(); return { status: 'Принят', done: true };
     },
     listOrders: function (uid, n) { return mem.orders.filter(function (o) { return o.userId === uid; }).slice(-n).reverse(); },
     log: function (e) { mem.log.push(e); if (mem.log.length > 500) mem.log.shift(); },

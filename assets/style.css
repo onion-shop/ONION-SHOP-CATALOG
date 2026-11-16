@@ -2582,7 +2582,7 @@ html,body{touch-action:pan-x pan-y}
 .order .acts .btn.ord-cancel{grid-column:1/-1;display:inline-flex;align-items:center;justify-content:center;gap:6px;margin:0;height:38px;min-height:38px;padding:0 14px;border:0;border-radius:12px;background:transparent;color:var(--accent-ink);box-shadow:inset 0 0 0 1.5px var(--accent-line);font:700 13.5px/1 var(--f-b)}
 .order .acts .btn.ord-cancel .i{width:16px;height:16px;color:var(--accent)}
 .order .acts .btn.ord-cancel:hover{background:var(--accent-soft)}
-/* статус «Оформлен» зелёным, «Отменён» остаётся красным */
+/* статус «Принят» зелёным, «Отменён» остаётся красным */
 .st-pill.st-new{background:#dcfce7;color:#15803d}
 :root[data-theme="dark"] .st-pill.st-new{background:rgba(34,197,94,.16);color:#6ee7a0}
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .st-pill.st-new{background:rgba(34,197,94,.16);color:#6ee7a0}}

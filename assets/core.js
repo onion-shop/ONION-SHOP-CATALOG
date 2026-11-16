@@ -159,9 +159,9 @@ var OnionCore = (function () {
       2: { none: -550, t50: 120, t100: 120, t200: 90, t300: 50, t500: 45, xp100: 50, t150: 75 }
     },
     // статусы заказа (меняются в таблице, клиент видит их в «Моих заказах»)
-    stagesPre: ['Оформлен', 'Выкуплен', 'В пути', 'На складе', 'Едет к нам', 'Едет к вам', 'Получен'],
-    stagesStock: ['Оформлен', 'Едет к вам', 'Получен'],
-    stageNotes: { 'Оформлен': 'Заказ принят менеджером', 'Выкуплен': 'Оплачен поставщику', 'В пути': 'Поставщик везёт на склад в Китае', 'На складе': 'Проверка и фотоотчёт на складе', 'Едет к нам': 'Из Китая в Москву', 'Едет к вам': 'Передан в доставку', 'Получен': 'Заказ у вас', 'Отменён': 'Заказ отменён' },
+    stagesPre: ['Принят', 'Выкуплен', 'Едет в Китай', 'Проверка товара', 'Едет в Россию', 'Едет к вам', 'Получен'],
+    stagesStock: ['Принят', 'Едет к вам', 'Получен'],
+    stageNotes: { 'Принят': 'Заказ принят менеджером', 'Выкуплен': 'Оплачен поставщику', 'Едет в Китай': 'Поставщик везёт на склад в Китае', 'Проверка товара': 'Проверка и фотоотчёт на складе', 'Едет в Россию': 'Из Китая в Москву', 'Едет к вам': 'Передан в доставку', 'Получен': 'Заказ у вас', 'Отменён': 'Заказ отменён' },
     finalStages: ['Получен', 'Отменён'],
     codeTtlMin: 15,
     /* Рамки: одна коллекция из 39 штук (рисунки assets/fr/, генератор scripts/make_frames.js, источник docs/frames-gallery.html), без редкости.
@@ -540,7 +540,7 @@ var OnionCore = (function () {
   function publicUser(db, u) {
     var today = dayKey(db.now());
     var orders = (db.listOrders(u.id, 30) || []).map(function (o) {
-      var st = String(o.status || 'Оформлен');
+      var st = String(o.status || 'Принят');
       return { no: o.no, at: o.at, count: o.count, total: o.total, tokens: o.tokens, tokenRub: o.tokenRub, promo: o.promo || '', promoRub: o.promoRub, toPay: o.toPay, text: o.text, items: o.items || [], kind: o.kind || '', photos: photoLinks(o.photoRep), status: st, stages: stagesFor(o.kind), active: RULES.finalStages.indexOf(st) < 0 };
     });
     var rk = db.reviewKeys ? db.reviewKeys(u.id) : [];
@@ -696,7 +696,7 @@ var OnionCore = (function () {
   A.deleteAccount = function (db, p) {
     var u = sessionUser(db, p); if (!u) return err('auth');
     if (hashPass(db, u.salt, String(p.password || '')) !== u.hash) return err('Неверный пароль');
-    var active = (db.listOrders(u.id, 200) || []).filter(function (o) { return RULES.finalStages.indexOf(String(o.status || 'Оформлен')) < 0; });
+    var active = (db.listOrders(u.id, 200) || []).filter(function (o) { return RULES.finalStages.indexOf(String(o.status || 'Принят')) < 0; });
     if (active.length) return err('Удалить аккаунт можно, когда нет активных заказов. Сейчас активных: ' + active.length);
     db.log({ at: db.now(), userId: u.id, login: u.login, delta: -(u.balance || 0), reason: 'Аккаунт удалён клиентом', balance: 0 });
     var keys = idKeys(db, u); ledgerAdd(db, keys, 'acct', 'аккаунт удалён');
@@ -1095,7 +1095,7 @@ var OnionCore = (function () {
       settle(db, u); var taskRew = orderTaskRewards(u, doneBefore); db.saveUser(u);
     }
     var order = {
-      no: no, seq: seq, at: at, userId: u ? u.id : '', login: u ? u.login : '', name: String(f.name).trim(), phone: fmtPhone(f.phone), tg: cleanTg(f.tg) ? '@' + cleanTg(f.tg) : '', status: 'Оформлен',
+      no: no, seq: seq, at: at, userId: u ? u.id : '', login: u ? u.login : '', name: String(f.name).trim(), phone: fmtPhone(f.phone), tg: cleanTg(f.tg) ? '@' + cleanTg(f.tg) : '', status: 'Принят',
       items: built.lines.map(function (l) { return { id: l.id, title: l.title, qty: l.qty, price: l.price, size: l.size, color: l.color, photo: l.photo, thumb: l.thumb, status: l.status }; }),
       count: cnt, total: total, tokens: tokens, tokenRub: tokenRub, promo: promo, promoRub: promoRub, vipRub: vipRub, toPay: toPay, priority: prioCell(priority, li, f.vip === true, u), pack: pack, level: li ? li.name : '',
       kind: hasPre && hasStock ? 'смешанный' : hasPre ? 'предзаказ' : (hasOut && !built.lines.some(function (l) { return l.status === 'stock'; })) ? 'временно нет' : 'в наличии', text: text
@@ -1109,7 +1109,7 @@ var OnionCore = (function () {
     return ok({ order: order, notified: notified, user: u ? publicUser(db, u) : null });
   };
 
-  /* Отмена заказа клиентом: только свой заказ и только в статусе «Оформлен». Статус проверяет база в момент записи
+  /* Отмена заказа клиентом: только свой заказ и только в статусе «Принят». Статус проверяет база в момент записи
      (db.cancelOrder), поэтому подмена запроса или гонка с менеджером не помогут: побеждает актуальный статус.
      Возврат ониксов, списание наград за задания «оформить заказ» и возврат личного промокода делает та же сверка,
      что и при отмене менеджером, с отметкой «возвращено», поэтому дважды ничего не начислится. */
@@ -1248,7 +1248,7 @@ var OnionCore = (function () {
   };
 
   /* ---------- Telegram: подключение, статусы заказов ---------- */
-  var STATUS_EMO = { 'Оформлен': '🧾', 'Выкуплен': '✅', 'В пути': '🚚', 'На складе': '📦', 'Едет к нам': '✈️', 'Едет к вам': '🚚', 'Получен': '🎉', 'Отменён': '❌' };
+  var STATUS_EMO = { 'Принят': '🧾', 'Выкуплен': '✅', 'Едет в Китай': '🚚', 'Проверка товара': '📦', 'Едет в Россию': '✈️', 'Едет к вам': '🚚', 'Получен': '🎉', 'Отменён': '❌' };
   function statusMessage(no, status) {
     var note = RULES.stageNotes[status] || '';
     var t = (STATUS_EMO[status] || '🔔') + ' Заказ ' + no + ': ' + status + (note ? '\n' + note : '');
