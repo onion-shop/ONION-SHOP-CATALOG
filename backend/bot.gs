@@ -272,19 +272,13 @@ function dateOf_(o) { return String(o.at || '').split(' ')[0]; }
 function payWord_(o) { return isTrue_(o.paid) ? 'оплачено' : 'ждёт оплаты'; }
 function lowerFirst_(s) { s = String(s || ''); return s.charAt(0).toLowerCase() + s.slice(1); }
 function orderBtn_(o) { return pri_({ text: '№' + orderNo5_(o.no) + ' ' + stageName_(orderSt_(o)), callback_data: 'm|' + o.no }); }
-/* Список заказов: таблица рисуется картинкой (tableimg.gs), подпись стоит над ней. Новое сообщение отправляем,
-   старое (delId) удаляем: картинку нельзя заменить текстом. Если картинка не получилась, шлём обычную таблицу Telegram. */
+/* Список заказов: обычная таблица Telegram. Новое сообщение отправляем, старое (delId) удаляем. */
 function ordersSend_(chat, delId, title, head, rows, kb) {
-  var r = null;
-  try { r = tgPhotoBlob_(chat, tableImage_(head, rows), '<b>' + title + '</b>', kb); } catch (e) { console.warn('table image: ' + (e && e.stack || e)); }
-  if (!r || !r.ok) {
-    var html = '<h3>' + title + '</h3><table bordered><tr>' + head.map(function (h) { return '<th>' + hesc_(h) + '</th>'; }).join('') + '</tr>' +
-      rows.map(function (rw) { return '<tr>' + rw.map(function (c) { return '<td>' + hesc_(c) + '</td>'; }).join('') + '</tr>'; }).join('') + '</table>';
-    r = tgRich_(chat, html, kb);
-  }
+  var html = '<h3>' + title + '</h3><table bordered><tr>' + head.map(function (h) { return '<th>' + hesc_(h) + '</th>'; }).join('') + '</tr>' +
+    rows.map(function (rw) { return '<tr>' + rw.map(function (c) { return '<td>' + hesc_(c) + '</td>'; }).join('') + '</tr>'; }).join('') + '</table>';
+  var r = tgRich_(chat, html, kb);
   if (delId && r && r.ok !== false) tgApi_('deleteMessage', { chat_id: String(chat), message_id: delId });
-}
-function custOrders_(chat, delId) {
+}function custOrders_(chat, delId) {
   var u = tgUserByChat_(chat); if (!u) { needLink_(chat); return; }
   var all = DB.listOrders(u.id, 60), act = all.filter(isActive_).slice(0, 8), past = all.filter(function (o) { return !isActive_(o); }).length;
   if (!all.length) { tgRich_(chat, '<h3>Мои заказы</h3><p>Заказов пока нет. Оформите первый на сайте, он сразу появится здесь, а статусы я буду присылать сам.</p>', [[pri_({ text: 'Открыть каталог', web_app: { url: siteUrl_('') } })]]); if (delId) tgApi_('deleteMessage', { chat_id: String(chat), message_id: delId }); return; }
@@ -340,18 +334,33 @@ function orderCardRich_(o, urls) {
   var its = cardItems_(o).map(function (x) { return '<p>· ' + hesc_(x.n) + (x.o ? '<br>' + hesc_(x.o) : '') + '</p>'; }).join('');
   return media + '<h3>Заказ ' + hesc_(o.no) + '</h3><p>' + hesc_(dateOf_(o)) + '</p>' + (its ? '<h4>Состав</h4>' + its : '') +
     '<h4>К оплате</h4><p>' + hesc_(orderPay_(o)) + '</p><h4>Путь заказа</h4>' + stageLines_(o).map(function (l) { return '<p>' + l + '</p>'; }).join('');
-}function orderCardKb_(o) { return [[{ text: 'Вопрос по заказу', callback_data: 'q|' + o.no }, { text: 'Все заказы', callback_data: 'mo' }]]; }
+}function orderCardKb_(o, idx, n) {
+  var kb = [[{ text: 'Вопрос по заказу', callback_data: 'q|' + o.no }, { text: 'Все заказы', callback_data: 'mo' }]];
+  if (n > 1) kb.unshift([{ text: '‹', callback_data: 'pg|' + o.no + '|' + ((idx + n - 1) % n) }, { text: (idx + 1) + ' / ' + n, callback_data: 'pg|' + o.no + '|' + idx }, { text: '›', callback_data: 'pg|' + o.no + '|' + ((idx + 1) % n) }]);
+  return kb;
+}
 function custOrderCard_(cq, no) {
   var chat = cq.message.chat.id, mid = cq.message.message_id, u = tgUserByChat_(chat); if (!u) { tgAnswer_(cq.id, 'Сначала подключите бота в кабинете'); return; }
   var o = DB.listOrders(u.id, 60).filter(function (x) { return String(x.no) === no; })[0];
   if (!o) { tgAnswer_(cq.id, 'Заказ не найден'); return; }
   tgAnswer_(cq.id, '');
-  var kb = orderCardKb_(o), urls = orderPhotoUrls_(o), r = tgApi_('sendRichMessage', { chat_id: String(chat), rich_message: { html: orderCardRich_(o, urls), skip_entity_detection: true }, reply_markup: { inline_keyboard: kb } });
+  var urls = orderPhotoUrls_(o), kb = orderCardKb_(o, 0, urls.length), r = null;
+  if (urls.length > 1) r = tgPhoto_(chat, urls[0], orderCardText_(o), kb); /* несколько товаров: фото листаются стрелками */
+  else r = tgApi_('sendRichMessage', { chat_id: String(chat), rich_message: { html: orderCardRich_(o, urls), skip_entity_detection: true }, reply_markup: { inline_keyboard: kb } });
   if (!r || !r.ok) {
     console.warn('card rich -> photo: ' + (r && r.description));
     r = urls.length ? tgPhoto_(chat, urls[0], orderCardText_(o), kb) : tgSend_(chat, orderCardText_(o), kb);
   }
   if (r && r.ok) tgApi_('deleteMessage', { chat_id: String(chat), message_id: mid }); /* список или окно подтверждения заменяем карточкой */
+}
+/* листание фото в карточке заказа с несколькими товарами */
+function custOrderPage_(cq, no, idx) {
+  var chat = cq.message.chat.id, u = tgUserByChat_(chat); if (!u) { tgAnswer_(cq.id, ''); return; }
+  var o = DB.listOrders(u.id, 60).filter(function (x) { return String(x.no) === no; })[0];
+  if (!o) { tgAnswer_(cq.id, 'Заказ не найден'); return; }
+  var urls = orderPhotoUrls_(o), n = urls.length; if (!n) { tgAnswer_(cq.id, ''); return; }
+  idx = Math.max(0, Math.min(n - 1, +idx || 0)); tgAnswer_(cq.id, '');
+  tgApi_('editMessageMedia', { chat_id: String(chat), message_id: cq.message.message_id, media: { type: 'photo', media: urls[idx], caption: orderCardText_(o).slice(0, 1000), parse_mode: 'HTML' }, reply_markup: { inline_keyboard: orderCardKb_(o, idx, n) } });
 }
 function custBonus_(chat) {
   var u = tgUserByChat_(chat); if (!u) { needLink_(chat); return; }
@@ -460,6 +469,7 @@ function custCallback_(cq, a) {
   /* экран правим на месте, только если кнопку нажали в нём самом; из приветствия или уведомления шлём новый */
   var here = function (re) { return re.test(head) ? mid : null; };
   if (a[0] === 'm') { custOrderCard_(cq, a[1]); return true; }
+  if (a[0] === 'pg') { custOrderPage_(cq, a[1], a[2]); return true; }
   if (a[0] === 'mo') { tgAnswer_(cq.id, ''); custOrders_(chat, mid); return true; }
   if (a[0] === 'mh') { tgAnswer_(cq.id, ''); custOrdersPast_(chat, mid, a[1]); return true; }
   if (a[0] === 'gi') { tgAnswer_(cq.id, ''); guideIndex_(chat, here(/Инструкция$/)); return true; }
@@ -714,7 +724,7 @@ function adminCallback_(cq) {
   if (!cq.message) return;
   var chat = cq.message.chat.id, mid = cq.message.message_id, a = String(cq.data || '').split('|');
   if (!isAdmin_(chat)) { if (!custCallback_(cq, a)) tgAnswer_(cq.id, 'Эта кнопка больше не работает'); return; }
-  if (['m', 'mo', 'mh', 'q', 'ns', 'fq', 'ph', 'gi', 'gd'].indexOf(a[0]) >= 0 || (a[0] === 'bn' && a.length === 1)) { custCallback_(cq, a); return; }
+  if (['m', 'pg', 'mo', 'mh', 'q', 'ns', 'fq', 'ph', 'gi', 'gd'].indexOf(a[0]) >= 0 || (a[0] === 'bn' && a.length === 1)) { custCallback_(cq, a); return; }
   var p = props_();
   // ---- рассылки и авто-сообщения ----
   if (a[0] === 'bm') { tgAnswer_(cq.id, ''); bcMenu_(chat); return; }
