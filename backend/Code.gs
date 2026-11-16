@@ -2256,16 +2256,18 @@ function ordersSend_(chat, delId, title, head, rows, kb) {
     rows.map(function (rw) { return '<tr>' + rw.map(function (c) { return '<td>' + hesc_(c) + '</td>'; }).join('') + '</tr>'; }).join('') + '</table>';
   var r = tgRich_(chat, html, kb);
   if (delId && r && r.ok !== false) tgApi_('deleteMessage', { chat_id: String(chat), message_id: delId });
-}function custOrders_(chat, delId) {
+}function custOrders_(chat, delId, page) {
   var u = tgUserByChat_(chat); if (!u) { needLink_(chat); return; }
-  var all = DB.listOrders(u.id, 60), act = all.filter(isActive_).slice(0, 8), past = all.filter(function (o) { return !isActive_(o); }).length;
+  var all = DB.listOrders(u.id, 60), actAll = all.filter(isActive_), past = all.filter(function (o) { return !isActive_(o); }).length;
+  var per = 6, pages = Math.max(1, Math.ceil(actAll.length / per)); page = Math.max(0, Math.min(pages - 1, +page || 0));
+  var act = actAll.slice(page * per, page * per + per);
   if (!all.length) { tgRich_(chat, '<h3>Мои заказы</h3><p>Заказов пока нет. Оформите первый на сайте, он сразу появится здесь, а статусы я буду присылать сам.</p>', [[pri_({ text: 'Открыть каталог', web_app: { url: siteUrl_('') } })]]); if (delId) tgApi_('deleteMessage', { chat_id: String(chat), message_id: delId }); return; }
   var kb = act.map(function (o) { return [orderBtn_(o)]; });
+  if (pages > 1) { var nav = []; if (page > 0) nav.push({ text: '‹ Назад', callback_data: 'mo|' + (page - 1) }); nav.push({ text: (page + 1) + ' / ' + pages, callback_data: 'mo|' + page }); if (page < pages - 1) nav.push({ text: 'Вперёд ›', callback_data: 'mo|' + (page + 1) }); kb.push(nav); }
   if (past) kb.push([{ text: 'Завершённые и отменённые (' + past + ')', callback_data: 'mh|0' }]);
   if (!act.length) { tgRich_(chat, '<h3>Мои заказы</h3><p>Сейчас все заказы завершены.</p>', kb); if (delId) tgApi_('deleteMessage', { chat_id: String(chat), message_id: delId }); return; }
-  ordersSend_(chat, delId, 'Мои заказы', ['Заказ', 'Статус', 'К оплате'], act.map(function (o) { return [shortNo_(o.no), stageName_(orderSt_(o)), rub_(o.toPay)]; }), kb);
-}
-function custOrdersPast_(chat, delId, page) {
+  ordersSend_(chat, delId, 'Мои заказы' + (pages > 1 ? ' (' + actAll.length + ')' : ''), ['Заказ', 'Статус', 'К оплате'], act.map(function (o) { return [shortNo_(o.no), stageName_(orderSt_(o)), rub_(o.toPay)]; }), kb);
+}function custOrdersPast_(chat, delId, page) {
   var u = tgUserByChat_(chat); if (!u) { needLink_(chat); return; }
   var past = DB.listOrders(u.id, 60).filter(function (o) { return !isActive_(o); }), per = 8, pages = Math.max(1, Math.ceil(past.length / per));
   page = Math.max(0, Math.min(pages - 1, +page || 0));
@@ -2332,9 +2334,19 @@ function custOrderCard_(cq, no) {
   if (r && r.ok) tgApi_('deleteMessage', { chat_id: String(chat), message_id: mid }); /* список или окно подтверждения заменяем карточкой */
 }
 /* листание фото в карточке заказа с несколькими товарами */
+/* пробный заказ с тремя товарами: только для проверки листания фото, в таблицу не попадает */
+var DEMO_NO_ = 'OS-26-99999';
+function demoOrder_() {
+  return { no: DEMO_NO_, at: '16.11.2026 12:00', status: 'Выкуплен', kind: 'предзаказ', toPay: 9840, paid: false, items: [
+    { title: 'Пробный товар: утеплённая кофта', size: 'M', color: 'Белый', photo: '682' },
+    { title: 'Пробный товар: джинсы прямого кроя', size: '32', color: 'Синий', photo: '610' },
+    { title: 'Пробный товар: кроссовки беговые', size: '42', color: 'Чёрный', photo: '633' }] };
+}
+function demoMultiTo_(chat) { var o = demoOrder_(), urls = orderPhotoUrls_(o); return tgPhoto_(chat, urls[0], orderCardText_(o), orderCardKb_(o, 0, urls.length)); }
+function botDemoMulti() { var a = props_().getProperty('ADMIN_CHAT_ID'); if (a) demoMultiTo_(a); }
 function custOrderPage_(cq, no, idx) {
   var chat = cq.message.chat.id, u = tgUserByChat_(chat); if (!u) { tgAnswer_(cq.id, ''); return; }
-  var o = DB.listOrders(u.id, 60).filter(function (x) { return String(x.no) === no; })[0];
+  var o = no === DEMO_NO_ ? demoOrder_() : DB.listOrders(u.id, 60).filter(function (x) { return String(x.no) === no; })[0];
   if (!o) { tgAnswer_(cq.id, 'Заказ не найден'); return; }
   var urls = orderPhotoUrls_(o), n = urls.length; if (!n) { tgAnswer_(cq.id, ''); return; }
   idx = Math.max(0, Math.min(n - 1, +idx || 0)); tgAnswer_(cq.id, '');
@@ -2448,7 +2460,7 @@ function custCallback_(cq, a) {
   var here = function (re) { return re.test(head) ? mid : null; };
   if (a[0] === 'm') { custOrderCard_(cq, a[1]); return true; }
   if (a[0] === 'pg') { custOrderPage_(cq, a[1], a[2]); return true; }
-  if (a[0] === 'mo') { tgAnswer_(cq.id, ''); custOrders_(chat, mid); return true; }
+  if (a[0] === 'mo') { tgAnswer_(cq.id, ''); custOrders_(chat, mid, a[1]); return true; }
   if (a[0] === 'mh') { tgAnswer_(cq.id, ''); custOrdersPast_(chat, mid, a[1]); return true; }
   if (a[0] === 'gi') { tgAnswer_(cq.id, ''); guideIndex_(chat, here(/Инструкция$/)); return true; }
   if (a[0] === 'gd') { tgAnswer_(cq.id, ''); guideStep_(chat, cq.message.animation || cq.message.document || /Инструкция$/.test(head) ? mid : null, a[1]); return true; }
@@ -2841,6 +2853,7 @@ function tgHandle_(updates) {
       var old = OLD_BTN_[text];
       if (/^\/start/.test(text)) sendWelcome_(m, !!tgUserByChat_(c));
       else if (text === BTN_.ord || old === 'ord' || /^\/orders/.test(text)) custOrders_(c);
+      else if (/^\/demomulti/.test(text)) demoMultiTo_(c); /* пробный заказ с тремя фото, временная команда */
       else if (text === BTN_.bon || old === 'bon' || /^\/bonus/.test(text)) custBonus_(c);
       else if (text === BTN_.cat || old === 'cat' || /^\/catalog/.test(text)) custCatalog_(c);
       else if (text === BTN_.guide || /^\/(guide|help)/.test(text)) guideIndex_(c);
